@@ -2,7 +2,8 @@
 
 > **A panoramic view of your family's life**
 
-PLEASE NOTE: This project is PRE-ALPHA, it's not ready for prime time, and it probably won't work! Once I have an initial working version, I'll remove this note. ;)
+**WARNING: This project is in its very early stages and is not yet functional. Key features are missing, bugs are likely, and the code is subject to change without notice. Use at your own risk. **
+
 
 PlanaVista is a beautiful, easy-to-configure Home Assistant integration that brings commercial-quality wall calendar functionality to your smart home. No monthly fees, complete privacy, and endless customization.
 
