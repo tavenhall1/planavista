@@ -12,7 +12,7 @@ PlanaVista is a beautiful, easy-to-configure Home Assistant integration that bri
 > **Legend:** ✅ Implemented | ⬜ Planned
 
 ### Core Functionality
-- [x] 🎨 **Beautiful Default Theme** - Stunning out of box, rivals commercial products
+- [ ] 🎨 **Beautiful Default Theme** - Stunning out of box, rivals commercial products
 - [x] ⚙️ **Zero-Configuration Setup** - Auto-discovers calendars, smart defaults
 - [ ] 📱 **Fully Responsive** - Perfect on tablets, wall displays, or phones
 - [ ] 🌈 **Multiple Themes** - PlanaVista, Minimal, Modern, Dark
