@@ -324,8 +324,8 @@ Inspired by commercial products like Skylight and Hearth, but designed to be bet
 
 ## 💬 Support
 
-- **Issues**: [GitHub Issues](https://github.com/tavenhall1/my-skylight-calendar/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/tavenhall1/my-skylight-calendar/discussions)
+- **Issues**: [GitHub Issues](https://github.com/tavenhall1/planavista/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/tavenhall1/planavista/discussions)
 - **Community**: [Home Assistant Community Forum](https://community.home-assistant.io/)
 
 ---
