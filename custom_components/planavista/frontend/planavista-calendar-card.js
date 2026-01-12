@@ -459,11 +459,19 @@ class PlanaVistaCalendarCardEditor extends HTMLElement {
     super();
     this._config = {};
     this._hass = null;
+    this._rendered = false;
   }
 
   set hass(hass) {
     this._hass = hass;
-    this.render();
+    if (!this._rendered) {
+      this.render();
+    }
+    // Update entity picker if it exists
+    const entityPicker = this.querySelector('ha-entity-picker');
+    if (entityPicker) {
+      entityPicker.hass = hass;
+    }
   }
 
   setConfig(config) {
@@ -471,62 +479,66 @@ class PlanaVistaCalendarCardEditor extends HTMLElement {
     this.render();
   }
 
-  get _entity() {
-    return this._config.entity || '';
-  }
-
   render() {
     if (!this._hass) {
       return;
     }
 
-    // Find planavista_config sensors
-    const entities = Object.keys(this._hass.states)
-      .filter(e => e.startsWith('sensor.') && e.includes('planavista'))
-      .sort();
+    this._rendered = true;
+    const entity = this._config.entity || 'sensor.planavista_config';
 
     this.innerHTML = `
+      <style>
+        .card-config {
+          padding: 16px;
+        }
+        .card-config ha-entity-picker {
+          display: block;
+          margin-bottom: 16px;
+        }
+        .hint {
+          color: var(--secondary-text-color);
+          font-size: 12px;
+          margin-top: 8px;
+        }
+      </style>
       <div class="card-config">
         <ha-entity-picker
-          .hass=${this._hass}
-          .value="${this._entity}"
-          .configValue=${"entity"}
           label="Entity (Required)"
           allow-custom-entity
-          .includeDomains=${["sensor"]}
         ></ha-entity-picker>
+        <div class="hint">Select your PlanaVista config sensor (usually sensor.planavista_config)</div>
       </div>
     `;
 
-    // Set up the entity picker after rendering
-    const entityPicker = this.querySelector('ha-entity-picker');
-    if (entityPicker) {
-      entityPicker.hass = this._hass;
-      entityPicker.value = this._entity;
-      entityPicker.addEventListener('value-changed', (ev) => {
-        this._valueChanged(ev, 'entity');
-      });
-    }
+    // Set up the entity picker after DOM is ready
+    this._setupEntityPicker(entity);
   }
 
-  _valueChanged(ev, configKey) {
-    if (!this._config || !this._hass) {
-      return;
-    }
-    const target = ev.target;
-    const value = ev.detail?.value ?? target.value;
-
-    if (this._config[configKey] === value) {
+  _setupEntityPicker(entity) {
+    const entityPicker = this.querySelector('ha-entity-picker');
+    if (!entityPicker) {
       return;
     }
 
-    const newConfig = {
-      ...this._config,
-      [configKey]: value,
-    };
+    // Set properties directly on the element
+    entityPicker.hass = this._hass;
+    entityPicker.value = entity;
+    entityPicker.includeDomains = ['sensor'];
 
+    // Listen for changes
+    entityPicker.addEventListener('value-changed', (ev) => {
+      const newValue = ev.detail?.value;
+      if (newValue && newValue !== this._config.entity) {
+        this._config = { ...this._config, entity: newValue };
+        this._fireConfigChanged();
+      }
+    });
+  }
+
+  _fireConfigChanged() {
     const event = new CustomEvent('config-changed', {
-      detail: { config: newConfig },
+      detail: { config: this._config },
       bubbles: true,
       composed: true,
     });
