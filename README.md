@@ -9,22 +9,24 @@ PlanaVista is a beautiful, easy-to-configure Home Assistant integration that bri
 
 ## ✨ Features
 
+> **Legend:** ✅ Implemented | ⬜ Planned
+
 ### Core Functionality
-- 🎨 **Beautiful Default Theme** - Stunning out of box, rivals commercial products
-- ⚙️ **Zero-Configuration Setup** - Auto-discovers calendars, smart defaults
-- 📱 **Fully Responsive** - Perfect on tablets, wall displays, or phones
-- 🌈 **Multiple Themes** - PlanaVista, Minimal, Modern, Dark
-- 📅 **Multiple Views** - Day, Week, Month, Agenda
-- 🎯 **Simple Event Creation** - Quick add or advanced mode
-- ☀️ **Integrated Weather** - Shows current and forecast weather
-- 🕐 **Flexible Time Display** - 12-hour or 24-hour format
+- [x] 🎨 **Beautiful Default Theme** - Stunning out of box, rivals commercial products
+- [x] ⚙️ **Zero-Configuration Setup** - Auto-discovers calendars, smart defaults
+- [ ] 📱 **Fully Responsive** - Perfect on tablets, wall displays, or phones
+- [ ] 🌈 **Multiple Themes** - PlanaVista, Minimal, Modern, Dark
+- [ ] 📅 **Multiple Views** - Day, Week, Month, Agenda
+- [ ] 🎯 **Simple Event Creation** - Quick add or advanced mode
+- [x] ☀️ **Integrated Weather** - Shows current and forecast weather
+- [x] 🕐 **Flexible Time Display** - 12-hour or 24-hour format
 
 ### Technical Excellence
-- 🔄 **HACS Integration** - Install and update with one click
-- 🎛️ **UI Configuration** - No YAML editing required
-- 🔌 **Extensible Architecture** - Ready for future modules (chores, photos, tasks)
-- 🚀 **Performance Optimized** - Smooth on any hardware
-- 🔐 **Privacy First** - Your data stays local
+- [x] 🔄 **HACS Integration** - Install and update with one click
+- [x] 🎛️ **UI Configuration** - No YAML editing required
+- [ ] 🔌 **Extensible Architecture** - Ready for future modules (chores, photos, tasks)
+- [ ] 🚀 **Performance Optimized** - Smooth on any hardware
+- [x] 🔐 **Privacy First** - Your data stays local
 
 ---
 
@@ -233,26 +235,33 @@ service: planavista.refresh_calendars
 
 ## 🔮 Roadmap
 
+### v0.1.0 - Initial Release ✅
+- [x] Basic integration structure
+- [x] Config flow with auto-discovery
+- [x] Sensor entities
+- [x] Basic frontend card
+- [x] Documentation
+
 ### v0.2.0 - Enhanced Calendar
-- Full event rendering in card
-- Drag-to-create events
-- Multi-day event support
-- Event editing/deletion
+- [ ] Full event rendering in card
+- [ ] Drag-to-create events
+- [ ] Multi-day event support
+- [ ] Event editing/deletion
 
 ### v0.3.0 - Photo Frame Module
-- Slideshow during idle time
-- Google Photos integration
-- Custom photo folders
+- [ ] Slideshow during idle time
+- [ ] Google Photos integration
+- [ ] Custom photo folders
 
 ### v0.4.0 - Chores & Tasks
-- Household task tracking
-- Grocy integration
-- Completion tracking
+- [ ] Household task tracking
+- [ ] Grocy integration
+- [ ] Completion tracking
 
 ### v0.5.0 - Meal Planning
-- Weekly meal calendar
-- Recipe integration
-- Shopping list generation
+- [ ] Weekly meal calendar
+- [ ] Recipe integration
+- [ ] Shopping list generation
 
 ---
 
