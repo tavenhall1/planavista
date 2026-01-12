@@ -2,9 +2,9 @@
 
 > **A panoramic view of your family's life**
 
-PlanaVista is a beautiful, easy-to-configure Home Assistant integration that brings commercial-quality wall calendar functionality to your smart home. No monthly fees, complete privacy, and endless customization.
+PLEASE NOTE: This integration is currently in TESTING - it probably won't work!
 
-![PlanaVista](assets/main_view.jpeg)
+PlanaVista is a beautiful, easy-to-configure Home Assistant integration that brings commercial-quality wall calendar functionality to your smart home. No monthly fees, complete privacy, and endless customization.
 
 ## ✨ Features
 
