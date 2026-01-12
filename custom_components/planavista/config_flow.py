@@ -1,0 +1,422 @@
+"""Config flow for PlanaVista integration."""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import selector
+from homeassistant.helpers import entity_registry as er
+
+from .const import (
+    DOMAIN,
+    NAME,
+    CONF_CALENDARS,
+    CONF_DISPLAY_NAME,
+    CONF_COLOR,
+    CONF_ICON,
+    CONF_PERSON_ENTITY,
+    CONF_VISIBLE,
+    CONF_TIME_FORMAT,
+    CONF_WEATHER_ENTITY,
+    CONF_FIRST_DAY,
+    CONF_DEFAULT_VIEW,
+    CONF_THEME,
+    TIME_FORMAT_12H,
+    TIME_FORMAT_24H,
+    FIRST_DAY_MONDAY,
+    FIRST_DAY_SUNDAY,
+    CALENDAR_VIEWS,
+    THEMES,
+    DEFAULT_COLORS,
+    DEFAULT_TIME_FORMAT,
+    DEFAULT_FIRST_DAY,
+    DEFAULT_VIEW,
+    DEFAULT_THEME,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _discover_calendar_entities(hass: HomeAssistant) -> list[str]:
+    """Discover all calendar entities in Home Assistant."""
+    entity_registry = er.async_get(hass)
+    calendar_entities = []
+
+    for entity in entity_registry.entities.values():
+        if entity.domain == "calendar":
+            calendar_entities.append(entity.entity_id)
+
+    # Also check current states for calendars not in registry
+    for entity_id in hass.states.async_entity_ids("calendar"):
+        if entity_id not in calendar_entities:
+            calendar_entities.append(entity_id)
+
+    return sorted(calendar_entities)
+
+
+def _discover_weather_entities(hass: HomeAssistant) -> list[str]:
+    """Discover all weather entities in Home Assistant."""
+    entity_registry = er.async_get(hass)
+    weather_entities = []
+
+    for entity in entity_registry.entities.values():
+        if entity.domain == "weather":
+            weather_entities.append(entity.entity_id)
+
+    # Also check current states
+    for entity_id in hass.states.async_entity_ids("weather"):
+        if entity_id not in weather_entities:
+            weather_entities.append(entity_id)
+
+    return sorted(weather_entities)
+
+
+def _discover_person_entities(hass: HomeAssistant) -> list[str]:
+    """Discover all person entities in Home Assistant."""
+    entity_registry = er.async_get(hass)
+    person_entities = [""]  # Empty option for "no person"
+
+    for entity in entity_registry.entities.values():
+        if entity.domain == "person":
+            person_entities.append(entity.entity_id)
+
+    # Also check current states
+    for entity_id in hass.states.async_entity_ids("person"):
+        if entity_id not in person_entities:
+            person_entities.append(entity_id)
+
+    return person_entities
+
+
+def _get_friendly_name(hass: HomeAssistant, entity_id: str) -> str:
+    """Get friendly name for an entity."""
+    state = hass.states.get(entity_id)
+    if state and state.attributes.get("friendly_name"):
+        return state.attributes["friendly_name"]
+    return entity_id.split(".")[-1].replace("_", " ").title()
+
+
+class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for PlanaVista."""
+
+    VERSION = 1
+
+    def __init__(self):
+        """Initialize the config flow."""
+        self._data = {}
+        self._selected_calendars = []
+        self._calendar_configs = []
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Handle the initial step - calendar selection."""
+        errors = {}
+
+        if user_input is not None:
+            self._selected_calendars = user_input.get("calendars", [])
+
+            if not self._selected_calendars:
+                errors["base"] = "no_calendars"
+            else:
+                return await self.async_step_display()
+
+        # Discover available calendars
+        calendar_entities = _discover_calendar_entities(self.hass)
+
+        if not calendar_entities:
+            return self.async_abort(reason="no_calendars_found")
+
+        # Create friendly options for multi-select
+        calendar_options = {
+            entity_id: _get_friendly_name(self.hass, entity_id)
+            for entity_id in calendar_entities
+        }
+
+        schema = vol.Schema(
+            {
+                vol.Required("calendars"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=k, label=v)
+                            for k, v in calendar_options.items()
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "name": NAME,
+            },
+        )
+
+    async def async_step_display(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Handle display preferences step."""
+        errors = {}
+
+        if user_input is not None:
+            self._data["display"] = {
+                CONF_TIME_FORMAT: user_input[CONF_TIME_FORMAT],
+                CONF_WEATHER_ENTITY: user_input.get(CONF_WEATHER_ENTITY, ""),
+                CONF_FIRST_DAY: user_input[CONF_FIRST_DAY],
+                CONF_DEFAULT_VIEW: user_input[CONF_DEFAULT_VIEW],
+                CONF_THEME: user_input[CONF_THEME],
+            }
+            return await self.async_step_calendars()
+
+        # Discover weather entities
+        weather_entities = _discover_weather_entities(self.hass)
+        weather_options = [""] + weather_entities  # Allow no weather entity
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_TIME_FORMAT, default=DEFAULT_TIME_FORMAT): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=TIME_FORMAT_12H, label="12-hour (AM/PM)"),
+                            selector.SelectOptionDict(value=TIME_FORMAT_24H, label="24-hour"),
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_WEATHER_ENTITY, default=""): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=entity, label=_get_friendly_name(self.hass, entity) if entity else "None")
+                            for entity in weather_options
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_FIRST_DAY, default=DEFAULT_FIRST_DAY): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=FIRST_DAY_MONDAY, label="Monday"),
+                            selector.SelectOptionDict(value=FIRST_DAY_SUNDAY, label="Sunday"),
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_DEFAULT_VIEW, default=DEFAULT_VIEW): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=view, label=view.title())
+                            for view in CALENDAR_VIEWS
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(CONF_THEME, default=DEFAULT_THEME): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=theme, label=theme.title())
+                            for theme in THEMES
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="display",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_calendars(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Handle calendar personalization step."""
+        if user_input is not None:
+            # Save the configuration for this calendar
+            calendar_entity = user_input.pop("_entity_id")
+            self._calendar_configs.append({
+                "entity_id": calendar_entity,
+                CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
+                CONF_COLOR: user_input[CONF_COLOR],
+                CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
+                CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
+                CONF_VISIBLE: True,
+            })
+
+            # Check if there are more calendars to configure
+            if len(self._calendar_configs) < len(self._selected_calendars):
+                return await self.async_step_calendars()
+
+            # All calendars configured, create the entry
+            self._data[CONF_CALENDARS] = self._calendar_configs
+            return self.async_create_entry(title=NAME, data=self._data)
+
+        # Get the next calendar to configure
+        current_index = len(self._calendar_configs)
+        current_calendar = self._selected_calendars[current_index]
+
+        # Get color for this calendar (cycle through defaults)
+        default_color = DEFAULT_COLORS[current_index % len(DEFAULT_COLORS)]
+
+        # Get friendly name
+        friendly_name = _get_friendly_name(self.hass, current_calendar)
+
+        # Get person entities
+        person_entities = _discover_person_entities(self.hass)
+
+        schema = vol.Schema(
+            {
+                vol.Required("_entity_id", default=current_calendar): selector.TextSelector(),
+                vol.Required(CONF_DISPLAY_NAME, default=friendly_name): selector.TextSelector(),
+                vol.Required(CONF_COLOR, default=default_color): selector.ColorRGBSelector(),
+                vol.Optional(CONF_ICON, default="mdi:calendar"): selector.IconSelector(),
+                vol.Optional(CONF_PERSON_ENTITY, default=""): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(
+                                value=entity,
+                                label=_get_friendly_name(self.hass, entity) if entity else "None"
+                            )
+                            for entity in person_entities
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="calendars",
+            data_schema=schema,
+            description_placeholders={
+                "calendar_name": friendly_name,
+                "current": str(current_index + 1),
+                "total": str(len(self._selected_calendars)),
+            },
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> PlanaVistaOptionsFlow:
+        """Get the options flow for this handler."""
+        return PlanaVistaOptionsFlow(config_entry)
+
+
+class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for PlanaVista."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Manage the options."""
+        return await self.async_step_display()
+
+    async def async_step_display(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Handle display options."""
+        if user_input is not None:
+            # Update the config entry
+            new_data = dict(self.config_entry.data)
+            new_data["display"] = {
+                CONF_TIME_FORMAT: user_input[CONF_TIME_FORMAT],
+                CONF_WEATHER_ENTITY: user_input.get(CONF_WEATHER_ENTITY, ""),
+                CONF_FIRST_DAY: user_input[CONF_FIRST_DAY],
+                CONF_DEFAULT_VIEW: user_input[CONF_DEFAULT_VIEW],
+                CONF_THEME: user_input[CONF_THEME],
+            }
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+            return self.async_create_entry(title="", data={})
+
+        current_display = self.config_entry.data.get("display", {})
+        weather_entities = _discover_weather_entities(self.hass)
+        weather_options = [""] + weather_entities
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_TIME_FORMAT,
+                    default=current_display.get(CONF_TIME_FORMAT, DEFAULT_TIME_FORMAT)
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=TIME_FORMAT_12H, label="12-hour (AM/PM)"),
+                            selector.SelectOptionDict(value=TIME_FORMAT_24H, label="24-hour"),
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(
+                    CONF_WEATHER_ENTITY,
+                    default=current_display.get(CONF_WEATHER_ENTITY, "")
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(
+                                value=entity,
+                                label=_get_friendly_name(self.hass, entity) if entity else "None"
+                            )
+                            for entity in weather_options
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_FIRST_DAY,
+                    default=current_display.get(CONF_FIRST_DAY, DEFAULT_FIRST_DAY)
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=FIRST_DAY_MONDAY, label="Monday"),
+                            selector.SelectOptionDict(value=FIRST_DAY_SUNDAY, label="Sunday"),
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_DEFAULT_VIEW,
+                    default=current_display.get(CONF_DEFAULT_VIEW, DEFAULT_VIEW)
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=view, label=view.title())
+                            for view in CALENDAR_VIEWS
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_THEME,
+                    default=current_display.get(CONF_THEME, DEFAULT_THEME)
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=theme, label=theme.title())
+                            for theme in THEMES
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(step_id="display", data_schema=schema)

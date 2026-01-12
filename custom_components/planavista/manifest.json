@@ -1,0 +1,13 @@
+{
+  "domain": "planavista",
+  "name": "PlanaVista",
+  "codeowners": ["@planavista"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/tavenhall1/my-skylight-calendar",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/tavenhall1/my-skylight-calendar/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

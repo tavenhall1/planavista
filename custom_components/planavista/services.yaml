@@ -1,0 +1,68 @@
+# Services for PlanaVista
+
+add_event:
+  name: Add Event
+  description: Add a new event to a calendar
+  fields:
+    calendar:
+      name: Calendar
+      description: The calendar to add the event to
+      required: true
+      example: "Alice"
+      selector:
+        text:
+    title:
+      name: Title
+      description: Event title
+      required: true
+      example: "Team Meeting"
+      selector:
+        text:
+    start_date_time:
+      name: Start Date/Time
+      description: When the event starts
+      required: true
+      selector:
+        datetime:
+    end_date_time:
+      name: End Date/Time
+      description: When the event ends
+      required: false
+      selector:
+        datetime:
+    all_day:
+      name: All Day Event
+      description: Whether this is an all-day event
+      required: false
+      default: false
+      selector:
+        boolean:
+    description:
+      name: Description
+      description: Event description (optional)
+      required: false
+      selector:
+        text:
+          multiline: true
+
+set_calendar_visibility:
+  name: Set Calendar Visibility
+  description: Show or hide a calendar
+  fields:
+    calendar:
+      name: Calendar
+      description: The calendar to show/hide
+      required: true
+      example: "Alice"
+      selector:
+        text:
+    visible:
+      name: Visible
+      description: Whether to show or hide the calendar
+      required: true
+      selector:
+        boolean:
+
+refresh_calendars:
+  name: Refresh Calendars
+  description: Force refresh all calendar data
