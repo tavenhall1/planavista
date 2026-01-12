@@ -91,6 +91,19 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
+def _normalize_color(color_value) -> str:
+    """Normalize color to hex string format.
+
+    Handles both hex strings and RGB arrays from ColorRGBSelector.
+    """
+    if isinstance(color_value, str):
+        return color_value
+    if isinstance(color_value, (list, tuple)) and len(color_value) >= 3:
+        r, g, b = color_value[:3]
+        return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
+    return "#4A90E2"
+
+
 class PlanaVistaCoordinator(DataUpdateCoordinator):
     """Class to manage fetching PlanaVista data."""
 
@@ -127,8 +140,9 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
                     calendar_data = {
                         "entity_id": entity_id,
                         "display_name": calendar_config.get("display_name", "Unknown"),
-                        "color": calendar_config.get("color", "#4A90E2"),
+                        "color": _normalize_color(calendar_config.get("color", "#4A90E2")),
                         "icon": calendar_config.get("icon", "mdi:calendar"),
+                        "person_entity": calendar_config.get("person_entity", ""),
                         "visible": calendar_config.get("visible", True),
                         "state": calendar_state.state,
                         "attributes": dict(calendar_state.attributes),

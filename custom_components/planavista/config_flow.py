@@ -100,6 +100,22 @@ def _get_friendly_name(hass: HomeAssistant, entity_id: str) -> str:
     return entity_id.split(".")[-1].replace("_", " ").title()
 
 
+def _rgb_to_hex(rgb_value: list[int] | str) -> str:
+    """Convert RGB list to hex color string.
+
+    The ColorRGBSelector returns colors as [R, G, B] lists.
+    This function converts them to '#RRGGBB' hex strings.
+    """
+    if isinstance(rgb_value, str):
+        # Already a hex string
+        return rgb_value
+    if isinstance(rgb_value, (list, tuple)) and len(rgb_value) >= 3:
+        r, g, b = rgb_value[:3]
+        return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
+    # Fallback to default color
+    return "#4A90E2"
+
+
 class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PlanaVista."""
 
@@ -247,7 +263,7 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._calendar_configs.append({
                 "entity_id": calendar_entity,
                 CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
-                CONF_COLOR: user_input[CONF_COLOR],
+                CONF_COLOR: _rgb_to_hex(user_input[CONF_COLOR]),
                 CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
                 CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
                 CONF_VISIBLE: True,
