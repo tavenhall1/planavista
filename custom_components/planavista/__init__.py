@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -55,12 +56,14 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
     # Get the path to the frontend directory
     frontend_path = Path(__file__).parent / "frontend"
 
-    # Register static path to serve the JS file
-    hass.http.register_static_path(
-        "/planavista_panel",
-        str(frontend_path),
-        cache_headers=False,
-    )
+    # Register static path to serve the JS file using the new async API
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(
+            url_path="/planavista_panel",
+            path=str(frontend_path),
+            cache_headers=False,
+        )
+    ])
 
     # Add the JS file to the frontend
     add_extra_js_url(hass, FRONTEND_SCRIPT_URL)
