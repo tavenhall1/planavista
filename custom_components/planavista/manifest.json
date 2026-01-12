@@ -3,7 +3,7 @@
   "name": "PlanaVista",
   "codeowners": ["@planavista"],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["frontend", "http", "lovelace"],
   "documentation": "https://github.com/tavenhall1/my-skylight-calendar",
   "integration_type": "hub",
   "iot_class": "calculated",
