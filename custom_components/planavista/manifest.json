@@ -4,10 +4,10 @@
   "codeowners": ["@planavista"],
   "config_flow": true,
   "dependencies": ["frontend", "http", "lovelace"],
-  "documentation": "https://github.com/tavenhall1/my-skylight-calendar",
+  "documentation": "https://github.com/tavenhall1/planavista",
   "integration_type": "hub",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/tavenhall1/my-skylight-calendar/issues",
+  "issue_tracker": "https://github.com/tavenhall1/planavista/issues",
   "requirements": [],
   "version": "0.1.0"
 }
