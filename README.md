@@ -35,7 +35,7 @@ PlanaVista is a beautiful, easy-to-configure Home Assistant integration that bri
 2. **Click** "Integrations"
 3. **Click** the three dots menu (top right)
 4. **Select** "Custom repositories"
-5. **Add** this repository URL: `https://github.com/tavenhall1/my-skylight-calendar`
+5. **Add** this repository URL: `https://github.com/tavenhall1/planavista`
 6. **Category**: Integration
 7. **Click** "Download"
 8. **Restart** Home Assistant
