@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -19,10 +21,16 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
+# Frontend resource URL
+FRONTEND_SCRIPT_URL = f"/planavista_panel/planavista-calendar-card.js"
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up PlanaVista from a config entry."""
     _LOGGER.info("Setting up PlanaVista integration")
+
+    # Register frontend resources (only once per HA instance)
+    await async_register_frontend(hass)
 
     coordinator = PlanaVistaCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -36,6 +44,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     return True
+
+
+async def async_register_frontend(hass: HomeAssistant) -> None:
+    """Register the frontend resources."""
+    # Check if already registered to avoid duplicate registration
+    if DOMAIN in hass.data and hass.data[DOMAIN].get("frontend_registered"):
+        return
+
+    # Get the path to the frontend directory
+    frontend_path = Path(__file__).parent / "frontend"
+
+    # Register static path to serve the JS file
+    hass.http.register_static_path(
+        "/planavista_panel",
+        str(frontend_path),
+        cache_headers=False,
+    )
+
+    # Add the JS file to the frontend
+    add_extra_js_url(hass, FRONTEND_SCRIPT_URL)
+
+    # Mark as registered
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["frontend_registered"] = True
+
+    _LOGGER.info("PlanaVista frontend registered at %s", FRONTEND_SCRIPT_URL)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
