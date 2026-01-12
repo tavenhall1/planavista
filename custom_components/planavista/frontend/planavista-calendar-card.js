@@ -450,6 +450,92 @@ class PlanaVistaCalendarCard extends HTMLElement {
 
 customElements.define('planavista-calendar-card', PlanaVistaCalendarCard);
 
+/**
+ * PlanaVista Card Editor
+ * Visual configuration editor for the card
+ */
+class PlanaVistaCalendarCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._config = {};
+    this._hass = null;
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
+
+  setConfig(config) {
+    this._config = config || {};
+    this.render();
+  }
+
+  get _entity() {
+    return this._config.entity || '';
+  }
+
+  render() {
+    if (!this._hass) {
+      return;
+    }
+
+    // Find planavista_config sensors
+    const entities = Object.keys(this._hass.states)
+      .filter(e => e.startsWith('sensor.') && e.includes('planavista'))
+      .sort();
+
+    this.innerHTML = `
+      <div class="card-config">
+        <ha-entity-picker
+          .hass=${this._hass}
+          .value="${this._entity}"
+          .configValue=${"entity"}
+          label="Entity (Required)"
+          allow-custom-entity
+          .includeDomains=${["sensor"]}
+        ></ha-entity-picker>
+      </div>
+    `;
+
+    // Set up the entity picker after rendering
+    const entityPicker = this.querySelector('ha-entity-picker');
+    if (entityPicker) {
+      entityPicker.hass = this._hass;
+      entityPicker.value = this._entity;
+      entityPicker.addEventListener('value-changed', (ev) => {
+        this._valueChanged(ev, 'entity');
+      });
+    }
+  }
+
+  _valueChanged(ev, configKey) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+    const target = ev.target;
+    const value = ev.detail?.value ?? target.value;
+
+    if (this._config[configKey] === value) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      [configKey]: value,
+    };
+
+    const event = new CustomEvent('config-changed', {
+      detail: { config: newConfig },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+}
+
+customElements.define('planavista-calendar-card-editor', PlanaVistaCalendarCardEditor);
+
 // Register the card with the UI
 window.customCards = window.customCards || [];
 window.customCards.push({
