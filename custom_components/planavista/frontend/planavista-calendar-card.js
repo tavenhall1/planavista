@@ -16,7 +16,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this._config = {};
-    this._hass = {};
+    this._hass = null;
   }
 
   setConfig(config) {
@@ -37,7 +37,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
   }
 
   render() {
-    if (!this._hass || !this._config.entity) {
+    if (!this._hass || !this._hass.states || !this._config.entity) {
       return;
     }
 
