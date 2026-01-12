@@ -17,6 +17,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._config = {};
     this._hass = null;
+    this._hiddenCalendars = new Set(); // Track hidden calendars locally
   }
 
   setConfig(config) {
@@ -55,6 +56,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
 
     const config = entity.attributes;
     const calendars = config.calendars || [];
+    const events = config.events || [];
     const display = config.display || {};
     const theme = display.theme || 'planavista';
 
@@ -63,7 +65,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
       <ha-card class="planavista-card theme-${theme}">
         ${this.renderHeader(display)}
         ${this.renderControls(calendars)}
-        ${this.renderCalendar(calendars, display)}
+        ${this.renderCalendar(calendars, events, display)}
       </ha-card>
     `;
 
@@ -118,7 +120,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
     }
 
     const buttons = calendars.map((cal, idx) => {
-      const isVisible = cal.visible !== false;
+      const isHidden = this._hiddenCalendars.has(cal.entity_id);
       const personEntity = cal.person_entity;
       let avatar = '';
 
@@ -136,8 +138,8 @@ class PlanaVistaCalendarCard extends HTMLElement {
 
       return `
         <button
-          class="calendar-toggle ${isVisible ? 'active' : 'inactive'}"
-          data-calendar="${idx}"
+          class="calendar-toggle ${isHidden ? 'inactive' : 'active'}"
+          data-entity-id="${cal.entity_id}"
           style="--calendar-color: ${cal.color}"
         >
           ${avatar}
@@ -157,20 +159,181 @@ class PlanaVistaCalendarCard extends HTMLElement {
     `;
   }
 
-  renderCalendar(calendars, display) {
-    // This is a placeholder for the calendar view
-    // In a full implementation, this would render events from the calendars
+  renderCalendar(calendars, events, display) {
     const view = display.default_view || 'week';
 
-    return `
-      <div class="calendar-view view-${view}">
-        <div class="calendar-placeholder">
-          <ha-icon icon="mdi:calendar-blank"></ha-icon>
-          <p>Calendar view will be rendered here</p>
-          <p class="small">Showing ${calendars.length} calendar(s) in ${view} view</p>
+    // Filter events by visible calendars
+    const visibleEvents = events.filter(event =>
+      !this._hiddenCalendars.has(event.calendar_entity_id)
+    );
+
+    if (view === 'agenda') {
+      return this.renderAgendaView(visibleEvents, display);
+    }
+
+    return this.renderWeekView(visibleEvents, display);
+  }
+
+  renderWeekView(events, display) {
+    const now = new Date();
+    const firstDay = display.first_day || 'monday';
+
+    // Get start of week
+    const startOfWeek = new Date(now);
+    const dayOfWeek = startOfWeek.getDay();
+    const diff = firstDay === 'monday'
+      ? (dayOfWeek === 0 ? -6 : 1 - dayOfWeek)
+      : -dayOfWeek;
+    startOfWeek.setDate(startOfWeek.getDate() + diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Generate 7 days
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(day.getDate() + i);
+      days.push(day);
+    }
+
+    // Group events by day
+    const eventsByDay = {};
+    days.forEach(day => {
+      const dateKey = day.toISOString().split('T')[0];
+      eventsByDay[dateKey] = [];
+    });
+
+    events.forEach(event => {
+      const eventStart = new Date(event.start);
+      const dateKey = eventStart.toISOString().split('T')[0];
+      if (eventsByDay[dateKey]) {
+        eventsByDay[dateKey].push(event);
+      }
+    });
+
+    const dayHeaders = days.map(day => {
+      const isToday = day.toDateString() === now.toDateString();
+      const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayNum = day.getDate();
+      return `
+        <div class="day-header ${isToday ? 'today' : ''}">
+          <span class="day-name">${dayName}</span>
+          <span class="day-num">${dayNum}</span>
         </div>
+      `;
+    }).join('');
+
+    const dayColumns = days.map(day => {
+      const dateKey = day.toISOString().split('T')[0];
+      const dayEvents = eventsByDay[dateKey] || [];
+      const isToday = day.toDateString() === now.toDateString();
+
+      const eventsHtml = dayEvents.map(event => {
+        const startTime = this.formatEventTime(event.start, display);
+        return `
+          <div class="event" style="background-color: ${event.calendar_color}20; border-left: 3px solid ${event.calendar_color};">
+            <div class="event-time">${startTime}</div>
+            <div class="event-title">${event.summary || 'No title'}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="day-column ${isToday ? 'today' : ''}">
+          ${eventsHtml || '<div class="no-events"></div>'}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="calendar-view view-week">
+        <div class="week-header">${dayHeaders}</div>
+        <div class="week-body">${dayColumns}</div>
       </div>
     `;
+  }
+
+  renderAgendaView(events, display) {
+    const now = new Date();
+
+    // Filter to upcoming events only
+    const upcomingEvents = events.filter(event => {
+      const eventStart = new Date(event.start);
+      return eventStart >= now;
+    }).slice(0, 20); // Limit to 20 events
+
+    if (upcomingEvents.length === 0) {
+      return `
+        <div class="calendar-view view-agenda">
+          <div class="no-events-message">
+            <ha-icon icon="mdi:calendar-check"></ha-icon>
+            <p>No upcoming events</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Group by date
+    const eventsByDate = {};
+    upcomingEvents.forEach(event => {
+      const eventStart = new Date(event.start);
+      const dateKey = eventStart.toDateString();
+      if (!eventsByDate[dateKey]) {
+        eventsByDate[dateKey] = [];
+      }
+      eventsByDate[dateKey].push(event);
+    });
+
+    const agendaHtml = Object.entries(eventsByDate).map(([dateStr, dayEvents]) => {
+      const date = new Date(dateStr);
+      const isToday = date.toDateString() === now.toDateString();
+      const isTomorrow = date.toDateString() === new Date(now.getTime() + 86400000).toDateString();
+
+      let dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      if (isToday) dateLabel = 'Today';
+      if (isTomorrow) dateLabel = 'Tomorrow';
+
+      const eventsHtml = dayEvents.map(event => {
+        const startTime = this.formatEventTime(event.start, display);
+        const endTime = this.formatEventTime(event.end, display);
+        return `
+          <div class="agenda-event" style="border-left: 4px solid ${event.calendar_color};">
+            <div class="agenda-event-time">${startTime} - ${endTime}</div>
+            <div class="agenda-event-title">${event.summary || 'No title'}</div>
+            <div class="agenda-event-calendar">${event.calendar_name}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="agenda-day">
+          <div class="agenda-date ${isToday ? 'today' : ''}">${dateLabel}</div>
+          ${eventsHtml}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="calendar-view view-agenda">
+        ${agendaHtml}
+      </div>
+    `;
+  }
+
+  formatEventTime(isoString, display) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+
+    // Check if it's an all-day event (time is 00:00)
+    if (date.getHours() === 0 && date.getMinutes() === 0) {
+      return 'All day';
+    }
+
+    const timeFormat = display.time_format === '12h' ? 'en-US' : 'en-GB';
+    const options = display.time_format === '12h'
+      ? { hour: 'numeric', minute: '2-digit', hour12: true }
+      : { hour: '2-digit', minute: '2-digit', hour12: false };
+
+    return date.toLocaleTimeString(timeFormat, options);
   }
 
   getWeatherIcon(condition) {
@@ -198,8 +361,8 @@ class PlanaVistaCalendarCard extends HTMLElement {
     const toggleButtons = this.shadowRoot.querySelectorAll('.calendar-toggle');
     toggleButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const calendarIdx = parseInt(btn.dataset.calendar);
-        this.toggleCalendar(calendarIdx);
+        const entityId = btn.dataset.entityId;
+        this.toggleCalendar(entityId);
       });
     });
 
@@ -210,19 +373,40 @@ class PlanaVistaCalendarCard extends HTMLElement {
         this.openAddEventDialog();
       });
     }
+
+    // Event click handlers
+    const eventElements = this.shadowRoot.querySelectorAll('.event, .agenda-event');
+    eventElements.forEach(el => {
+      el.addEventListener('click', () => {
+        // Could show event details in the future
+      });
+    });
   }
 
-  toggleCalendar(idx) {
-    // This would call a service to toggle calendar visibility
-    console.log('Toggle calendar:', idx);
-    // In full implementation:
-    // this._hass.callService('planavista', 'set_calendar_visibility', {...});
+  toggleCalendar(entityId) {
+    if (this._hiddenCalendars.has(entityId)) {
+      this._hiddenCalendars.delete(entityId);
+    } else {
+      this._hiddenCalendars.add(entityId);
+    }
+    this.render();
   }
 
   openAddEventDialog() {
-    // This would open a dialog to add a new event
-    console.log('Open add event dialog');
-    // In full implementation: open a dialog or fire an event
+    // Get the first calendar entity to open its more-info dialog
+    const entity = this._hass.states[this._config.entity];
+    if (entity && entity.attributes.calendars && entity.attributes.calendars.length > 0) {
+      const firstCalendar = entity.attributes.calendars[0];
+      const calendarEntityId = firstCalendar.entity_id;
+
+      // Fire an event to open the more-info dialog for the calendar
+      const event = new CustomEvent('hass-more-info', {
+        bubbles: true,
+        composed: true,
+        detail: { entityId: calendarEntityId }
+      });
+      this.dispatchEvent(event);
+    }
   }
 
   getStyles(theme) {
@@ -343,6 +527,10 @@ class PlanaVistaCalendarCard extends HTMLElement {
           color: white;
         }
 
+        .calendar-toggle.inactive {
+          opacity: 0.5;
+        }
+
         .calendar-toggle:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -375,7 +563,7 @@ class PlanaVistaCalendarCard extends HTMLElement {
 
         /* Calendar View Styles */
         .calendar-view {
-          padding: 2rem;
+          padding: 1rem;
           min-height: 400px;
           background: white;
         }
@@ -385,32 +573,176 @@ class PlanaVistaCalendarCard extends HTMLElement {
           color: white;
         }
 
-        .calendar-placeholder {
+        /* Week View */
+        .view-week {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .week-header {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .day-header {
+          text-align: center;
+          padding: 0.5rem;
+        }
+
+        .day-header.today {
+          background: #4A90E2;
+          color: white;
+          border-radius: 8px;
+        }
+
+        .day-name {
+          display: block;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          opacity: 0.7;
+        }
+
+        .day-num {
+          display: block;
+          font-size: 1.2rem;
+          font-weight: bold;
+        }
+
+        .week-body {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 0.5rem;
+          flex: 1;
+        }
+
+        .day-column {
+          min-height: 300px;
+          background: #f9f9f9;
+          border-radius: 8px;
+          padding: 0.5rem;
+          overflow-y: auto;
+        }
+
+        .theme-dark .day-column {
+          background: #2a2a2a;
+        }
+
+        .day-column.today {
+          background: #e3f2fd;
+        }
+
+        .theme-dark .day-column.today {
+          background: #1e3a5f;
+        }
+
+        .event {
+          padding: 0.5rem;
+          margin-bottom: 0.5rem;
+          border-radius: 4px;
+          font-size: 0.85rem;
+          cursor: pointer;
+        }
+
+        .event:hover {
+          transform: translateX(2px);
+        }
+
+        .event-time {
+          font-size: 0.75rem;
+          opacity: 0.8;
+        }
+
+        .event-title {
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* Agenda View */
+        .view-agenda {
+          padding: 1rem;
+        }
+
+        .agenda-day {
+          margin-bottom: 1.5rem;
+        }
+
+        .agenda-date {
+          font-size: 1rem;
+          font-weight: bold;
+          padding: 0.5rem 0;
+          border-bottom: 2px solid #e0e0e0;
+          margin-bottom: 0.75rem;
+        }
+
+        .agenda-date.today {
+          color: #4A90E2;
+          border-color: #4A90E2;
+        }
+
+        .agenda-event {
+          padding: 0.75rem;
+          margin-bottom: 0.5rem;
+          background: #f5f5f5;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+
+        .theme-dark .agenda-event {
+          background: #2a2a2a;
+        }
+
+        .agenda-event:hover {
+          transform: translateX(4px);
+        }
+
+        .agenda-event-time {
+          font-size: 0.85rem;
+          color: #666;
+        }
+
+        .theme-dark .agenda-event-time {
+          color: #aaa;
+        }
+
+        .agenda-event-title {
+          font-size: 1rem;
+          font-weight: 500;
+          margin: 0.25rem 0;
+        }
+
+        .agenda-event-calendar {
+          font-size: 0.8rem;
+          color: #999;
+        }
+
+        .no-events-message {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          height: 400px;
+          height: 300px;
           color: #999;
         }
 
-        .calendar-placeholder ha-icon {
-          --mdc-icon-size: 64px;
+        .no-events-message ha-icon {
+          --mdc-icon-size: 48px;
           margin-bottom: 1rem;
-        }
-
-        .calendar-placeholder p {
-          margin: 0.5rem 0;
-        }
-
-        .calendar-placeholder .small {
-          font-size: 0.85rem;
         }
 
         .error {
           padding: 2rem;
           color: #d32f2f;
           text-align: center;
+        }
+
+        .no-calendars {
+          padding: 1rem;
+          text-align: center;
+          color: #999;
         }
 
         /* Responsive */
@@ -431,6 +763,14 @@ class PlanaVistaCalendarCard extends HTMLElement {
 
           .calendar-buttons {
             justify-content: center;
+          }
+
+          .week-header, .week-body {
+            grid-template-columns: repeat(3, 1fr);
+          }
+
+          .day-column {
+            min-height: 200px;
           }
         }
       </style>

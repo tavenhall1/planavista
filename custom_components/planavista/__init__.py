@@ -2,15 +2,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
+from homeassistant.components.calendar import DOMAIN as CALENDAR_DOMAIN
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -123,9 +125,15 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
         try:
             data = {
                 "calendars": [],
+                "events": [],
                 "upcoming_events": [],
                 "conflicts": [],
             }
+
+            # Calculate time range for event fetching (2 weeks before and after)
+            now = dt_util.now()
+            start_time = now - timedelta(days=14)
+            end_time = now + timedelta(days=14)
 
             # Fetch events from each configured calendar
             for calendar_config in self.calendars:
@@ -137,10 +145,13 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
                 calendar_state = self.hass.states.get(entity_id)
 
                 if calendar_state:
+                    color = _normalize_color(calendar_config.get("color", "#4A90E2"))
+                    display_name = calendar_config.get("display_name", "Unknown")
+
                     calendar_data = {
                         "entity_id": entity_id,
-                        "display_name": calendar_config.get("display_name", "Unknown"),
-                        "color": _normalize_color(calendar_config.get("color", "#4A90E2")),
+                        "display_name": display_name,
+                        "color": color,
                         "icon": calendar_config.get("icon", "mdi:calendar"),
                         "person_entity": calendar_config.get("person_entity", ""),
                         "visible": calendar_config.get("visible", True),
@@ -149,10 +160,68 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
                     }
                     data["calendars"].append(calendar_data)
 
+                    # Fetch events from calendar entity
+                    try:
+                        events = await self._fetch_calendar_events(
+                            entity_id, start_time, end_time
+                        )
+                        for event in events:
+                            event["calendar_entity_id"] = entity_id
+                            event["calendar_name"] = display_name
+                            event["calendar_color"] = color
+                            data["events"].append(event)
+                    except Exception as err:
+                        _LOGGER.warning(
+                            "Failed to fetch events from %s: %s", entity_id, err
+                        )
+
+            # Sort events by start time
+            data["events"].sort(key=lambda e: e.get("start", ""))
+
+            # Get upcoming events (next 7 days)
+            upcoming_cutoff = now + timedelta(days=7)
+            data["upcoming_events"] = [
+                e for e in data["events"]
+                if e.get("start", "") >= now.isoformat()
+                and e.get("start", "") <= upcoming_cutoff.isoformat()
+            ]
+
             return data
 
         except Exception as err:
             raise UpdateFailed(f"Error fetching calendar data: {err}") from err
+
+    async def _fetch_calendar_events(
+        self, entity_id: str, start: datetime, end: datetime
+    ) -> list[dict]:
+        """Fetch events from a calendar entity."""
+        try:
+            # Use the calendar.get_events service
+            response = await self.hass.services.async_call(
+                CALENDAR_DOMAIN,
+                "get_events",
+                {
+                    "entity_id": entity_id,
+                    "start_date_time": start.isoformat(),
+                    "end_date_time": end.isoformat(),
+                },
+                blocking=True,
+                return_response=True,
+            )
+
+            if response and entity_id in response:
+                events = response[entity_id].get("events", [])
+                # Convert datetime objects to ISO strings for JSON serialization
+                for event in events:
+                    if "start" in event and hasattr(event["start"], "isoformat"):
+                        event["start"] = event["start"].isoformat()
+                    if "end" in event and hasattr(event["end"], "isoformat"):
+                        event["end"] = event["end"].isoformat()
+                return events
+            return []
+        except Exception as err:
+            _LOGGER.debug("Error fetching events from %s: %s", entity_id, err)
+            return []
 
     @property
     def display_config(self):

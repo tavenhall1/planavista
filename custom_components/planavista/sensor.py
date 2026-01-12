@@ -52,8 +52,10 @@ class PlanaVistaConfigSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
+        data = self.coordinator.data or {}
         return {
-            "calendars": self.coordinator.data.get("calendars", []) if self.coordinator.data else [],
+            "calendars": data.get("calendars", []),
+            "events": data.get("events", []),
             "display": self.coordinator.display_config,
             "version": self._entry.version,
         }
@@ -75,34 +77,16 @@ class PlanaVistaUpcomingEventsSensor(CoordinatorEntity, SensorEntity):
         """Return the count of upcoming events."""
         if not self.coordinator.data:
             return 0
-
-        upcoming_count = 0
-        for calendar in self.coordinator.data.get("calendars", []):
-            if calendar.get("visible", True) and calendar.get("state") == "on":
-                upcoming_count += 1
-
-        return upcoming_count
+        return len(self.coordinator.data.get("upcoming_events", []))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
         if not self.coordinator.data:
-            return {}
+            return {"events": [], "last_updated": datetime.now().isoformat()}
 
-        events = []
-        for calendar in self.coordinator.data.get("calendars", []):
-            if calendar.get("visible", True):
-                attrs = calendar.get("attributes", {})
-                if attrs.get("message"):
-                    events.append({
-                        "calendar": calendar.get("display_name"),
-                        "title": attrs.get("message"),
-                        "start": attrs.get("start_time"),
-                        "end": attrs.get("end_time"),
-                        "color": calendar.get("color"),
-                    })
-
+        upcoming = self.coordinator.data.get("upcoming_events", [])
         return {
-            "events": events,
+            "events": upcoming,
             "last_updated": datetime.now().isoformat(),
         }
