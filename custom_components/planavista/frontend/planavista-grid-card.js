@@ -3,7 +3,7 @@
  * Calendar grid display (week/month/day views)
  * This is the focused calendar grid component - no header, no toggles
  *
- * Version: 0.2.0
+ * Version: 0.2.1
  */
 
 class PlanaVistaGridCard extends HTMLElement {
@@ -13,6 +13,9 @@ class PlanaVistaGridCard extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._stateManager = null;
+    this._resizeObserver = null;
+    this._isMobileView = false;
+    this._cardWidth = 0;
   }
 
   connectedCallback() {
@@ -20,11 +23,29 @@ class PlanaVistaGridCard extends HTMLElement {
       this._stateManager = window.PlanaVistaBase.StateManager.getInstance();
       this._unsubscribe = this._stateManager.subscribe(() => this.render());
     }
+
+    // Set up ResizeObserver for responsive behavior
+    this._resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        const wasMobile = this._isMobileView;
+        this._cardWidth = width;
+        this._isMobileView = width < 500; // Threshold for mobile view
+
+        if (wasMobile !== this._isMobileView) {
+          this.render();
+        }
+      }
+    });
+    this._resizeObserver.observe(this);
   }
 
   disconnectedCallback() {
     if (this._unsubscribe) {
       this._unsubscribe();
+    }
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
     }
   }
 
@@ -89,18 +110,26 @@ class PlanaVistaGridCard extends HTMLElement {
     const view = this._config.view || this.display.default_view || 'week';
     const firstDay = this._config.first_day || this.display.first_day || 'monday';
     const timeFormat = this._config.time_format || this.display.time_format || '12h';
+    const mobileMode = this._config.mobile_mode || 'stack';
+
+    // Determine if we should use mobile view
+    const useMobileView = this._isMobileView && view === 'week';
 
     let content;
-    switch (view) {
-      case 'day':
-        content = this.renderDayView(timeFormat);
-        break;
-      case 'month':
-        content = this.renderMonthView(firstDay, timeFormat);
-        break;
-      case 'week':
-      default:
-        content = this.renderWeekView(firstDay, timeFormat);
+    if (useMobileView) {
+      content = this.renderMobileView(mobileMode, firstDay, timeFormat);
+    } else {
+      switch (view) {
+        case 'day':
+          content = this.renderDayView(timeFormat);
+          break;
+        case 'month':
+          content = this.renderMonthView(firstDay, timeFormat);
+          break;
+        case 'week':
+        default:
+          content = this.renderWeekView(firstDay, timeFormat);
+      }
     }
 
     this.shadowRoot.innerHTML = `
@@ -291,21 +320,111 @@ class PlanaVistaGridCard extends HTMLElement {
           margin-bottom: 0.5rem;
         }
 
-        /* Week view responsive */
+        /* Week view responsive - desktop */
         .week-grid .grid-header,
         .week-grid .grid-body {
           grid-template-columns: repeat(7, 1fr);
         }
 
-        @media (max-width: 768px) {
-          .week-grid .grid-header,
-          .week-grid .grid-body {
-            grid-template-columns: repeat(3, 1fr);
-          }
+        /* Mobile Stack View */
+        .mobile-stack .grid-header,
+        .mobile-stack .grid-body {
+          grid-template-columns: 1fr;
+        }
 
-          .day-column {
-            min-height: 150px;
-          }
+        .mobile-stack .day-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem 1rem;
+          background: var(--pv-event-bg);
+          border-radius: 8px 8px 0 0;
+          margin-bottom: 0;
+        }
+
+        .mobile-stack .day-header.today {
+          background: var(--pv-accent);
+        }
+
+        .mobile-stack .day-header .day-name {
+          font-size: 0.9rem;
+        }
+
+        .mobile-stack .day-header .day-num {
+          font-size: 1rem;
+        }
+
+        .mobile-stack .day-column {
+          min-height: auto;
+          border-radius: 0 0 8px 8px;
+          margin-bottom: 1rem;
+        }
+
+        .mobile-stack .day-section {
+          margin-bottom: 0.5rem;
+        }
+
+        /* Mobile Fewer Days View */
+        .mobile-fewer .grid-header,
+        .mobile-fewer .grid-body {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .mobile-fewer .day-column {
+          min-height: 180px;
+        }
+
+        /* Mobile Scroll View */
+        .mobile-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .mobile-scroll .grid-header,
+        .mobile-scroll .grid-body {
+          display: flex;
+          min-width: 700px;
+        }
+
+        .mobile-scroll .day-header,
+        .mobile-scroll .day-column {
+          flex: 1;
+          min-width: 100px;
+        }
+
+        /* Mobile Agenda View */
+        .mobile-agenda .agenda-day {
+          margin-bottom: 1.5rem;
+        }
+
+        .mobile-agenda .agenda-date {
+          font-size: 0.9rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding: 0.5rem 0;
+          border-bottom: 2px solid var(--pv-border);
+          margin-bottom: 0.75rem;
+          color: var(--pv-text-secondary);
+        }
+
+        .mobile-agenda .agenda-date.today {
+          color: var(--pv-accent);
+          border-color: var(--pv-accent);
+        }
+
+        .mobile-agenda .agenda-event {
+          padding: 0.75rem;
+          margin-bottom: 0.5rem;
+          background: var(--pv-event-bg);
+          border-radius: 8px;
+          cursor: pointer;
+        }
+
+        .error {
+          padding: 2rem;
+          color: #d32f2f;
+          text-align: center;
         }
       </style>
       <ha-card>
@@ -314,6 +433,227 @@ class PlanaVistaGridCard extends HTMLElement {
     `;
 
     this.attachEventListeners();
+  }
+
+  renderMobileView(mobileMode, firstDay, timeFormat) {
+    switch (mobileMode) {
+      case 'agenda':
+        return this.renderMobileAgendaView(firstDay, timeFormat);
+      case 'fewer_days':
+        return this.renderMobileFewerDaysView(firstDay, timeFormat);
+      case 'scroll':
+        return this.renderMobileScrollView(firstDay, timeFormat);
+      case 'stack':
+      default:
+        return this.renderMobileStackView(firstDay, timeFormat);
+    }
+  }
+
+  renderMobileStackView(firstDay, timeFormat) {
+    const { PlanaVistaBase } = window;
+    const now = new Date();
+    const startOfWeek = PlanaVistaBase.getStartOfWeek(now, firstDay);
+
+    // Generate 7 days
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(day.getDate() + i);
+      days.push(day);
+    }
+
+    // Group events by day
+    const eventsByDay = {};
+    days.forEach(day => {
+      const dateKey = day.toISOString().split('T')[0];
+      eventsByDay[dateKey] = [];
+    });
+
+    this.visibleEvents.forEach(event => {
+      const eventStart = new Date(event.start);
+      const dateKey = eventStart.toISOString().split('T')[0];
+      if (eventsByDay[dateKey]) {
+        eventsByDay[dateKey].push(event);
+      }
+    });
+
+    const sections = days.map(day => {
+      const dateKey = day.toISOString().split('T')[0];
+      const dayEvents = eventsByDay[dateKey] || [];
+      const isToday = PlanaVistaBase.isToday(day);
+
+      const eventsHtml = dayEvents.length > 0 ? dayEvents.map(event => {
+        const startTime = PlanaVistaBase.formatTime(event.start, timeFormat);
+        return `
+          <div class="event"
+               style="background-color: ${event.calendar_color}20; border-left: 3px solid ${event.calendar_color};"
+               data-event-id="${event.uid || ''}"
+               data-calendar="${event.calendar_entity_id}">
+            <div class="event-time">${startTime}</div>
+            <div class="event-title">${event.summary || 'No title'}</div>
+          </div>
+        `;
+      }).join('') : '<div style="color: var(--pv-text-secondary); font-size: 0.85rem; padding: 0.5rem;">No events</div>';
+
+      return `
+        <div class="day-section">
+          <div class="day-header ${isToday ? 'today' : ''}">
+            <span class="day-name">${day.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+            <span class="day-num">${day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          </div>
+          <div class="day-column ${isToday ? 'today' : ''}">
+            ${eventsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="calendar-grid mobile-stack">
+        ${sections}
+      </div>
+    `;
+  }
+
+  renderMobileAgendaView(firstDay, timeFormat) {
+    const { PlanaVistaBase } = window;
+    const now = new Date();
+
+    // Get events for the next 7 days
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 7);
+
+    const upcomingEvents = this.visibleEvents
+      .filter(event => {
+        const eventStart = new Date(event.start);
+        return eventStart >= now && eventStart <= endDate;
+      })
+      .sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    if (upcomingEvents.length === 0) {
+      return `
+        <div class="calendar-grid mobile-agenda">
+          <div class="no-events">
+            <ha-icon icon="mdi:calendar-check"></ha-icon>
+            <p>No upcoming events this week</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Group by date
+    const eventsByDate = PlanaVistaBase.groupEventsByDate(upcomingEvents);
+
+    const agendaHtml = Object.entries(eventsByDate).map(([dateStr, dayEvents]) => {
+      const date = new Date(dateStr);
+      const isToday = PlanaVistaBase.isToday(date);
+      const isTomorrow = PlanaVistaBase.isTomorrow(date);
+
+      let dateLabel = PlanaVistaBase.formatDate(date, 'medium');
+      if (isToday) dateLabel = 'Today';
+      if (isTomorrow) dateLabel = 'Tomorrow';
+
+      const eventsHtml = dayEvents.map(event => {
+        const startTime = PlanaVistaBase.formatTime(event.start, timeFormat);
+        return `
+          <div class="agenda-event"
+               style="border-left: 4px solid ${event.calendar_color};"
+               data-calendar="${event.calendar_entity_id}">
+            <div class="event-time">${startTime}</div>
+            <div class="event-title">${event.summary || 'No title'}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="agenda-day">
+          <div class="agenda-date ${isToday ? 'today' : ''}">${dateLabel}</div>
+          ${eventsHtml}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="calendar-grid mobile-agenda">
+        ${agendaHtml}
+      </div>
+    `;
+  }
+
+  renderMobileFewerDaysView(firstDay, timeFormat) {
+    const { PlanaVistaBase } = window;
+    const now = new Date();
+
+    // Show today + next 2 days (3 days total)
+    const days = [];
+    for (let i = 0; i < 3; i++) {
+      const day = new Date(now);
+      day.setDate(day.getDate() + i);
+      days.push(day);
+    }
+
+    // Group events by day
+    const eventsByDay = {};
+    days.forEach(day => {
+      const dateKey = day.toISOString().split('T')[0];
+      eventsByDay[dateKey] = [];
+    });
+
+    this.visibleEvents.forEach(event => {
+      const eventStart = new Date(event.start);
+      const dateKey = eventStart.toISOString().split('T')[0];
+      if (eventsByDay[dateKey]) {
+        eventsByDay[dateKey].push(event);
+      }
+    });
+
+    const headers = days.map(day => {
+      const isToday = PlanaVistaBase.isToday(day);
+      return `
+        <div class="day-header ${isToday ? 'today' : ''}">
+          <span class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+          <span class="day-num">${day.getDate()}</span>
+        </div>
+      `;
+    }).join('');
+
+    const columns = days.map(day => {
+      const dateKey = day.toISOString().split('T')[0];
+      const dayEvents = eventsByDay[dateKey] || [];
+      const isToday = PlanaVistaBase.isToday(day);
+
+      const eventsHtml = dayEvents.map(event => {
+        const startTime = PlanaVistaBase.formatTime(event.start, timeFormat);
+        return `
+          <div class="event"
+               style="background-color: ${event.calendar_color}20; border-left: 3px solid ${event.calendar_color};"
+               data-event-id="${event.uid || ''}"
+               data-calendar="${event.calendar_entity_id}">
+            <div class="event-time">${startTime}</div>
+            <div class="event-title">${event.summary || 'No title'}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="day-column ${isToday ? 'today' : ''}">
+          ${eventsHtml || ''}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="calendar-grid mobile-fewer">
+        <div class="grid-header">${headers}</div>
+        <div class="grid-body">${columns}</div>
+      </div>
+    `;
+  }
+
+  renderMobileScrollView(firstDay, timeFormat) {
+    // Use the standard week view but with horizontal scroll
+    const weekContent = this.renderWeekView(firstDay, timeFormat);
+    return weekContent.replace('week-grid', 'week-grid mobile-scroll');
   }
 
   renderWeekView(firstDay, timeFormat) {
@@ -521,7 +861,7 @@ class PlanaVistaGridCard extends HTMLElement {
   }
 
   attachEventListeners() {
-    const events = this.shadowRoot.querySelectorAll('.event, .month-event');
+    const events = this.shadowRoot.querySelectorAll('.event, .month-event, .agenda-event');
     events.forEach(el => {
       el.addEventListener('click', () => {
         const calendarId = el.dataset.calendar;
@@ -545,22 +885,173 @@ class PlanaVistaGridCard extends HTMLElement {
     return {
       entity: 'sensor.planavista_config',
       view: 'week',
+      mobile_mode: 'stack',
     };
   }
 }
 
+// Visual Card Editor
 class PlanaVistaGridCardEditor extends HTMLElement {
-  setConfig(config) { this._config = config; this.render(); }
-  set hass(hass) { this._hass = hass; }
+  constructor() {
+    super();
+    this._config = {};
+    this._hass = null;
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+  }
+
   render() {
+    if (!this._hass) return;
+
+    const view = this._config.view || 'week';
+    const mobileMode = this._config.mobile_mode || 'stack';
+    const firstDay = this._config.first_day || '';
+    const timeFormat = this._config.time_format || '';
+    const theme = this._config.theme || '';
+
     this.innerHTML = `
-      <div style="padding: 16px;">
-        <p><strong>PlanaVista Grid</strong></p>
-        <p style="color: var(--secondary-text-color); font-size: 12px;">
-          Options: entity, view (day/week/month), first_day (monday/sunday), time_format (12h/24h), theme
-        </p>
+      <div class="card-config">
+        <div class="config-row">
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ select: {
+              options: [
+                { value: 'day', label: 'Day' },
+                { value: 'week', label: 'Week' },
+                { value: 'month', label: 'Month' }
+              ],
+              mode: 'dropdown'
+            }}}
+            .value=${view}
+            .label=${'View'}
+            @value-changed=${this._valueChanged}
+            data-config="view"
+          ></ha-selector>
+        </div>
+
+        <div class="config-row">
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ select: {
+              options: [
+                { value: 'stack', label: 'Stack Days (default)' },
+                { value: 'agenda', label: 'Agenda List' },
+                { value: 'fewer_days', label: 'Fewer Days (3)' },
+                { value: 'scroll', label: 'Horizontal Scroll' }
+              ],
+              mode: 'dropdown'
+            }}}
+            .value=${mobileMode}
+            .label=${'Mobile Mode'}
+            @value-changed=${this._valueChanged}
+            data-config="mobile_mode"
+          ></ha-selector>
+        </div>
+
+        <div class="config-row">
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ select: {
+              options: [
+                { value: '', label: 'Use integration default' },
+                { value: 'monday', label: 'Monday' },
+                { value: 'sunday', label: 'Sunday' }
+              ],
+              mode: 'dropdown'
+            }}}
+            .value=${firstDay}
+            .label=${'First Day of Week'}
+            @value-changed=${this._valueChanged}
+            data-config="first_day"
+          ></ha-selector>
+        </div>
+
+        <div class="config-row">
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ select: {
+              options: [
+                { value: '', label: 'Use integration default' },
+                { value: '12h', label: '12-hour (AM/PM)' },
+                { value: '24h', label: '24-hour' }
+              ],
+              mode: 'dropdown'
+            }}}
+            .value=${timeFormat}
+            .label=${'Time Format'}
+            @value-changed=${this._valueChanged}
+            data-config="time_format"
+          ></ha-selector>
+        </div>
+
+        <div class="config-row">
+          <ha-selector
+            .hass=${this._hass}
+            .selector=${{ select: {
+              options: [
+                { value: '', label: 'Use integration default' },
+                { value: 'planavista', label: 'PlanaVista' },
+                { value: 'minimal', label: 'Minimal' },
+                { value: 'modern', label: 'Modern' },
+                { value: 'dark', label: 'Dark' }
+              ],
+              mode: 'dropdown'
+            }}}
+            .value=${theme}
+            .label=${'Theme'}
+            @value-changed=${this._valueChanged}
+            data-config="theme"
+          ></ha-selector>
+        </div>
       </div>
+      <style>
+        .card-config {
+          padding: 16px;
+        }
+        .config-row {
+          margin-bottom: 16px;
+        }
+        .config-row:last-child {
+          margin-bottom: 0;
+        }
+      </style>
     `;
+
+    // Bind event handlers
+    this.querySelectorAll('ha-selector').forEach(selector => {
+      selector.addEventListener('value-changed', (e) => this._valueChanged(e));
+    });
+  }
+
+  _valueChanged(ev) {
+    if (!this._config) return;
+
+    const target = ev.target;
+    const configKey = target.dataset?.config || target.getAttribute('data-config');
+    const value = ev.detail?.value;
+
+    if (configKey && value !== undefined) {
+      const newConfig = { ...this._config };
+      if (value === '') {
+        delete newConfig[configKey];
+      } else {
+        newConfig[configKey] = value;
+      }
+
+      const event = new CustomEvent('config-changed', {
+        detail: { config: newConfig },
+        bubbles: true,
+        composed: true,
+      });
+      this.dispatchEvent(event);
+    }
   }
 }
 
@@ -571,12 +1062,12 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'planavista-grid-card',
   name: 'PlanaVista Grid',
-  description: 'Calendar grid with week/month/day views',
+  description: 'Calendar grid with week/month/day views and mobile responsiveness',
   preview: true,
 });
 
 console.info(
-  `%c PLANAVISTA-GRID %c v0.2.0 `,
+  `%c PLANAVISTA-GRID %c v0.2.1 `,
   'color: white; background: #4A90E2; font-weight: bold;',
   'color: #4A90E2; background: white; font-weight: bold;'
 );

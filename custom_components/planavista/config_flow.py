@@ -116,6 +116,15 @@ def _rgb_to_hex(rgb_value: list[int] | str) -> str:
     return "#4A90E2"
 
 
+def _hex_to_rgb(hex_value: str) -> list[int]:
+    """Convert hex color string to RGB list for ColorRGBSelector."""
+    if hex_value.startswith("#"):
+        hex_value = hex_value[1:]
+    if len(hex_value) == 6:
+        return [int(hex_value[i:i+2], 16) for i in (0, 2, 4)]
+    return [74, 144, 226]  # Default blue
+
+
 class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PlanaVista."""
 
@@ -336,12 +345,286 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
+        self._calendars_to_add = []
+        self._calendar_to_edit = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Manage the options."""
-        return await self.async_step_display()
+        """Manage the options - show menu."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options={
+                "manage_calendars": "Add or Remove Calendars",
+                "edit_calendar": "Edit Calendar Settings",
+                "display": "Display Settings",
+            },
+        )
+
+    async def async_step_manage_calendars(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Handle adding or removing calendars."""
+        errors = {}
+        current_calendars = self.config_entry.data.get(CONF_CALENDARS, [])
+        current_calendar_ids = [c["entity_id"] for c in current_calendars]
+
+        if user_input is not None:
+            selected_calendars = user_input.get("calendars", [])
+
+            # Find calendars to add
+            calendars_to_add = [c for c in selected_calendars if c not in current_calendar_ids]
+
+            # Find calendars to remove
+            calendars_to_remove = [c for c in current_calendar_ids if c not in selected_calendars]
+
+            if calendars_to_add:
+                # Need to configure new calendars
+                self._calendars_to_add = calendars_to_add
+                return await self.async_step_add_calendar()
+
+            # Update config with removed calendars
+            new_calendars = [c for c in current_calendars if c["entity_id"] not in calendars_to_remove]
+            new_data = dict(self.config_entry.data)
+            new_data[CONF_CALENDARS] = new_calendars
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+
+            return self.async_create_entry(title="", data={})
+
+        # Discover available calendars
+        available_calendars = _discover_calendar_entities(self.hass)
+
+        calendar_options = {
+            entity_id: _get_friendly_name(self.hass, entity_id)
+            for entity_id in available_calendars
+        }
+
+        schema = vol.Schema(
+            {
+                vol.Required("calendars", default=current_calendar_ids): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=k, label=v)
+                            for k, v in calendar_options.items()
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="manage_calendars",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "note": "Check calendars to include, uncheck to remove."
+            },
+        )
+
+    async def async_step_add_calendar(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Configure a new calendar being added."""
+        if user_input is not None:
+            current_calendars = list(self.config_entry.data.get(CONF_CALENDARS, []))
+            new_calendar = {
+                "entity_id": user_input["_entity_id"],
+                CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
+                CONF_COLOR: _rgb_to_hex(user_input[CONF_COLOR]),
+                CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
+                CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
+                CONF_VISIBLE: True,
+            }
+            current_calendars.append(new_calendar)
+
+            # Remove from list to add
+            self._calendars_to_add = self._calendars_to_add[1:]
+
+            if self._calendars_to_add:
+                # More calendars to add
+                new_data = dict(self.config_entry.data)
+                new_data[CONF_CALENDARS] = current_calendars
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=new_data
+                )
+                return await self.async_step_add_calendar()
+
+            # All done
+            new_data = dict(self.config_entry.data)
+            new_data[CONF_CALENDARS] = current_calendars
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+            return self.async_create_entry(title="", data={})
+
+        # Get the next calendar to configure
+        current_calendar = self._calendars_to_add[0]
+        current_index = len(self.config_entry.data.get(CONF_CALENDARS, []))
+
+        # Get color for this calendar (cycle through defaults)
+        default_color = DEFAULT_COLORS[current_index % len(DEFAULT_COLORS)]
+        friendly_name = _get_friendly_name(self.hass, current_calendar)
+        person_entities = _discover_person_entities(self.hass)
+
+        schema = vol.Schema(
+            {
+                vol.Required("_entity_id", default=current_calendar): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Required(CONF_DISPLAY_NAME, default=friendly_name): selector.TextSelector(),
+                vol.Required(CONF_COLOR, default=default_color): selector.ColorRGBSelector(),
+                vol.Optional(CONF_ICON, default="mdi:calendar"): selector.IconSelector(),
+                vol.Optional(CONF_PERSON_ENTITY, default=""): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(
+                                value=entity,
+                                label=_get_friendly_name(self.hass, entity) if entity else "None"
+                            )
+                            for entity in person_entities
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="add_calendar",
+            data_schema=schema,
+            description_placeholders={
+                "calendar_name": friendly_name,
+            },
+        )
+
+    async def async_step_edit_calendar(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Select which calendar to edit."""
+        current_calendars = self.config_entry.data.get(CONF_CALENDARS, [])
+
+        if not current_calendars:
+            return self.async_abort(reason="no_calendars")
+
+        if user_input is not None:
+            self._calendar_to_edit = user_input["calendar"]
+            return await self.async_step_edit_calendar_details()
+
+        calendar_options = [
+            selector.SelectOptionDict(
+                value=cal["entity_id"],
+                label=cal[CONF_DISPLAY_NAME]
+            )
+            for cal in current_calendars
+        ]
+
+        schema = vol.Schema(
+            {
+                vol.Required("calendar"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=calendar_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="edit_calendar",
+            data_schema=schema,
+        )
+
+    async def async_step_edit_calendar_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Edit the selected calendar's details."""
+        current_calendars = self.config_entry.data.get(CONF_CALENDARS, [])
+
+        # Find the calendar to edit
+        calendar_data = None
+        calendar_index = None
+        for i, cal in enumerate(current_calendars):
+            if cal["entity_id"] == self._calendar_to_edit:
+                calendar_data = cal
+                calendar_index = i
+                break
+
+        if calendar_data is None:
+            return self.async_abort(reason="calendar_not_found")
+
+        if user_input is not None:
+            # Update the calendar
+            updated_calendar = {
+                "entity_id": calendar_data["entity_id"],
+                CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
+                CONF_COLOR: _rgb_to_hex(user_input[CONF_COLOR]),
+                CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
+                CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
+                CONF_VISIBLE: calendar_data.get(CONF_VISIBLE, True),
+            }
+
+            new_calendars = list(current_calendars)
+            new_calendars[calendar_index] = updated_calendar
+
+            new_data = dict(self.config_entry.data)
+            new_data[CONF_CALENDARS] = new_calendars
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+
+            return self.async_create_entry(title="", data={})
+
+        person_entities = _discover_person_entities(self.hass)
+
+        # Convert hex color to RGB for the selector
+        current_color = calendar_data.get(CONF_COLOR, "#4A90E2")
+        rgb_color = _hex_to_rgb(current_color)
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_DISPLAY_NAME,
+                    default=calendar_data.get(CONF_DISPLAY_NAME, "")
+                ): selector.TextSelector(),
+                vol.Required(
+                    CONF_COLOR,
+                    default=rgb_color
+                ): selector.ColorRGBSelector(),
+                vol.Optional(
+                    CONF_ICON,
+                    default=calendar_data.get(CONF_ICON, "mdi:calendar")
+                ): selector.IconSelector(),
+                vol.Optional(
+                    CONF_PERSON_ENTITY,
+                    default=calendar_data.get(CONF_PERSON_ENTITY, "")
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(
+                                value=entity,
+                                label=_get_friendly_name(self.hass, entity) if entity else "None"
+                            )
+                            for entity in person_entities
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="edit_calendar_details",
+            data_schema=schema,
+            description_placeholders={
+                "calendar_name": calendar_data.get(CONF_DISPLAY_NAME, "Calendar"),
+            },
+        )
 
     async def async_step_display(
         self, user_input: dict[str, Any] | None = None
@@ -435,4 +718,10 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
-        return self.async_show_form(step_id="display", data_schema=schema)
+        return self.async_show_form(
+            step_id="display",
+            data_schema=schema,
+            description_placeholders={
+                "note": "These are default settings. Individual cards can override these."
+            },
+        )

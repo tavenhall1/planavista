@@ -2,7 +2,7 @@
  * PlanaVista Clock Card
  * Large time and date display for wall calendars
  *
- * Version: 0.2.0
+ * Version: 0.2.1
  */
 
 class PlanaVistaClockCard extends HTMLElement {
@@ -52,6 +52,25 @@ class PlanaVistaClockCard extends HTMLElement {
     return this._config.theme || this.display.theme || 'planavista';
   }
 
+  getBackgroundStyle() {
+    // Custom background takes precedence
+    if (this._config.background) {
+      return this._config.background;
+    }
+    if (this._config.background_color) {
+      return this._config.background_color;
+    }
+    // Fall back to theme
+    return 'var(--pv-header-gradient)';
+  }
+
+  getTextColor() {
+    if (this._config.text_color) {
+      return this._config.text_color;
+    }
+    return 'var(--pv-header-text)';
+  }
+
   render() {
     if (!this._hass) return;
 
@@ -66,6 +85,7 @@ class PlanaVistaClockCard extends HTMLElement {
     const showDate = this._config.show_date !== false;
     const showSeconds = this._config.show_seconds === true;
     const size = this._config.size || 'large';
+    const align = this._config.align || 'left';
 
     // Format time
     const locale = timeFormat === '12h' ? 'en-US' : 'en-GB';
@@ -77,6 +97,9 @@ class PlanaVistaClockCard extends HTMLElement {
     // Format date
     const dateString = PlanaVistaBase.formatDate(now, 'long');
 
+    const background = this.getBackgroundStyle();
+    const textColor = this.getTextColor();
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -85,10 +108,10 @@ class PlanaVistaClockCard extends HTMLElement {
         }
 
         ha-card {
-          background: var(--pv-header-gradient);
-          color: var(--pv-header-text);
+          background: ${background};
+          color: ${textColor};
           padding: ${size === 'small' ? '1rem' : '2rem'};
-          text-align: ${this._config.align || 'left'};
+          text-align: ${align};
         }
 
         .time {
@@ -103,6 +126,12 @@ class PlanaVistaClockCard extends HTMLElement {
           opacity: 0.9;
           margin-top: 0.5rem;
           font-family: 'Ovo', serif, system-ui;
+        }
+
+        .error {
+          padding: 2rem;
+          color: #d32f2f;
+          text-align: center;
         }
       </style>
       <ha-card>
@@ -126,8 +155,14 @@ class PlanaVistaClockCard extends HTMLElement {
   }
 }
 
-// Simple editor for the clock card
+// Visual Card Editor
 class PlanaVistaClockCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._config = {};
+    this._hass = null;
+  }
+
   setConfig(config) {
     this._config = config;
     this.render();
@@ -135,17 +170,210 @@ class PlanaVistaClockCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this.render();
   }
 
   render() {
+    if (!this._hass) return;
+
+    const size = this._config.size || 'large';
+    const showDate = this._config.show_date !== false;
+    const showSeconds = this._config.show_seconds || false;
+    const timeFormat = this._config.time_format || '';
+    const theme = this._config.theme || '';
+    const align = this._config.align || 'left';
+    const background = this._config.background || '';
+    const textColor = this._config.text_color || '';
+
     this.innerHTML = `
-      <div style="padding: 16px;">
-        <p><strong>PlanaVista Clock Card</strong></p>
-        <p style="color: var(--secondary-text-color); font-size: 12px;">
-          Options: entity, size (small/medium/large), show_date, show_seconds, time_format (12h/24h), theme, align (left/center/right)
-        </p>
+      <div class="card-config">
+        <div class="config-row">
+          <ha-textfield
+            label="Background (color or gradient)"
+            .value="${background}"
+            placeholder="e.g., #4A90E2 or linear-gradient(135deg, #667eea, #764ba2)"
+            @input="${this._inputChanged}"
+            data-config="background"
+          ></ha-textfield>
+        </div>
+
+        <div class="config-row">
+          <ha-textfield
+            label="Text Color"
+            .value="${textColor}"
+            placeholder="e.g., #ffffff or white"
+            @input="${this._inputChanged}"
+            data-config="text_color"
+          ></ha-textfield>
+        </div>
+
+        <div class="config-row">
+          <label class="config-label">Size</label>
+          <div class="button-group">
+            <button class="${size === 'small' ? 'active' : ''}" data-config="size" data-value="small">Small</button>
+            <button class="${size === 'medium' ? 'active' : ''}" data-config="size" data-value="medium">Medium</button>
+            <button class="${size === 'large' ? 'active' : ''}" data-config="size" data-value="large">Large</button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <label class="config-label">Alignment</label>
+          <div class="button-group">
+            <button class="${align === 'left' ? 'active' : ''}" data-config="align" data-value="left">Left</button>
+            <button class="${align === 'center' ? 'active' : ''}" data-config="align" data-value="center">Center</button>
+            <button class="${align === 'right' ? 'active' : ''}" data-config="align" data-value="right">Right</button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <label class="config-label">Time Format</label>
+          <div class="button-group">
+            <button class="${timeFormat === '' ? 'active' : ''}" data-config="time_format" data-value="">Default</button>
+            <button class="${timeFormat === '12h' ? 'active' : ''}" data-config="time_format" data-value="12h">12h</button>
+            <button class="${timeFormat === '24h' ? 'active' : ''}" data-config="time_format" data-value="24h">24h</button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <label class="config-label">Theme</label>
+          <div class="button-group">
+            <button class="${theme === '' ? 'active' : ''}" data-config="theme" data-value="">Default</button>
+            <button class="${theme === 'planavista' ? 'active' : ''}" data-config="theme" data-value="planavista">PlanaVista</button>
+            <button class="${theme === 'minimal' ? 'active' : ''}" data-config="theme" data-value="minimal">Minimal</button>
+            <button class="${theme === 'modern' ? 'active' : ''}" data-config="theme" data-value="modern">Modern</button>
+            <button class="${theme === 'dark' ? 'active' : ''}" data-config="theme" data-value="dark">Dark</button>
+          </div>
+        </div>
+
+        <div class="config-row checkbox-row">
+          <ha-formfield label="Show date">
+            <ha-checkbox
+              .checked="${showDate}"
+              @change="${this._checkboxChanged}"
+              data-config="show_date"
+            ></ha-checkbox>
+          </ha-formfield>
+        </div>
+
+        <div class="config-row checkbox-row">
+          <ha-formfield label="Show seconds">
+            <ha-checkbox
+              .checked="${showSeconds}"
+              @change="${this._checkboxChanged}"
+              data-config="show_seconds"
+            ></ha-checkbox>
+          </ha-formfield>
+        </div>
       </div>
+      <style>
+        .card-config {
+          padding: 16px;
+        }
+        .config-row {
+          margin-bottom: 16px;
+        }
+        .config-row:last-child {
+          margin-bottom: 0;
+        }
+        .config-label {
+          display: block;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--secondary-text-color);
+          margin-bottom: 8px;
+        }
+        .button-group {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .button-group button {
+          padding: 8px 16px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          cursor: pointer;
+          font-size: 14px;
+        }
+        .button-group button.active {
+          background: var(--primary-color);
+          color: white;
+          border-color: var(--primary-color);
+        }
+        .button-group button:hover:not(.active) {
+          background: var(--secondary-background-color);
+        }
+        .checkbox-row {
+          display: flex;
+          align-items: center;
+        }
+        ha-textfield {
+          width: 100%;
+        }
+      </style>
     `;
+
+    // Attach event listeners
+    this.querySelectorAll('.button-group button').forEach(btn => {
+      btn.addEventListener('click', (e) => this._buttonClicked(e));
+    });
+
+    this.querySelectorAll('ha-textfield').forEach(field => {
+      field.addEventListener('input', (e) => this._inputChanged(e));
+    });
+
+    this.querySelectorAll('ha-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => this._checkboxChanged(e));
+    });
+  }
+
+  _buttonClicked(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const value = target.dataset.value;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      if (value === '') {
+        delete newConfig[configKey];
+      } else {
+        newConfig[configKey] = value;
+      }
+      this._config = newConfig;
+      this._fireConfigChanged();
+      this.render();
+    }
+  }
+
+  _inputChanged(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const value = target.value;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      if (value === '') {
+        delete newConfig[configKey];
+      } else {
+        newConfig[configKey] = value;
+      }
+      this._config = newConfig;
+      this._fireConfigChanged();
+    }
+  }
+
+  _checkboxChanged(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const checked = target.checked;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      newConfig[configKey] = checked;
+      this._config = newConfig;
+      this._fireConfigChanged();
+    }
   }
 
   _fireConfigChanged() {
@@ -164,12 +392,12 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'planavista-clock-card',
   name: 'PlanaVista Clock',
-  description: 'Large time and date display',
+  description: 'Large time and date display with customizable background',
   preview: true,
 });
 
 console.info(
-  `%c PLANAVISTA-CLOCK %c v0.2.0 `,
+  `%c PLANAVISTA-CLOCK %c v0.2.1 `,
   'color: white; background: #667eea; font-weight: bold;',
   'color: #667eea; background: white; font-weight: bold;'
 );

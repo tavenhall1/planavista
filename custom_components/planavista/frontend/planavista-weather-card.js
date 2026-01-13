@@ -2,7 +2,7 @@
  * PlanaVista Weather Card
  * Weather display with current conditions and optional forecast
  *
- * Version: 0.2.0
+ * Version: 0.2.1
  */
 
 class PlanaVistaWeatherCard extends HTMLElement {
@@ -45,6 +45,23 @@ class PlanaVistaWeatherCard extends HTMLElement {
     return weatherEntityId ? this._hass?.states?.[weatherEntityId] : null;
   }
 
+  getBackgroundStyle() {
+    if (this._config.background) {
+      return this._config.background;
+    }
+    if (this._config.background_color) {
+      return this._config.background_color;
+    }
+    return 'var(--pv-header-gradient)';
+  }
+
+  getTextColor() {
+    if (this._config.text_color) {
+      return this._config.text_color;
+    }
+    return 'var(--pv-header-text)';
+  }
+
   render() {
     if (!this._hass) return;
 
@@ -84,6 +101,9 @@ class PlanaVistaWeatherCard extends HTMLElement {
     const forecast = weather.attributes.forecast || [];
     const layout = this._config.layout || 'horizontal';
 
+    const background = this.getBackgroundStyle();
+    const textColor = this.getTextColor();
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -92,8 +112,8 @@ class PlanaVistaWeatherCard extends HTMLElement {
         }
 
         ha-card {
-          background: var(--pv-header-gradient);
-          color: var(--pv-header-text);
+          background: ${background};
+          color: ${textColor};
           padding: 1.5rem;
         }
 
@@ -176,6 +196,12 @@ class PlanaVistaWeatherCard extends HTMLElement {
         .forecast-low {
           opacity: 0.7;
         }
+
+        .error {
+          padding: 2rem;
+          color: #d32f2f;
+          text-align: center;
+        }
       </style>
       <ha-card>
         <div class="weather-main">
@@ -237,18 +263,260 @@ class PlanaVistaWeatherCard extends HTMLElement {
   }
 }
 
+// Visual Card Editor
 class PlanaVistaWeatherCardEditor extends HTMLElement {
-  setConfig(config) { this._config = config; this.render(); }
-  set hass(hass) { this._hass = hass; }
+  constructor() {
+    super();
+    this._config = {};
+    this._hass = null;
+  }
+
+  setConfig(config) {
+    this._config = config;
+    this.render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
+
+  _getWeatherEntities() {
+    if (!this._hass) return [];
+    return Object.keys(this._hass.states)
+      .filter(id => id.startsWith('weather.'))
+      .sort();
+  }
+
   render() {
+    if (!this._hass) return;
+
+    const weatherEntity = this._config.weather_entity || '';
+    const showDetails = this._config.show_details !== false;
+    const showForecast = this._config.show_forecast || false;
+    const layout = this._config.layout || 'horizontal';
+    const theme = this._config.theme || '';
+    const background = this._config.background || '';
+    const textColor = this._config.text_color || '';
+
+    const weatherEntities = this._getWeatherEntities();
+
     this.innerHTML = `
-      <div style="padding: 16px;">
-        <p><strong>PlanaVista Weather Card</strong></p>
-        <p style="color: var(--secondary-text-color); font-size: 12px;">
-          Options: entity, weather_entity, show_details, show_forecast, layout (horizontal/vertical), theme
-        </p>
+      <div class="card-config">
+        <div class="config-row">
+          <label class="config-label">Weather Entity</label>
+          <select data-config="weather_entity" class="config-select">
+            <option value="">Use integration default</option>
+            ${weatherEntities.map(entity => `
+              <option value="${entity}" ${weatherEntity === entity ? 'selected' : ''}>
+                ${entity}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+
+        <div class="config-row">
+          <ha-textfield
+            label="Background (color or gradient)"
+            .value="${background}"
+            placeholder="e.g., #4A90E2 or linear-gradient(135deg, #667eea, #764ba2)"
+            data-config="background"
+          ></ha-textfield>
+        </div>
+
+        <div class="config-row">
+          <ha-textfield
+            label="Text Color"
+            .value="${textColor}"
+            placeholder="e.g., #ffffff or white"
+            data-config="text_color"
+          ></ha-textfield>
+        </div>
+
+        <div class="config-row">
+          <label class="config-label">Layout</label>
+          <div class="button-group">
+            <button class="${layout === 'horizontal' ? 'active' : ''}" data-config="layout" data-value="horizontal">Horizontal</button>
+            <button class="${layout === 'vertical' ? 'active' : ''}" data-config="layout" data-value="vertical">Vertical</button>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <label class="config-label">Theme</label>
+          <div class="button-group">
+            <button class="${theme === '' ? 'active' : ''}" data-config="theme" data-value="">Default</button>
+            <button class="${theme === 'planavista' ? 'active' : ''}" data-config="theme" data-value="planavista">PlanaVista</button>
+            <button class="${theme === 'minimal' ? 'active' : ''}" data-config="theme" data-value="minimal">Minimal</button>
+            <button class="${theme === 'modern' ? 'active' : ''}" data-config="theme" data-value="modern">Modern</button>
+            <button class="${theme === 'dark' ? 'active' : ''}" data-config="theme" data-value="dark">Dark</button>
+          </div>
+        </div>
+
+        <div class="config-row checkbox-row">
+          <ha-formfield label="Show humidity & wind">
+            <ha-checkbox
+              .checked="${showDetails}"
+              data-config="show_details"
+            ></ha-checkbox>
+          </ha-formfield>
+        </div>
+
+        <div class="config-row checkbox-row">
+          <ha-formfield label="Show 5-day forecast">
+            <ha-checkbox
+              .checked="${showForecast}"
+              data-config="show_forecast"
+            ></ha-checkbox>
+          </ha-formfield>
+        </div>
       </div>
+      <style>
+        .card-config {
+          padding: 16px;
+        }
+        .config-row {
+          margin-bottom: 16px;
+        }
+        .config-row:last-child {
+          margin-bottom: 0;
+        }
+        .config-label {
+          display: block;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--secondary-text-color);
+          margin-bottom: 8px;
+        }
+        .config-select {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font-size: 14px;
+        }
+        .button-group {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .button-group button {
+          padding: 8px 16px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          cursor: pointer;
+          font-size: 14px;
+        }
+        .button-group button.active {
+          background: var(--primary-color);
+          color: white;
+          border-color: var(--primary-color);
+        }
+        .button-group button:hover:not(.active) {
+          background: var(--secondary-background-color);
+        }
+        .checkbox-row {
+          display: flex;
+          align-items: center;
+        }
+        ha-textfield {
+          width: 100%;
+        }
+      </style>
     `;
+
+    // Attach event listeners
+    this.querySelectorAll('.button-group button').forEach(btn => {
+      btn.addEventListener('click', (e) => this._buttonClicked(e));
+    });
+
+    this.querySelectorAll('ha-textfield').forEach(field => {
+      field.addEventListener('input', (e) => this._inputChanged(e));
+    });
+
+    this.querySelectorAll('ha-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => this._checkboxChanged(e));
+    });
+
+    this.querySelectorAll('.config-select').forEach(select => {
+      select.addEventListener('change', (e) => this._selectChanged(e));
+    });
+  }
+
+  _buttonClicked(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const value = target.dataset.value;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      if (value === '') {
+        delete newConfig[configKey];
+      } else {
+        newConfig[configKey] = value;
+      }
+      this._config = newConfig;
+      this._fireConfigChanged();
+      this.render();
+    }
+  }
+
+  _inputChanged(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const value = target.value;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      if (value === '') {
+        delete newConfig[configKey];
+      } else {
+        newConfig[configKey] = value;
+      }
+      this._config = newConfig;
+      this._fireConfigChanged();
+    }
+  }
+
+  _checkboxChanged(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const checked = target.checked;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      newConfig[configKey] = checked;
+      this._config = newConfig;
+      this._fireConfigChanged();
+    }
+  }
+
+  _selectChanged(ev) {
+    const target = ev.target;
+    const configKey = target.dataset.config;
+    const value = target.value;
+
+    if (configKey) {
+      const newConfig = { ...this._config };
+      if (value === '') {
+        delete newConfig[configKey];
+      } else {
+        newConfig[configKey] = value;
+      }
+      this._config = newConfig;
+      this._fireConfigChanged();
+    }
+  }
+
+  _fireConfigChanged() {
+    this.dispatchEvent(new CustomEvent('config-changed', {
+      detail: { config: this._config },
+      bubbles: true,
+      composed: true,
+    }));
   }
 }
 
@@ -259,12 +527,12 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'planavista-weather-card',
   name: 'PlanaVista Weather',
-  description: 'Weather display with current conditions',
+  description: 'Weather display with customizable background',
   preview: true,
 });
 
 console.info(
-  `%c PLANAVISTA-WEATHER %c v0.2.0 `,
+  `%c PLANAVISTA-WEATHER %c v0.2.1 `,
   'color: white; background: #50C9C3; font-weight: bold;',
   'color: #50C9C3; background: white; font-weight: bold;'
 );
