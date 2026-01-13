@@ -1,0 +1,94 @@
+# PlanaVista - Compact Tablet Layout
+#
+# This dashboard is optimized for smaller tablets (7-10")
+# or as a sidebar panel in your main dashboard.
+#
+# Great for:
+# - Kitchen tablets
+# - Bedside displays
+# - Dashboard sidebar widgets
+
+title: PlanaVista Compact
+views:
+  - title: Calendar
+    path: calendar
+    cards:
+      # Compact header with time only
+      - type: custom:planavista-clock-card
+        entity: sensor.planavista_config
+        size: small
+        show_date: true
+        align: center
+
+      # Minimal toggles (icons only)
+      - type: custom:planavista-toggles-card
+        entity: sensor.planavista_config
+        show_names: false
+        show_add_button: false
+        layout: horizontal
+
+      # Agenda only (no grid for small screens)
+      - type: custom:planavista-agenda-card
+        entity: sensor.planavista_config
+        max_events: 8
+        days_ahead: 3
+        show_end_time: false
+
+---
+# Alternative: Day view for very small displays
+
+title: PlanaVista Daily
+views:
+  - title: Today
+    path: today
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:planavista-clock-card
+                entity: sensor.planavista_config
+                size: small
+                show_date: false
+
+              - type: custom:planavista-weather-card
+                entity: sensor.planavista_config
+                show_details: false
+                layout: vertical
+
+          - type: custom:planavista-grid-card
+            entity: sensor.planavista_config
+            view: day
+
+---
+# Kiosk Mode compatible (for Fully Kiosk Browser)
+# Add these URL parameters: ?kiosk&hide_sidebar
+
+title: PlanaVista Kiosk
+views:
+  - title: Display
+    path: display
+    type: panel
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:planavista-clock-card
+                entity: sensor.planavista_config
+                size: large
+                theme: dark
+
+              - type: custom:planavista-weather-card
+                entity: sensor.planavista_config
+                theme: dark
+                show_forecast: true
+
+          - type: custom:planavista-toggles-card
+            entity: sensor.planavista_config
+            theme: dark
+
+          - type: custom:planavista-grid-card
+            entity: sensor.planavista_config
+            view: week
+            theme: dark
