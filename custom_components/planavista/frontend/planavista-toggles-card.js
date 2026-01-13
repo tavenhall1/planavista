@@ -253,16 +253,19 @@ class PlanaVistaTogglesCard extends HTMLElement {
   }
 
   openAddEventDialog() {
-    const calendars = this.calendars;
-    if (calendars.length > 0) {
-      const firstCalendar = calendars[0];
-      const event = new CustomEvent('hass-more-info', {
-        bubbles: true,
-        composed: true,
-        detail: { entityId: firstCalendar.entity_id }
-      });
-      this.dispatchEvent(event);
+    const { PlanaVistaBase } = window;
+    if (!PlanaVistaBase || !PlanaVistaBase.AddEventDialog) {
+      console.error('PlanaVista AddEventDialog not available');
+      return;
     }
+
+    const calendars = this.calendars;
+    if (calendars.length === 0) {
+      return;
+    }
+
+    const dialog = new PlanaVistaBase.AddEventDialog(this._hass, calendars);
+    dialog.show();
   }
 
   static getConfigElement() {
