@@ -3,7 +3,7 @@ from typing import Final
 
 DOMAIN: Final = "planavista"
 NAME: Final = "PlanaVista"
-VERSION: Final = "0.1.0"
+VERSION: Final = "0.2.0"
 
 # Configuration keys
 CONF_CALENDARS: Final = "calendars"
