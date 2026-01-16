@@ -3,7 +3,7 @@
  * Calendar grid display with column-per-person day view
  * Inspired by Skylight/Hearth family calendar design
  *
- * Version: 0.3.0
+ * Version: 0.4.0
  */
 
 class PlanaVistaGridCard extends HTMLElement {
@@ -18,6 +18,7 @@ class PlanaVistaGridCard extends HTMLElement {
     this._cardWidth = 0;
     this._scrolled = false;
     this._currentDate = new Date(); // Track the currently displayed date
+    this._selectedEvent = null; // Track selected event for popup
   }
 
   // Navigation methods
@@ -188,7 +189,7 @@ class PlanaVistaGridCard extends HTMLElement {
       const now = new Date();
       const hour = now.getHours();
       const minutes = now.getMinutes();
-      const startHour = 6;
+      const startHour = this._getVisibleStartHour();
       const hourHeight = 60;
       const topOffset = ((hour - startHour) * hourHeight) + ((minutes / 60) * hourHeight);
       indicator.style.top = `${topOffset}px`;
@@ -277,7 +278,7 @@ class PlanaVistaGridCard extends HTMLElement {
         background: var(--pv-card-background);
         position: sticky;
         top: 0;
-        z-index: 10;
+        z-index: 8;
       }
 
       .time-column-spacer {
@@ -516,6 +517,8 @@ class PlanaVistaGridCard extends HTMLElement {
         padding: 0.75rem 1rem;
         border-bottom: 1px solid var(--pv-border);
         background: var(--pv-card-background);
+        position: relative;
+        z-index: 5;
       }
 
       .nav-left {
@@ -603,7 +606,7 @@ class PlanaVistaGridCard extends HTMLElement {
 
       .calendar-grid {
         padding: 1rem;
-        min-height: 350px;
+        min-height: 480px;
       }
 
       .grid-header {
@@ -642,10 +645,12 @@ class PlanaVistaGridCard extends HTMLElement {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 0.5rem;
+        height: 100%;
       }
 
       .day-column {
-        min-height: 250px;
+        min-height: 420px;
+        max-height: 480px;
         background: var(--pv-event-bg);
         border-radius: 8px;
         padding: 0.5rem;
@@ -686,6 +691,11 @@ class PlanaVistaGridCard extends HTMLElement {
          MONTH VIEW STYLES
          ============================================ */
 
+      .month-view-container {
+        display: flex;
+        flex-direction: column;
+      }
+
       .month-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -693,9 +703,9 @@ class PlanaVistaGridCard extends HTMLElement {
       }
 
       .month-day {
-        min-height: 80px;
+        min-height: 90px;
         background: var(--pv-event-bg);
-        padding: 0.25rem;
+        padding: 0.35rem;
         font-size: 0.8rem;
       }
 
@@ -742,11 +752,14 @@ class PlanaVistaGridCard extends HTMLElement {
         transition: all 0.3s ease;
         width: 36px;
         height: 36px;
+        position: relative;
+        z-index: 1;
       }
 
       .calendar-toggle:hover {
         transform: scale(1.1);
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 2;
       }
 
       .calendar-toggle.inactive {
@@ -867,6 +880,209 @@ class PlanaVistaGridCard extends HTMLElement {
         color: #d32f2f;
         text-align: center;
       }
+
+      /* ============================================
+         NEW EVENT BUTTON
+         ============================================ */
+
+      .add-event-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.4rem 0.75rem;
+        background: var(--pv-accent, #4A90E2);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+
+      .add-event-btn:hover {
+        background: var(--pv-accent-hover, #357ABD);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+      }
+
+      .add-event-btn ha-icon {
+        --mdc-icon-size: 18px;
+      }
+
+      /* ============================================
+         EVENT DETAILS POPUP
+         ============================================ */
+
+      .event-popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .event-popup {
+        background: var(--pv-card-background, white);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        max-width: 400px;
+        width: calc(100% - 2rem);
+        max-height: 80vh;
+        overflow: hidden;
+        animation: slideUp 0.25s ease;
+        z-index: 1001;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .event-popup-header {
+        padding: 1.25rem;
+        color: white;
+        position: relative;
+      }
+
+      .event-popup-close {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        transition: background 0.2s ease;
+      }
+
+      .event-popup-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .event-popup-close ha-icon {
+        --mdc-icon-size: 20px;
+      }
+
+      .event-popup-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        padding-right: 2rem;
+      }
+
+      .event-popup-calendar {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .event-popup-calendar img {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+      }
+
+      .event-popup-body {
+        padding: 1.25rem;
+      }
+
+      .event-popup-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .event-popup-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .event-popup-row ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--pv-text-secondary);
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+
+      .event-popup-row-content {
+        flex: 1;
+      }
+
+      .event-popup-label {
+        font-size: 0.75rem;
+        color: var(--pv-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+      }
+
+      .event-popup-value {
+        font-size: 0.95rem;
+        color: var(--pv-text);
+      }
+
+      .event-popup-actions {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--pv-border);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+      }
+
+      .event-popup-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+      }
+
+      .event-popup-btn.secondary {
+        background: transparent;
+        border: 1px solid var(--pv-border);
+        color: var(--pv-text);
+      }
+
+      .event-popup-btn.secondary:hover {
+        background: var(--pv-event-bg);
+      }
+
+      .event-popup-btn.primary {
+        background: var(--pv-accent, #4A90E2);
+        border: none;
+        color: white;
+      }
+
+      .event-popup-btn.primary:hover {
+        background: var(--pv-accent-hover, #357ABD);
+      }
     `;
   }
 
@@ -970,36 +1186,50 @@ class PlanaVistaGridCard extends HTMLElement {
       </div>
     ` : '';
 
-    // Generate hour labels (6 AM to 10 PM)
+    // Get the 8-hour sliding window
+    const viewStartHour = this._getVisibleStartHour();
+    const viewEndHour = this._getVisibleEndHour();
+
+    // Generate hour labels for the 8-hour window
     let hourLabels = '';
-    for (let hour = 6; hour <= 22; hour++) {
+    for (let hour = viewStartHour; hour <= viewEndHour; hour++) {
+      const displayHour = hour > 23 ? hour - 24 : hour; // Handle hours past midnight
       const hourLabel = timeFormat === '12h'
-        ? `${hour % 12 || 12}${hour < 12 ? ' AM' : ' PM'}`
-        : `${hour.toString().padStart(2, '0')}:00`;
+        ? `${displayHour % 12 || 12}${displayHour < 12 ? ' AM' : ' PM'}`
+        : `${displayHour.toString().padStart(2, '0')}:00`;
       hourLabels += `<div class="hour-label">${hourLabel}</div>`;
     }
 
     // Generate event columns with positioned events
     const eventColumnsHtml = calendars.map(cal => {
       const isHidden = this._stateManager?.isCalendarHidden(cal.entity_id);
-      const events = timedEvents[cal.entity_id] || [];
+      const calEvents = timedEvents[cal.entity_id] || [];
 
-      // Generate hour grid lines
+      // Generate hour grid lines for 8-hour window
       let gridLines = '';
-      for (let hour = 6; hour <= 22; hour++) {
+      for (let hour = viewStartHour; hour <= viewEndHour; hour++) {
         gridLines += `<div class="hour-grid-line"></div>`;
       }
 
-      // Position events
-      const eventsHtml = isHidden ? '' : events.map(event => {
+      // Position events within the visible window
+      const eventsHtml = isHidden ? '' : calEvents.map(event => {
         const startDate = new Date(event.start);
         const endDate = new Date(event.end);
 
         const startHour = startDate.getHours() + (startDate.getMinutes() / 60);
         const endHour = endDate.getHours() + (endDate.getMinutes() / 60);
 
-        const startOffset = Math.max(0, startHour - 6);
-        const duration = Math.min(endHour - startHour, 22 - startHour + 6);
+        // Skip events completely outside the visible window
+        if (endHour < viewStartHour || startHour > viewEndHour) {
+          return '';
+        }
+
+        // Clip events to visible window
+        const visibleStart = Math.max(startHour, viewStartHour);
+        const visibleEnd = Math.min(endHour, viewEndHour);
+
+        const startOffset = visibleStart - viewStartHour;
+        const duration = visibleEnd - visibleStart;
 
         const top = startOffset * 60;
         const height = Math.max(duration * 60, 30); // Minimum 30px height
@@ -1026,13 +1256,12 @@ class PlanaVistaGridCard extends HTMLElement {
       `;
     }).join('');
 
-    // Current time indicator position (only show on today's view)
+    // Current time indicator position (only show on today's view within visible window)
     const currentHour = now.getHours();
     const currentMinutes = now.getMinutes();
-    const startHour = 6;
     const hourHeight = 60;
-    const timeIndicatorTop = ((currentHour - startHour) * hourHeight) + ((currentMinutes / 60) * hourHeight);
-    const showTimeIndicator = isToday && currentHour >= 6 && currentHour <= 22;
+    const timeIndicatorTop = ((currentHour - viewStartHour) * hourHeight) + ((currentMinutes / 60) * hourHeight);
+    const showTimeIndicator = isToday && currentHour >= viewStartHour && currentHour <= viewEndHour;
 
     return `
       <div class="day-view-container">
@@ -1048,6 +1277,10 @@ class PlanaVistaGridCard extends HTMLElement {
             ${!isToday ? '<button class="nav-today-btn" data-nav="today">Today</button>' : ''}
           </div>
           <div class="nav-buttons">
+            <button class="add-event-btn">
+              <ha-icon icon="mdi:plus"></ha-icon>
+              <span>New Event</span>
+            </button>
             <button class="nav-btn active" data-view="day">Day</button>
             <button class="nav-btn" data-view="week">Week</button>
             <button class="nav-btn" data-view="month">Month</button>
@@ -1191,6 +1424,9 @@ class PlanaVistaGridCard extends HTMLElement {
             ${!isToday ? '<button class="nav-today-btn" data-nav="today">Today</button>' : ''}
           </div>
           <div class="nav-buttons">
+            <button class="add-event-btn">
+              <ha-icon icon="mdi:plus"></ha-icon>
+            </button>
             <button class="nav-btn active" data-view="day">Day</button>
             <button class="nav-btn" data-view="week">Week</button>
           </div>
@@ -1313,12 +1549,16 @@ class PlanaVistaGridCard extends HTMLElement {
             ${!isCurrentWeek ? '<button class="nav-today-btn" data-nav="today">This Week</button>' : ''}
           </div>
           <div class="nav-buttons">
+            <button class="add-event-btn">
+              <ha-icon icon="mdi:plus"></ha-icon>
+              <span>New Event</span>
+            </button>
             <button class="nav-btn" data-view="day">Day</button>
             <button class="nav-btn active" data-view="week">Week</button>
             <button class="nav-btn" data-view="month">Month</button>
           </div>
         </div>
-        <div style="display: flex; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--pv-border);">
+        <div style="display: flex; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--pv-border); z-index: 1; position: relative;">
           ${personToggles}
         </div>
         <div class="calendar-grid">
@@ -1445,12 +1685,16 @@ class PlanaVistaGridCard extends HTMLElement {
             ${!isCurrentMonth ? '<button class="nav-today-btn" data-nav="today">This Month</button>' : ''}
           </div>
           <div class="nav-buttons">
+            <button class="add-event-btn">
+              <ha-icon icon="mdi:plus"></ha-icon>
+              <span>New Event</span>
+            </button>
             <button class="nav-btn" data-view="day">Day</button>
             <button class="nav-btn" data-view="week">Week</button>
             <button class="nav-btn active" data-view="month">Month</button>
           </div>
         </div>
-        <div style="display: flex; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--pv-border);">
+        <div style="display: flex; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--pv-border); z-index: 1; position: relative;">
           ${personToggles}
         </div>
         <div class="calendar-grid">
@@ -1468,12 +1712,240 @@ class PlanaVistaGridCard extends HTMLElement {
     if (container) {
       const now = new Date();
       const currentHour = now.getHours();
-      const startHour = 6;
+      const startHour = this._getVisibleStartHour();
       const hourHeight = 60;
 
       // Scroll to current hour minus 1 hour to show some context
       const scrollTo = Math.max(0, ((currentHour - startHour) - 1) * hourHeight);
       container.scrollTop = scrollTo;
+    }
+  }
+
+  // Calculate the 8-hour sliding window based on current time
+  _getVisibleStartHour() {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    // Define viewing windows
+    // Morning: 6 AM - 2 PM (hours 6-14)
+    // Afternoon: 10 AM - 6 PM (hours 10-18)
+    // Evening: 2 PM - 10 PM (hours 14-22)
+    // Night: 6 PM - 2 AM next day or static night view
+
+    if (currentHour < 10) {
+      // Early morning: show 6 AM - 2 PM
+      return 6;
+    } else if (currentHour < 14) {
+      // Late morning: show 10 AM - 6 PM
+      return 10;
+    } else if (currentHour < 18) {
+      // Afternoon: show 2 PM - 10 PM
+      return 14;
+    } else {
+      // Evening: show 4 PM - 12 AM
+      return 16;
+    }
+  }
+
+  _getVisibleEndHour() {
+    return this._getVisibleStartHour() + 8;
+  }
+
+  // Show event details popup
+  _showEventDetails(event) {
+    this._selectedEvent = event;
+    this._renderEventPopup();
+  }
+
+  // Close event popup
+  _closeEventPopup() {
+    this._selectedEvent = null;
+    const overlay = this.shadowRoot.querySelector('.event-popup-overlay');
+    if (overlay) {
+      overlay.remove();
+    }
+  }
+
+  // Render the event popup
+  _renderEventPopup() {
+    if (!this._selectedEvent) return;
+
+    const { PlanaVistaBase } = window;
+    const event = this._selectedEvent;
+    const timeFormat = this._config.time_format || this.display.time_format || '12h';
+
+    // Find the calendar info
+    const calendar = this.calendars.find(c => c.entity_id === event.calendar_entity_id) || {};
+    const calendarColor = event.calendar_color || calendar.color || '#4A90E2';
+
+    // Get person avatar if available
+    let personAvatar = '';
+    if (calendar.person_entity && this._hass.states[calendar.person_entity]) {
+      const person = this._hass.states[calendar.person_entity];
+      const picture = person.attributes.entity_picture;
+      if (picture) {
+        personAvatar = `<img src="${picture}" alt="${calendar.display_name}" />`;
+      }
+    }
+
+    // Format date and time
+    const startDate = new Date(event.start);
+    const endDate = new Date(event.end);
+    const startTime = PlanaVistaBase.formatTime(event.start, timeFormat);
+    const endTime = PlanaVistaBase.formatTime(event.end, timeFormat);
+    const dateStr = PlanaVistaBase.formatDate(startDate, 'long');
+
+    const isAllDay = event.all_day ||
+      (startDate.getHours() === 0 && startDate.getMinutes() === 0 &&
+       endDate.getHours() === 0 && endDate.getMinutes() === 0);
+
+    const timeStr = isAllDay ? 'All Day' : `${startTime} - ${endTime}`;
+
+    // Calculate duration
+    let durationStr = '';
+    if (!isAllDay) {
+      const durationMs = endDate - startDate;
+      const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
+      const durationMins = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+      if (durationHours > 0 && durationMins > 0) {
+        durationStr = `${durationHours}h ${durationMins}m`;
+      } else if (durationHours > 0) {
+        durationStr = `${durationHours} hour${durationHours > 1 ? 's' : ''}`;
+      } else {
+        durationStr = `${durationMins} minutes`;
+      }
+    }
+
+    // Description if available
+    const descriptionHtml = event.description ? `
+      <div class="event-popup-row">
+        <ha-icon icon="mdi:text"></ha-icon>
+        <div class="event-popup-row-content">
+          <div class="event-popup-label">Description</div>
+          <div class="event-popup-value">${event.description}</div>
+        </div>
+      </div>
+    ` : '';
+
+    // Location if available
+    const locationHtml = event.location ? `
+      <div class="event-popup-row">
+        <ha-icon icon="mdi:map-marker"></ha-icon>
+        <div class="event-popup-row-content">
+          <div class="event-popup-label">Location</div>
+          <div class="event-popup-value">${event.location}</div>
+        </div>
+      </div>
+    ` : '';
+
+    // Create popup HTML
+    const popupHtml = `
+      <div class="event-popup-overlay" data-action="close">
+        <div class="event-popup" data-action="stop">
+          <div class="event-popup-header" style="background: ${calendarColor}">
+            <button class="event-popup-close" data-action="close">
+              <ha-icon icon="mdi:close"></ha-icon>
+            </button>
+            <div class="event-popup-title">${event.summary || 'No title'}</div>
+            <div class="event-popup-calendar">
+              ${personAvatar}
+              <span>${calendar.display_name || 'Calendar'}</span>
+            </div>
+          </div>
+          <div class="event-popup-body">
+            <div class="event-popup-row">
+              <ha-icon icon="mdi:calendar"></ha-icon>
+              <div class="event-popup-row-content">
+                <div class="event-popup-label">Date</div>
+                <div class="event-popup-value">${dateStr}</div>
+              </div>
+            </div>
+            <div class="event-popup-row">
+              <ha-icon icon="mdi:clock-outline"></ha-icon>
+              <div class="event-popup-row-content">
+                <div class="event-popup-label">Time</div>
+                <div class="event-popup-value">${timeStr}${durationStr ? ` (${durationStr})` : ''}</div>
+              </div>
+            </div>
+            ${locationHtml}
+            ${descriptionHtml}
+          </div>
+          <div class="event-popup-actions">
+            <button class="event-popup-btn secondary" data-action="close">Close</button>
+            <button class="event-popup-btn primary" data-action="open-calendar">
+              <ha-icon icon="mdi:calendar"></ha-icon>
+              Open Calendar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing popup if any
+    const existingPopup = this.shadowRoot.querySelector('.event-popup-overlay');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
+
+    // Add popup to shadow root
+    const popupContainer = document.createElement('div');
+    popupContainer.innerHTML = popupHtml;
+    this.shadowRoot.appendChild(popupContainer.firstElementChild);
+
+    // Attach popup event listeners
+    this._attachPopupListeners();
+  }
+
+  _attachPopupListeners() {
+    const overlay = this.shadowRoot.querySelector('.event-popup-overlay');
+    if (!overlay) return;
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      const action = e.target.closest('[data-action]')?.dataset.action;
+      if (action === 'close') {
+        this._closeEventPopup();
+      } else if (action === 'open-calendar') {
+        // Open the calendar entity in Home Assistant
+        const calendarId = this._selectedEvent?.calendar_entity_id;
+        if (calendarId) {
+          const event = new CustomEvent('hass-more-info', {
+            bubbles: true,
+            composed: true,
+            detail: { entityId: calendarId }
+          });
+          this.dispatchEvent(event);
+          this._closeEventPopup();
+        }
+      } else if (action === 'stop') {
+        e.stopPropagation();
+      }
+    });
+
+    // Prevent popup from closing when clicking inside
+    const popup = overlay.querySelector('.event-popup');
+    if (popup) {
+      popup.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+  }
+
+  // Open add event dialog
+  _openAddEventDialog() {
+    // Get the first visible calendar entity
+    const visibleCals = this.visibleCalendars;
+    if (visibleCals.length > 0) {
+      const firstCalendar = visibleCals[0];
+      const calendarEntityId = firstCalendar.entity_id;
+
+      // Fire an event to open the more-info dialog for the calendar
+      const event = new CustomEvent('hass-more-info', {
+        bubbles: true,
+        composed: true,
+        detail: { entityId: calendarEntityId }
+      });
+      this.dispatchEvent(event);
     }
   }
 
@@ -1536,21 +2008,33 @@ class PlanaVistaGridCard extends HTMLElement {
       });
     });
 
-    // Event click handlers
-    const events = this.shadowRoot.querySelectorAll('.event, .month-event, .positioned-event, .all-day-event, .mobile-event-card');
-    events.forEach(el => {
-      el.addEventListener('click', () => {
+    // Event click handlers - show event details popup
+    const eventElements = this.shadowRoot.querySelectorAll('.event, .month-event, .positioned-event, .all-day-event, .mobile-event-card');
+    eventElements.forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const eventId = el.dataset.eventId;
         const calendarId = el.dataset.calendar;
-        if (calendarId) {
-          const event = new CustomEvent('hass-more-info', {
-            bubbles: true,
-            composed: true,
-            detail: { entityId: calendarId }
-          });
-          this.dispatchEvent(event);
+
+        // Find the event in our data
+        const eventData = this.events.find(ev =>
+          (ev.uid === eventId || ev.summary === el.querySelector('.event-title, .mobile-event-title')?.textContent) &&
+          ev.calendar_entity_id === calendarId
+        );
+
+        if (eventData) {
+          this._showEventDetails(eventData);
         }
       });
     });
+
+    // Add event button
+    const addEventBtn = this.shadowRoot.querySelector('.add-event-btn');
+    if (addEventBtn) {
+      addEventBtn.addEventListener('click', () => {
+        this._openAddEventDialog();
+      });
+    }
   }
 
   static getConfigElement() {
@@ -1722,7 +2206,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PLANAVISTA-GRID %c v0.3.0 `,
+  `%c PLANAVISTA-GRID %c v0.4.0 `,
   'color: white; background: #4A90E2; font-weight: bold;',
   'color: #4A90E2; background: white; font-weight: bold;'
 );
