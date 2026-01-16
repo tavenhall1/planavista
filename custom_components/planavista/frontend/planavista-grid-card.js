@@ -17,6 +17,75 @@ class PlanaVistaGridCard extends HTMLElement {
     this._isMobileView = false;
     this._cardWidth = 0;
     this._scrolled = false;
+    this._currentDate = new Date(); // Track the currently displayed date
+  }
+
+  // Navigation methods
+  _navigatePrevious() {
+    const view = this._config.view || this.display.default_view || 'day';
+    const newDate = new Date(this._currentDate);
+
+    switch (view) {
+      case 'day':
+        newDate.setDate(newDate.getDate() - 1);
+        break;
+      case 'week':
+        newDate.setDate(newDate.getDate() - 7);
+        break;
+      case 'month':
+        newDate.setMonth(newDate.getMonth() - 1);
+        break;
+    }
+
+    this._currentDate = newDate;
+    this._scrolled = false;
+    this.render();
+  }
+
+  _navigateNext() {
+    const view = this._config.view || this.display.default_view || 'day';
+    const newDate = new Date(this._currentDate);
+
+    switch (view) {
+      case 'day':
+        newDate.setDate(newDate.getDate() + 1);
+        break;
+      case 'week':
+        newDate.setDate(newDate.getDate() + 7);
+        break;
+      case 'month':
+        newDate.setMonth(newDate.getMonth() + 1);
+        break;
+    }
+
+    this._currentDate = newDate;
+    this._scrolled = false;
+    this.render();
+  }
+
+  _navigateToday() {
+    this._currentDate = new Date();
+    this._scrolled = false;
+    this.render();
+  }
+
+  _isShowingToday() {
+    const today = new Date();
+    const view = this._config.view || this.display.default_view || 'day';
+
+    if (view === 'day') {
+      return this._currentDate.toDateString() === today.toDateString();
+    } else if (view === 'week') {
+      const { PlanaVistaBase } = window;
+      const firstDay = this._config.first_day || this.display.first_day || 'monday';
+      const currentWeekStart = PlanaVistaBase.getStartOfWeek(this._currentDate, firstDay);
+      const todayWeekStart = PlanaVistaBase.getStartOfWeek(today, firstDay);
+      return currentWeekStart.toDateString() === todayWeekStart.toDateString();
+    } else if (view === 'month') {
+      return this._currentDate.getMonth() === today.getMonth() &&
+             this._currentDate.getFullYear() === today.getFullYear();
+    }
+    return false;
   }
 
   connectedCallback() {
@@ -228,13 +297,8 @@ class PlanaVistaGridCard extends HTMLElement {
         flex-direction: column;
         align-items: center;
         padding: 1rem 0.5rem;
-        border-right: 1px solid var(--pv-border);
         cursor: pointer;
         transition: opacity 0.3s ease, background 0.2s ease;
-      }
-
-      .person-column-header:last-child {
-        border-right: none;
       }
 
       .person-column-header:hover {
@@ -311,14 +375,9 @@ class PlanaVistaGridCard extends HTMLElement {
       .all-day-column {
         flex: 1;
         padding: 0.25rem;
-        border-right: 1px solid var(--pv-border);
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
-      }
-
-      .all-day-column:last-child {
-        border-right: none;
       }
 
       .all-day-event {
@@ -359,7 +418,7 @@ class PlanaVistaGridCard extends HTMLElement {
         text-align: right;
         padding-right: 0.5rem;
         box-sizing: border-box;
-        border-bottom: 1px solid var(--pv-border);
+        border-bottom: 1px solid #e8e8e8;
       }
 
       .event-columns {
@@ -371,21 +430,12 @@ class PlanaVistaGridCard extends HTMLElement {
       .event-column {
         flex: 1;
         position: relative;
-        border-right: 1px solid var(--pv-border);
-      }
-
-      .event-column:last-child {
-        border-right: none;
       }
 
       .hour-grid-line {
         height: 60px;
-        border-bottom: 1px solid var(--pv-border);
+        border-bottom: 1px solid #e8e8e8;
         box-sizing: border-box;
-      }
-
-      .hour-grid-line:nth-child(odd) {
-        background: var(--pv-event-bg);
       }
 
       /* Positioned Events */
@@ -442,7 +492,7 @@ class PlanaVistaGridCard extends HTMLElement {
         left: 0;
         right: 0;
         height: 2px;
-        background: #e74c3c;
+        background: #333;
         z-index: 5;
         pointer-events: none;
       }
@@ -454,7 +504,7 @@ class PlanaVistaGridCard extends HTMLElement {
         top: -4px;
         width: 10px;
         height: 10px;
-        background: #e74c3c;
+        background: #333;
         border-radius: 50%;
       }
 
@@ -468,9 +518,53 @@ class PlanaVistaGridCard extends HTMLElement {
         background: var(--pv-card-background);
       }
 
+      .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .nav-arrow {
+        background: transparent;
+        border: none;
+        padding: 0.4rem;
+        border-radius: 50%;
+        cursor: pointer;
+        color: var(--pv-text);
+        transition: background 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .nav-arrow:hover {
+        background: var(--pv-event-bg);
+      }
+
+      .nav-arrow ha-icon {
+        --mdc-icon-size: 20px;
+      }
+
       .nav-date {
         font-size: 1.1rem;
         font-weight: 600;
+      }
+
+      .nav-today-btn {
+        background: transparent;
+        border: 1px solid var(--pv-border);
+        padding: 0.3rem 0.6rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        color: var(--pv-text-secondary);
+        transition: all 0.2s ease;
+        margin-left: 0.5rem;
+      }
+
+      .nav-today-btn:hover {
+        background: var(--pv-event-bg);
+        color: var(--pv-text);
       }
 
       .nav-buttons {
@@ -778,9 +872,11 @@ class PlanaVistaGridCard extends HTMLElement {
 
   renderColumnDayView(timeFormat) {
     const { PlanaVistaBase } = window;
-    const now = new Date();
-    const todayKey = now.toISOString().split('T')[0];
-    const dateStr = PlanaVistaBase.formatDate(now, 'long');
+    const displayDate = this._currentDate;
+    const now = new Date(); // Real current time for time indicator
+    const displayDateKey = displayDate.toISOString().split('T')[0];
+    const dateStr = PlanaVistaBase.formatDate(displayDate, 'long');
+    const isToday = PlanaVistaBase.isToday(displayDate);
     const calendars = this.calendars;
 
     // Separate all-day events from timed events
@@ -794,7 +890,7 @@ class PlanaVistaGridCard extends HTMLElement {
 
     this.visibleEvents.forEach(event => {
       const eventStart = new Date(event.start);
-      if (eventStart.toISOString().split('T')[0] !== todayKey) return;
+      if (eventStart.toISOString().split('T')[0] !== displayDateKey) return;
 
       const isAllDay = event.all_day ||
         (eventStart.getHours() === 0 && eventStart.getMinutes() === 0 &&
@@ -930,18 +1026,27 @@ class PlanaVistaGridCard extends HTMLElement {
       `;
     }).join('');
 
-    // Current time indicator position
+    // Current time indicator position (only show on today's view)
     const currentHour = now.getHours();
     const currentMinutes = now.getMinutes();
     const startHour = 6;
     const hourHeight = 60;
     const timeIndicatorTop = ((currentHour - startHour) * hourHeight) + ((currentMinutes / 60) * hourHeight);
-    const showTimeIndicator = currentHour >= 6 && currentHour <= 22;
+    const showTimeIndicator = isToday && currentHour >= 6 && currentHour <= 22;
 
     return `
       <div class="day-view-container">
         <div class="view-navigation">
-          <div class="nav-date">${dateStr}</div>
+          <div class="nav-left">
+            <button class="nav-arrow" data-nav="prev">
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+            <span class="nav-date">${dateStr}</span>
+            <button class="nav-arrow" data-nav="next">
+              <ha-icon icon="mdi:chevron-right"></ha-icon>
+            </button>
+            ${!isToday ? '<button class="nav-today-btn" data-nav="today">Today</button>' : ''}
+          </div>
           <div class="nav-buttons">
             <button class="nav-btn active" data-view="day">Day</button>
             <button class="nav-btn" data-view="week">Week</button>
@@ -975,12 +1080,13 @@ class PlanaVistaGridCard extends HTMLElement {
 
   renderMobileDayView(timeFormat) {
     const { PlanaVistaBase } = window;
-    const now = new Date();
-    const todayKey = now.toISOString().split('T')[0];
-    const dateStr = PlanaVistaBase.formatDate(now, 'medium');
+    const displayDate = this._currentDate;
+    const displayDateKey = displayDate.toISOString().split('T')[0];
+    const dateStr = PlanaVistaBase.formatDate(displayDate, 'medium');
+    const isToday = PlanaVistaBase.isToday(displayDate);
     const calendars = this.calendars;
 
-    // Get today's events grouped by calendar
+    // Get day's events grouped by calendar
     const eventsByCalendar = {};
     calendars.forEach(cal => {
       eventsByCalendar[cal.entity_id] = [];
@@ -988,7 +1094,7 @@ class PlanaVistaGridCard extends HTMLElement {
 
     this.visibleEvents.forEach(event => {
       const eventStart = new Date(event.start);
-      if (eventStart.toISOString().split('T')[0] !== todayKey) return;
+      if (eventStart.toISOString().split('T')[0] !== displayDateKey) return;
       if (eventsByCalendar[event.calendar_entity_id]) {
         eventsByCalendar[event.calendar_entity_id].push(event);
       }
@@ -1034,7 +1140,7 @@ class PlanaVistaGridCard extends HTMLElement {
     const allEvents = this.visibleEvents
       .filter(event => {
         const eventStart = new Date(event.start);
-        return eventStart.toISOString().split('T')[0] === todayKey;
+        return eventStart.toISOString().split('T')[0] === displayDateKey;
       })
       .sort((a, b) => new Date(a.start) - new Date(b.start));
 
@@ -1043,7 +1149,7 @@ class PlanaVistaGridCard extends HTMLElement {
       timelineHtml = `
         <div class="no-events">
           <ha-icon icon="mdi:calendar-check"></ha-icon>
-          <p>No events today</p>
+          <p>No events${isToday ? ' today' : ''}</p>
         </div>
       `;
     } else {
@@ -1074,7 +1180,16 @@ class PlanaVistaGridCard extends HTMLElement {
     return `
       <div class="mobile-day-view">
         <div class="view-navigation">
-          <div class="nav-date">${dateStr}</div>
+          <div class="nav-left">
+            <button class="nav-arrow" data-nav="prev">
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+            <span class="nav-date">${dateStr}</span>
+            <button class="nav-arrow" data-nav="next">
+              <ha-icon icon="mdi:chevron-right"></ha-icon>
+            </button>
+            ${!isToday ? '<button class="nav-today-btn" data-nav="today">Today</button>' : ''}
+          </div>
           <div class="nav-buttons">
             <button class="nav-btn active" data-view="day">Day</button>
             <button class="nav-btn" data-view="week">Week</button>
@@ -1094,8 +1209,8 @@ class PlanaVistaGridCard extends HTMLElement {
 
   renderWeekView(firstDay, timeFormat) {
     const { PlanaVistaBase } = window;
-    const now = new Date();
-    const startOfWeek = PlanaVistaBase.getStartOfWeek(now, firstDay);
+    const startOfWeek = PlanaVistaBase.getStartOfWeek(this._currentDate, firstDay);
+    const isCurrentWeek = this._isShowingToday();
     const calendars = this.calendars;
 
     // Generate 7 days
@@ -1187,7 +1302,16 @@ class PlanaVistaGridCard extends HTMLElement {
     return `
       <div class="week-view-container">
         <div class="view-navigation">
-          <div class="nav-date">${PlanaVistaBase.formatDate(startOfWeek, 'short')} - ${PlanaVistaBase.formatDate(days[6], 'short')}</div>
+          <div class="nav-left">
+            <button class="nav-arrow" data-nav="prev">
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+            <span class="nav-date">${PlanaVistaBase.formatDate(startOfWeek, 'short')} - ${PlanaVistaBase.formatDate(days[6], 'short')}</span>
+            <button class="nav-arrow" data-nav="next">
+              <ha-icon icon="mdi:chevron-right"></ha-icon>
+            </button>
+            ${!isCurrentWeek ? '<button class="nav-today-btn" data-nav="today">This Week</button>' : ''}
+          </div>
           <div class="nav-buttons">
             <button class="nav-btn" data-view="day">Day</button>
             <button class="nav-btn active" data-view="week">Week</button>
@@ -1207,15 +1331,16 @@ class PlanaVistaGridCard extends HTMLElement {
 
   renderMonthView(firstDay, timeFormat) {
     const { PlanaVistaBase } = window;
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
+    const displayDate = this._currentDate;
+    const year = displayDate.getFullYear();
+    const month = displayDate.getMonth();
+    const isCurrentMonth = this._isShowingToday();
     const calendars = this.calendars;
 
     // First day of month
     const firstOfMonth = new Date(year, month, 1);
     const lastOfMonth = new Date(year, month + 1, 0);
-    const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthName = displayDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
     // Start from the week containing the first of the month
     const startDate = PlanaVistaBase.getStartOfWeek(firstOfMonth, firstDay);
@@ -1309,7 +1434,16 @@ class PlanaVistaGridCard extends HTMLElement {
     return `
       <div class="month-view-container">
         <div class="view-navigation">
-          <div class="nav-date">${monthName}</div>
+          <div class="nav-left">
+            <button class="nav-arrow" data-nav="prev">
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+            <span class="nav-date">${monthName}</span>
+            <button class="nav-arrow" data-nav="next">
+              <ha-icon icon="mdi:chevron-right"></ha-icon>
+            </button>
+            ${!isCurrentMonth ? '<button class="nav-today-btn" data-nav="today">This Month</button>' : ''}
+          </div>
           <div class="nav-buttons">
             <button class="nav-btn" data-view="day">Day</button>
             <button class="nav-btn" data-view="week">Week</button>
@@ -1383,6 +1517,21 @@ class PlanaVistaGridCard extends HTMLElement {
             composed: true,
           });
           this.dispatchEvent(event);
+        }
+      });
+    });
+
+    // Date navigation arrows
+    const navArrows = this.shadowRoot.querySelectorAll('.nav-arrow[data-nav], .nav-today-btn[data-nav]');
+    navArrows.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nav = btn.dataset.nav;
+        if (nav === 'prev') {
+          this._navigatePrevious();
+        } else if (nav === 'next') {
+          this._navigateNext();
+        } else if (nav === 'today') {
+          this._navigateToday();
         }
       });
     });
