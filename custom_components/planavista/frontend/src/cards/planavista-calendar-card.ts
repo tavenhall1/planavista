@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition } from '../types';
+import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
 import { applyTheme, resolveTheme } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
@@ -631,16 +631,18 @@ export class PlanaVistaCalendarCard extends LitElement {
   setConfig(config: any) {
     this._config = {
       entity: 'sensor.planavista_config',
-      view: 'day',
       ...config,
     };
-    if (config?.view) {
-      this._pv.state.setView(config.view);
+    // Card-level `view` or `default_view` override
+    const cardView = config?.view || config?.default_view;
+    if (cardView) {
+      this._pv.state.setView(cardView);
     }
   }
 
   firstUpdated() {
-    if (!this._config?.view) {
+    const cardView = this._config?.view || this._config?.default_view;
+    if (!cardView) {
       const data = this.hass ? getPlanaVistaData(this.hass, this._config?.entity) : null;
       if (data?.display?.default_view) {
         this._pv.state.setView(data.display.default_view);
@@ -670,6 +672,37 @@ export class PlanaVistaCalendarCard extends LitElement {
   private _getWeatherEntityId(): string | null {
     const data = this._getData();
     return this._config?.weather_entity || data?.display?.weather_entity || null;
+  }
+
+  /**
+   * Merge card-level YAML overrides over global sensor config.
+   * Card YAML wins → sensor display config → defaults.
+   */
+  private _resolveDisplay(): DisplayConfig {
+    const data = this._getData();
+    const global = data?.display;
+    const card = this._config as PlanaVistaCardConfig | undefined;
+    return {
+      time_format: card?.time_format || global?.time_format || '12h',
+      weather_entity: card?.weather_entity || global?.weather_entity || '',
+      first_day: card?.first_day || global?.first_day || 'sunday',
+      default_view: card?.default_view || card?.view || global?.default_view || 'week',
+      theme: card?.theme || global?.theme || 'light',
+    };
+  }
+
+  /**
+   * If card YAML specifies a `calendars` list (array of entity_ids),
+   * filter to only those calendars. Otherwise return all visible calendars.
+   */
+  private _getVisibleCalendars(): CalendarConfig[] {
+    const data = this._getData();
+    const all = (data?.calendars || []).filter((c: CalendarConfig) => c.visible !== false);
+    const cardFilter = (this._config as PlanaVistaCardConfig)?.calendars;
+    if (cardFilter && Array.isArray(cardFilter) && cardFilter.length > 0) {
+      return all.filter((c: CalendarConfig) => cardFilter.includes(c.entity_id));
+    }
+    return all;
   }
 
   private _onOnboardingComplete() {
@@ -757,14 +790,15 @@ export class PlanaVistaCalendarCard extends LitElement {
     const pvState = this._pv.state;
     const currentView = pvState.currentView;
     const currentDate = pvState.currentDate;
-    const calendars = (data.calendars || []).filter((c: CalendarConfig) => c.visible !== false);
+    const calendars = this._getVisibleCalendars();
     const events = data.events || [];
-    const display = data.display;
+    const display = this._resolveDisplay();
+    const hideHeader = !!(this._config as PlanaVistaCardConfig)?.hide_header;
     const visibleEvents = filterVisibleEvents(events, pvState.hiddenCalendars);
 
     return html`
       <ha-card>
-        ${this._renderHeader(display)}
+        ${hideHeader ? nothing : this._renderHeader(display)}
         ${this._renderToolbar(calendars, currentView)}
         <div class="pvc-body"
           @touchstart=${this._onTouchStart}
@@ -813,7 +847,8 @@ export class PlanaVistaCalendarCard extends LitElement {
   // ====================================================================
 
   private _renderHeader(display?: DisplayConfig) {
-    const weather = this._getWeatherEntity();
+    const hideWeather = !!(this._config as PlanaVistaCardConfig)?.hide_weather;
+    const weather = hideWeather ? null : this._getWeatherEntity();
     const timeFormat = display?.time_format || '12h';
     const now = this._currentTime;
 
@@ -1064,7 +1099,6 @@ export class PlanaVistaCalendarCard extends LitElement {
   static getStubConfig() {
     return {
       entity: 'sensor.planavista_config',
-      view: 'day',
     };
   }
 
