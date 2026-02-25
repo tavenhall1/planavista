@@ -12,8 +12,8 @@ import {
   filterVisibleEvents,
 } from '../utils/event-utils';
 
-const DAY_START_HOUR = 6;
-const DAY_END_HOUR = 23;
+const DAY_START_HOUR = 0;
+const DAY_END_HOUR = 24;
 
 @customElement('pv-view-week')
 export class PVViewWeek extends LitElement {
@@ -145,7 +145,8 @@ export class PVViewWeek extends LitElement {
       .time-grid {
         display: flex;
         position: relative;
-        min-height: ${(DAY_END_HOUR - DAY_START_HOUR) * 60}px;
+        height: ${(DAY_END_HOUR - DAY_START_HOUR) * 80}px;
+        flex-shrink: 0;
       }
 
       .time-gutter {

@@ -521,7 +521,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       <circle cx="32" cy="32" r="20" stroke="#F59E0B" stroke-width="3" fill="none" />
       <line x1="32" y1="18" x2="32" y2="34" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" />
       <circle cx="32" cy="42" r="2" fill="#F59E0B" />
-    </svg>`};let Qt=class extends lt{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.hideColumnHeaders=!1}firstUpdated(){this._scrollToNow()}updated(t){super.updated(t),t.has("currentDate")&&this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const t=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!t)return;this._scrollContainer=t;const e=new Date,i=60*(e.getHours()-6)+e.getMinutes();if(i>0&&i<1020){const e=i/1020*t.scrollHeight-t.clientHeight/3;t.scrollTo({top:Math.max(0,e),behavior:"smooth"})}})}render(){const t=Yt(this.events,this.hiddenCalendars),e=new Date(this.currentDate);e.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setHours(23,59,59,999);const a=It(t,e,i),r=a.filter(t=>Lt(t)),n=a.filter(t=>!Lt(t)),s=this.calendars.filter(t=>!1!==t.visible&&!this.hiddenCalendars.has(t.entity_id)),o=function(t,e){const i=new Map,a=new Map(e.map(t=>[t.entity_id,t]));for(const t of e)if(!1!==t.visible){const e=t.person_entity||t.entity_id;i.has(e)||i.set(e,[])}for(const e of t){const t=a.get(e.calendar_entity_id),r=t?.person_entity||e.calendar_entity_id;i.has(r)||i.set(r,[]),i.get(r).push(e)}return i}(n,s),l=Array.from(o.keys()),d=new Date,c=d.toDateString()===this.currentDate.toDateString(),p=60*(d.getHours()-6)+d.getMinutes(),h=c?p/1020*100:-1;return 0===s.length?R`
+    </svg>`};let Qt=class extends lt{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.hideColumnHeaders=!1}firstUpdated(){this._scrollToNow()}updated(t){super.updated(t),t.has("currentDate")&&this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const t=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!t)return;this._scrollContainer=t;const e=new Date,i=60*(e.getHours()-0)+e.getMinutes();if(i>0&&i<1440){const e=i/1440*t.scrollHeight-t.clientHeight/3;t.scrollTo({top:Math.max(0,e),behavior:"smooth"})}})}render(){const t=Yt(this.events,this.hiddenCalendars),e=new Date(this.currentDate);e.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setHours(23,59,59,999);const a=It(t,e,i),r=a.filter(t=>Lt(t)),n=a.filter(t=>!Lt(t)),s=this.calendars.filter(t=>!1!==t.visible&&!this.hiddenCalendars.has(t.entity_id)),o=function(t,e){const i=new Map,a=new Map(e.map(t=>[t.entity_id,t]));for(const t of e)if(!1!==t.visible){const e=t.person_entity||t.entity_id;i.has(e)||i.set(e,[])}for(const e of t){const t=a.get(e.calendar_entity_id),r=t?.person_entity||e.calendar_entity_id;i.has(r)||i.set(r,[]),i.get(r).push(e)}return i}(n,s),l=Array.from(o.keys()),d=new Date,c=d.toDateString()===this.currentDate.toDateString(),p=60*(d.getHours()-0)+d.getMinutes(),h=c?p/1440*100:-1;return 0===s.length?R`
         <div class="empty-state">
           <ha-icon icon="mdi:calendar-blank"></ha-icon>
           <p>No calendars visible</p>
@@ -570,13 +570,13 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
           </div>
         </div>
       </div>
-    `}_renderTimeLabels(){const t=[];for(let e=6;e<=23;e++){const i=(e-6)/17*100;let a;a="24h"===this.timeFormat?`${String(e).padStart(2,"0")}:00`:`${e%12||12} ${e>=12?"PM":"AM"}`,t.push(R`
+    `}_renderTimeLabels(){const t=[];for(let e=0;e<=24;e++){const i=(e-0)/24*100;let a;a="24h"===this.timeFormat?`${String(e).padStart(2,"0")}:00`:`${e%12||12} ${e>=12?"PM":"AM"}`,t.push(R`
         <div class="time-label" style="top: ${i}%">${a}</div>
-      `)}return t}_renderHourLines(){const t=[];for(let e=6;e<=23;e++){const i=(e-6)/17*100;t.push(R`
+      `)}return t}_renderHourLines(){const t=[];for(let e=0;e<=24;e++){const i=(e-0)/24*100;t.push(R`
         <div class="hour-line" style="top: ${i}%"></div>
       `)}return t}_renderColumn(t,e){const i=Rt(e);return R`
       <div class="person-column">
-        ${i.map(t=>{const e=Nt(t,6,23),i=t.totalColumns>1?`calc(${100/t.totalColumns}% - 4px)`:"calc(100% - 4px)",a=t.totalColumns>1?`calc(${t.column/t.totalColumns*100}% + 2px)`:"2px";return R`
+        ${i.map(t=>{const e=Nt(t,0,24),i=t.totalColumns>1?`calc(${100/t.totalColumns}% - 4px)`:"calc(100% - 4px)",a=t.totalColumns>1?`calc(${t.column/t.totalColumns*100}% + 2px)`:"2px";return R`
             <div
               class="positioned-event"
               style="
@@ -680,29 +680,29 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       }
 
       .person-avatar {
-        width: 44px;
-        height: 44px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         object-fit: cover;
         flex-shrink: 0;
-        border: 2px solid var(--pv-border-subtle);
+        border: 3px solid var(--pv-border-subtle);
       }
 
       .person-initial {
-        width: 44px;
-        height: 44px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
-        font-weight: 600;
+        font-size: 1.375rem;
+        font-weight: 700;
         color: white;
         flex-shrink: 0;
       }
 
       .person-name {
-        font-size: 0.75rem;
+        font-size: 0.875rem;
         font-weight: 600;
         color: var(--pv-text);
         white-space: nowrap;
@@ -723,7 +723,8 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       .time-grid {
         display: flex;
         position: relative;
-        min-height: ${1020}px;
+        height: ${1920}px;
+        flex-shrink: 0;
       }
 
       .time-gutter {
@@ -842,7 +843,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
         opacity: 0.3;
         margin-bottom: 1rem;
       }
-    `],t([vt({attribute:!1})],Qt.prototype,"hass",void 0),t([vt({type:Array})],Qt.prototype,"events",void 0),t([vt({type:Array})],Qt.prototype,"calendars",void 0),t([vt({type:Object})],Qt.prototype,"currentDate",void 0),t([vt({type:Object})],Qt.prototype,"hiddenCalendars",void 0),t([vt({attribute:!1})],Qt.prototype,"timeFormat",void 0),t([vt({type:Boolean})],Qt.prototype,"hideColumnHeaders",void 0),Qt=t([ct("pv-view-day")],Qt);let Xt=class extends lt{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.firstDay="sunday"}firstUpdated(){this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const t=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!t)return;const e=new Date,i=60*(e.getHours()-6)+e.getMinutes();if(i>0&&i<1020){const e=i/1020*t.scrollHeight-t.clientHeight/3;t.scrollTo({top:Math.max(0,e),behavior:"smooth"})}})}_getWeekDays(){const t=kt(this.currentDate,this.firstDay);return Array.from({length:7},(e,i)=>{const a=new Date(t);return a.setDate(a.getDate()+i),a})}render(){const t=Yt(this.events,this.hiddenCalendars),e=this._getWeekDays(),i=new Date(e[0]);i.setHours(0,0,0,0);const a=new Date(e[6]);a.setHours(23,59,59,999);const r=It(t,i,a),n=(new Date).toDateString();return R`
+    `],t([vt({attribute:!1})],Qt.prototype,"hass",void 0),t([vt({type:Array})],Qt.prototype,"events",void 0),t([vt({type:Array})],Qt.prototype,"calendars",void 0),t([vt({type:Object})],Qt.prototype,"currentDate",void 0),t([vt({type:Object})],Qt.prototype,"hiddenCalendars",void 0),t([vt({attribute:!1})],Qt.prototype,"timeFormat",void 0),t([vt({type:Boolean})],Qt.prototype,"hideColumnHeaders",void 0),Qt=t([ct("pv-view-day")],Qt);let Xt=class extends lt{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.firstDay="sunday"}firstUpdated(){this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const t=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!t)return;const e=new Date,i=60*(e.getHours()-0)+e.getMinutes();if(i>0&&i<1440){const e=i/1440*t.scrollHeight-t.clientHeight/3;t.scrollTo({top:Math.max(0,e),behavior:"smooth"})}})}_getWeekDays(){const t=kt(this.currentDate,this.firstDay);return Array.from({length:7},(e,i)=>{const a=new Date(t);return a.setDate(a.getDate()+i),a})}render(){const t=Yt(this.events,this.hiddenCalendars),e=this._getWeekDays(),i=new Date(e[0]);i.setHours(0,0,0,0);const a=new Date(e[6]);a.setHours(23,59,59,999);const r=It(t,i,a),n=(new Date).toDateString();return R`
       <div class="week-container">
         <div class="day-headers">
           <div class="header-gutter"></div>
@@ -883,12 +884,12 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
             </div>
           `})}
       </div>
-    `}_renderTimeLabels(){const t=[];for(let e=6;e<=23;e++){const i=(e-6)/17*100;let a;a="24h"===this.timeFormat?`${String(e).padStart(2,"0")}:00`:`${e%12||12} ${e>=12?"PM":"AM"}`,t.push(R`<div class="time-label" style="top: ${i}%">${a}</div>`)}return t}_renderHourLines(){const t=[];for(let e=6;e<=23;e++){const i=(e-6)/17*100;t.push(R`<div class="hour-line" style="top: ${i}%"></div>`)}return t}_renderDayColumn(t,e,i){const a=t.toDateString()===i,r=new Date(t);r.setHours(6,0,0,0);const n=new Date(t);n.setHours(23,0,0,0);const s=e.filter(e=>{if(Lt(e))return!1;const i=new Date(e.start),a=new Date(e.end);return i<n&&a>r&&i.toDateString()===t.toDateString()}),o=Rt(s),l=new Date,d=60*(l.getHours()-6)+l.getMinutes(),c=a?d/1020*100:-1;return R`
+    `}_renderTimeLabels(){const t=[];for(let e=0;e<=24;e++){const i=(e-0)/24*100;let a;a="24h"===this.timeFormat?`${String(e).padStart(2,"0")}:00`:`${e%12||12} ${e>=12?"PM":"AM"}`,t.push(R`<div class="time-label" style="top: ${i}%">${a}</div>`)}return t}_renderHourLines(){const t=[];for(let e=0;e<=24;e++){const i=(e-0)/24*100;t.push(R`<div class="hour-line" style="top: ${i}%"></div>`)}return t}_renderDayColumn(t,e,i){const a=t.toDateString()===i,r=new Date(t);r.setHours(0,0,0,0);const n=new Date(t);n.setHours(24,0,0,0);const s=e.filter(e=>{if(Lt(e))return!1;const i=new Date(e.start),a=new Date(e.end);return i<n&&a>r&&i.toDateString()===t.toDateString()}),o=Rt(s),l=new Date,d=60*(l.getHours()-0)+l.getMinutes(),c=a?d/1440*100:-1;return R`
       <div class="day-column ${a?"today":""}">
         ${c>=0&&c<=100?R`
           <div class="pv-now-line" style="top: ${c}%"></div>
         `:W}
-        ${o.map(t=>{const e=Nt(t,6,23),i=t.totalColumns>1?`calc(${100/t.totalColumns}% - 3px)`:"calc(100% - 4px)",a=t.totalColumns>1?`calc(${t.column/t.totalColumns*100}% + 2px)`:"2px";return R`
+        ${o.map(t=>{const e=Nt(t,0,24),i=t.totalColumns>1?`calc(${100/t.totalColumns}% - 3px)`:"calc(100% - 4px)",a=t.totalColumns>1?`calc(${t.column/t.totalColumns*100}% + 2px)`:"2px";return R`
             <div
               class="positioned-event"
               style="top:${e.top}%;height:${e.height}%;width:${i};left:${a};--event-color:${t.calendar_color}"
@@ -1015,7 +1016,8 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       .time-grid {
         display: flex;
         position: relative;
-        min-height: ${1020}px;
+        height: ${1920}px;
+        flex-shrink: 0;
       }
 
       .time-gutter {

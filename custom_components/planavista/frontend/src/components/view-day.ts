@@ -14,9 +14,9 @@ import {
 } from '../utils/event-utils';
 import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
 
-const DAY_START_HOUR = 6;
-const DAY_END_HOUR = 23;
-const HOUR_HEIGHT = 60; // px per hour
+const DAY_START_HOUR = 0;
+const DAY_END_HOUR = 24;
+const HOUR_HEIGHT = 80; // px per hour
 
 @customElement('pv-view-day')
 export class PVViewDay extends LitElement {
@@ -120,29 +120,29 @@ export class PVViewDay extends LitElement {
       }
 
       .person-avatar {
-        width: 44px;
-        height: 44px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         object-fit: cover;
         flex-shrink: 0;
-        border: 2px solid var(--pv-border-subtle);
+        border: 3px solid var(--pv-border-subtle);
       }
 
       .person-initial {
-        width: 44px;
-        height: 44px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
-        font-weight: 600;
+        font-size: 1.375rem;
+        font-weight: 700;
         color: white;
         flex-shrink: 0;
       }
 
       .person-name {
-        font-size: 0.75rem;
+        font-size: 0.875rem;
         font-weight: 600;
         color: var(--pv-text);
         white-space: nowrap;
@@ -163,7 +163,8 @@ export class PVViewDay extends LitElement {
       .time-grid {
         display: flex;
         position: relative;
-        min-height: ${(DAY_END_HOUR - DAY_START_HOUR) * HOUR_HEIGHT}px;
+        height: ${(DAY_END_HOUR - DAY_START_HOUR) * HOUR_HEIGHT}px;
+        flex-shrink: 0;
       }
 
       .time-gutter {
