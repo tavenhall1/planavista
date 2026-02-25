@@ -153,10 +153,13 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
                     color = _normalize_color(calendar_config.get("color", "#4A90E2"))
                     display_name = calendar_config.get("display_name", "Unknown")
 
+                    color_light = calendar_config.get("color_light", "")
+
                     calendar_data = {
                         "entity_id": entity_id,
                         "display_name": display_name,
                         "color": color,
+                        "color_light": color_light,
                         "icon": calendar_config.get("icon", "mdi:calendar"),
                         "person_entity": calendar_config.get("person_entity", ""),
                         "visible": calendar_config.get("visible", True),
@@ -174,6 +177,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
                             event["calendar_entity_id"] = entity_id
                             event["calendar_name"] = display_name
                             event["calendar_color"] = color
+                            event["calendar_color_light"] = color_light
                             data["events"].append(event)
                     except Exception as err:
                         _LOGGER.warning(

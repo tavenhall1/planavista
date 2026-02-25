@@ -17,6 +17,7 @@ from .const import (
     CONF_CALENDARS,
     CONF_DISPLAY_NAME,
     CONF_COLOR,
+    CONF_COLOR_LIGHT,
     CONF_ICON,
     CONF_PERSON_ENTITY,
     CONF_VISIBLE,
@@ -31,6 +32,7 @@ from .const import (
     FIRST_DAY_SUNDAY,
     CALENDAR_VIEWS,
     THEMES,
+    COLOR_PRESETS,
     DEFAULT_COLORS,
     DEFAULT_TIME_FORMAT,
     DEFAULT_FIRST_DAY,
@@ -123,6 +125,24 @@ def _hex_to_rgb(hex_value: str) -> list[int]:
     if len(hex_value) == 6:
         return [int(hex_value[i:i+2], 16) for i in (0, 2, 4)]
     return [74, 144, 226]  # Default blue
+
+
+def _get_color_light(color_hex: str) -> str:
+    """Get the light variant for a color.
+
+    Checks curated presets first, falls back to computed 12% tint.
+    """
+    for preset in COLOR_PRESETS:
+        if preset["color"].lower() == color_hex.lower():
+            return preset["color_light"]
+    return _compute_light_variant(color_hex, 0.12)
+
+
+def _compute_light_variant(hex_color: str, ratio: float) -> str:
+    """Compute a light tint of a color by mixing with white."""
+    rgb = _hex_to_rgb(hex_color)
+    light = [int(c + (255 - c) * (1 - ratio)) for c in rgb]
+    return f"#{light[0]:02x}{light[1]:02x}{light[2]:02x}"
 
 
 class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -269,10 +289,12 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # Save the configuration for this calendar
             calendar_entity = user_input.pop("_entity_id")
+            color_hex = _rgb_to_hex(user_input[CONF_COLOR])
             self._calendar_configs.append({
                 "entity_id": calendar_entity,
                 CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
-                CONF_COLOR: _rgb_to_hex(user_input[CONF_COLOR]),
+                CONF_COLOR: color_hex,
+                CONF_COLOR_LIGHT: _get_color_light(color_hex),
                 CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
                 CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
                 CONF_VISIBLE: True,
@@ -432,10 +454,12 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
         """Configure a new calendar being added."""
         if user_input is not None:
             current_calendars = list(self.config_entry.data.get(CONF_CALENDARS, []))
+            color_hex = _rgb_to_hex(user_input[CONF_COLOR])
             new_calendar = {
                 "entity_id": user_input["_entity_id"],
                 CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
-                CONF_COLOR: _rgb_to_hex(user_input[CONF_COLOR]),
+                CONF_COLOR: color_hex,
+                CONF_COLOR_LIGHT: _get_color_light(color_hex),
                 CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
                 CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
                 CONF_VISIBLE: True,
@@ -559,10 +583,12 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             # Update the calendar
+            color_hex = _rgb_to_hex(user_input[CONF_COLOR])
             updated_calendar = {
                 "entity_id": calendar_data["entity_id"],
                 CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
-                CONF_COLOR: _rgb_to_hex(user_input[CONF_COLOR]),
+                CONF_COLOR: color_hex,
+                CONF_COLOR_LIGHT: _get_color_light(color_hex),
                 CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
                 CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
                 CONF_VISIBLE: calendar_data.get(CONF_VISIBLE, True),

@@ -21,6 +21,7 @@ CONF_WEATHER_ENTITY: Final = "weather_entity"
 CONF_FIRST_DAY: Final = "first_day"
 CONF_DEFAULT_VIEW: Final = "default_view"
 CONF_THEME: Final = "theme"
+CONF_COLOR_LIGHT: Final = "color_light"
 
 # Display settings
 TIME_FORMAT_12H: Final = "12h"
@@ -37,19 +38,23 @@ VIEW_AGENDA: Final = "agenda"
 
 CALENDAR_VIEWS: Final = [VIEW_DAY, VIEW_WEEK, VIEW_MONTH, VIEW_AGENDA]
 
-# Default colors (beautiful palette for calendars)
-DEFAULT_COLORS: Final = [
-    "#FB8072",  # Coral
-    "#FDBF6F",  # Peach
-    "#A6CEE3",  # Sky Blue
-    "#CAB2D6",  # Lavender
-    "#4A90E2",  # Blue
-    "#33A02C",  # Green
-    "#FF7F00",  # Orange
-    "#E31A1C",  # Red
-    "#6A3D9A",  # Purple
-    "#B15928",  # Brown
+# Curated color presets (primary + light variant pairs)
+COLOR_PRESETS: Final = [
+    {"name": "Ocean",    "color": "#4A90D9", "color_light": "#DCE8F5"},
+    {"name": "Fire",     "color": "#FC6A05", "color_light": "#FEE6D1"},
+    {"name": "Sage",     "color": "#6BA368", "color_light": "#E2F0E1"},
+    {"name": "Lavender", "color": "#9B8EC4", "color_light": "#EDEBF5"},
+    {"name": "Amber",    "color": "#D9A52B", "color_light": "#F7EDCF"},
+    {"name": "Honey",    "color": "#CDCB2E", "color_light": "#F3F3DA"},
+    {"name": "Rose",     "color": "#D4728C", "color_light": "#F5E4EA"},
+    {"name": "Teal",     "color": "#4A9E9E", "color_light": "#DDF0F0"},
+    {"name": "Slate",    "color": "#6B7A8D", "color_light": "#E8EAED"},
+    {"name": "Graphite", "color": "#505050", "color_light": "#E8E8E8"},
 ]
+
+# Backward-compatible flat lists
+DEFAULT_COLORS: Final = [p["color"] for p in COLOR_PRESETS]
+DEFAULT_COLORS_LIGHT: Final = [p["color_light"] for p in COLOR_PRESETS]
 
 # Themes
 THEME_PLANAVISTA: Final = "planavista"

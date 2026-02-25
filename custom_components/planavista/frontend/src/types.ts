@@ -57,6 +57,7 @@ export interface CalendarConfig {
   entity_id: string;
   display_name: string;
   color: string;
+  color_light: string;
   icon: string;
   person_entity: string;
   visible: boolean;
@@ -75,6 +76,7 @@ export interface CalendarEvent {
   calendar_entity_id: string;
   calendar_name: string;
   calendar_color: string;
+  calendar_color_light: string;
 }
 
 export interface DisplayConfig {
