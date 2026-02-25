@@ -7,10 +7,13 @@ import { baseStyles } from '../styles/shared';
  * Formula: channel = channel + (255 - channel) * 0.88
  */
 function computeLightVariant(hex: string): string {
-  const clean = hex.replace('#', '');
+  let clean = hex.replace('#', '');
+  if (clean.length === 3) clean = clean.split('').map(c => c + c).join('');
+  if (clean.length !== 6) return hex;
   const r = parseInt(clean.substring(0, 2), 16);
   const g = parseInt(clean.substring(2, 4), 16);
   const b = parseInt(clean.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
 
   const rLight = Math.round(r + (255 - r) * 0.88);
   const gLight = Math.round(g + (255 - g) * 0.88);
@@ -78,7 +81,7 @@ export class PvColorSwatchPicker extends LitElement {
   }
 
   private _openCustomPicker() {
-    this._colorInput.click();
+    this._colorInput?.click();
   }
 
   private _onCustomColorChange(e: Event) {
