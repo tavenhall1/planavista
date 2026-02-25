@@ -112,19 +112,21 @@ export class PVViewMonth extends LitElement {
       .month-event-pill {
         padding: 0.0625rem 0.375rem;
         border-radius: 3px;
+        border-left: 2px solid var(--event-color, var(--pv-accent));
+        background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
         font-size: 0.625rem;
         font-weight: 500;
-        color: white;
+        color: var(--pv-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         cursor: pointer;
         line-height: 1.4;
-        transition: opacity 150ms;
+        transition: all 150ms;
       }
 
       .month-event-pill:hover {
-        opacity: 0.85;
+        background: color-mix(in srgb, var(--event-color, var(--pv-accent)) 16%, white);
       }
 
       .more-events {
@@ -182,7 +184,7 @@ export class PVViewMonth extends LitElement {
           ${visibleEvents.map(e => html`
             <div
               class="month-event-pill"
-              style="background: ${e.calendar_color}"
+              style="--event-color: ${e.calendar_color}; --event-color-light: ${e.calendar_color_light || ''}"
               @click=${(ev: Event) => { ev.stopPropagation(); this._onEventClick(e); }}
             >${e.summary}</div>
           `)}

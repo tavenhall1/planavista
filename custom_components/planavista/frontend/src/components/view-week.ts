@@ -179,8 +179,13 @@ export class PVViewWeek extends LitElement {
       .day-column {
         flex: 1;
         position: relative;
-        border-left: 1px solid var(--pv-border-subtle);
+        margin-left: 2px;
         min-width: 0;
+        overflow: hidden;
+      }
+
+      .day-column:first-child {
+        margin-left: 0;
       }
 
       .day-column.today {
@@ -192,7 +197,15 @@ export class PVViewWeek extends LitElement {
         left: 0;
         right: 0;
         height: 1px;
-        background: var(--pv-border-subtle);
+        background: transparent;
+        pointer-events: none;
+      }
+
+      .hour-band-odd {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.015);
         pointer-events: none;
       }
 
@@ -204,7 +217,7 @@ export class PVViewWeek extends LitElement {
         padding: 0.125rem 0.25rem;
         border-radius: 4px;
         border-left: 3px solid var(--event-color);
-        background: color-mix(in srgb, var(--event-color) 12%, var(--pv-card-bg, white));
+        background: var(--event-color-light, color-mix(in srgb, var(--event-color) 12%, white));
         cursor: pointer;
         overflow: hidden;
         transition: all var(--pv-transition);
@@ -215,12 +228,14 @@ export class PVViewWeek extends LitElement {
 
       .positioned-event:hover {
         z-index: 5;
-        box-shadow: var(--pv-shadow);
+        background: color-mix(in srgb, var(--event-color) 16%, white);
+        transform: translateY(-1px);
       }
 
       .positioned-event .event-title {
         font-weight: 500;
         line-height: 1.2;
+        color: var(--pv-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -357,9 +372,13 @@ export class PVViewWeek extends LitElement {
 
   private _renderHourLines() {
     const lines: ReturnType<typeof html>[] = [];
-    for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
-      const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
-      lines.push(html`<div class="hour-line" style="top: ${top}%"></div>`);
+    const totalHours = DAY_END_HOUR - DAY_START_HOUR;
+    const bandHeight = (1 / totalHours) * 100;
+    for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
+      const top = ((h - DAY_START_HOUR) / totalHours) * 100;
+      if (h % 2 === 1) {
+        lines.push(html`<div class="hour-band-odd" style="top: ${top}%; height: ${bandHeight}%"></div>`);
+      }
     }
     return lines;
   }
@@ -402,7 +421,7 @@ export class PVViewWeek extends LitElement {
           return html`
             <div
               class="positioned-event"
-              style="top:${pos.top}%;height:${pos.height}%;width:${w};left:${l};--event-color:${event.calendar_color}"
+              style="top:${pos.top}%;height:${pos.height}%;width:${w};left:${l};--event-color:${event.calendar_color};--event-color-light:${event.calendar_color_light || ''}"
               @click=${() => this._onEventClick(event)}
             >
               <div class="event-title">${event.summary}</div>

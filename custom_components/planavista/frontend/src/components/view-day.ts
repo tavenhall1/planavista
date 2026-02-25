@@ -198,51 +198,53 @@ export class PVViewDay extends LitElement {
       .person-column {
         flex: 1;
         position: relative;
-        border-left: 1px solid var(--pv-border-subtle);
+        margin-left: 4px;
         min-width: 0;
+        overflow: hidden;
       }
 
       .person-column:first-child {
-        border-left: 1px solid var(--pv-border);
+        margin-left: 0;
       }
 
-      /* Alternate column tint for visual separation */
-      .person-column:nth-child(even) {
-        background: rgba(0, 0, 0, 0.008);
-      }
-
-      /* Hour lines */
+      /* Hour lines — transparent, replaced by alternating bands */
       .hour-line {
         position: absolute;
         left: 0;
         right: 0;
         height: 1px;
-        background: var(--pv-border-subtle);
+        background: transparent;
         pointer-events: none;
       }
 
-      /* Positioned events — premium solid color blocks */
+      .hour-band-odd {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.015);
+        pointer-events: none;
+      }
+
+      /* Positioned events — light background, accent border */
       .positioned-event {
         position: absolute;
         left: 3px;
         right: 3px;
         padding: 6px 10px;
-        border-radius: 10px;
-        background: var(--event-color);
-        color: white;
+        border-radius: 4px;
+        border-left: 3px solid var(--event-color);
+        background: var(--event-color-light, color-mix(in srgb, var(--event-color) 12%, white));
         cursor: pointer;
         overflow: hidden;
         transition: all 200ms ease;
         z-index: 1;
         min-height: 26px;
-        box-shadow: 0 1px 4px color-mix(in srgb, var(--event-color) 40%, transparent);
       }
 
       .positioned-event:hover {
         z-index: 5;
-        box-shadow: 0 4px 14px color-mix(in srgb, var(--event-color) 50%, transparent);
-        transform: scale(1.02);
-        filter: brightness(1.05);
+        background: color-mix(in srgb, var(--event-color) 16%, white);
+        transform: translateY(-1px);
       }
 
       .positioned-event .event-title {
@@ -252,12 +254,12 @@ export class PVViewDay extends LitElement {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: white;
+        color: var(--pv-text);
       }
 
       .positioned-event .event-time {
         font-size: 0.6875rem;
-        color: rgba(255, 255, 255, 0.8);
+        color: var(--pv-text-secondary);
         margin-top: 2px;
         font-weight: 500;
       }
@@ -508,11 +510,15 @@ export class PVViewDay extends LitElement {
 
   private _renderHourLines() {
     const lines: ReturnType<typeof html>[] = [];
-    for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
-      const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
-      lines.push(html`
-        <div class="hour-line" style="top: ${top}%"></div>
-      `);
+    const totalHours = DAY_END_HOUR - DAY_START_HOUR;
+    const bandHeight = (1 / totalHours) * 100;
+    for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
+      const top = ((h - DAY_START_HOUR) / totalHours) * 100;
+      if (h % 2 === 1) {
+        lines.push(html`
+          <div class="hour-band-odd" style="top: ${top}%; height: ${bandHeight}%"></div>
+        `);
+      }
     }
     return lines;
   }
@@ -574,6 +580,7 @@ export class PVViewDay extends LitElement {
                 width: ${width};
                 left: ${left};
                 --event-color: ${event.calendar_color};
+                --event-color-light: ${event.calendar_color_light || ''};
               "
               @click=${() => this._onEventClick(event)}
             >

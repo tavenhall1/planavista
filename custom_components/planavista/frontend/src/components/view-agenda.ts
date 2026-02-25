@@ -87,7 +87,7 @@ export class PVViewAgenda extends LitElement {
       }
 
       .agenda-event:hover {
-        background: var(--pv-event-hover);
+        background: var(--event-color-light, var(--pv-event-hover));
       }
 
       .agenda-event:active {
@@ -242,7 +242,7 @@ export class PVViewAgenda extends LitElement {
       : formatTime(event.end, this.timeFormat);
 
     return html`
-      <div class="agenda-event" @click=${() => this._onEventClick(event)}>
+      <div class="agenda-event" style="--event-color: ${event.calendar_color}; --event-color-light: ${event.calendar_color_light || ''}" @click=${() => this._onEventClick(event)}>
         <div class="event-color-bar" style="background: ${event.calendar_color}"></div>
         <div class="event-content">
           <div class="event-title">${event.summary}</div>

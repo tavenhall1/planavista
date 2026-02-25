@@ -158,9 +158,9 @@ export const eventStyles = css`
   .pv-event {
     position: relative;
     padding: 0.375rem 0.5rem 0.375rem 0.75rem;
-    border-radius: var(--pv-radius-sm, 8px);
+    border-radius: 4px;
     border-left: 3px solid var(--event-color, var(--pv-accent));
-    background: color-mix(in srgb, var(--event-color, var(--pv-accent)) 8%, transparent);
+    background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
     cursor: pointer;
     transition: all var(--pv-transition, 200ms ease);
     min-height: 28px;
@@ -168,9 +168,8 @@ export const eventStyles = css`
   }
 
   .pv-event:hover {
-    background: color-mix(in srgb, var(--event-color, var(--pv-accent)) 14%, transparent);
+    background: color-mix(in srgb, var(--event-color, var(--pv-accent)) 16%, white);
     transform: translateY(-1px);
-    box-shadow: var(--pv-shadow);
   }
 
   .pv-event:active {
@@ -181,6 +180,7 @@ export const eventStyles = css`
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1.3;
+    color: var(--pv-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -195,10 +195,12 @@ export const eventStyles = css`
   .pv-event-pill {
     display: inline-flex;
     align-items: center;
+    gap: 4px;
     padding: 0.125rem 0.5rem;
-    border-radius: 9999px;
-    background: var(--event-color, var(--pv-accent));
-    color: white;
+    border-radius: 4px;
+    border-left: 2px solid var(--event-color, var(--pv-accent));
+    background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
+    color: var(--pv-text);
     font-size: 0.6875rem;
     font-weight: 500;
     white-space: nowrap;
