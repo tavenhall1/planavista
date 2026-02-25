@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { baseStyles, buttonStyles, formStyles, animationStyles, scrollbarStyles } from '../styles/shared';
@@ -43,8 +43,17 @@ export class PvOnboardingWizard extends LitElement {
   @state() private _theme: 'light' | 'dark' | 'minimal' | 'vibrant' = 'light';
 
   @state() private _saving = false;
+  @state() private _saveError = '';
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
+
+  firstUpdated() {
+    // Move focus into the dialog so screen readers announce it correctly
+    const firstFocusable = this.renderRoot.querySelector<HTMLElement>(
+      'button, [href], input, select, [tabindex]:not([tabindex="-1"])'
+    );
+    firstFocusable?.focus();
+  }
 
   updated(changed: Map<string, unknown>) {
     super.updated(changed);
@@ -103,6 +112,7 @@ export class PvOnboardingWizard extends LitElement {
 
   private async _finish() {
     this._saving = true;
+    this._saveError = '';
     try {
       await this.hass.callService('planavista', 'save_config', {
         calendars: this._calendarConfigs
@@ -129,6 +139,9 @@ export class PvOnboardingWizard extends LitElement {
         bubbles: true,
         composed: true,
       }));
+    } catch (err) {
+      console.error('[pv-onboarding-wizard] save_config failed:', err);
+      this._saveError = 'Setup failed — please try again.';
     } finally {
       this._saving = false;
     }
@@ -445,12 +458,13 @@ export class PvOnboardingWizard extends LitElement {
 
     return html`
       <div class="wizard-footer">
+        ${this._saveError ? html`<p class="save-error" role="alert">${this._saveError}</p>` : nothing}
         <!-- Back button (hidden on page 0) -->
         <button
           class="pv-btn pv-btn-secondary back-btn ${this._page === 0 ? 'back-btn--hidden' : ''}"
           type="button"
           ?disabled=${this._page === 0}
-          aria-hidden="${this._page === 0}"
+          aria-hidden=${this._page === 0 ? 'true' : nothing}
           @click=${this._goBack}
         >
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -982,6 +996,13 @@ export class PvOnboardingWizard extends LitElement {
         flex-shrink: 0;
         background: var(--pv-card-bg, #FFFFFF);
         gap: 1rem;
+      }
+
+      .save-error {
+        flex: 1;
+        font-size: 0.8125rem;
+        color: var(--error-color, #EF4444);
+        margin: 0;
       }
 
       .back-btn {
