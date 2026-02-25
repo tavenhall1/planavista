@@ -30,6 +30,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _filterOpen = false;
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
+  @state() private _settingsOpen = false;
 
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
@@ -472,6 +473,43 @@ export class PlanaVistaCalendarCard extends LitElement {
         font-size: 0.875rem;
       }
 
+      /* Gear (settings) button */
+      .pvc-settings-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--pv-text-secondary);
+        cursor: pointer;
+        transition: all 200ms ease;
+        font-family: inherit;
+        -webkit-tap-highlight-color: transparent;
+        --mdc-icon-size: 22px;
+      }
+
+      .pvc-settings-btn:hover {
+        background: var(--pv-event-hover);
+        color: var(--pv-text);
+      }
+
+      /* Settings overlay */
+      .pvc-settings-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        background: var(--pv-card-bg, #FFFFFF);
+        animation: pv-fadeIn 200ms ease forwards;
+      }
+
+      @keyframes pv-fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
       /* Responsive: stack controls on narrow screens */
       @media (max-width: 600px) {
         .pvc-toolbar {
@@ -552,6 +590,18 @@ export class PlanaVistaCalendarCard extends LitElement {
     this._wizardOpen = false;
     this._onboardingDone = true;
     // Coordinator refreshes server-side; hass pushes updated sensor state → re-render
+  }
+
+  private _openSettings() {
+    this._settingsOpen = true;
+  }
+
+  private _onSettingsSave() {
+    this._settingsOpen = false;
+  }
+
+  private _onSettingsClose() {
+    this._settingsOpen = false;
   }
 
   private _showWeatherDetails() {
@@ -655,6 +705,18 @@ export class PlanaVistaCalendarCard extends LitElement {
             .mode=${pvState.dialogOpen}
             .prefill=${pvState.createPrefill}
           ></pv-event-create-dialog>
+        ` : nothing}
+
+        ${this._settingsOpen ? html`
+          <div class="pvc-settings-overlay">
+            <pv-onboarding-wizard
+              .hass=${this.hass}
+              mode="settings"
+              .config=${data}
+              @settings-save=${this._onSettingsSave}
+              @settings-close=${this._onSettingsClose}
+            ></pv-onboarding-wizard>
+          </div>
         ` : nothing}
       </ha-card>
     `;
@@ -795,6 +857,11 @@ export class PlanaVistaCalendarCard extends LitElement {
               >${view}</button>
             `)}
           </div>
+
+          <button class="pvc-settings-btn" @click=${this._openSettings}
+            title="Settings" aria-label="Open settings">
+            <ha-icon icon="mdi:cog"></ha-icon>
+          </button>
         </div>
       </div>
     `;

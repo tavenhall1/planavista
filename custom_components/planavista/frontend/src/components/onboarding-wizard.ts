@@ -20,11 +20,18 @@ interface CalendarEntry {
  * initial setup: Preferences → Calendars → Theme. On completion, it calls
  * the planavista.save_config service and fires an 'onboarding-complete' event.
  *
- * @fires onboarding-complete - fired when setup is saved successfully
+ * In 'settings' mode, it pre-populates from existing config and uses tabs
+ * instead of a linear flow. Fires 'settings-save' on save.
+ *
+ * @fires onboarding-complete - fired when onboarding setup is saved successfully
+ * @fires settings-save - fired when settings are saved successfully
+ * @fires settings-close - fired when the user cancels settings
  */
 @customElement('pv-onboarding-wizard')
 export class PvOnboardingWizard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
+  @property({ type: String }) mode: 'onboarding' | 'settings' = 'onboarding';
+  @property({ attribute: false }) config?: any;
 
   // Navigation
   @state() private _page = 0;
@@ -44,6 +51,7 @@ export class PvOnboardingWizard extends LitElement {
 
   @state() private _saving = false;
   @state() private _saveError = '';
+  private _settingsInitialized = false;
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -61,6 +69,20 @@ export class PvOnboardingWizard extends LitElement {
     if (changed.has('hass') && this.hass && !this._calendarsInitialized) {
       this._initCalendars();
     }
+    // In settings mode, pre-populate display settings from config (once)
+    if (this.mode === 'settings' && this.config && !this._settingsInitialized) {
+      this._initFromConfig();
+      this._settingsInitialized = true;
+    }
+  }
+
+  private _initFromConfig() {
+    const display = this.config?.display || {};
+    this._timeFormat = display.time_format || '12h';
+    this._firstDay = display.first_day || 'sunday';
+    this._weatherEntity = display.weather_entity || '';
+    this._defaultView = display.default_view || 'week';
+    this._theme = display.theme || 'light';
   }
 
   private _initCalendars() {
@@ -69,7 +91,23 @@ export class PvOnboardingWizard extends LitElement {
       .filter(k => k.startsWith('calendar.'))
       .sort();
 
+    // In settings mode, merge with existing configured calendars
+    const existingCals = this.mode === 'settings' && this.config?.calendars
+      ? new Map((this.config.calendars as any[]).map((c: any) => [c.entity_id, c]))
+      : new Map();
+
     this._calendarConfigs = entities.map((entity_id, idx) => {
+      const existing = existingCals.get(entity_id);
+      if (existing) {
+        return {
+          entity_id,
+          display_name: existing.display_name || entity_id,
+          color: existing.color || presets[idx % presets.length].color,
+          color_light: existing.color_light || presets[idx % presets.length].light,
+          person_entity: existing.person_entity || '',
+          include: true,
+        };
+      }
       const preset = presets[idx % presets.length];
       const friendly = this.hass.states[entity_id]?.attributes?.friendly_name as string | undefined;
       return {
@@ -78,7 +116,7 @@ export class PvOnboardingWizard extends LitElement {
         color: preset.color,
         color_light: preset.light,
         person_entity: '',
-        include: false,  // opt-in: user selects only the calendars they want
+        include: false,
       };
     });
     this._calendarsInitialized = true;
@@ -122,7 +160,7 @@ export class PvOnboardingWizard extends LitElement {
     this._saving = true;
     this._saveError = '';
     try {
-      await this.hass.callService('planavista', 'save_config', {
+      const payload: any = {
         calendars: this._calendarConfigs
           .filter(c => c.include)
           .map(c => ({
@@ -141,18 +179,31 @@ export class PvOnboardingWizard extends LitElement {
           default_view: this._defaultView,
           theme: this._theme,
         },
-        onboarding_complete: true,
-      });
-      this.dispatchEvent(new CustomEvent('onboarding-complete', {
+      };
+      if (this.mode === 'onboarding') {
+        payload.onboarding_complete = true;
+      }
+      await this.hass.callService('planavista', 'save_config', payload);
+      const eventName = this.mode === 'settings' ? 'settings-save' : 'onboarding-complete';
+      this.dispatchEvent(new CustomEvent(eventName, {
         bubbles: true,
         composed: true,
       }));
     } catch (err) {
       console.error('[pv-onboarding-wizard] save_config failed:', err);
-      this._saveError = 'Setup failed — please try again.';
+      this._saveError = this.mode === 'settings'
+        ? 'Save failed — please try again.'
+        : 'Setup failed — please try again.';
     } finally {
       this._saving = false;
     }
+  }
+
+  private _cancel() {
+    this.dispatchEvent(new CustomEvent('settings-close', {
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private _updateCalendar(idx: number, patch: Partial<CalendarEntry>) {
@@ -461,54 +512,90 @@ export class PvOnboardingWizard extends LitElement {
   }
 
   render() {
+    const isSettings = this.mode === 'settings';
     const pageLabels = ['Preferences', 'Calendars', 'Theme'];
     const isLast = this._page === 2;
-    const nextLabel = isLast ? (this._saving ? 'Saving…' : 'Finish') : 'Next';
+
+    // Right button label
+    let rightBtnLabel: string;
+    if (isSettings) {
+      rightBtnLabel = this._saving ? 'Saving…' : 'Save';
+    } else {
+      rightBtnLabel = isLast ? (this._saving ? 'Saving…' : 'Finish') : 'Next';
+    }
+
+    // Right button shows checkmark icon when it's a terminal action
+    const showCheckIcon = isSettings || isLast;
+    const showChevronIcon = !isSettings && !isLast;
 
     return html`
-      <div class="wizard-container" role="dialog" aria-modal="true" aria-label="PlanaVista Setup — ${pageLabels[this._page]}">
+      <div class="wizard-container" role="dialog" aria-modal="true"
+        aria-label="${isSettings ? 'PlanaVista Settings' : 'PlanaVista Setup'} — ${pageLabels[this._page]}">
 
-        <!-- Header: [Back] [Brand + dots] [Next] -->
         <div class="wizard-header">
 
-          <!-- Left: Back -->
+          <!-- Left: Close (settings) or Back (onboarding) -->
           <div class="wizard-nav-left">
-            <button
-              class="pv-btn pv-btn-secondary back-btn ${this._page === 0 ? 'back-btn--hidden' : ''}"
-              type="button"
-              ?disabled=${this._page === 0}
-              aria-hidden=${this._page === 0 ? 'true' : nothing}
-              @click=${this._goBack}
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
-              </svg>
-              Back
-            </button>
-          </div>
-
-          <!-- Center: Brand + progress dots -->
-          <div class="wizard-header-center">
-            <div class="wizard-brand">
-              <span class="wizard-logo" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="currentColor"/>
+            ${isSettings ? html`
+              <button class="pv-btn pv-btn-secondary back-btn" type="button"
+                @click=${this._cancel}>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
                 </svg>
-              </span>
-              <span class="wizard-title-text">PlanaVista Setup</span>
-            </div>
-            ${this._renderProgressDots()}
+                Close
+              </button>
+            ` : html`
+              <button
+                class="pv-btn pv-btn-secondary back-btn ${this._page === 0 ? 'back-btn--hidden' : ''}"
+                type="button"
+                ?disabled=${this._page === 0}
+                aria-hidden=${this._page === 0 ? 'true' : nothing}
+                @click=${this._goBack}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
+                </svg>
+                Back
+              </button>
+            `}
           </div>
 
-          <!-- Right: Next / Finish -->
+          <!-- Center: Tabs (settings) or Brand+Dots (onboarding) -->
+          <div class="wizard-header-center">
+            ${isSettings ? html`
+              <div class="settings-tabs" role="tablist">
+                ${pageLabels.map((label, i) => html`
+                  <button
+                    class="settings-tab ${this._page === i ? 'settings-tab--active' : ''}"
+                    role="tab"
+                    aria-selected="${this._page === i}"
+                    type="button"
+                    @click=${() => { this._page = i; }}
+                  >${label}</button>
+                `)}
+              </div>
+            ` : html`
+              <div class="wizard-brand">
+                <span class="wizard-logo" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="currentColor"/>
+                  </svg>
+                </span>
+                <span class="wizard-title-text">PlanaVista Setup</span>
+              </div>
+              ${this._renderProgressDots()}
+            `}
+          </div>
+
+          <!-- Right: Save (settings) or Next/Finish (onboarding) -->
           <div class="wizard-nav-right">
             <button
               class="pv-btn pv-btn-primary next-btn"
               type="button"
               ?disabled=${this._saving}
-              @click=${this._goNext}
+              @click=${isSettings ? () => this._finish() : () => this._goNext()}
             >
-              ${isLast ? html`
+              ${showCheckIcon ? html`
                 ${this._saving ? html`
                   <span class="spinner" aria-hidden="true"></span>
                 ` : html`
@@ -517,8 +604,8 @@ export class PvOnboardingWizard extends LitElement {
                   </svg>
                 `}
               ` : ''}
-              ${nextLabel}
-              ${!isLast ? html`
+              ${rightBtnLabel}
+              ${showChevronIcon ? html`
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                   <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
                 </svg>
@@ -527,10 +614,8 @@ export class PvOnboardingWizard extends LitElement {
           </div>
         </div>
 
-        <!-- Save error banner (shown above content if save fails) -->
         ${this._saveError ? html`<p class="save-error-banner" role="alert">${this._saveError}</p>` : nothing}
 
-        <!-- Scrollable content area -->
         <div class="wizard-content">
           ${this._page === 0 ? this._renderPage0() : ''}
           ${this._page === 1 ? this._renderPage1() : ''}
@@ -641,6 +726,41 @@ export class PvOnboardingWizard extends LitElement {
       .dot--active {
         background: var(--pv-accent, #6366F1);
         transform: scale(1.25);
+      }
+
+      /* ── Settings tabs (settings mode) ───────────────────────── */
+
+      .settings-tabs {
+        display: flex;
+        gap: 2px;
+        background: var(--pv-border-subtle, #E5E7EB);
+        border-radius: 8px;
+        padding: 2px;
+      }
+
+      .settings-tab {
+        padding: 6px 14px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--pv-text-secondary, #6B7280);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--pv-transition, 200ms ease);
+        font-family: inherit;
+        min-height: 32px;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .settings-tab--active {
+        background: var(--pv-card-bg, #FFFFFF);
+        color: var(--pv-text, #1A1B1E);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .settings-tab:hover:not(.settings-tab--active) {
+        color: var(--pv-text, #1A1B1E);
       }
 
       /* ── Scrollable content ─────────────────────────────────── */
