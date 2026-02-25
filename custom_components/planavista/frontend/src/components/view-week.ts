@@ -140,6 +140,12 @@ export class PVViewWeek extends LitElement {
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .time-grid-wrapper::-webkit-scrollbar {
+        display: none;
       }
 
       .time-grid {

@@ -158,6 +158,13 @@ export class PVViewDay extends LitElement {
         overflow-y: auto;
         overflow-x: hidden;
         position: relative;
+        /* Hide scrollbar but keep scroll functionality */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+      }
+
+      .time-grid-wrapper::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
       }
 
       .time-grid {
