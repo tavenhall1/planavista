@@ -454,73 +454,75 @@ export class PvOnboardingWizard extends LitElement {
     `;
   }
 
-  private _renderFooter() {
-    const isLast = this._page === 2;
-    const nextLabel = isLast
-      ? (this._saving ? 'Saving…' : 'Finish')
-      : 'Next';
-
-    return html`
-      <div class="wizard-footer">
-        ${this._saveError ? html`<p class="save-error" role="alert">${this._saveError}</p>` : nothing}
-        <!-- Back button (hidden on page 0) -->
-        <button
-          class="pv-btn pv-btn-secondary back-btn ${this._page === 0 ? 'back-btn--hidden' : ''}"
-          type="button"
-          ?disabled=${this._page === 0}
-          aria-hidden=${this._page === 0 ? 'true' : nothing}
-          @click=${this._goBack}
-        >
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
-          </svg>
-          Back
-        </button>
-
-        <!-- Next / Finish button -->
-        <button
-          class="pv-btn pv-btn-primary next-btn"
-          type="button"
-          ?disabled=${this._saving}
-          @click=${this._goNext}
-        >
-          ${isLast ? html`
-            ${this._saving ? html`
-              <span class="spinner" aria-hidden="true"></span>
-            ` : html`
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
-              </svg>
-            `}
-          ` : ''}
-          ${nextLabel}
-          ${!isLast ? html`
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
-            </svg>
-          ` : ''}
-        </button>
-      </div>
-    `;
-  }
-
   render() {
     const pageLabels = ['Preferences', 'Calendars', 'Theme'];
+    const isLast = this._page === 2;
+    const nextLabel = isLast ? (this._saving ? 'Saving…' : 'Finish') : 'Next';
 
     return html`
       <div class="wizard-container" role="dialog" aria-modal="true" aria-label="PlanaVista Setup — ${pageLabels[this._page]}">
-        <!-- Header with progress -->
+
+        <!-- Header: [Back] [Brand + dots] [Next] -->
         <div class="wizard-header">
-          <div class="wizard-brand">
-            <span class="wizard-logo" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="20" height="20">
-                <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="currentColor"/>
+
+          <!-- Left: Back -->
+          <div class="wizard-nav-left">
+            <button
+              class="pv-btn pv-btn-secondary back-btn ${this._page === 0 ? 'back-btn--hidden' : ''}"
+              type="button"
+              ?disabled=${this._page === 0}
+              aria-hidden=${this._page === 0 ? 'true' : nothing}
+              @click=${this._goBack}
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
               </svg>
-            </span>
-            <span class="wizard-title-text">PlanaVista Setup</span>
+              Back
+            </button>
           </div>
-          ${this._renderProgressDots()}
+
+          <!-- Center: Brand + progress dots -->
+          <div class="wizard-header-center">
+            <div class="wizard-brand">
+              <span class="wizard-logo" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" fill="currentColor"/>
+                </svg>
+              </span>
+              <span class="wizard-title-text">PlanaVista Setup</span>
+            </div>
+            ${this._renderProgressDots()}
+          </div>
+
+          <!-- Right: Next / Finish -->
+          <div class="wizard-nav-right">
+            <button
+              class="pv-btn pv-btn-primary next-btn"
+              type="button"
+              ?disabled=${this._saving}
+              @click=${this._goNext}
+            >
+              ${isLast ? html`
+                ${this._saving ? html`
+                  <span class="spinner" aria-hidden="true"></span>
+                ` : html`
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+                  </svg>
+                `}
+              ` : ''}
+              ${nextLabel}
+              ${!isLast ? html`
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
+                </svg>
+              ` : ''}
+            </button>
+          </div>
         </div>
+
+        <!-- Save error banner (shown above content if save fails) -->
+        ${this._saveError ? html`<p class="save-error-banner" role="alert">${this._saveError}</p>` : nothing}
 
         <!-- Scrollable content area -->
         <div class="wizard-content">
@@ -529,8 +531,6 @@ export class PvOnboardingWizard extends LitElement {
           ${this._page === 2 ? this._renderPage2() : ''}
         </div>
 
-        <!-- Fixed footer -->
-        ${this._renderFooter()}
       </div>
     `;
   }
@@ -568,13 +568,30 @@ export class PvOnboardingWizard extends LitElement {
       /* ── Header ─────────────────────────────────────────────── */
 
       .wizard-header {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        justify-content: space-between;
-        padding: 1rem 1.5rem;
+        padding: 0.625rem 1rem;
         border-bottom: 1px solid var(--pv-border-subtle, #E5E7EB);
         flex-shrink: 0;
         background: var(--pv-card-bg, #FFFFFF);
+        gap: 0.5rem;
+      }
+
+      .wizard-nav-left {
+        justify-self: start;
+      }
+
+      .wizard-header-center {
+        justify-self: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+      }
+
+      .wizard-nav-right {
+        justify-self: end;
       }
 
       .wizard-brand {
@@ -989,29 +1006,23 @@ export class PvOnboardingWizard extends LitElement {
         justify-content: center;
       }
 
-      /* ── Footer ─────────────────────────────────────────────── */
+      /* ── Save error banner ───────────────────────────────────── */
 
-      .wizard-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 1.5rem;
-        border-top: 1px solid var(--pv-border-subtle, #E5E7EB);
-        flex-shrink: 0;
-        background: var(--pv-card-bg, #FFFFFF);
-        gap: 1rem;
-      }
-
-      .save-error {
-        flex: 1;
-        font-size: 0.8125rem;
+      .save-error-banner {
+        padding: 0.5rem 1.5rem;
+        background: color-mix(in srgb, var(--error-color, #EF4444) 10%, transparent);
         color: var(--error-color, #EF4444);
+        font-size: 0.8125rem;
         margin: 0;
+        text-align: center;
+        flex-shrink: 0;
       }
 
       .back-btn {
         gap: 0.25rem;
-        padding-left: 0.875rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        min-height: 36px;
       }
 
       .back-btn--hidden {
@@ -1021,8 +1032,9 @@ export class PvOnboardingWizard extends LitElement {
 
       .next-btn {
         gap: 0.25rem;
-        padding-right: 0.875rem;
-        margin-left: auto;
+        padding: 0.375rem 0.875rem;
+        font-size: 0.875rem;
+        min-height: 36px;
       }
 
       /* ── Spinner ─────────────────────────────────────────────── */

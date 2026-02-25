@@ -434,6 +434,13 @@ export class PlanaVistaCalendarCard extends LitElement {
         padding: 3rem 2rem;
         text-align: center;
         gap: 0.5rem;
+        cursor: pointer;
+        outline: none;
+      }
+
+      .pvc-setup-pending:focus-visible {
+        outline: 2px solid var(--pv-accent, #6366F1);
+        outline-offset: 4px;
       }
 
       .pvc-setup-icon {
@@ -589,18 +596,20 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
       return html`
         <ha-card>
-          <div class="pvc-setup-pending">
+          <div class="pvc-setup-pending"
+            role="button"
+            tabindex="0"
+            aria-label="Begin PlanaVista setup"
+            @click=${() => { this._wizardOpen = true; }}
+            @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._wizardOpen = true; } }}
+          >
             <div class="pvc-setup-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
                 <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
               </svg>
             </div>
             <p class="pvc-setup-title">PlanaVista</p>
-            <p class="pvc-setup-hint">Complete your setup to start using the calendar.</p>
-            <button class="pv-btn pv-btn-primary pvc-setup-btn"
-              @click=${() => { this._wizardOpen = true; }}>
-              Start Setup
-            </button>
+            <p class="pvc-setup-hint">Tap to begin setup</p>
           </div>
         </ha-card>
       `;
