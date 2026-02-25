@@ -3296,31 +3296,35 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
         color: var(--pv-text-muted);
         opacity: 0.6;
       }
-    `],e([ve({attribute:!1})],lt.prototype,"hass",void 0),e([ve({type:Array})],lt.prototype,"calendars",void 0),e([ve({type:Boolean})],lt.prototype,"open",void 0),e([ve({type:String})],lt.prototype,"mode",void 0),e([ve({type:Object})],lt.prototype,"prefill",void 0),e([ge()],lt.prototype,"_title",void 0),e([ge()],lt.prototype,"_calendarEntityId",void 0),e([ge()],lt.prototype,"_date",void 0),e([ge()],lt.prototype,"_startTime",void 0),e([ge()],lt.prototype,"_endTime",void 0),e([ge()],lt.prototype,"_allDay",void 0),e([ge()],lt.prototype,"_description",void 0),e([ge()],lt.prototype,"_location",void 0),e([ge()],lt.prototype,"_showMore",void 0),e([ge()],lt.prototype,"_saving",void 0),e([ge()],lt.prototype,"_error",void 0),e([ge()],lt.prototype,"_datePickerOpen",void 0),e([ge()],lt.prototype,"_pickerMonth",void 0),e([ge()],lt.prototype,"_pickerYear",void 0),e([ge()],lt.prototype,"_locationSuggestions",void 0),e([ge()],lt.prototype,"_locationLoading",void 0),e([ge()],lt.prototype,"_locationFocused",void 0),e([ue("#title-input")],lt.prototype,"_titleInput",void 0),e([ue(".location-input")],lt.prototype,"_locationInput",void 0),e([ue(".date-display")],lt.prototype,"_dateDisplay",void 0),lt=e([de("pv-event-create-dialog")],lt);let ct=class extends le{constructor(){super(...arguments),this._currentTime=new Date,this._filterOpen=!1,this._pv=new je(this),this._clockTimer=null,this._touchStartX=0,this._filterCloseHandler=e=>this._onFilterClickOutside(e)}connectedCallback(){super.connectedCallback(),this._clockTimer=setInterval(()=>{this._currentTime=new Date},1e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockTimer&&(clearInterval(this._clockTimer),this._clockTimer=null),document.removeEventListener("click",this._filterCloseHandler)}setConfig(e){this._config={entity:"sensor.planavista_config",view:"day",...e},e?.view&&this._pv.state.setView(e.view)}firstUpdated(){if(!this._config?.view){const e=this.hass?ze(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),e.has("hass")||e.has("_config")){const e=ze(this.hass,this._config?.entity);Ne(this,Re(this._config?.theme,e?.display?.theme))}}_getData(){return ze(this.hass,this._config?.entity)}_getWeatherEntity(){const e=this._getData(),t=this._config?.weather_entity||e?.display?.weather_entity;return t?this.hass?.states?.[t]:null}_getWeatherEntityId(){const e=this._getData();return this._config?.weather_entity||e?.display?.weather_entity||null}_onOnboardingComplete(){}_showWeatherDetails(){const e=this._getWeatherEntityId();if(e){const t=new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0});this.dispatchEvent(t)}}render(){if(!this._config||!this.hass)return W;const e=this._getData();if(!e)return R`
+    `],e([ve({attribute:!1})],lt.prototype,"hass",void 0),e([ve({type:Array})],lt.prototype,"calendars",void 0),e([ve({type:Boolean})],lt.prototype,"open",void 0),e([ve({type:String})],lt.prototype,"mode",void 0),e([ve({type:Object})],lt.prototype,"prefill",void 0),e([ge()],lt.prototype,"_title",void 0),e([ge()],lt.prototype,"_calendarEntityId",void 0),e([ge()],lt.prototype,"_date",void 0),e([ge()],lt.prototype,"_startTime",void 0),e([ge()],lt.prototype,"_endTime",void 0),e([ge()],lt.prototype,"_allDay",void 0),e([ge()],lt.prototype,"_description",void 0),e([ge()],lt.prototype,"_location",void 0),e([ge()],lt.prototype,"_showMore",void 0),e([ge()],lt.prototype,"_saving",void 0),e([ge()],lt.prototype,"_error",void 0),e([ge()],lt.prototype,"_datePickerOpen",void 0),e([ge()],lt.prototype,"_pickerMonth",void 0),e([ge()],lt.prototype,"_pickerYear",void 0),e([ge()],lt.prototype,"_locationSuggestions",void 0),e([ge()],lt.prototype,"_locationLoading",void 0),e([ge()],lt.prototype,"_locationFocused",void 0),e([ue("#title-input")],lt.prototype,"_titleInput",void 0),e([ue(".location-input")],lt.prototype,"_locationInput",void 0),e([ue(".date-display")],lt.prototype,"_dateDisplay",void 0),lt=e([de("pv-event-create-dialog")],lt);let ct=class extends le{constructor(){super(...arguments),this._currentTime=new Date,this._filterOpen=!1,this._wizardOpen=!1,this._pv=new je(this),this._clockTimer=null,this._touchStartX=0,this._filterCloseHandler=e=>this._onFilterClickOutside(e)}connectedCallback(){super.connectedCallback(),this._clockTimer=setInterval(()=>{this._currentTime=new Date},1e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockTimer&&(clearInterval(this._clockTimer),this._clockTimer=null),document.removeEventListener("click",this._filterCloseHandler)}setConfig(e){this._config={entity:"sensor.planavista_config",view:"day",...e},e?.view&&this._pv.state.setView(e.view)}firstUpdated(){if(!this._config?.view){const e=this.hass?ze(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),e.has("hass")||e.has("_config")){const e=ze(this.hass,this._config?.entity);Ne(this,Re(this._config?.theme,e?.display?.theme))}}_getData(){return ze(this.hass,this._config?.entity)}_getWeatherEntity(){const e=this._getData(),t=this._config?.weather_entity||e?.display?.weather_entity;return t?this.hass?.states?.[t]:null}_getWeatherEntityId(){const e=this._getData();return this._config?.weather_entity||e?.display?.weather_entity||null}_onOnboardingComplete(){}_showWeatherDetails(){const e=this._getWeatherEntityId();if(e){const t=new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0});this.dispatchEvent(t)}}render(){if(!this._config||!this.hass)return W;const e=this._getData();if(!e)return R`
         <ha-card>
           <div class="pvc-empty">
             <p>PlanaVista entity not found</p>
             <p style="font-size: 0.8rem;">Check that the PlanaVista integration is configured.</p>
           </div>
         </ha-card>
-      `;if(!1===e.onboarding_complete)return this.hass?.editMode?R`
+      `;if(!1===e.onboarding_complete)return this._wizardOpen?R`
           <ha-card>
-            <div class="pvc-setup-pending">
-              <div class="pvc-setup-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
-                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
-                </svg>
-              </div>
-              <p class="pvc-setup-title">PlanaVista</p>
-              <p class="pvc-setup-hint">Save this card — the setup wizard will launch when you close the editor.</p>
-            </div>
+            <pv-onboarding-wizard
+              .hass=${this.hass}
+              @onboarding-complete=${this._onOnboardingComplete}
+            ></pv-onboarding-wizard>
           </ha-card>
         `:R`
         <ha-card>
-          <pv-onboarding-wizard
-            .hass=${this.hass}
-            @onboarding-complete=${this._onOnboardingComplete}
-          ></pv-onboarding-wizard>
+          <div class="pvc-setup-pending">
+            <div class="pvc-setup-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+              </svg>
+            </div>
+            <p class="pvc-setup-title">PlanaVista</p>
+            <p class="pvc-setup-hint">Complete your setup to start using the calendar.</p>
+            <button class="pv-btn pv-btn-primary pvc-setup-btn"
+              @click=${()=>{this._wizardOpen=!0}}>
+              Start Setup
+            </button>
+          </div>
         </ha-card>
       `;const t=this._pv.state,i=t.currentView;t.currentDate;const a=(e.calendars||[]).filter(e=>!1!==e.visible),r=e.events||[],n=e.display,s=Ze(r,t.hiddenCalendars);return R`
       <ha-card>
@@ -3904,7 +3908,7 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
           flex-wrap: wrap;
         }
       }
-    `],e([ve({attribute:!1})],ct.prototype,"hass",void 0),e([ge()],ct.prototype,"_config",void 0),e([ge()],ct.prototype,"_currentTime",void 0),e([ge()],ct.prototype,"_filterOpen",void 0),ct=e([de("planavista-calendar-card")],ct);let dt=class extends le{constructor(){super(...arguments),this._pv=new je(this),this._touchStartX=0}setConfig(e){this._config={entity:"sensor.planavista_config",...e},e.view&&this._pv.state.setView(e.view)}connectedCallback(){if(super.connectedCallback(),!this._config?.view){const e=this.hass?ze(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),e.has("hass")||e.has("_config")){const e=ze(this.hass,this._config?.entity);Ne(this,Re(this._config?.theme,e?.display?.theme))}}_getData(){return ze(this.hass,this._config?.entity)}render(){if(!this._config||!this.hass)return W;const e=this._getData();if(!e)return R`
+    `],e([ve({attribute:!1})],ct.prototype,"hass",void 0),e([ge()],ct.prototype,"_config",void 0),e([ge()],ct.prototype,"_currentTime",void 0),e([ge()],ct.prototype,"_filterOpen",void 0),e([ge()],ct.prototype,"_wizardOpen",void 0),ct=e([de("planavista-calendar-card")],ct);let dt=class extends le{constructor(){super(...arguments),this._pv=new je(this),this._touchStartX=0}setConfig(e){this._config={entity:"sensor.planavista_config",...e},e.view&&this._pv.state.setView(e.view)}connectedCallback(){if(super.connectedCallback(),!this._config?.view){const e=this.hass?ze(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),e.has("hass")||e.has("_config")){const e=ze(this.hass,this._config?.entity);Ne(this,Re(this._config?.theme,e?.display?.theme))}}_getData(){return ze(this.hass,this._config?.entity)}render(){if(!this._config||!this.hass)return W;const e=this._getData();if(!e)return R`
         <ha-card>
           <div style="padding: 2rem; text-align: center; color: var(--pv-text-muted);">
             <p>PlanaVista entity not found</p>

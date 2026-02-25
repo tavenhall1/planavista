@@ -28,6 +28,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _config: any;
   @state() private _currentTime = new Date();
   @state() private _filterOpen = false;
+  @state() private _wizardOpen = false;
 
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
@@ -574,30 +575,33 @@ export class PlanaVistaCalendarCard extends LitElement {
       `;
     }
 
-    // Show onboarding wizard on first load (new installs)
-    // Suppressed while in edit mode — wizard launches once user closes the editor
+    // Onboarding — show setup card until user explicitly launches the wizard
     if (data.onboarding_complete === false) {
-      if ((this.hass as any)?.editMode) {
+      if (this._wizardOpen) {
         return html`
           <ha-card>
-            <div class="pvc-setup-pending">
-              <div class="pvc-setup-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
-                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
-                </svg>
-              </div>
-              <p class="pvc-setup-title">PlanaVista</p>
-              <p class="pvc-setup-hint">Save this card — the setup wizard will launch when you close the editor.</p>
-            </div>
+            <pv-onboarding-wizard
+              .hass=${this.hass}
+              @onboarding-complete=${this._onOnboardingComplete}
+            ></pv-onboarding-wizard>
           </ha-card>
         `;
       }
       return html`
         <ha-card>
-          <pv-onboarding-wizard
-            .hass=${this.hass}
-            @onboarding-complete=${this._onOnboardingComplete}
-          ></pv-onboarding-wizard>
+          <div class="pvc-setup-pending">
+            <div class="pvc-setup-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+              </svg>
+            </div>
+            <p class="pvc-setup-title">PlanaVista</p>
+            <p class="pvc-setup-hint">Complete your setup to start using the calendar.</p>
+            <button class="pv-btn pv-btn-primary pvc-setup-btn"
+              @click=${() => { this._wizardOpen = true; }}>
+              Start Setup
+            </button>
+          </div>
         </ha-card>
       `;
     }
