@@ -1,6 +1,9 @@
 // PlanaVista v1.0
 // Single entry point — imports all cards and registers them with HA
 
+// Reusable sub-components
+import './components/color-swatch-picker';
+
 import './cards/planavista-calendar-card';
 import './cards/planavista-grid-card';
 import './cards/planavista-agenda-card';
