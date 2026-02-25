@@ -684,6 +684,17 @@ export class PlanaVistaCalendarCard extends LitElement {
         .pvc-weather-temp { font-size: 1.5rem; }
         .pvc-time-display { font-size: 1.75rem; }
       }
+
+      /* short height (landscape phone, etc.) — date-only compact header */
+      @media (max-height: 500px) {
+        .pvc-header {
+          padding: 6px 14px;
+          justify-content: center;
+        }
+        .pvc-weather { display: none; }
+        .pvc-header-time { display: none; }
+        .pvc-header-date { font-size: 0.875rem; }
+      }
     `,
   ];
 
@@ -730,6 +741,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     if (changedProps.has('hass') || changedProps.has('_config') || changedProps.has('_settingsOpen')) {
       const data = getPlanaVistaData(this.hass, this._config?.entity);
       const theme = resolveTheme(this._config?.theme, data?.display?.theme);
+      console.log('[PlanaVista] theme resolve:', { cardTheme: this._config?.theme, displayTheme: data?.display?.theme, resolved: theme, display: data?.display });
       applyTheme(this, theme);
     }
   }

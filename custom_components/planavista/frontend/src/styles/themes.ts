@@ -131,7 +131,11 @@ const _appliedThemeCache = new WeakMap<HTMLElement, ThemeName>();
  * Skips if the same theme is already applied (performance optimization).
  */
 export function applyTheme(element: HTMLElement, theme: ThemeName = 'light'): void {
-  if (_appliedThemeCache.get(element) === theme) return;
+  const cached = _appliedThemeCache.get(element);
+  if (cached === theme) {
+    return;
+  }
+  console.log('[PlanaVista] applyTheme:', theme, '(was:', cached, ')');
   const vars = themeVars[theme] || themeVars.light;
   for (const [key, value] of Object.entries(vars)) {
     element.style.setProperty(key, value);
