@@ -90,6 +90,8 @@ export class PvColorSwatchPicker extends LitElement {
   }
 
   private _emit(color: string, colorLight: string) {
+    this.value = color;
+    this.valueLight = colorLight;
     this.dispatchEvent(
       new CustomEvent('color-change', {
         detail: { color, colorLight },
