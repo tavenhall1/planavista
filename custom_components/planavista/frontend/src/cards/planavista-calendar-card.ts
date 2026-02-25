@@ -548,7 +548,8 @@ export class PlanaVistaCalendarCard extends LitElement {
   }
 
   private _onOnboardingComplete() {
-    // hass will receive updated sensor state and trigger re-render automatically
+    this._wizardOpen = false;
+    // Coordinator refreshes server-side; hass pushes updated sensor state → re-render
   }
 
   private _showWeatherDetails() {

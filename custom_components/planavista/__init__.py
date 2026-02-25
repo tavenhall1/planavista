@@ -68,9 +68,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if "onboarding_complete" in call_data:
             new_data["onboarding_complete"] = bool(call_data["onboarding_complete"])
 
+        # Persist to config entry storage
         hass.config_entries.async_update_entry(config_entry, data=new_data)
-        await hass.config_entries.async_reload(config_entry.entry_id)
-        _LOGGER.info("PlanaVista config saved via save_config service")
+
+        # Update coordinator in-memory and refresh data immediately
+        # (avoids heavy full-entry reload which tears down & recreates everything)
+        coord = hass.data[DOMAIN].get(config_entry.entry_id)
+        if coord:
+            coord.calendars = new_data.get(CONF_CALENDARS, [])
+            await coord.async_refresh()
+
+        _LOGGER.info(
+            "PlanaVista config saved via save_config service (calendars=%d, onboarding=%s)",
+            len(new_data.get(CONF_CALENDARS, [])),
+            new_data.get("onboarding_complete"),
+        )
 
     hass.services.async_register(DOMAIN, "save_config", async_save_config)
 
