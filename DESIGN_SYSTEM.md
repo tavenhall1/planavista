@@ -317,6 +317,7 @@ No form fields, no dropdowns. Click Submit → config entry created with empty d
 **First-Launch Onboarding Wizard (LitElement, in-card):**
 The card detects `onboarding_complete !== true` and opens the wizard automatically.
 
+- **Page 0 — Reuse Config (conditional):** If existing PlanaVista configs are detected, offer a choice: "Start fresh" or "Use existing config" with a dropdown of available configs. Selecting an existing config skips the wizard entirely — card renders immediately. If no existing configs exist, this page is skipped.
 - **Page 1 — Preferences:** Time format (12h/24h), weather entity, first day of week, default calendar view.
 - **Page 2 — Calendars:** Auto-discovers all `calendar.*` entities. User selects which to include, assigns color from swatch grid (10 presets + "Custom..." picker), links to a person entity.
 - **Page 3 — Theme:** Visual previews of each theme. Click to select, live preview updates behind the wizard.
