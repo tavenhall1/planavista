@@ -1,6 +1,59 @@
 import { CalendarEvent, CalendarConfig } from '../types';
 import { getDateKey } from './date-utils';
 
+export interface SharedEvent extends CalendarEvent {
+  shared_calendars: Array<{
+    entity_id: string;
+    color: string;
+    color_light: string;
+    person_entity: string;
+    display_name: string;
+  }>;
+}
+
+export function deduplicateSharedEvents(
+  events: CalendarEvent[],
+  calendars: CalendarConfig[]
+): SharedEvent[] {
+  const calMap = new Map(calendars.map(c => [c.entity_id, c]));
+  const eventMap = new Map<string, SharedEvent>();
+
+  for (const event of events) {
+    // Key: summary + start + end (normalized)
+    const key = `${event.summary}|${event.start}|${event.end}`;
+
+    if (eventMap.has(key)) {
+      // Add this calendar as a participant
+      const existing = eventMap.get(key)!;
+      const cal = calMap.get(event.calendar_entity_id);
+      if (cal) {
+        existing.shared_calendars.push({
+          entity_id: cal.entity_id,
+          color: cal.color,
+          color_light: cal.color_light,
+          person_entity: cal.person_entity,
+          display_name: cal.display_name,
+        });
+      }
+    } else {
+      // First occurrence
+      const cal = calMap.get(event.calendar_entity_id);
+      eventMap.set(key, {
+        ...event,
+        shared_calendars: cal ? [{
+          entity_id: cal.entity_id,
+          color: cal.color,
+          color_light: cal.color_light,
+          person_entity: cal.person_entity,
+          display_name: cal.display_name,
+        }] : [],
+      });
+    }
+  }
+
+  return Array.from(eventMap.values());
+}
+
 /**
  * Check if an event is all-day.
  */
