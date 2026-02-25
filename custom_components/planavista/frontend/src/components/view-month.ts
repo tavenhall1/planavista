@@ -140,6 +140,32 @@ export class PVViewMonth extends LitElement {
       .more-events:hover {
         color: var(--pv-accent);
       }
+
+      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+
+      /* xs: phones — compact day cells, truncate event pills */
+      @media (max-width: 479px) {
+        .weekday-name { font-size: 0.5625rem; padding: 0.25rem 0; letter-spacing: 0.02em; }
+        .day-number { font-size: 0.6875rem; padding: 0.0625rem 0.125rem; }
+        .day-cell { padding: 0.125rem; }
+        .day-cell.today .day-number { width: 20px; height: 20px; font-size: 0.625rem; }
+        .month-event-pill { font-size: 0.5rem; padding: 0 0.25rem; border-left-width: 2px; }
+        .more-events { font-size: 0.5rem; }
+      }
+
+      /* sm: large phones — slightly larger */
+      @media (min-width: 480px) and (max-width: 767px) {
+        .weekday-name { font-size: 0.625rem; }
+        .day-number { font-size: 0.75rem; }
+        .month-event-pill { font-size: 0.5625rem; }
+      }
+
+      /* short height — tighter cells */
+      @media (max-height: 500px) {
+        .day-cell { padding: 0.125rem; }
+        .day-number { font-size: 0.6875rem; }
+        .month-event-pill { font-size: 0.5625rem; }
+      }
     `,
   ];
 

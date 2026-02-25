@@ -354,6 +354,47 @@ export class PVViewDay extends LitElement {
         opacity: 0.3;
         margin-bottom: 1rem;
       }
+
+      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+
+      /* xs: phones — hide column headers, compact events */
+      @media (max-width: 479px) {
+        .column-headers { display: none; }
+        .time-gutter { width: 40px; }
+        .all-day-gutter { width: 40px; font-size: 0.5625rem; }
+        .time-label { font-size: 0.5625rem; }
+        .positioned-event { padding: 3px 6px; }
+        .event-title { font-size: 0.6875rem; }
+        .event-time { display: none; }
+        .next-day-footer { padding: 10px; font-size: 0.8125rem; }
+      }
+
+      /* sm: large phones — hide column headers, narrower gutter */
+      @media (min-width: 480px) and (max-width: 767px) {
+        .column-headers { display: none; }
+        .time-gutter { width: 48px; }
+        .all-day-gutter { width: 48px; }
+        .positioned-event { padding: 4px 8px; }
+        .event-title { font-size: 0.75rem; }
+      }
+
+      /* md: tablets — smaller avatars */
+      @media (min-width: 768px) and (max-width: 1023px) {
+        .person-avatar, .person-initial { width: 48px; height: 48px; font-size: 1.125rem; }
+        .person-name { font-size: 0.8125rem; }
+      }
+
+      /* short height — compact avatars */
+      @media (max-height: 500px) {
+        .person-avatar, .person-initial { width: 32px; height: 32px; font-size: 0.875rem; }
+        .person-header { padding: 0.375rem 0.25rem; gap: 3px; }
+        .person-name { font-size: 0.75rem; }
+      }
+
+      /* tall height — larger avatars */
+      @media (min-height: 901px) {
+        .person-avatar, .person-initial { width: 64px; height: 64px; }
+      }
     `,
   ];
 

@@ -294,6 +294,50 @@ export class PVViewWeek extends LitElement {
         color: var(--pv-text-muted);
         margin-left: 2px;
       }
+
+      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+
+      /* xs: phones — narrow gutter, hide event time, compact headers */
+      @media (max-width: 479px) {
+        .time-gutter { width: 32px; }
+        .header-gutter { width: 32px; }
+        .all-day-gutter { width: 32px; font-size: 0.5rem; }
+        .time-label { font-size: 0.5rem; right: 0.25rem; }
+        .day-header-weekday { font-size: 0.5625rem; }
+        .day-header-date { font-size: 0.9375rem; }
+        .day-header { padding: 0.25rem 0.125rem; }
+        .positioned-event { left: 1px; right: 1px; padding: 0.0625rem 0.125rem; }
+        .event-title { font-size: 0.5625rem; }
+        .event-time { display: none; }
+        .all-day-event { font-size: 0.5625rem; padding: 0.0625rem 0.25rem; }
+        .shared-avatars { display: none; }
+      }
+
+      /* sm: large phones — slightly wider gutter */
+      @media (min-width: 480px) and (max-width: 767px) {
+        .time-gutter { width: 40px; }
+        .header-gutter { width: 40px; }
+        .all-day-gutter { width: 40px; }
+        .time-label { font-size: 0.5625rem; }
+        .day-header-weekday { font-size: 0.5625rem; }
+        .day-header-date { font-size: 1rem; }
+        .event-title { font-size: 0.625rem; }
+        .event-time { font-size: 0.5rem; }
+      }
+
+      /* md: tablets — moderate compression */
+      @media (min-width: 768px) and (max-width: 1023px) {
+        .time-gutter { width: 46px; }
+        .header-gutter { width: 46px; }
+        .all-day-gutter { width: 46px; }
+      }
+
+      /* short height — compress day headers */
+      @media (max-height: 500px) {
+        .day-header { padding: 0.25rem 0.125rem; }
+        .day-header-weekday { font-size: 0.5625rem; }
+        .day-header-date { font-size: 1rem; }
+      }
     `,
   ];
 

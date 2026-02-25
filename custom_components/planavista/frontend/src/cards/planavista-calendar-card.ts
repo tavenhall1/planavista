@@ -510,11 +510,81 @@ export class PlanaVistaCalendarCard extends LitElement {
         to { opacity: 1; }
       }
 
-      /* Responsive: stack controls on narrow screens */
-      @media (max-width: 600px) {
+      /* ═══════════════════════════════════════════════
+         RESPONSIVE BREAKPOINTS
+         ═══════════════════════════════════════════════ */
+
+      /* xs: phones (≤479px) — stack everything, icon-only tabs */
+      @media (max-width: 479px) {
+        .pvc-header {
+          padding: 10px 14px;
+          gap: 6px;
+        }
+
+        .pvc-weather-icon { --icon-size: 32px; }
+        .pvc-weather-temp { font-size: 1.25rem; }
+        .pvc-weather-condition { display: none; }
+        .pvc-header-date { font-size: 0.9375rem; }
+        .pvc-time-display { font-size: 1.375rem; }
+        .pvc-time-ampm { font-size: 0.6875rem; }
+
         .pvc-toolbar {
           flex-wrap: wrap;
           justify-content: center;
+          padding: 8px 10px;
+          gap: 6px;
+        }
+
+        .pvc-controls {
+          width: 100%;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+
+        .pvc-new-btn {
+          padding: 6px 12px;
+          font-size: 0.8125rem;
+          min-height: 34px;
+        }
+
+        .pvc-today-btn {
+          padding: 4px 10px;
+          font-size: 0.8125rem;
+          min-height: 32px;
+        }
+
+        .pvc-nav-btn {
+          width: 34px;
+          height: 34px;
+        }
+
+        .pvc-view-tab {
+          padding: 4px 8px;
+          font-size: 0.6875rem;
+          min-height: 30px;
+        }
+
+        .pvc-settings-btn {
+          width: 34px;
+          height: 34px;
+        }
+      }
+
+      /* sm: large phones (480–767px) — compact header, wrap toolbar */
+      @media (min-width: 480px) and (max-width: 767px) {
+        .pvc-header {
+          padding: 12px 16px;
+        }
+
+        .pvc-weather-condition { display: none; }
+        .pvc-header-date { font-size: 1.0625rem; }
+        .pvc-time-display { font-size: 1.5rem; }
+
+        .pvc-toolbar {
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 6px;
         }
 
         .pvc-controls {
@@ -522,6 +592,22 @@ export class PlanaVistaCalendarCard extends LitElement {
           justify-content: center;
           flex-wrap: wrap;
         }
+      }
+
+      /* md: tablets (768–1023px) — single row, slightly compressed */
+      @media (min-width: 768px) and (max-width: 1023px) {
+        .pvc-weather-icon { --icon-size: 36px; }
+        .pvc-weather-temp { font-size: 1.5rem; }
+        .pvc-time-display { font-size: 1.75rem; }
+      }
+
+      /* xs + short height: minimal header */
+      @media (max-width: 479px) and (max-height: 500px) {
+        .pvc-header {
+          padding: 6px 10px;
+        }
+
+        .pvc-weather { display: none; }
       }
     `,
   ];

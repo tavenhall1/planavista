@@ -362,6 +362,43 @@ export class PVEventCreateDialog extends LitElement {
         color: var(--pv-text-muted);
         opacity: 0.6;
       }
+
+      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+
+      /* xs: phones — bottom-sheet dialog */
+      @media (max-width: 479px) {
+        .pv-overlay {
+          align-items: flex-end;
+        }
+
+        .pv-dialog {
+          max-width: 100%;
+          width: 100%;
+          max-height: 90vh;
+          border-radius: 16px 16px 0 0;
+          animation: pv-slideUp 250ms ease;
+        }
+
+        .pv-dialog-header { padding: 1rem; }
+        .pv-dialog-body { padding: 1rem; }
+        .pv-dialog-footer { padding: 0.75rem 1rem; }
+
+        .form-row { flex-direction: column; gap: 0.5rem; }
+
+        .cal-option { padding: 0.25rem 0.5rem; font-size: 0.75rem; min-height: 36px; }
+      }
+
+      /* sm: large phones — slightly wider dialog */
+      @media (min-width: 480px) and (max-width: 767px) {
+        .pv-dialog { max-width: calc(100% - 1rem); }
+        .pv-dialog-header { padding: 1rem 1.25rem; }
+        .pv-dialog-body { padding: 1.25rem; }
+      }
+
+      @keyframes pv-slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
     `,
   ];
 

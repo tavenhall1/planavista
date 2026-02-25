@@ -1205,6 +1205,30 @@ export class PvOnboardingWizard extends LitElement {
         animation: pv-spin 0.6s linear infinite;
         flex-shrink: 0;
       }
+
+      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+
+      /* xs: phones — compact wizard */
+      @media (max-width: 479px) {
+        .wizard-header { padding: 0.5rem 0.625rem; gap: 0.25rem; }
+        .wizard-title-text { font-size: 0.8125rem; }
+        .wizard-content { padding: 1rem; }
+        .page-title { font-size: 1.125rem; }
+        .page-subtitle { font-size: 0.8125rem; margin-bottom: 1.25rem; }
+        .field-group { margin-bottom: 1rem; }
+        .pill-btn { padding: 0.375rem 0.875rem; min-height: 38px; font-size: 0.8125rem; }
+        .view-grid { grid-template-columns: repeat(2, 1fr); }
+        .theme-grid { grid-template-columns: 1fr; }
+        .settings-tabs { flex-wrap: wrap; }
+        .settings-tab { font-size: 0.75rem; padding: 5px 10px; }
+        .back-btn, .next-btn { font-size: 0.75rem; padding: 0.25rem 0.5rem; min-height: 32px; }
+      }
+
+      /* sm: large phones */
+      @media (min-width: 480px) and (max-width: 767px) {
+        .wizard-content { padding: 1.25rem; }
+        .page-title { font-size: 1.25rem; }
+      }
     `,
   ];
 }

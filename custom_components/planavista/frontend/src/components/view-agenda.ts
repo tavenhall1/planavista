@@ -175,6 +175,22 @@ export class PVViewAgenda extends LitElement {
         color: var(--pv-accent);
         font-size: 0.75rem;
       }
+
+      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+
+      /* xs: phones — tighter padding */
+      @media (max-width: 479px) {
+        .agenda-event { padding: 0.5rem 0.75rem; gap: 0.5rem; }
+        .event-title { font-size: 0.8125rem; }
+        .event-meta { font-size: 0.75rem; gap: 0.5rem; }
+        .event-location { font-size: 0.6875rem; }
+        .date-header { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+      }
+
+      /* md+: constrain width for readability */
+      @media (min-width: 768px) {
+        .agenda-container { max-width: 720px; margin: 0 auto; }
+      }
     `,
   ];
 
