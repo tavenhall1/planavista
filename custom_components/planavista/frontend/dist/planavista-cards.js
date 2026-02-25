@@ -555,6 +555,13 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
           </div>
         `}
 
+        ${c?W:R`
+          <div class="date-banner" @click=${this._goToToday}>
+            <ha-icon icon="mdi:calendar-today"></ha-icon>
+            ${this.currentDate.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+          </div>
+        `}
+
         <div class="time-grid-wrapper">
           <div class="time-grid">
             <div class="time-gutter">
@@ -580,7 +587,7 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
         ${t}
         <ha-icon icon="mdi:arrow-down"></ha-icon>
       </div>
-    `}_goToNextDay(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_renderColumn(e,t){const i=Re(t);return R`
+    `}_goToToday(){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:new Date},bubbles:!0,composed:!0}))}_goToNextDay(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_renderColumn(e,t){const i=Re(t);return R`
       <div class="person-column">
         ${i.map(e=>{const t=Ie(e,0,24),i=e.totalColumns>1?`calc(${100/e.totalColumns}% - 4px)`:"calc(100% - 4px)",a=e.totalColumns>1?`calc(${e.column/e.totalColumns*100}% + 2px)`:"2px";return R`
             <div
@@ -838,6 +845,49 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
 
       .slot-click-area:hover {
         background: var(--pv-today-bg);
+      }
+
+      /* Date banner (shown when viewing a day other than today) */
+      .date-banner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 16px;
+        color: var(--pv-accent, #6366F1);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        background: var(--pv-border-subtle, rgba(0, 0, 0, 0.03));
+        border-bottom: 1px solid var(--pv-border);
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: background 200ms ease;
+        -webkit-tap-highlight-color: transparent;
+        animation: pv-banner-slide-in 350ms cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+      }
+
+      .date-banner:hover {
+        background: color-mix(in srgb, var(--pv-accent, #6366F1) 8%, transparent);
+      }
+
+      .date-banner ha-icon {
+        --mdc-icon-size: 18px;
+      }
+
+      @keyframes pv-banner-slide-in {
+        from {
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
+          opacity: 0;
+        }
+        to {
+          max-height: 60px;
+          padding-top: 12px;
+          padding-bottom: 12px;
+          opacity: 1;
+        }
       }
 
       /* Next day footer */
