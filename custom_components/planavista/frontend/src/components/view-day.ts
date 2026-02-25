@@ -1,0 +1,461 @@
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { HomeAssistant } from 'custom-card-helpers';
+import { CalendarEvent, CalendarConfig } from '../types';
+import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../styles/shared';
+import { formatTime } from '../utils/date-utils';
+import {
+  isAllDayEvent,
+  groupEventsByPerson,
+  getEventsForDateRange,
+  getEventPosition,
+  detectOverlaps,
+  filterVisibleEvents,
+} from '../utils/event-utils';
+import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
+
+const DAY_START_HOUR = 6;
+const DAY_END_HOUR = 23;
+const HOUR_HEIGHT = 60; // px per hour
+
+@customElement('pv-view-day')
+export class PVViewDay extends LitElement {
+  @property({ attribute: false }) hass!: HomeAssistant;
+  @property({ type: Array }) events: CalendarEvent[] = [];
+  @property({ type: Array }) calendars: CalendarConfig[] = [];
+  @property({ type: Object }) currentDate: Date = new Date();
+  @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
+  @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
+
+  static styles = [
+    baseStyles,
+    eventStyles,
+    nowIndicatorStyles,
+    animationStyles,
+    css`
+      :host { display: block; }
+
+      .day-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      /* All-day section */
+      .all-day-section {
+        display: flex;
+        border-bottom: 1px solid var(--pv-border);
+        padding: 0.5rem 0;
+        min-height: 40px;
+        flex-shrink: 0;
+      }
+
+      .all-day-gutter {
+        width: 60px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6875rem;
+        color: var(--pv-text-muted);
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+      }
+
+      .all-day-events {
+        flex: 1;
+        display: flex;
+        gap: 0.375rem;
+        flex-wrap: wrap;
+        padding: 0 0.5rem;
+      }
+
+      .all-day-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.625rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: white;
+        cursor: pointer;
+        transition: all var(--pv-transition);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .all-day-chip:hover {
+        transform: scale(1.02);
+        box-shadow: var(--pv-shadow);
+      }
+
+      /* Column headers */
+      .column-headers {
+        display: flex;
+        border-bottom: 1px solid var(--pv-border);
+        flex-shrink: 0;
+      }
+
+      .header-gutter {
+        width: 60px;
+        flex-shrink: 0;
+      }
+
+      .person-header {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 0.5rem;
+        min-width: 0;
+      }
+
+      .person-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 2px solid var(--pv-border-subtle);
+      }
+
+      .person-initial {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: white;
+        flex-shrink: 0;
+      }
+
+      .person-name {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--pv-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Time grid */
+      .time-grid-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      .time-grid {
+        display: flex;
+        position: relative;
+        min-height: ${(DAY_END_HOUR - DAY_START_HOUR) * HOUR_HEIGHT}px;
+      }
+
+      .time-gutter {
+        width: 60px;
+        flex-shrink: 0;
+        position: relative;
+      }
+
+      .time-label {
+        position: absolute;
+        right: 0.5rem;
+        font-size: 0.6875rem;
+        color: var(--pv-text-muted);
+        transform: translateY(-50%);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .columns-area {
+        flex: 1;
+        display: flex;
+        position: relative;
+      }
+
+      .person-column {
+        flex: 1;
+        position: relative;
+        border-left: 1px solid var(--pv-border-subtle);
+        min-width: 0;
+      }
+
+      .person-column:first-child {
+        border-left: 1px solid var(--pv-border);
+      }
+
+      /* Hour lines */
+      .hour-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--pv-border-subtle);
+        pointer-events: none;
+      }
+
+      /* Positioned events */
+      .positioned-event {
+        position: absolute;
+        left: 2px;
+        right: 2px;
+        padding: 0.25rem 0.375rem;
+        border-radius: var(--pv-radius-sm, 8px);
+        border-left: 3px solid var(--event-color);
+        background: color-mix(in srgb, var(--event-color) 10%, var(--pv-card-bg, white));
+        cursor: pointer;
+        overflow: hidden;
+        transition: all var(--pv-transition);
+        z-index: 1;
+        min-height: 24px;
+      }
+
+      .positioned-event:hover {
+        z-index: 5;
+        box-shadow: var(--pv-shadow-lg);
+        transform: translateX(1px);
+      }
+
+      .positioned-event .event-title {
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .positioned-event .event-time {
+        font-size: 0.625rem;
+        color: var(--pv-text-secondary);
+        margin-top: 1px;
+      }
+
+      /* Click target for empty slots */
+      .slot-click-area {
+        position: absolute;
+        left: 0;
+        right: 0;
+        cursor: pointer;
+      }
+
+      .slot-click-area:hover {
+        background: var(--pv-today-bg);
+      }
+
+      /* Empty state */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        color: var(--pv-text-muted);
+        text-align: center;
+      }
+
+      .empty-state ha-icon {
+        --mdc-icon-size: 48px;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+      }
+    `,
+  ];
+
+  private _scrollContainer?: HTMLElement;
+
+  firstUpdated() {
+    this._scrollToNow();
+  }
+
+  updated(changedProps: PropertyValues) {
+    super.updated(changedProps);
+    if (changedProps.has('currentDate')) {
+      this._scrollToNow();
+    }
+  }
+
+  private _scrollToNow() {
+    requestAnimationFrame(() => {
+      const container = this.shadowRoot?.querySelector('.time-grid-wrapper') as HTMLElement;
+      if (!container) return;
+      this._scrollContainer = container;
+      const now = new Date();
+      const minutesSinceStart = (now.getHours() - DAY_START_HOUR) * 60 + now.getMinutes();
+      const totalMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
+      if (minutesSinceStart > 0 && minutesSinceStart < totalMinutes) {
+        const scrollTo = (minutesSinceStart / totalMinutes) * container.scrollHeight - container.clientHeight / 3;
+        container.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' });
+      }
+    });
+  }
+
+  render() {
+    const visible = filterVisibleEvents(this.events, this.hiddenCalendars);
+    const dateStart = new Date(this.currentDate);
+    dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(this.currentDate);
+    dateEnd.setHours(23, 59, 59, 999);
+    const dayEvents = getEventsForDateRange(visible, dateStart, dateEnd);
+
+    // Separate all-day and timed events
+    const allDayEvents = dayEvents.filter(e => isAllDayEvent(e));
+    const timedEvents = dayEvents.filter(e => !isAllDayEvent(e));
+
+    // Group by person
+    const visibleCalendars = this.calendars.filter(c => c.visible !== false && !this.hiddenCalendars.has(c.entity_id));
+    const personGroups = groupEventsByPerson(timedEvents, visibleCalendars);
+    const personKeys = Array.from(personGroups.keys());
+
+    // Compute now indicator position
+    const now = new Date();
+    const isCurrentDay = now.toDateString() === this.currentDate.toDateString();
+    const nowMinutes = (now.getHours() - DAY_START_HOUR) * 60 + now.getMinutes();
+    const totalMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
+    const nowPercent = isCurrentDay ? (nowMinutes / totalMinutes) * 100 : -1;
+
+    if (visibleCalendars.length === 0) {
+      return html`
+        <div class="empty-state">
+          <ha-icon icon="mdi:calendar-blank"></ha-icon>
+          <p>No calendars visible</p>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="day-container">
+        ${allDayEvents.length > 0 ? html`
+          <div class="all-day-section">
+            <div class="all-day-gutter">All Day</div>
+            <div class="all-day-events">
+              ${allDayEvents.map(e => html`
+                <div
+                  class="all-day-chip"
+                  style="background: ${e.calendar_color}"
+                  @click=${() => this._onEventClick(e)}
+                >${e.summary}</div>
+              `)}
+            </div>
+          </div>
+        ` : nothing}
+
+        <div class="column-headers">
+          <div class="header-gutter"></div>
+          ${personKeys.map(key => {
+            const cal = visibleCalendars.find(c => (c.person_entity || c.entity_id) === key);
+            const avatar = cal?.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
+            const name = cal?.person_entity
+              ? getPersonName(this.hass, cal.person_entity)
+              : cal?.display_name || key;
+            const color = cal?.color || '#6366F1';
+            return html`
+              <div class="person-header">
+                ${avatar
+                  ? html`<img class="person-avatar" src="${avatar}" alt="${name}" />`
+                  : html`<div class="person-initial" style="background: ${color}">${name[0]?.toUpperCase() || '?'}</div>`}
+                <span class="person-name">${name}</span>
+              </div>
+            `;
+          })}
+        </div>
+
+        <div class="time-grid-wrapper">
+          <div class="time-grid">
+            <div class="time-gutter">
+              ${this._renderTimeLabels()}
+            </div>
+            <div class="columns-area">
+              ${this._renderHourLines()}
+              ${nowPercent >= 0 && nowPercent <= 100 ? html`
+                <div class="pv-now-line" style="top: ${nowPercent}%"></div>
+              ` : nothing}
+              ${personKeys.map(key => this._renderColumn(key, personGroups.get(key) || []))}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderTimeLabels() {
+    const labels = [];
+    for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
+      const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
+      let label: string;
+      if (this.timeFormat === '24h') {
+        label = `${String(h).padStart(2, '0')}:00`;
+      } else {
+        const hour12 = h % 12 || 12;
+        const period = h >= 12 ? 'PM' : 'AM';
+        label = `${hour12} ${period}`;
+      }
+      labels.push(html`
+        <div class="time-label" style="top: ${top}%">${label}</div>
+      `);
+    }
+    return labels;
+  }
+
+  private _renderHourLines() {
+    const lines = [];
+    for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
+      const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
+      lines.push(html`
+        <div class="hour-line" style="top: ${top}%"></div>
+      `);
+    }
+    return lines;
+  }
+
+  private _renderColumn(personKey: string, events: CalendarEvent[]) {
+    const positioned = detectOverlaps(events);
+
+    return html`
+      <div class="person-column">
+        ${positioned.map(event => {
+          const pos = getEventPosition(event, DAY_START_HOUR, DAY_END_HOUR);
+          const width = event.totalColumns > 1
+            ? `calc(${100 / event.totalColumns}% - 4px)`
+            : 'calc(100% - 4px)';
+          const left = event.totalColumns > 1
+            ? `calc(${(event.column / event.totalColumns) * 100}% + 2px)`
+            : '2px';
+
+          return html`
+            <div
+              class="positioned-event"
+              style="
+                top: ${pos.top}%;
+                height: ${pos.height}%;
+                width: ${width};
+                left: ${left};
+                --event-color: ${event.calendar_color};
+              "
+              @click=${() => this._onEventClick(event)}
+            >
+              <div class="event-title">${event.summary}</div>
+              <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
+  private _onEventClick(event: CalendarEvent) {
+    this.dispatchEvent(new CustomEvent('event-click', {
+      detail: { event },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+}
