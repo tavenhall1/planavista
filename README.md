@@ -2,31 +2,27 @@
 
 > **A panoramic view of your family's life**
 
-**WARNING: This project is in its very early stages and is not yet functional. Key features are missing, bugs are likely, and the code is subject to change without notice. Use at your own risk. **
-
-
-PlanaVista is a beautiful, easy-to-configure Home Assistant integration that brings commercial-quality wall calendar functionality to your smart home. No monthly fees, complete privacy, and endless customization.
+PlanaVista is a beautiful, easy-to-configure Home Assistant integration that brings commercial-quality wall calendar functionality to your smart home. Built with LitElement and TypeScript, it delivers smooth performance, responsive design, and a polished UI that rivals Skylight and Hearth — with no monthly fees, complete privacy, and endless customization.
 
 ## ✨ Features
 
-> **Legend:** ✅ Implemented | ⬜ Planned
-
 ### Core Functionality
-- [x] 🎨 **Beautiful Default Theme** - Stunning out of box, rivals commercial products
-- [x] ⚙️ **Zero-Configuration Setup** - Auto-discovers calendars, smart defaults
-- [x] 📱 **Fully Responsive** - Perfect on tablets, wall displays, or phones
-- [x] 🌈 **Multiple Themes** - PlanaVista, Minimal, Modern, Dark
-- [x] 📅 **Multiple Views** - Day, Week, Month, Agenda
-- [ ] 🎯 **Simple Event Creation** - Quick add or advanced mode
-- [x] ☀️ **Integrated Weather** - Shows current and forecast weather
+- [x] 🎨 **Beautiful Default Theme** - Calm premium aesthetic with 4 built-in themes (Light, Dark, Minimal, Vibrant)
+- [x] ⚙️ **Zero-Configuration Setup** - Auto-discovers calendars, weather, and people entities
+- [x] 📱 **Fully Responsive** - Touch-optimized for tablets, wall displays, and phones
+- [x] 📅 **4 Calendar Views** - Day (per-person columns), Week (7-day grid), Month, Agenda
+- [x] 🎯 **Event Creation & Management** - Create, edit, and delete events with a polished dialog
+- [x] ☀️ **Animated Weather** - Custom SVG weather icons with condition-based gradients
 - [x] 🕐 **Flexible Time Display** - 12-hour or 24-hour format
+- [x] 👥 **Per-Person Day View** - Skylight-inspired columns with person avatars
+- [x] 🔄 **Cross-Card State** - Shared state manager syncs all cards in real-time
 
 ### Technical Excellence
-- [x] 🔄 **HACS Integration** - Install and update with one click
-- [x] 🎛️ **UI Configuration** - No YAML editing required
-- [x] 🔌 **Extensible Architecture** - Modular component cards, ready for future modules
-- [x] 🚀 **Performance Optimized** - Smooth on any hardware
-- [x] 🔐 **Privacy First** - Your data stays local
+- [x] 🔄 **HACS Compatible** - Pre-built bundle, no Node.js required for users
+- [x] 🎛️ **UI Configuration** - Full config flow with auto-discovery, no YAML needed
+- [x] 🔌 **Modular Architecture** - 5 independent cards you can arrange freely
+- [x] 🚀 **LitElement + TypeScript** - Reactive rendering, type-safe, 126KB bundle
+- [x] 🔐 **Privacy First** - 100% local, your data never leaves your network
 
 ---
 
@@ -101,14 +97,7 @@ PlanaVista provides **modular component cards** that you can arrange however you
 | `planavista-toggles-card` | Calendar visibility toggles |
 | `planavista-grid-card` | Calendar grid (week/month/day views) |
 | `planavista-agenda-card` | Upcoming events list |
-| `planavista-calendar-card` | All-in-one card (legacy) |
-
-#### Quick Setup (All-in-One)
-1. Go to your dashboard → **Edit** → **Add Card**
-2. Search for **"PlanaVista"**
-3. Done! The all-in-one card auto-configures.
-
-#### Custom Layout (Recommended for Wall Displays)
+#### Recommended Layout (Wall Displays)
 1. Go to your dashboard → **Edit** → **Add Card**
 2. Add each component card individually
 3. Arrange them in the layout that works best for your display
@@ -123,17 +112,17 @@ See [examples/dashboards/](examples/dashboards/) for ready-to-use layouts.
 
 PlanaVista includes four built-in themes:
 
-### PlanaVista (Default)
-Beautiful gradient header, clean design, optimized for readability
-
-### Minimal
-Simple, clean, minimal design for distraction-free viewing
-
-### Modern
-Vibrant gradients, contemporary aesthetic
+### Light (Default)
+Warm off-white (#FAFAF8), calm and premium feel with soft shadows
 
 ### Dark
-Perfect for OLED displays and dark rooms
+Rich dark backgrounds, perfect for OLED displays and dark rooms
+
+### Minimal
+Stripped-down, distraction-free viewing with reduced visual noise
+
+### Vibrant
+Bold accent colors and higher contrast for a lively look
 
 **Change Theme**: Settings → Devices & Services → PlanaVista → Configure
 
@@ -141,19 +130,19 @@ Perfect for OLED displays and dark rooms
 
 ## 📅 Calendar Views
 
-### Day View
-Focus on today's events with hourly breakdown
+### Day View (Default)
+Per-person columns showing each family member's schedule side-by-side. Inspired by Skylight's hero view with person avatars, all-day event banners, and a pulsing now indicator.
 
-### Week View (Default)
-See the week at a glance, perfect for planning
+### Week View
+Google Calendar-style 7-day grid with time gutter, positioned events, overlap detection, and now indicator.
 
 ### Month View
-Traditional monthly calendar layout
+Traditional 6-week grid with event pills (max 3 per day), "+N more" overflow, and click-to-navigate.
 
 ### Agenda View
-Chronological list of upcoming events
+Scrolling list grouped by date with sticky headers, relative date labels ("Today", "Tomorrow"), and configurable lookahead.
 
-**Change View**: Add view selector to dashboard or configure default view in settings
+**Change View**: Use the view switcher in the toggles card, or configure the default view in integration settings.
 
 ---
 
@@ -208,16 +197,28 @@ Just select it during setup!
 
 ## 🛠️ Advanced Usage
 
-### Custom Card Configuration
+### Card Configuration
 
-While PlanaVista auto-configures, you can override settings:
+Each card accepts configuration options:
 
 ```yaml
-type: custom:planavista-calendar-card
+# Grid card with default day view
+type: custom:planavista-grid-card
 entity: sensor.planavista_config
-days_visible: 7  # Override day count
-show_weather: true
-theme: modern  # Override theme
+view: day
+
+# Agenda card with custom settings
+type: custom:planavista-agenda-card
+entity: sensor.planavista_config
+max_events: 15
+days_ahead: 14
+max_height: 500px
+
+# Clock card
+type: custom:planavista-clock-card
+entity: sensor.planavista_config
+size: large
+show_date: true
 ```
 
 ### Using Services
@@ -252,40 +253,34 @@ service: planavista.refresh_calendars
 
 ## 🔮 Roadmap
 
-### v0.1.0 - Initial Release ✅
-- [x] Basic integration structure
-- [x] Config flow with auto-discovery
-- [x] Sensor entities
-- [x] Basic frontend card
-- [x] Documentation
+### v1.0.0 - Full Calendar Rewrite ✅
+- [x] Complete LitElement + TypeScript rewrite (single 126KB bundle)
+- [x] 5 modular cards: clock, weather, toggles, grid, agenda
+- [x] 4 calendar views: day (per-person), week, month, agenda
+- [x] Event CRUD: create, edit, delete with polished dialog
+- [x] 4 themes: light, dark, minimal, vibrant
+- [x] Animated SVG weather icons
+- [x] Cross-card state management via ReactiveController
+- [x] Per-person column day view with avatars
+- [x] Touch swipe navigation
+- [x] HACS-compatible pre-built bundle
 
-### v0.2.0 - Component Cards ✅
-- [x] Modular card architecture (clock, weather, toggles, grid, agenda)
-- [x] Shared state management for cross-card communication
-- [x] Theme system with 4 built-in themes
-- [x] Example dashboard layouts (portrait, landscape, compact)
-- [x] Full event rendering with calendar colors
-
-### v0.3.0 - Enhanced Calendar
+### v1.1.0 - Polish & Enhancements (Planned)
 - [ ] Drag-to-create events
-- [ ] Multi-day event support
-- [ ] Event editing/deletion
-- [ ] Recurrence support
+- [ ] Multi-day event rendering improvements
+- [ ] Recurrence editing support
+- [ ] Visual card editors for all cards
+- [ ] Accessibility improvements (keyboard navigation, ARIA)
 
-### v0.4.0 - Photo Frame Module
+### v1.2.0 - Photo Frame Module
 - [ ] Slideshow during idle time
 - [ ] Google Photos integration
 - [ ] Custom photo folders
 
-### v0.5.0 - Chores & Tasks
+### v1.3.0 - Chores & Tasks
 - [ ] Household task tracking
 - [ ] Grocy integration
 - [ ] Completion tracking
-
-### v0.6.0 - Meal Planning
-- [ ] Weekly meal calendar
-- [ ] Recipe integration
-- [ ] Shopping list generation
 
 ---
 
@@ -347,12 +342,14 @@ MIT License - See [LICENSE](LICENSE) for details
 
 ## 🙏 Credits
 
-Built with love using:
-- Home Assistant
-- Modern web technologies
-- Community feedback
+Built with:
+- [Home Assistant](https://www.home-assistant.io/) - The foundation
+- [Lit](https://lit.dev/) - Web component framework
+- [TypeScript](https://www.typescriptlang.org/) - Type-safe development
+- [Rollup](https://rollupjs.org/) - Module bundler
+- Weather icons inspired by [Meteocons](https://bas.dev/work/meteocons) by Bas Milius (MIT)
 
-Inspired by commercial products like Skylight and Hearth, but designed to be better.
+Inspired by commercial products like Skylight and Hearth, but open source, private, and extensible.
 
 ---
 
