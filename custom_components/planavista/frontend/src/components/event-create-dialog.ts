@@ -5,6 +5,8 @@ import { CalendarConfig, CalendarEvent, CreateEventData, DeleteEventData } from 
 import { PlanaVistaController } from '../state/state-manager';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
+const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
 @customElement('pv-event-create-dialog')
 export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -24,15 +26,22 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _showMore = false;
   @state() private _saving = false;
   @state() private _error = '';
-  @state() private _locationSuggestions: Array<{ display_name: string; lat: string; lon: string }> = [];
+
+  // Date picker state
+  @state() private _datePickerOpen = false;
+  @state() private _pickerMonth = 0;
+  @state() private _pickerYear = 0;
+
+  // Location autocomplete state
+  @state() private _locationSuggestions: Array<{ display_name: string }> = [];
   @state() private _locationLoading = false;
   @state() private _locationFocused = false;
 
   private _locationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-
   private _pv = new PlanaVistaController(this);
 
   @query('#title-input') private _titleInput?: HTMLInputElement;
+  @query('.location-input') private _locationInput?: HTMLInputElement;
 
   static styles = [
     baseStyles,
@@ -143,41 +152,172 @@ export class PVEventCreateDialog extends LitElement {
         border-radius: var(--pv-radius-sm);
       }
 
-      /* Date input — ensure native picker is visible */
-      input[type="date"] {
-        appearance: auto;
-        -webkit-appearance: auto;
+      /* ============================================
+         CUSTOM DATE PICKER
+         ============================================ */
+      .date-picker-wrap {
+        position: relative;
+      }
+
+      .date-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--pv-border);
+        border-radius: var(--pv-radius-sm, 8px);
+        background: var(--pv-card-bg);
+        color: var(--pv-text);
+        font-size: 0.9375rem;
+        font-family: inherit;
         cursor: pointer;
+        min-height: 48px;
+        box-sizing: border-box;
+        transition: border-color 200ms ease;
       }
 
-      input[type="date"]::-webkit-calendar-picker-indicator {
+      .date-display:hover {
+        border-color: var(--pv-text-muted);
+      }
+
+      .date-display ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--pv-text-muted);
+      }
+
+      .date-picker-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        z-index: 200;
+        background: var(--pv-card-bg, #fff);
+        border: 1px solid var(--pv-border);
+        border-radius: var(--pv-radius-md, 12px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+        padding: 12px;
+        width: 280px;
+        animation: pv-fadeIn 150ms ease;
+      }
+
+      .picker-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .picker-month-label {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--pv-text);
+      }
+
+      .picker-nav {
+        display: flex;
+        gap: 2px;
+      }
+
+      .picker-nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--pv-text-secondary);
         cursor: pointer;
-        opacity: 0.6;
-        font-size: 1.125rem;
-        padding: 4px;
+        font-family: inherit;
+        transition: background 150ms;
       }
 
-      input[type="date"]::-webkit-calendar-picker-indicator:hover {
-        opacity: 1;
+      .picker-nav-btn:hover {
+        background: var(--pv-event-hover, rgba(0,0,0,0.05));
       }
 
-      /* Location autocomplete */
+      .picker-nav-btn ha-icon {
+        --mdc-icon-size: 18px;
+      }
+
+      .picker-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        margin-bottom: 4px;
+      }
+
+      .picker-weekday {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: var(--pv-text-muted);
+        padding: 4px 0;
+        text-transform: uppercase;
+      }
+
+      .picker-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+      }
+
+      .picker-day {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--pv-text);
+        font-size: 0.8125rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 150ms;
+        margin: 0 auto;
+      }
+
+      .picker-day:hover {
+        background: var(--pv-event-hover, rgba(0,0,0,0.05));
+      }
+
+      .picker-day.other-month {
+        color: var(--pv-text-muted);
+        opacity: 0.4;
+      }
+
+      .picker-day.today {
+        border: 2px solid var(--pv-accent);
+        font-weight: 600;
+      }
+
+      .picker-day.selected {
+        background: var(--pv-accent);
+        color: var(--pv-accent-text, #fff);
+        font-weight: 600;
+      }
+
+      .picker-day.selected:hover {
+        filter: brightness(1.1);
+      }
+
+      /* ============================================
+         LOCATION AUTOCOMPLETE (fixed position)
+         ============================================ */
       .location-wrap {
         position: relative;
       }
 
-      .location-suggestions {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 50;
+      .location-suggestions-fixed {
+        position: fixed;
+        z-index: 9999;
         background: var(--pv-card-bg, #fff);
         border: 1px solid var(--pv-border);
-        border-top: none;
         border-radius: 0 0 var(--pv-radius-sm, 8px) var(--pv-radius-sm, 8px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        max-height: 200px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        max-height: 220px;
         overflow-y: auto;
       }
 
@@ -230,6 +370,7 @@ export class PVEventCreateDialog extends LitElement {
     super.updated(changedProps);
     if (changedProps.has('open') && this.open) {
       this._initForm();
+      this._datePickerOpen = false;
       requestAnimationFrame(() => {
         this._titleInput?.focus();
       });
@@ -240,6 +381,8 @@ export class PVEventCreateDialog extends LitElement {
     this._error = '';
     this._saving = false;
     this._showMore = false;
+    this._locationSuggestions = [];
+    this._locationFocused = false;
 
     if (this.prefill) {
       this._title = this.prefill.summary || '';
@@ -250,6 +393,8 @@ export class PVEventCreateDialog extends LitElement {
       if (this.prefill.start) {
         const start = new Date(this.prefill.start);
         this._date = this._toDateStr(start);
+        this._pickerYear = start.getFullYear();
+        this._pickerMonth = start.getMonth();
         if (!this.prefill.start.includes('T') || (start.getHours() === 0 && start.getMinutes() === 0)) {
           this._allDay = true;
           this._startTime = '';
@@ -278,6 +423,8 @@ export class PVEventCreateDialog extends LitElement {
     this._calendarEntityId = this.calendars[0]?.entity_id || '';
     const now = new Date();
     this._date = this._toDateStr(now);
+    this._pickerYear = now.getFullYear();
+    this._pickerMonth = now.getMonth();
     const minutes = Math.ceil(now.getMinutes() / 15) * 15;
     now.setMinutes(minutes, 0, 0);
     this._startTime = this._toTimeStr(now);
@@ -295,6 +442,18 @@ export class PVEventCreateDialog extends LitElement {
 
   private _toTimeStr(d: Date): string {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  private _formatDateDisplay(): string {
+    if (!this._date) return 'Select a date';
+    const [y, m, d] = this._date.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
   }
 
   render() {
@@ -349,12 +508,7 @@ export class PVEventCreateDialog extends LitElement {
 
               <div class="form-field">
                 <label class="pv-label">Date</label>
-                <input
-                  class="pv-input"
-                  type="date"
-                  .value=${this._date}
-                  @input=${(e: Event) => this._date = (e.target as HTMLInputElement).value}
-                />
+                ${this._renderDatePicker()}
               </div>
 
               <div class="all-day-row">
@@ -410,33 +564,7 @@ export class PVEventCreateDialog extends LitElement {
                 </div>
                 <div class="form-field">
                   <label class="pv-label">Location</label>
-                  <div class="location-wrap">
-                    <input
-                      class="pv-input"
-                      type="text"
-                      placeholder="Search for a place or address..."
-                      .value=${this._location}
-                      @input=${this._onLocationInput}
-                      @focus=${() => this._locationFocused = true}
-                      @blur=${() => { setTimeout(() => { this._locationFocused = false; }, 200); }}
-                    />
-                    ${this._locationFocused && (this._locationSuggestions.length > 0 || this._locationLoading) ? html`
-                      <div class="location-suggestions">
-                        ${this._locationLoading ? html`
-                          <div class="location-loading">Searching...</div>
-                        ` : nothing}
-                        ${this._locationSuggestions.map(s => html`
-                          <div class="location-suggestion" @mousedown=${() => this._selectLocation(s.display_name)}>
-                            <ha-icon icon="mdi:map-marker"></ha-icon>
-                            <span>${s.display_name}</span>
-                          </div>
-                        `)}
-                        ${this._locationSuggestions.length > 0 ? html`
-                          <div class="location-powered">Powered by OpenStreetMap</div>
-                        ` : nothing}
-                      </div>
-                    ` : nothing}
-                  </div>
+                  ${this._renderLocationField()}
                 </div>
               `}
             </div>
@@ -456,77 +584,153 @@ export class PVEventCreateDialog extends LitElement {
           </div>
         </div>
       </div>
+
+      ${this._renderLocationDropdown()}
     `;
   }
 
-  private _onOverlayClick() {
-    this._close();
+  // ==================================================================
+  // CUSTOM DATE PICKER
+  // ==================================================================
+
+  private _renderDatePicker() {
+    return html`
+      <div class="date-picker-wrap">
+        <div class="date-display" @click=${this._toggleDatePicker}>
+          <ha-icon icon="mdi:calendar"></ha-icon>
+          ${this._formatDateDisplay()}
+        </div>
+        ${this._datePickerOpen ? html`
+          <div class="date-picker-dropdown">
+            <div class="picker-header">
+              <span class="picker-month-label">
+                ${new Date(this._pickerYear, this._pickerMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
+              <div class="picker-nav">
+                <button class="picker-nav-btn" @click=${this._pickerPrevMonth}>
+                  <ha-icon icon="mdi:chevron-left"></ha-icon>
+                </button>
+                <button class="picker-nav-btn" @click=${this._pickerNextMonth}>
+                  <ha-icon icon="mdi:chevron-right"></ha-icon>
+                </button>
+              </div>
+            </div>
+            <div class="picker-weekdays">
+              ${WEEKDAY_LABELS.map(d => html`<span class="picker-weekday">${d}</span>`)}
+            </div>
+            <div class="picker-days">
+              ${this._getPickerDays().map(day => {
+                const isOther = day.getMonth() !== this._pickerMonth;
+                const isToday = this._toDateStr(day) === this._toDateStr(new Date());
+                const isSelected = this._toDateStr(day) === this._date;
+                return html`
+                  <button
+                    class="picker-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
+                    @click=${() => this._selectPickerDay(day)}
+                  >${day.getDate()}</button>
+                `;
+              })}
+            </div>
+          </div>
+        ` : nothing}
+      </div>
+    `;
   }
 
-  private _close() {
-    this._pv.state.closeDialog();
+  private _toggleDatePicker() {
+    this._datePickerOpen = !this._datePickerOpen;
+    if (this._datePickerOpen && this._date) {
+      const [y, m] = this._date.split('-').map(Number);
+      this._pickerYear = y;
+      this._pickerMonth = m - 1;
+    }
   }
 
-  private async _save() {
-    if (!this._title.trim()) {
-      this._error = 'Please enter an event title';
-      return;
+  private _pickerPrevMonth() {
+    this._pickerMonth--;
+    if (this._pickerMonth < 0) {
+      this._pickerMonth = 11;
+      this._pickerYear--;
     }
-    if (!this._calendarEntityId) {
-      this._error = 'Please select a calendar';
-      return;
+  }
+
+  private _pickerNextMonth() {
+    this._pickerMonth++;
+    if (this._pickerMonth > 11) {
+      this._pickerMonth = 0;
+      this._pickerYear++;
+    }
+  }
+
+  private _getPickerDays(): Date[] {
+    const firstOfMonth = new Date(this._pickerYear, this._pickerMonth, 1);
+    const startDay = firstOfMonth.getDay(); // 0=Sun
+    const start = new Date(firstOfMonth);
+    start.setDate(start.getDate() - startDay);
+
+    const days: Date[] = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }
+
+  private _selectPickerDay(day: Date) {
+    this._date = this._toDateStr(day);
+    this._datePickerOpen = false;
+  }
+
+  // ==================================================================
+  // LOCATION AUTOCOMPLETE (fixed position, HA location bias)
+  // ==================================================================
+
+  private _renderLocationField() {
+    return html`
+      <div class="location-wrap">
+        <input
+          class="pv-input location-input"
+          type="text"
+          placeholder="Search for a place or address..."
+          .value=${this._location}
+          @input=${this._onLocationInput}
+          @focus=${() => this._locationFocused = true}
+          @blur=${() => { setTimeout(() => { this._locationFocused = false; }, 250); }}
+        />
+      </div>
+    `;
+  }
+
+  private _renderLocationDropdown() {
+    if (!this._locationFocused || (!this._locationSuggestions.length && !this._locationLoading)) {
+      return nothing;
     }
 
-    // Validate end time > start time for timed events
-    if (!this._allDay && this._endTime <= this._startTime) {
-      this._error = 'End time must be after start time';
-      return;
-    }
+    // Calculate position from the location input
+    const input = this._locationInput;
+    if (!input) return nothing;
+    const rect = input.getBoundingClientRect();
 
-    // If editing, ensure we have a UID to delete the original
-    if (this.mode === 'edit' && !this.prefill?.uid) {
-      this._error = 'Cannot edit this event (no unique ID). Try deleting and recreating it.';
-      return;
-    }
-
-    this._error = '';
-    this._saving = true;
-
-    try {
-      const data: CreateEventData = {
-        entity_id: this._calendarEntityId,
-        summary: this._title.trim(),
-      };
-
-      if (this._allDay) {
-        data.start_date = this._date;
-        // End date is exclusive for all-day events
-        const end = new Date(this._date);
-        end.setDate(end.getDate() + 1);
-        data.end_date = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
-      } else {
-        data.start_date_time = `${this._date}T${this._startTime}:00`;
-        data.end_date_time = `${this._date}T${this._endTime}:00`;
-      }
-
-      if (this._description.trim()) data.description = this._description.trim();
-      if (this._location.trim()) data.location = this._location.trim();
-
-      if (this.mode === 'edit' && this.prefill?.uid) {
-        // Edit = delete old + create new
-        const deleteData: DeleteEventData = {
-          entity_id: this.prefill.calendar_entity_id!,
-          uid: this.prefill.uid,
-          recurrence_id: this.prefill.recurrence_id,
-        };
-        await this._pv.state.doEditEvent(this.hass, deleteData, data);
-      } else {
-        await this._pv.state.doCreateEvent(this.hass, data);
-      }
-    } catch (err: any) {
-      this._error = `Failed to save event: ${err?.message || 'Unknown error'}`;
-      this._saving = false;
-    }
+    return html`
+      <div
+        class="location-suggestions-fixed"
+        style="top: ${rect.bottom}px; left: ${rect.left}px; width: ${rect.width}px;"
+      >
+        ${this._locationLoading ? html`
+          <div class="location-loading">Searching...</div>
+        ` : nothing}
+        ${this._locationSuggestions.map(s => html`
+          <div class="location-suggestion" @mousedown=${() => this._selectLocation(s.display_name)}>
+            <ha-icon icon="mdi:map-marker"></ha-icon>
+            <span>${s.display_name}</span>
+          </div>
+        `)}
+        ${this._locationSuggestions.length > 0 ? html`
+          <div class="location-powered">Powered by OpenStreetMap</div>
+        ` : nothing}
+      </div>
+    `;
   }
 
   private _onLocationInput(e: Event) {
@@ -551,7 +755,19 @@ export class PVEventCreateDialog extends LitElement {
 
   private async _searchLocation(query: string) {
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
+      // Use HA's home coordinates for location bias
+      const lat = (this.hass as any)?.config?.latitude;
+      const lon = (this.hass as any)?.config?.longitude;
+
+      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
+
+      if (lat != null && lon != null) {
+        // Create a ~100km viewbox around the home location for bias
+        const delta = 1.0; // ~111km at equator
+        url += `&viewbox=${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
+        url += `&bounded=0`; // prefer but don't restrict to viewbox
+      }
+
       const resp = await fetch(url, {
         headers: { 'Accept-Language': 'en' },
       });
@@ -559,8 +775,6 @@ export class PVEventCreateDialog extends LitElement {
       const results = await resp.json();
       this._locationSuggestions = results.map((r: any) => ({
         display_name: r.display_name,
-        lat: r.lat,
-        lon: r.lon,
       }));
     } catch {
       this._locationSuggestions = [];
@@ -573,5 +787,77 @@ export class PVEventCreateDialog extends LitElement {
     this._location = name;
     this._locationSuggestions = [];
     this._locationFocused = false;
+  }
+
+  // ==================================================================
+  // DIALOG ACTIONS
+  // ==================================================================
+
+  private _onOverlayClick() {
+    this._close();
+  }
+
+  private _close() {
+    this._datePickerOpen = false;
+    this._locationSuggestions = [];
+    this._pv.state.closeDialog();
+  }
+
+  private async _save() {
+    if (!this._title.trim()) {
+      this._error = 'Please enter an event title';
+      return;
+    }
+    if (!this._calendarEntityId) {
+      this._error = 'Please select a calendar';
+      return;
+    }
+
+    if (!this._allDay && this._endTime <= this._startTime) {
+      this._error = 'End time must be after start time';
+      return;
+    }
+
+    if (this.mode === 'edit' && !this.prefill?.uid) {
+      this._error = 'Cannot edit this event (no unique ID). Try deleting and recreating it.';
+      return;
+    }
+
+    this._error = '';
+    this._saving = true;
+
+    try {
+      const data: CreateEventData = {
+        entity_id: this._calendarEntityId,
+        summary: this._title.trim(),
+      };
+
+      if (this._allDay) {
+        data.start_date = this._date;
+        const end = new Date(this._date);
+        end.setDate(end.getDate() + 1);
+        data.end_date = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+      } else {
+        data.start_date_time = `${this._date}T${this._startTime}:00`;
+        data.end_date_time = `${this._date}T${this._endTime}:00`;
+      }
+
+      if (this._description.trim()) data.description = this._description.trim();
+      if (this._location.trim()) data.location = this._location.trim();
+
+      if (this.mode === 'edit' && this.prefill?.uid) {
+        const deleteData: DeleteEventData = {
+          entity_id: this.prefill.calendar_entity_id!,
+          uid: this.prefill.uid,
+          recurrence_id: this.prefill.recurrence_id,
+        };
+        await this._pv.state.doEditEvent(this.hass, deleteData, data);
+      } else {
+        await this._pv.state.doCreateEvent(this.hass, data);
+      }
+    } catch (err: any) {
+      this._error = `Failed to save event: ${err?.message || 'Unknown error'}`;
+      this._saving = false;
+    }
   }
 }
