@@ -565,11 +565,11 @@ export class PVViewDay extends LitElement {
         ${positioned.map(event => {
           const pos = getEventPosition(event, DAY_START_HOUR, DAY_END_HOUR);
           const width = event.totalColumns > 1
-            ? `calc(${100 / event.totalColumns}% - 4px)`
-            : 'calc(100% - 4px)';
+            ? `calc(${100 / event.totalColumns}% - 6px)` // 6px = 3px left accent border + 3px right gap
+            : 'calc(100% - 6px)';
           const left = event.totalColumns > 1
-            ? `calc(${(event.column / event.totalColumns) * 100}% + 2px)`
-            : '2px';
+            ? `calc(${(event.column / event.totalColumns) * 100}% + 3px)`
+            : '3px';
 
           return html`
             <div

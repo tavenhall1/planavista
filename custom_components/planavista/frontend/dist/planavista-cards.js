@@ -591,7 +591,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       </div>
     `}_goToToday(){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:new Date},bubbles:!0,composed:!0}))}_goToNextDay(){const t=new Date(this.currentDate);t.setDate(t.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:t},bubbles:!0,composed:!0}))}_renderColumn(t,e){const i=Yt(e);return R`
       <div class="person-column">
-        ${i.map(t=>{const e=Rt(t,0,24),i=t.totalColumns>1?`calc(${100/t.totalColumns}% - 4px)`:"calc(100% - 4px)",a=t.totalColumns>1?`calc(${t.column/t.totalColumns*100}% + 2px)`:"2px";return R`
+        ${i.map(t=>{const e=Rt(t,0,24),i=t.totalColumns>1?`calc(${100/t.totalColumns}% - 6px)`:"calc(100% - 6px)",a=t.totalColumns>1?`calc(${t.column/t.totalColumns*100}% + 3px)`:"3px";return R`
             <div
               class="positioned-event"
               style="
