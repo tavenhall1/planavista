@@ -12,9 +12,53 @@
   },
   "options": {
     "step": {
+      "init": {
+        "title": "PlanaVista Settings",
+        "description": "What would you like to configure?",
+        "menu_options": {
+          "manage_calendars": "Add or Remove Calendars",
+          "edit_calendar": "Edit Calendar Settings",
+          "display": "Display Settings"
+        }
+      },
+      "manage_calendars": {
+        "title": "Manage Calendars",
+        "description": "Check calendars to include in PlanaVista, uncheck to remove them.",
+        "data": {
+          "calendars": "Calendars to display"
+        }
+      },
+      "add_calendar": {
+        "title": "Configure New Calendar",
+        "description": "Customize how {calendar_name} appears in PlanaVista",
+        "data": {
+          "_entity_id": "Calendar Entity",
+          "display_name": "Display Name",
+          "color": "Color",
+          "icon": "Icon",
+          "person_entity": "Link to Person (optional)"
+        }
+      },
+      "edit_calendar": {
+        "title": "Select Calendar to Edit",
+        "description": "Choose which calendar's settings you want to modify",
+        "data": {
+          "calendar": "Calendar"
+        }
+      },
+      "edit_calendar_details": {
+        "title": "Edit {calendar_name}",
+        "description": "Update the display settings for this calendar",
+        "data": {
+          "display_name": "Display Name",
+          "color": "Color",
+          "icon": "Icon",
+          "person_entity": "Link to Person (optional)"
+        }
+      },
       "display": {
-        "title": "Update Display Settings",
-        "description": "Modify PlanaVista display preferences",
+        "title": "Display Settings",
+        "description": "Configure default display preferences. Note: Individual cards can override these settings.",
         "data": {
           "time_format": "Time Format",
           "weather_entity": "Weather Entity (optional)",
@@ -23,6 +67,10 @@
           "theme": "Theme"
         }
       }
+    },
+    "abort": {
+      "no_calendars": "No calendars configured. Please add calendars first.",
+      "calendar_not_found": "Calendar not found. It may have been removed."
     }
   }
 }
