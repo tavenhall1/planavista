@@ -57,6 +57,7 @@ class PlanaVistaConfigSensor(CoordinatorEntity, SensorEntity):
             "calendars": data.get("calendars", []),
             "events": data.get("events", []),
             "display": self.coordinator.display_config,
+            "onboarding_complete": self._entry.data.get("onboarding_complete", True),
             "version": self._entry.version,
         }
 

@@ -17,6 +17,7 @@ import '../components/view-month';
 import '../components/view-agenda';
 import '../components/event-popup';
 import '../components/event-create-dialog';
+import '../components/onboarding-wizard';
 
 @customElement('planavista-calendar-card')
 export class PlanaVistaCalendarCard extends LitElement {
@@ -503,6 +504,11 @@ export class PlanaVistaCalendarCard extends LitElement {
     return this._config?.weather_entity || data?.display?.weather_entity || null;
   }
 
+  private _onOnboardingComplete() {
+    // Wizard fired onboarding-complete — hass will update and re-render with onboarding_complete=true
+    this.requestUpdate();
+  }
+
   private _showWeatherDetails() {
     const entityId = this._getWeatherEntityId();
     if (entityId) {
@@ -530,6 +536,18 @@ export class PlanaVistaCalendarCard extends LitElement {
             <p>PlanaVista entity not found</p>
             <p style="font-size: 0.8rem;">Check that the PlanaVista integration is configured.</p>
           </div>
+        </ha-card>
+      `;
+    }
+
+    // Show onboarding wizard on first load (new installs)
+    if (data.onboarding_complete === false) {
+      return html`
+        <ha-card>
+          <pv-onboarding-wizard
+            .hass=${this.hass}
+            @onboarding-complete=${this._onOnboardingComplete}
+          ></pv-onboarding-wizard>
         </ha-card>
       `;
     }

@@ -91,6 +91,7 @@ export interface PlanaVistaData {
   calendars: CalendarConfig[];
   events: CalendarEvent[];
   display: DisplayConfig;
+  onboarding_complete?: boolean;
   version?: number;
 }
 

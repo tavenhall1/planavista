@@ -56,6 +56,7 @@ export function getPlanaVistaData(hass: HomeAssistant, entityId = 'sensor.planav
       default_view: 'day',
       theme: 'light',
     },
+    onboarding_complete: attrs.onboarding_complete,
     version: attrs.version,
   };
 }
