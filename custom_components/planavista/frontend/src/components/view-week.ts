@@ -10,7 +10,10 @@ import {
   getEventPosition,
   detectOverlaps,
   filterVisibleEvents,
+  deduplicateSharedEvents,
+  SharedEvent,
 } from '../utils/event-utils';
+import { getPersonAvatar } from '../utils/ha-utils';
 
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;
@@ -245,6 +248,52 @@ export class PVViewWeek extends LitElement {
         font-size: 0.5625rem;
         color: var(--pv-text-secondary);
       }
+
+      .shared-avatars {
+        position: absolute;
+        bottom: 3px;
+        right: 4px;
+        display: flex;
+        align-items: center;
+      }
+
+      .shared-avatar {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid var(--pv-card-bg, #fff);
+        object-fit: cover;
+        margin-left: -4px;
+      }
+
+      .shared-avatar:first-child {
+        margin-left: 0;
+      }
+
+      .shared-avatar-initial {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid var(--pv-card-bg, #fff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.5rem;
+        font-weight: 700;
+        color: white;
+        margin-left: -4px;
+      }
+
+      .shared-avatar-initial:first-child {
+        margin-left: 0;
+      }
+
+      .shared-more {
+        font-size: 0.5rem;
+        font-weight: 600;
+        color: var(--pv-text-muted);
+        margin-left: 2px;
+      }
     `,
   ];
 
@@ -283,6 +332,7 @@ export class PVViewWeek extends LitElement {
     const weekEnd = new Date(days[6]);
     weekEnd.setHours(23, 59, 59, 999);
     const weekEvents = getEventsForDateRange(visible, weekStart, weekEnd);
+    const dedupedWeekEvents = deduplicateSharedEvents(weekEvents, this.calendars);
 
     const now = new Date();
     const todayStr = now.toDateString();
@@ -302,7 +352,7 @@ export class PVViewWeek extends LitElement {
           })}
         </div>
 
-        ${this._renderAllDayBanner(days, weekEvents)}
+        ${this._renderAllDayBanner(days, dedupedWeekEvents)}
 
         <div class="time-grid-wrapper">
           <div class="time-grid">
@@ -311,7 +361,7 @@ export class PVViewWeek extends LitElement {
             </div>
             <div class="days-area">
               ${this._renderHourLines()}
-              ${days.map(day => this._renderDayColumn(day, weekEvents, todayStr))}
+              ${days.map(day => this._renderDayColumn(day, dedupedWeekEvents, todayStr))}
             </div>
           </div>
         </div>
@@ -319,7 +369,7 @@ export class PVViewWeek extends LitElement {
     `;
   }
 
-  private _renderAllDayBanner(days: Date[], events: CalendarEvent[]) {
+  private _renderAllDayBanner(days: Date[], events: SharedEvent[]) {
     const allDayEvents = events.filter(e => isAllDayEvent(e));
     if (allDayEvents.length === 0) return nothing;
 
@@ -383,7 +433,7 @@ export class PVViewWeek extends LitElement {
     return lines;
   }
 
-  private _renderDayColumn(day: Date, allEvents: CalendarEvent[], todayStr: string) {
+  private _renderDayColumn(day: Date, allEvents: SharedEvent[], todayStr: string) {
     const isCurrentDay = day.toDateString() === todayStr;
     const dayStart = new Date(day);
     dayStart.setHours(DAY_START_HOUR, 0, 0, 0);
@@ -426,6 +476,19 @@ export class PVViewWeek extends LitElement {
             >
               <div class="event-title">${event.summary}</div>
               <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
+              ${((event as unknown) as SharedEvent).shared_calendars?.length > 1 ? html`
+                <div class="shared-avatars">
+                  ${((event as unknown) as SharedEvent).shared_calendars.slice(0, 3).map((cal) => {
+                    const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
+                    return avatar
+                      ? html`<img class="shared-avatar" src="${avatar}" alt="${cal.display_name}" />`
+                      : html`<div class="shared-avatar-initial" style="background: ${cal.color}">${cal.display_name[0] || '?'}</div>`;
+                  })}
+                  ${((event as unknown) as SharedEvent).shared_calendars.length > 3 ? html`
+                    <span class="shared-more">+${((event as unknown) as SharedEvent).shared_calendars.length - 3}</span>
+                  ` : nothing}
+                </div>
+              ` : nothing}
             </div>
           `;
         })}
