@@ -140,6 +140,13 @@ export function applyTheme(element: HTMLElement, theme: ThemeName = 'light'): vo
 }
 
 /**
+ * Clear theme cache for an element so the next applyTheme call always applies.
+ */
+export function clearThemeCache(element: HTMLElement): void {
+  _appliedThemeCache.delete(element);
+}
+
+/**
  * Get all CSS variables for a theme as a plain CSS string (for use in <style>).
  */
 export function getThemeCSSText(theme: ThemeName = 'light'): string {

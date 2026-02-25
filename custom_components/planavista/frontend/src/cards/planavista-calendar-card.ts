@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
-import { applyTheme, resolveTheme } from '../styles/themes';
+import { applyTheme, resolveTheme, clearThemeCache } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { formatDate } from '../utils/date-utils';
 import { getPlanaVistaData, getPersonAvatar, getPersonName } from '../utils/ha-utils';
@@ -514,26 +514,43 @@ export class PlanaVistaCalendarCard extends LitElement {
          RESPONSIVE BREAKPOINTS
          ═══════════════════════════════════════════════ */
 
-      /* xs: phones (≤479px) — stack everything, icon-only tabs */
+      /* --- Mobile calendar avatar strip (inline in toolbar) --- */
+      .pvc-cal-strip {
+        display: none; /* hidden on desktop — filter dropdown used instead */
+      }
+
+      /* xs: phones (≤479px) — date-only header, avatar strip, compact controls */
       @media (max-width: 479px) {
+        /* Header: date only, slim bar */
         .pvc-header {
-          padding: 10px 14px;
-          gap: 6px;
+          padding: 8px 14px;
+          justify-content: center;
         }
-
-        .pvc-weather-icon { --icon-size: 32px; }
-        .pvc-weather-temp { font-size: 1.25rem; }
-        .pvc-weather-condition { display: none; }
+        .pvc-weather { display: none; }
+        .pvc-header-time { display: none; }
         .pvc-header-date { font-size: 0.9375rem; }
-        .pvc-time-display { font-size: 1.375rem; }
-        .pvc-time-ampm { font-size: 0.6875rem; }
 
+        /* Toolbar */
         .pvc-toolbar {
           flex-wrap: wrap;
           justify-content: center;
           padding: 8px 10px;
           gap: 6px;
         }
+
+        /* Hide desktop filter dropdown, show inline avatar strip */
+        .pvc-filter-wrap { display: none; }
+        .pvc-cal-strip {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding-bottom: 2px;
+        }
+        .pvc-cal-strip::-webkit-scrollbar { display: none; }
 
         .pvc-controls {
           width: 100%;
@@ -571,15 +588,27 @@ export class PlanaVistaCalendarCard extends LitElement {
         }
       }
 
-      /* sm: large phones (480–767px) — compact header, wrap toolbar */
+      /* sm: large phones (480–767px) — compact header, avatar strip */
       @media (min-width: 480px) and (max-width: 767px) {
         .pvc-header {
-          padding: 12px 16px;
+          padding: 10px 16px;
         }
-
-        .pvc-weather-condition { display: none; }
+        .pvc-weather { display: none; }
+        .pvc-header-time { display: none; }
         .pvc-header-date { font-size: 1.0625rem; }
-        .pvc-time-display { font-size: 1.5rem; }
+
+        /* Show avatar strip, hide dropdown */
+        .pvc-filter-wrap { display: none; }
+        .pvc-cal-strip {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .pvc-cal-strip::-webkit-scrollbar { display: none; }
 
         .pvc-toolbar {
           flex-wrap: wrap;
@@ -594,20 +623,66 @@ export class PlanaVistaCalendarCard extends LitElement {
         }
       }
 
+      /* Calendar strip chips */
+      .pvc-cal-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px 4px 4px;
+        border-radius: 9999px;
+        border: 1.5px solid var(--chip-color, var(--pv-border));
+        background: transparent;
+        cursor: pointer;
+        transition: all 150ms ease;
+        flex-shrink: 0;
+        font-family: inherit;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .pvc-cal-chip.active {
+        background: color-mix(in srgb, var(--chip-color) 12%, transparent);
+      }
+
+      .pvc-cal-chip:not(.active) {
+        opacity: 0.4;
+        border-color: var(--pv-border);
+      }
+
+      .pvc-cal-chip-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.625rem;
+        color: white;
+        background-size: cover;
+        background-position: center;
+      }
+
+      .pvc-cal-chip-name {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: var(--pv-text);
+        white-space: nowrap;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pvc-cal-chip:not(.active) .pvc-cal-chip-name {
+        color: var(--pv-text-muted);
+      }
+
       /* md: tablets (768–1023px) — single row, slightly compressed */
       @media (min-width: 768px) and (max-width: 1023px) {
         .pvc-weather-icon { --icon-size: 36px; }
         .pvc-weather-temp { font-size: 1.5rem; }
         .pvc-time-display { font-size: 1.75rem; }
-      }
-
-      /* xs + short height: minimal header */
-      @media (max-width: 479px) and (max-height: 500px) {
-        .pvc-header {
-          padding: 6px 10px;
-        }
-
-        .pvc-weather { display: none; }
       }
     `,
   ];
@@ -652,7 +727,7 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
-    if (changedProps.has('hass') || changedProps.has('_config')) {
+    if (changedProps.has('hass') || changedProps.has('_config') || changedProps.has('_settingsOpen')) {
       const data = getPlanaVistaData(this.hass, this._config?.entity);
       const theme = resolveTheme(this._config?.theme, data?.display?.theme);
       applyTheme(this, theme);
@@ -708,7 +783,8 @@ export class PlanaVistaCalendarCard extends LitElement {
   private _onOnboardingComplete() {
     this._wizardOpen = false;
     this._onboardingDone = true;
-    // Coordinator refreshes server-side; hass pushes updated sensor state → re-render
+    // Force theme application from newly saved config
+    clearThemeCache(this);
   }
 
   private _openSettings() {
@@ -717,6 +793,8 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _onSettingsSave() {
     this._settingsOpen = false;
+    // Force theme re-application on next hass update
+    clearThemeCache(this);
   }
 
   private _onSettingsClose() {
@@ -951,6 +1029,31 @@ export class PlanaVistaCalendarCard extends LitElement {
               })}
             </div>
           ` : nothing}
+        </div>
+
+        <!-- Mobile inline calendar chips (shown on xs/sm via CSS) -->
+        <div class="pvc-cal-strip">
+          ${calendars.map(cal => {
+            const isActive = !this._pv.state.hiddenCalendars.has(cal.entity_id);
+            const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
+            const name = cal.display_name || (cal.person_entity ? getPersonName(this.hass, cal.person_entity) : cal.entity_id);
+            const initial = (name || '?')[0].toUpperCase();
+            return html`
+              <button
+                class="pvc-cal-chip ${isActive ? 'active' : ''}"
+                style="--chip-color: ${cal.color}"
+                @click=${() => this._pv.state.toggleCalendar(cal.entity_id)}
+              >
+                <div
+                  class="pvc-cal-chip-avatar"
+                  style="${avatar
+                    ? `background-image: url(${avatar}); background-color: ${cal.color}`
+                    : `background: ${cal.color}`}"
+                >${!avatar ? initial : ''}</div>
+                <span class="pvc-cal-chip-name">${name}</span>
+              </button>
+            `;
+          })}
         </div>
 
         <div class="pvc-controls">
