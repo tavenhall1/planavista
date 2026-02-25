@@ -37,11 +37,12 @@ export class PVViewAgenda extends LitElement {
     eventStyles,
     animationStyles,
     css`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .agenda-container {
         display: flex;
         flex-direction: column;
+        height: 100%;
         overflow-y: auto;
       }
 

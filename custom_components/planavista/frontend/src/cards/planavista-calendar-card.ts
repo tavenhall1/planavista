@@ -38,6 +38,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     css`
       :host {
         display: block;
+        height: 100%;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
       }
@@ -404,7 +405,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         flex: 1;
         overflow: hidden;
         position: relative;
-        min-height: 400px;
+        min-height: 0;
       }
 
       .pvc-body > * {

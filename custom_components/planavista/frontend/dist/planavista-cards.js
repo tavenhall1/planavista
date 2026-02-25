@@ -594,7 +594,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
           `})}
       </div>
     `}_onEventClick(t){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:t},bubbles:!0,composed:!0}))}};Qt.styles=[Tt,Ht,Ut,jt,o`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .day-container {
         display: flex;
@@ -671,16 +671,17 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       .person-header {
         flex: 1;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
+        gap: 6px;
         padding: 0.75rem 0.5rem;
         min-width: 0;
       }
 
       .person-avatar {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         object-fit: cover;
         flex-shrink: 0;
@@ -688,25 +689,27 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
       }
 
       .person-initial {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.875rem;
+        font-size: 1rem;
         font-weight: 600;
         color: white;
         flex-shrink: 0;
       }
 
       .person-name {
-        font-size: 0.8125rem;
+        font-size: 0.75rem;
         font-weight: 600;
         color: var(--pv-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        max-width: 100%;
+        text-align: center;
       }
 
       /* Time grid */
@@ -897,7 +900,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
           `})}
       </div>
     `}_onEventClick(t){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:t},bubbles:!0,composed:!0}))}};Xt.styles=[Tt,Ht,Ut,o`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .week-container {
         display: flex;
@@ -1121,7 +1124,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
         </div>
       </div>
     `}_onDayClick(t){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:t},bubbles:!0,composed:!0}))}_onEventClick(t){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:t},bubbles:!0,composed:!0}))}};Kt.styles=[Tt,Ht,o`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .month-container {
         display: flex;
@@ -1280,11 +1283,12 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
         </div>
       </div>
     `}_onEventClick(t){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:t},bubbles:!0,composed:!0}))}};Gt.styles=[Tt,Ht,jt,o`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .agenda-container {
         display: flex;
         flex-direction: column;
+        height: 100%;
         overflow-y: auto;
       }
 
@@ -1990,6 +1994,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
         ></pv-view-agenda>`;default:return W}}_onEventClick(t){this._pv.state.selectEvent(t.detail.event)}_onDayClick(t){this._pv.state.setDate(t.detail.date),this._pv.state.setView("day")}_onTouchStart(t){this._touchStartX=t.touches[0].clientX}_onTouchEnd(t){const e=t.changedTouches[0].clientX-this._touchStartX;Math.abs(e)>50&&this._pv.state.navigateDate(e>0?"prev":"next")}getCardSize(){return 10}static getStubConfig(){return{entity:"sensor.planavista_config",view:"day"}}};ie.styles=[Tt,Bt,Mt,jt,o`
       :host {
         display: block;
+        height: 100%;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
       }
@@ -2356,7 +2361,7 @@ function t(t,e,i,a){var r,n=arguments.length,s=n<3?e:null===a?a=Object.getOwnPro
         flex: 1;
         overflow: hidden;
         position: relative;
-        min-height: 400px;
+        min-height: 0;
       }
 
       .pvc-body > * {

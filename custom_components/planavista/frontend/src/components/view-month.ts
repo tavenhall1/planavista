@@ -23,7 +23,7 @@ export class PVViewMonth extends LitElement {
     baseStyles,
     eventStyles,
     css`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .month-container {
         display: flex;

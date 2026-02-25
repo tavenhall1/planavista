@@ -34,7 +34,7 @@ export class PVViewDay extends LitElement {
     nowIndicatorStyles,
     animationStyles,
     css`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .day-container {
         display: flex;
@@ -111,16 +111,17 @@ export class PVViewDay extends LitElement {
       .person-header {
         flex: 1;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
+        gap: 6px;
         padding: 0.75rem 0.5rem;
         min-width: 0;
       }
 
       .person-avatar {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         object-fit: cover;
         flex-shrink: 0;
@@ -128,25 +129,27 @@ export class PVViewDay extends LitElement {
       }
 
       .person-initial {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.875rem;
+        font-size: 1rem;
         font-weight: 600;
         color: white;
         flex-shrink: 0;
       }
 
       .person-name {
-        font-size: 0.8125rem;
+        font-size: 0.75rem;
         font-weight: 600;
         color: var(--pv-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        max-width: 100%;
+        text-align: center;
       }
 
       /* Time grid */

@@ -30,7 +30,7 @@ export class PVViewWeek extends LitElement {
     eventStyles,
     nowIndicatorStyles,
     css`
-      :host { display: block; }
+      :host { display: block; height: 100%; overflow: hidden; }
 
       .week-container {
         display: flex;
