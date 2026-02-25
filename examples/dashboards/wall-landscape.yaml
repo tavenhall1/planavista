@@ -1,7 +1,7 @@
-# PlanaVista Wall Calendar - Landscape Layout
+# PlanaVista Wall Calendar - Landscape Layout (v1.0)
 #
-# This dashboard is optimized for landscape-oriented displays
-# such as wide monitors, TVs, or horizontally mounted tablets.
+# Optimized for landscape displays: 27" monitors, TVs, wide tablets.
+# Primary target: 27" Planar touchscreen + Raspberry Pi 4
 #
 # HOW TO USE:
 # 1. Go to Settings > Dashboards > Add Dashboard
@@ -14,7 +14,7 @@ views:
     path: calendar
     type: sections
     sections:
-      # Left Column: Clock, Weather, Toggles
+      # Left Column: Clock, Weather, Toggles, Agenda
       - type: grid
         cards:
           - type: custom:planavista-clock-card
@@ -31,21 +31,22 @@ views:
             entity: sensor.planavista_config
             layout: vertical
             show_names: true
+            show_add_button: true
 
           - type: custom:planavista-agenda-card
             entity: sensor.planavista_config
             max_events: 8
             days_ahead: 7
 
-      # Right Column: Large Calendar
+      # Right Column: Large Calendar (day view = per-person columns)
       - type: grid
         cards:
           - type: custom:planavista-grid-card
             entity: sensor.planavista_config
-            view: week
+            view: day
 
 ---
-# Alternative: Grid layout for standard dashboards
+# Alternative: Standard dashboard layout
 
 title: PlanaVista Landscape
 views:
@@ -72,7 +73,7 @@ views:
         cards:
           - type: custom:planavista-grid-card
             entity: sensor.planavista_config
-            view: week
+            view: day
 
           - type: custom:planavista-agenda-card
             entity: sensor.planavista_config
