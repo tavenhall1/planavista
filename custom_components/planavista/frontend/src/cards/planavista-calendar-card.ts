@@ -505,8 +505,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   }
 
   private _onOnboardingComplete() {
-    // Wizard fired onboarding-complete — hass will update and re-render with onboarding_complete=true
-    this.requestUpdate();
+    // hass will receive updated sensor state and trigger re-render automatically
   }
 
   private _showWeatherDetails() {
