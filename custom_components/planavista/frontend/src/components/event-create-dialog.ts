@@ -24,6 +24,11 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _showMore = false;
   @state() private _saving = false;
   @state() private _error = '';
+  @state() private _locationSuggestions: Array<{ display_name: string; lat: string; lon: string }> = [];
+  @state() private _locationLoading = false;
+  @state() private _locationFocused = false;
+
+  private _locationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   private _pv = new PlanaVistaController(this);
 
@@ -136,6 +141,87 @@ export class PVEventCreateDialog extends LitElement {
         padding: 0.5rem;
         background: color-mix(in srgb, #EF4444 8%, transparent);
         border-radius: var(--pv-radius-sm);
+      }
+
+      /* Date input — ensure native picker is visible */
+      input[type="date"] {
+        appearance: auto;
+        -webkit-appearance: auto;
+        cursor: pointer;
+      }
+
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.6;
+        font-size: 1.125rem;
+        padding: 4px;
+      }
+
+      input[type="date"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+      }
+
+      /* Location autocomplete */
+      .location-wrap {
+        position: relative;
+      }
+
+      .location-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        background: var(--pv-card-bg, #fff);
+        border: 1px solid var(--pv-border);
+        border-top: none;
+        border-radius: 0 0 var(--pv-radius-sm, 8px) var(--pv-radius-sm, 8px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .location-suggestion {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-size: 0.8125rem;
+        color: var(--pv-text);
+        line-height: 1.35;
+        transition: background 120ms ease;
+        border-bottom: 1px solid var(--pv-border-subtle, rgba(0,0,0,0.04));
+      }
+
+      .location-suggestion:last-child {
+        border-bottom: none;
+      }
+
+      .location-suggestion:hover {
+        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
+      }
+
+      .location-suggestion ha-icon {
+        --mdc-icon-size: 16px;
+        color: var(--pv-text-muted);
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      .location-loading {
+        padding: 12px;
+        text-align: center;
+        font-size: 0.8125rem;
+        color: var(--pv-text-muted);
+      }
+
+      .location-powered {
+        padding: 4px 12px 6px;
+        text-align: right;
+        font-size: 0.625rem;
+        color: var(--pv-text-muted);
+        opacity: 0.6;
       }
     `,
   ];
@@ -324,13 +410,33 @@ export class PVEventCreateDialog extends LitElement {
                 </div>
                 <div class="form-field">
                   <label class="pv-label">Location</label>
-                  <input
-                    class="pv-input"
-                    type="text"
-                    placeholder="Add a location..."
-                    .value=${this._location}
-                    @input=${(e: Event) => this._location = (e.target as HTMLInputElement).value}
-                  />
+                  <div class="location-wrap">
+                    <input
+                      class="pv-input"
+                      type="text"
+                      placeholder="Search for a place or address..."
+                      .value=${this._location}
+                      @input=${this._onLocationInput}
+                      @focus=${() => this._locationFocused = true}
+                      @blur=${() => { setTimeout(() => { this._locationFocused = false; }, 200); }}
+                    />
+                    ${this._locationFocused && (this._locationSuggestions.length > 0 || this._locationLoading) ? html`
+                      <div class="location-suggestions">
+                        ${this._locationLoading ? html`
+                          <div class="location-loading">Searching...</div>
+                        ` : nothing}
+                        ${this._locationSuggestions.map(s => html`
+                          <div class="location-suggestion" @mousedown=${() => this._selectLocation(s.display_name)}>
+                            <ha-icon icon="mdi:map-marker"></ha-icon>
+                            <span>${s.display_name}</span>
+                          </div>
+                        `)}
+                        ${this._locationSuggestions.length > 0 ? html`
+                          <div class="location-powered">Powered by OpenStreetMap</div>
+                        ` : nothing}
+                      </div>
+                    ` : nothing}
+                  </div>
                 </div>
               `}
             </div>
@@ -421,5 +527,51 @@ export class PVEventCreateDialog extends LitElement {
       this._error = `Failed to save event: ${err?.message || 'Unknown error'}`;
       this._saving = false;
     }
+  }
+
+  private _onLocationInput(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
+    this._location = value;
+
+    if (this._locationDebounceTimer) {
+      clearTimeout(this._locationDebounceTimer);
+    }
+
+    if (value.trim().length < 3) {
+      this._locationSuggestions = [];
+      this._locationLoading = false;
+      return;
+    }
+
+    this._locationLoading = true;
+    this._locationDebounceTimer = setTimeout(() => {
+      this._searchLocation(value.trim());
+    }, 350);
+  }
+
+  private async _searchLocation(query: string) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
+      const resp = await fetch(url, {
+        headers: { 'Accept-Language': 'en' },
+      });
+      if (!resp.ok) throw new Error('Search failed');
+      const results = await resp.json();
+      this._locationSuggestions = results.map((r: any) => ({
+        display_name: r.display_name,
+        lat: r.lat,
+        lon: r.lon,
+      }));
+    } catch {
+      this._locationSuggestions = [];
+    } finally {
+      this._locationLoading = false;
+    }
+  }
+
+  private _selectLocation(name: string) {
+    this._location = name;
+    this._locationSuggestions = [];
+    this._locationFocused = false;
   }
 }

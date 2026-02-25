@@ -287,15 +287,8 @@ export class PVViewDay extends LitElement {
         background: var(--pv-border-subtle, rgba(0, 0, 0, 0.03));
         border-bottom: 1px solid var(--pv-border);
         flex-shrink: 0;
-        cursor: pointer;
-        transition: background 200ms ease;
-        -webkit-tap-highlight-color: transparent;
         animation: pv-banner-slide-in 350ms cubic-bezier(0.4, 0, 0.2, 1);
         overflow: hidden;
-      }
-
-      .date-banner:hover {
-        background: color-mix(in srgb, var(--pv-accent, #6366F1) 8%, transparent);
       }
 
       .date-banner ha-icon {
@@ -463,7 +456,7 @@ export class PVViewDay extends LitElement {
         ` : nothing}
 
         ${!isCurrentDay ? html`
-          <div class="date-banner" @click=${this._goToToday}>
+          <div class="date-banner">
             <ha-icon icon="mdi:calendar-today"></ha-icon>
             ${this.currentDate.toLocaleDateString('en-US', {
               weekday: 'long',
