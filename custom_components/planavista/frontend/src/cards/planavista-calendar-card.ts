@@ -23,10 +23,12 @@ export class PlanaVistaCalendarCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config: any;
   @state() private _currentTime = new Date();
+  @state() private _filterOpen = false;
 
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
   private _touchStartX = 0;
+  private _filterCloseHandler = (e: MouseEvent) => this._onFilterClickOutside(e);
 
   static styles = [
     baseStyles,
@@ -57,7 +59,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 14px 20px;
+        padding: 18px 24px;
         background: var(--pv-header-gradient);
         color: var(--pv-header-text);
         flex-shrink: 0;
@@ -89,14 +91,14 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       .pvc-weather-temp {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
         font-weight: 700;
         line-height: 1.15;
         letter-spacing: -0.5px;
       }
 
       .pvc-weather-condition {
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         opacity: 0.85;
         text-transform: capitalize;
         line-height: 1.3;
@@ -104,8 +106,8 @@ export class PlanaVistaCalendarCard extends LitElement {
 
       /* -- Date (center) -- */
       .pvc-header-date {
-        font-size: 1rem;
-        font-weight: 500;
+        font-size: 1.25rem;
+        font-weight: 600;
         opacity: 0.95;
         text-align: center;
         white-space: nowrap;
@@ -117,17 +119,17 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       .pvc-time-display {
-        font-size: 1.75rem;
+        font-size: 2rem;
         font-weight: 700;
         letter-spacing: -0.5px;
         line-height: 1.15;
       }
 
       .pvc-time-ampm {
-        font-size: 0.75rem;
+        font-size: 0.875rem;
         font-weight: 500;
         opacity: 0.8;
-        margin-left: 2px;
+        margin-left: 3px;
       }
 
       /* ================================================================
@@ -143,71 +145,136 @@ export class PlanaVistaCalendarCard extends LitElement {
         flex-shrink: 0;
       }
 
-      /* -- Person avatars -- */
-      .pvc-people {
-        display: flex;
-        gap: 14px;
-        align-items: flex-start;
+      /* -- Filter dropdown -- */
+      .pvc-filter-wrap {
+        position: relative;
       }
 
-      .pvc-person {
-        display: flex;
-        flex-direction: column;
+      .pvc-filter-btn {
+        display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 9999px;
+        border: 1px solid var(--pv-border);
+        background: transparent;
+        color: var(--pv-text-secondary);
+        font-size: 0.875rem;
+        font-weight: 600;
         cursor: pointer;
-        transition: opacity 200ms ease;
+        transition: all 200ms ease;
+        font-family: inherit;
+        min-height: 40px;
         -webkit-tap-highlight-color: transparent;
-        min-width: 52px;
       }
 
-      .pvc-person.hidden {
-        opacity: 0.3;
+      .pvc-filter-btn:hover {
+        background: var(--pv-event-hover);
+        color: var(--pv-text);
       }
 
-      .pvc-avatar {
-        width: 72px;
-        height: 72px;
+      .pvc-filter-btn.has-hidden {
+        border-color: var(--pv-accent);
+        color: var(--pv-accent);
+      }
+
+      .pvc-filter-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: var(--pv-accent);
+        color: var(--pv-accent-text);
+        font-size: 0.6875rem;
+        font-weight: 700;
+      }
+
+      .pvc-filter-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 240px;
+        background: var(--pv-card-bg, #fff);
+        border: 1px solid var(--pv-border);
+        border-radius: var(--pv-radius-md, 12px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+        z-index: 100;
+        padding: 6px 0;
+        animation: pvc-dropdown-in 150ms ease;
+      }
+
+      @keyframes pvc-dropdown-in {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .pvc-filter-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        cursor: pointer;
+        transition: background 120ms ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .pvc-filter-item:hover {
+        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
+      }
+
+      .pvc-filter-check {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 2px solid var(--pv-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 150ms ease;
+      }
+
+      .pvc-filter-item.active .pvc-filter-check {
+        background: var(--item-color);
+        border-color: var(--item-color);
+      }
+
+      .pvc-filter-check-icon {
+        color: white;
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .pvc-filter-avatar {
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
+        flex-shrink: 0;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 1.5rem;
+        font-size: 0.8125rem;
         color: white;
-        border: 3px solid transparent;
-        transition: all 200ms ease;
-        overflow: hidden;
         background-size: cover;
         background-position: center;
-        flex-shrink: 0;
       }
 
-      .pvc-person:not(.hidden) .pvc-avatar {
-        border-color: var(--person-color);
-        box-shadow: 0 2px 8px color-mix(in srgb, var(--person-color) 35%, transparent);
-      }
-
-      .pvc-person.hidden .pvc-avatar {
-        border-color: var(--pv-border);
-        filter: grayscale(0.6);
-      }
-
-      .pvc-person-name {
-        font-size: 0.8125rem;
+      .pvc-filter-name {
+        font-size: 0.875rem;
         font-weight: 500;
-        color: var(--pv-text-secondary);
+        color: var(--pv-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 80px;
-        text-align: center;
-        margin-top: 2px;
       }
 
-      .pvc-person:not(.hidden) .pvc-person-name {
-        color: var(--pv-text);
-        font-weight: 600;
+      .pvc-filter-item:not(.active) .pvc-filter-name {
+        opacity: 0.5;
       }
 
       /* -- Controls (right side) -- */
@@ -221,20 +288,20 @@ export class PlanaVistaCalendarCard extends LitElement {
       .pvc-new-btn {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 7px 14px;
+        gap: 5px;
+        padding: 9px 18px;
         border-radius: 9999px;
         background: var(--pv-accent);
         color: var(--pv-accent-text);
         border: none;
         cursor: pointer;
-        font-size: 0.8125rem;
+        font-size: 0.9375rem;
         font-weight: 600;
         font-family: inherit;
         transition: all 200ms ease;
         white-space: nowrap;
         -webkit-tap-highlight-color: transparent;
-        min-height: 36px;
+        min-height: 40px;
       }
 
       .pvc-new-btn:hover {
@@ -257,8 +324,8 @@ export class PlanaVistaCalendarCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -267,6 +334,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         transition: all 200ms ease;
         font-family: inherit;
         -webkit-tap-highlight-color: transparent;
+        --mdc-icon-size: 24px;
       }
 
       .pvc-nav-btn:hover {
@@ -275,17 +343,17 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       .pvc-today-btn {
-        padding: 4px 12px;
+        padding: 6px 16px;
         border: 1px solid var(--pv-border);
         border-radius: 9999px;
         background: transparent;
         color: var(--pv-text-secondary);
-        font-size: 0.75rem;
+        font-size: 0.875rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 200ms ease;
         font-family: inherit;
-        min-height: 32px;
+        min-height: 38px;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -304,18 +372,18 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       .pvc-view-tab {
-        padding: 4px 12px;
+        padding: 6px 14px;
         border: none;
         border-radius: 6px;
         background: transparent;
         color: var(--pv-text-secondary);
-        font-size: 0.6875rem;
-        font-weight: 500;
+        font-size: 0.8125rem;
+        font-weight: 600;
         cursor: pointer;
         transition: all 200ms ease;
         font-family: inherit;
         text-transform: capitalize;
-        min-height: 30px;
+        min-height: 36px;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -361,16 +429,10 @@ export class PlanaVistaCalendarCard extends LitElement {
       @media (max-width: 600px) {
         .pvc-toolbar {
           flex-wrap: wrap;
-        }
-
-        .pvc-people {
-          order: 1;
-          width: 100%;
           justify-content: center;
         }
 
         .pvc-controls {
-          order: 2;
           width: 100%;
           justify-content: center;
           flex-wrap: wrap;
@@ -392,6 +454,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       clearInterval(this._clockTimer);
       this._clockTimer = null;
     }
+    document.removeEventListener('click', this._filterCloseHandler);
   }
 
   setConfig(config: any) {
@@ -545,7 +608,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           <div class="pvc-weather" @click=${this._showWeatherDetails}
                title="Click for weather details">
             <div class="pvc-weather-icon">
-              ${weatherIcon((weather.state || 'cloudy') as WeatherCondition, 40)}
+              ${weatherIcon((weather.state || 'cloudy') as WeatherCondition, 48)}
             </div>
             <div class="pvc-weather-info">
               <span class="pvc-weather-temp">
@@ -576,33 +639,49 @@ export class PlanaVistaCalendarCard extends LitElement {
   // ====================================================================
 
   private _renderToolbar(calendars: CalendarConfig[], currentView: string) {
+    const hiddenCount = calendars.filter(c => this._pv.state.hiddenCalendars.has(c.entity_id)).length;
+
     return html`
       <div class="pvc-toolbar">
-        <div class="pvc-people">
-          ${calendars.map(cal => {
-            const isHidden = this._pv.state.hiddenCalendars.has(cal.entity_id);
-            const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
-            const name = cal.display_name || (cal.person_entity ? getPersonName(this.hass, cal.person_entity) : '');
-            const initial = (name || '?')[0].toUpperCase();
+        <div class="pvc-filter-wrap">
+          <button
+            class="pvc-filter-btn ${hiddenCount > 0 ? 'has-hidden' : ''}"
+            @click=${this._toggleFilterDropdown}
+          >
+            <ha-icon icon="mdi:filter-variant" style="--mdc-icon-size: 20px"></ha-icon>
+            Calendars
+            ${hiddenCount > 0 ? html`<span class="pvc-filter-badge">${calendars.length - hiddenCount}/${calendars.length}</span>` : nothing}
+          </button>
 
-            return html`
-              <div
-                class="pvc-person ${isHidden ? 'hidden' : ''}"
-                style="--person-color: ${cal.color}"
-                @click=${() => this._pv.state.toggleCalendar(cal.entity_id)}
-              >
-                <div
-                  class="pvc-avatar"
-                  style="${avatar
-                    ? `background-image: url(${avatar}); background-color: ${cal.color}`
-                    : `background: ${cal.color}`}"
-                >
-                  ${!avatar ? initial : ''}
-                </div>
-                <span class="pvc-person-name">${name}</span>
-              </div>
-            `;
-          })}
+          ${this._filterOpen ? html`
+            <div class="pvc-filter-panel">
+              ${calendars.map(cal => {
+                const isActive = !this._pv.state.hiddenCalendars.has(cal.entity_id);
+                const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
+                const name = cal.display_name || (cal.person_entity ? getPersonName(this.hass, cal.person_entity) : cal.entity_id);
+                const initial = (name || '?')[0].toUpperCase();
+
+                return html`
+                  <div
+                    class="pvc-filter-item ${isActive ? 'active' : ''}"
+                    style="--item-color: ${cal.color}"
+                    @click=${() => this._pv.state.toggleCalendar(cal.entity_id)}
+                  >
+                    <div class="pvc-filter-check">
+                      ${isActive ? html`<span class="pvc-filter-check-icon">✓</span>` : nothing}
+                    </div>
+                    <div
+                      class="pvc-filter-avatar"
+                      style="${avatar
+                        ? `background-image: url(${avatar}); background-color: ${cal.color}`
+                        : `background: ${cal.color}`}"
+                    >${!avatar ? initial : ''}</div>
+                    <span class="pvc-filter-name">${name}</span>
+                  </div>
+                `;
+              })}
+            </div>
+          ` : nothing}
         </div>
 
         <div class="pvc-controls">
@@ -623,7 +702,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           </div>
 
           <div class="pvc-view-tabs">
-            ${(['day', 'week', 'month'] as const).map(view => html`
+            ${(['day', 'week', 'month', 'agenda'] as const).map(view => html`
               <button
                 class="pvc-view-tab ${currentView === view ? 'active' : ''}"
                 @click=${() => this._pv.state.setView(view)}
@@ -633,6 +712,28 @@ export class PlanaVistaCalendarCard extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private _toggleFilterDropdown(e: Event) {
+    e.stopPropagation();
+    this._filterOpen = !this._filterOpen;
+    if (this._filterOpen) {
+      requestAnimationFrame(() => {
+        document.addEventListener('click', this._filterCloseHandler);
+      });
+    } else {
+      document.removeEventListener('click', this._filterCloseHandler);
+    }
+  }
+
+  private _onFilterClickOutside(e: MouseEvent) {
+    const path = e.composedPath();
+    const panel = this.shadowRoot?.querySelector('.pvc-filter-panel');
+    const btn = this.shadowRoot?.querySelector('.pvc-filter-btn');
+    if (panel && !path.includes(panel) && btn && !path.includes(btn)) {
+      this._filterOpen = false;
+      document.removeEventListener('click', this._filterCloseHandler);
+    }
   }
 
   // ====================================================================
@@ -654,7 +755,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .currentDate=${currentDate}
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
-          .hideColumnHeaders=${true}
+          .hideColumnHeaders=${false}
         ></pv-view-day>`;
       case 'week':
         return html`<pv-view-week
