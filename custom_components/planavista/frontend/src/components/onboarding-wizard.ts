@@ -96,8 +96,12 @@ export class PvOnboardingWizard extends LitElement {
     return Object.keys(this.hass.states).filter(k => k.startsWith('person.')).sort();
   }
 
-  private _personLabel(entityId: string): string {
+  private _entityLabel(entityId: string): string {
     return this.hass?.states[entityId]?.attributes?.friendly_name || entityId;
+  }
+
+  private _personLabel(entityId: string): string {
+    return this._entityLabel(entityId);
   }
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -231,7 +235,7 @@ export class PvOnboardingWizard extends LitElement {
           >
             <option value="">(None)</option>
             ${this._weatherEntities.map(e => html`
-              <option value="${e}" ?selected=${this._weatherEntity === e}>${e}</option>
+              <option value="${e}" ?selected=${this._weatherEntity === e}>${this._entityLabel(e)}</option>
             `)}
           </select>
         </div>
@@ -289,71 +293,73 @@ export class PvOnboardingWizard extends LitElement {
 
   private _renderCalendarRow(cal: CalendarEntry, idx: number) {
     return html`
-      <div class="cal-row ${!cal.include ? 'cal-row--excluded' : ''}">
-        <!-- Include checkbox -->
-        <label class="cal-checkbox-wrap" title="${cal.include ? 'Exclude this calendar' : 'Include this calendar'}">
-          <input
-            type="checkbox"
-            class="cal-checkbox"
-            .checked=${cal.include}
-            @change=${(e: Event) => this._updateCalendar(idx, { include: (e.target as HTMLInputElement).checked })}
-          />
-          <span class="cal-checkbox-visual" aria-hidden="true">
-            ${cal.include ? html`
-              <svg viewBox="0 0 24 24" width="14" height="14">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
-              </svg>
-            ` : ''}
-          </span>
-        </label>
-
-        <!-- Calendar details -->
-        <div class="cal-details">
-          <!-- Entity ID badge -->
-          <span class="cal-entity-id">${cal.entity_id}</span>
-
-          <!-- Display name input -->
-          <div class="cal-field">
-            <label class="pv-label" for="cal-name-${idx}">Display Name</label>
+      <div class="cal-row">
+        <!-- Always-visible header: checkbox + calendar name -->
+        <div class="cal-header">
+          <label class="cal-checkbox-wrap" title="${cal.include ? 'Exclude this calendar' : 'Include this calendar'}">
             <input
-              id="cal-name-${idx}"
-              type="text"
-              class="pv-input cal-name-input"
-              .value=${cal.display_name}
-              placeholder="Calendar name"
-              ?disabled=${!cal.include}
-              @input=${(e: Event) => this._updateCalendar(idx, { display_name: (e.target as HTMLInputElement).value })}
+              type="checkbox"
+              class="cal-checkbox"
+              .checked=${cal.include}
+              @change=${(e: Event) => this._updateCalendar(idx, { include: (e.target as HTMLInputElement).checked })}
             />
-          </div>
-
-          <!-- Color picker -->
-          <div class="cal-field">
-            <label class="pv-label">Color</label>
-            <pv-color-swatch-picker
-              .value=${cal.color}
-              .valueLight=${cal.color_light}
-              ?disabled=${!cal.include}
-              @color-change=${(e: CustomEvent) => this._onCalendarColorChange(idx, e)}
-            ></pv-color-swatch-picker>
-          </div>
-
-          <!-- Person entity link -->
-          <div class="cal-field">
-            <label class="pv-label" for="cal-person-${idx}">Link to Person</label>
-            <select
-              id="cal-person-${idx}"
-              class="pv-input pv-select cal-person-select"
-              .value=${cal.person_entity}
-              ?disabled=${!cal.include}
-              @change=${(e: Event) => this._updateCalendar(idx, { person_entity: (e.target as HTMLSelectElement).value })}
-            >
-              <option value="">(None)</option>
-              ${this._personEntities.map(p => html`
-                <option value="${p}" ?selected=${cal.person_entity === p}>${this._personLabel(p)}</option>
-              `)}
-            </select>
+            <span class="cal-checkbox-visual" aria-hidden="true">
+              ${cal.include ? html`
+                <svg viewBox="0 0 24 24" width="14" height="14">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+                </svg>
+              ` : ''}
+            </span>
+          </label>
+          <div class="cal-header-info">
+            <span class="cal-friendly-name">${cal.display_name || cal.entity_id}</span>
+            <span class="cal-entity-id">${cal.entity_id}</span>
           </div>
         </div>
+
+        <!-- Expandable details — only shown when included -->
+        ${cal.include ? html`
+          <div class="cal-details">
+            <!-- Display name input -->
+            <div class="cal-field">
+              <label class="pv-label" for="cal-name-${idx}">Display Name</label>
+              <input
+                id="cal-name-${idx}"
+                type="text"
+                class="pv-input cal-name-input"
+                .value=${cal.display_name}
+                placeholder="Calendar name"
+                @input=${(e: Event) => this._updateCalendar(idx, { display_name: (e.target as HTMLInputElement).value })}
+              />
+            </div>
+
+            <!-- Color picker -->
+            <div class="cal-field">
+              <label class="pv-label">Color</label>
+              <pv-color-swatch-picker
+                .value=${cal.color}
+                .valueLight=${cal.color_light}
+                @color-change=${(e: CustomEvent) => this._onCalendarColorChange(idx, e)}
+              ></pv-color-swatch-picker>
+            </div>
+
+            <!-- Person entity link -->
+            <div class="cal-field">
+              <label class="pv-label" for="cal-person-${idx}">Link to Person</label>
+              <select
+                id="cal-person-${idx}"
+                class="pv-input pv-select cal-person-select"
+                .value=${cal.person_entity}
+                @change=${(e: Event) => this._updateCalendar(idx, { person_entity: (e.target as HTMLSelectElement).value })}
+              >
+                <option value="">(None)</option>
+                ${this._personEntities.map(p => html`
+                  <option value="${p}" ?selected=${cal.person_entity === p}>${this._personLabel(p)}</option>
+                `)}
+              </select>
+            </div>
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -793,23 +799,55 @@ export class PvOnboardingWizard extends LitElement {
       .calendar-list {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.625rem;
       }
 
       .cal-row {
         display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-        padding: 1rem;
+        flex-direction: column;
+        padding: 0.875rem 1rem;
         border: 1px solid var(--pv-border-subtle, #E5E7EB);
         border-radius: var(--pv-radius, 12px);
         background: var(--pv-card-bg, #FFFFFF);
-        transition: opacity var(--pv-transition, 200ms ease),
-                    border-color var(--pv-transition, 200ms ease);
+        transition: border-color var(--pv-transition, 200ms ease);
       }
 
-      .cal-row--excluded {
-        opacity: 0.5;
+      .cal-row:has(.cal-checkbox:checked) {
+        border-color: var(--pv-accent, #6366F1);
+      }
+
+      /* Always-visible header row */
+      .cal-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .cal-header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .cal-friendly-name {
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--pv-text, #1A1B1E);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .cal-entity-id {
+        font-size: 0.6875rem;
+        color: var(--pv-text-muted, #9CA3AF);
+        font-family: monospace;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       /* Custom checkbox */
@@ -818,7 +856,6 @@ export class PvOnboardingWizard extends LitElement {
         align-items: center;
         cursor: pointer;
         flex-shrink: 0;
-        margin-top: 0.125rem;
       }
 
       .cal-checkbox {
@@ -852,20 +889,15 @@ export class PvOnboardingWizard extends LitElement {
         border-color: var(--pv-accent, #6366F1);
       }
 
+      /* Expanded details (only shown when included) */
       .cal-details {
-        flex: 1;
-        min-width: 0;
         display: flex;
         flex-direction: column;
         gap: 0.875rem;
-      }
-
-      .cal-entity-id {
-        font-size: 0.75rem;
-        color: var(--pv-text-muted, #9CA3AF);
-        font-family: monospace;
-        letter-spacing: 0.01em;
-        word-break: break-all;
+        margin-top: 0.875rem;
+        padding-top: 0.875rem;
+        border-top: 1px solid var(--pv-border-subtle, #E5E7EB);
+        animation: pv-fadeIn 200ms ease forwards;
       }
 
       .cal-field {

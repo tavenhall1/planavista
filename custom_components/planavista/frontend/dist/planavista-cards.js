@@ -590,7 +590,7 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
         border: none;
         padding: 0;
       }
-    `],e([ve({type:String})],Fe.prototype,"value",void 0),e([ve({type:String})],Fe.prototype,"valueLight",void 0),e([ge()],Fe.prototype,"_isCustom",void 0),e([ue("#custom-color-input")],Fe.prototype,"_colorInput",void 0),Fe=Ce=e([de("pv-color-swatch-picker")],Fe);let De=class extends le{constructor(){super(...arguments),this._page=0,this._timeFormat="12h",this._firstDay="sunday",this._weatherEntity="",this._defaultView="week",this._calendarConfigs=[],this._calendarsInitialized=!1,this._theme="light",this._saving=!1,this._saveError=""}firstUpdated(){const e=this.renderRoot.querySelector('button, [href], input, select, [tabindex]:not([tabindex="-1"])');e?.focus()}updated(e){super.updated(e),e.has("hass")&&this.hass&&!this._calendarsInitialized&&this._initCalendars()}_initCalendars(){const e=Fe.PRESETS,t=Object.keys(this.hass.states).filter(e=>e.startsWith("calendar.")).sort();this._calendarConfigs=t.map((t,i)=>{const a=e[i%e.length],r=this.hass.states[t]?.attributes?.friendly_name;return{entity_id:t,display_name:r||t,color:a.color,color_light:a.light,person_entity:"",include:!1}}),this._calendarsInitialized=!0}get _weatherEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("weather.")).sort():[]}get _personEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("person.")).sort():[]}_personLabel(e){return this.hass?.states[e]?.attributes?.friendly_name||e}_goBack(){this._page>0&&(this._page-=1)}async _goNext(){this._page<2?this._page+=1:await this._finish()}async _finish(){this._saving=!0,this._saveError="";try{await this.hass.callService("planavista","save_config",{calendars:this._calendarConfigs.filter(e=>e.include).map(e=>({entity_id:e.entity_id,display_name:e.display_name,color:e.color,color_light:e.color_light,icon:"mdi:calendar",person_entity:e.person_entity,visible:!0})),display:{time_format:this._timeFormat,weather_entity:this._weatherEntity,first_day:this._firstDay,default_view:this._defaultView,theme:this._theme},onboarding_complete:!0}),this.dispatchEvent(new CustomEvent("onboarding-complete",{bubbles:!0,composed:!0}))}catch(e){console.error("[pv-onboarding-wizard] save_config failed:",e),this._saveError="Setup failed — please try again."}finally{this._saving=!1}}_updateCalendar(e,t){const i=[...this._calendarConfigs];i[e]={...i[e],...t},this._calendarConfigs=i}_onCalendarColorChange(e,t){t.stopPropagation(),this._updateCalendar(e,{color:t.detail.color,color_light:t.detail.colorLight})}_renderProgressDots(){return R`
+    `],e([ve({type:String})],Fe.prototype,"value",void 0),e([ve({type:String})],Fe.prototype,"valueLight",void 0),e([ge()],Fe.prototype,"_isCustom",void 0),e([ue("#custom-color-input")],Fe.prototype,"_colorInput",void 0),Fe=Ce=e([de("pv-color-swatch-picker")],Fe);let De=class extends le{constructor(){super(...arguments),this._page=0,this._timeFormat="12h",this._firstDay="sunday",this._weatherEntity="",this._defaultView="week",this._calendarConfigs=[],this._calendarsInitialized=!1,this._theme="light",this._saving=!1,this._saveError=""}firstUpdated(){const e=this.renderRoot.querySelector('button, [href], input, select, [tabindex]:not([tabindex="-1"])');e?.focus()}updated(e){super.updated(e),e.has("hass")&&this.hass&&!this._calendarsInitialized&&this._initCalendars()}_initCalendars(){const e=Fe.PRESETS,t=Object.keys(this.hass.states).filter(e=>e.startsWith("calendar.")).sort();this._calendarConfigs=t.map((t,i)=>{const a=e[i%e.length],r=this.hass.states[t]?.attributes?.friendly_name;return{entity_id:t,display_name:r||t,color:a.color,color_light:a.light,person_entity:"",include:!1}}),this._calendarsInitialized=!0}get _weatherEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("weather.")).sort():[]}get _personEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("person.")).sort():[]}_entityLabel(e){return this.hass?.states[e]?.attributes?.friendly_name||e}_personLabel(e){return this._entityLabel(e)}_goBack(){this._page>0&&(this._page-=1)}async _goNext(){this._page<2?this._page+=1:await this._finish()}async _finish(){this._saving=!0,this._saveError="";try{await this.hass.callService("planavista","save_config",{calendars:this._calendarConfigs.filter(e=>e.include).map(e=>({entity_id:e.entity_id,display_name:e.display_name,color:e.color,color_light:e.color_light,icon:"mdi:calendar",person_entity:e.person_entity,visible:!0})),display:{time_format:this._timeFormat,weather_entity:this._weatherEntity,first_day:this._firstDay,default_view:this._defaultView,theme:this._theme},onboarding_complete:!0}),this.dispatchEvent(new CustomEvent("onboarding-complete",{bubbles:!0,composed:!0}))}catch(e){console.error("[pv-onboarding-wizard] save_config failed:",e),this._saveError="Setup failed — please try again."}finally{this._saving=!1}}_updateCalendar(e,t){const i=[...this._calendarConfigs];i[e]={...i[e],...t},this._calendarConfigs=i}_onCalendarColorChange(e,t){t.stopPropagation(),this._updateCalendar(e,{color:t.detail.color,color_light:t.detail.colorLight})}_renderProgressDots(){return R`
       <div class="progress-dots" aria-label="Step ${this._page+1} of 3">
         ${[0,1,2].map(e=>R`
           <div
@@ -649,7 +649,7 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
           >
             <option value="">(None)</option>
             ${this._weatherEntities.map(e=>R`
-              <option value="${e}" ?selected=${this._weatherEntity===e}>${e}</option>
+              <option value="${e}" ?selected=${this._weatherEntity===e}>${this._entityLabel(e)}</option>
             `)}
           </select>
         </div>
@@ -690,71 +690,73 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
         </div>
       </div>
     `}_renderCalendarRow(e,t){return R`
-      <div class="cal-row ${e.include?"":"cal-row--excluded"}">
-        <!-- Include checkbox -->
-        <label class="cal-checkbox-wrap" title="${e.include?"Exclude this calendar":"Include this calendar"}">
-          <input
-            type="checkbox"
-            class="cal-checkbox"
-            .checked=${e.include}
-            @change=${e=>this._updateCalendar(t,{include:e.target.checked})}
-          />
-          <span class="cal-checkbox-visual" aria-hidden="true">
-            ${e.include?R`
-              <svg viewBox="0 0 24 24" width="14" height="14">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
-              </svg>
-            `:""}
-          </span>
-        </label>
-
-        <!-- Calendar details -->
-        <div class="cal-details">
-          <!-- Entity ID badge -->
-          <span class="cal-entity-id">${e.entity_id}</span>
-
-          <!-- Display name input -->
-          <div class="cal-field">
-            <label class="pv-label" for="cal-name-${t}">Display Name</label>
+      <div class="cal-row">
+        <!-- Always-visible header: checkbox + calendar name -->
+        <div class="cal-header">
+          <label class="cal-checkbox-wrap" title="${e.include?"Exclude this calendar":"Include this calendar"}">
             <input
-              id="cal-name-${t}"
-              type="text"
-              class="pv-input cal-name-input"
-              .value=${e.display_name}
-              placeholder="Calendar name"
-              ?disabled=${!e.include}
-              @input=${e=>this._updateCalendar(t,{display_name:e.target.value})}
+              type="checkbox"
+              class="cal-checkbox"
+              .checked=${e.include}
+              @change=${e=>this._updateCalendar(t,{include:e.target.checked})}
             />
-          </div>
-
-          <!-- Color picker -->
-          <div class="cal-field">
-            <label class="pv-label">Color</label>
-            <pv-color-swatch-picker
-              .value=${e.color}
-              .valueLight=${e.color_light}
-              ?disabled=${!e.include}
-              @color-change=${e=>this._onCalendarColorChange(t,e)}
-            ></pv-color-swatch-picker>
-          </div>
-
-          <!-- Person entity link -->
-          <div class="cal-field">
-            <label class="pv-label" for="cal-person-${t}">Link to Person</label>
-            <select
-              id="cal-person-${t}"
-              class="pv-input pv-select cal-person-select"
-              .value=${e.person_entity}
-              ?disabled=${!e.include}
-              @change=${e=>this._updateCalendar(t,{person_entity:e.target.value})}
-            >
-              <option value="">(None)</option>
-              ${this._personEntities.map(t=>R`
-                <option value="${t}" ?selected=${e.person_entity===t}>${this._personLabel(t)}</option>
-              `)}
-            </select>
+            <span class="cal-checkbox-visual" aria-hidden="true">
+              ${e.include?R`
+                <svg viewBox="0 0 24 24" width="14" height="14">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+                </svg>
+              `:""}
+            </span>
+          </label>
+          <div class="cal-header-info">
+            <span class="cal-friendly-name">${e.display_name||e.entity_id}</span>
+            <span class="cal-entity-id">${e.entity_id}</span>
           </div>
         </div>
+
+        <!-- Expandable details — only shown when included -->
+        ${e.include?R`
+          <div class="cal-details">
+            <!-- Display name input -->
+            <div class="cal-field">
+              <label class="pv-label" for="cal-name-${t}">Display Name</label>
+              <input
+                id="cal-name-${t}"
+                type="text"
+                class="pv-input cal-name-input"
+                .value=${e.display_name}
+                placeholder="Calendar name"
+                @input=${e=>this._updateCalendar(t,{display_name:e.target.value})}
+              />
+            </div>
+
+            <!-- Color picker -->
+            <div class="cal-field">
+              <label class="pv-label">Color</label>
+              <pv-color-swatch-picker
+                .value=${e.color}
+                .valueLight=${e.color_light}
+                @color-change=${e=>this._onCalendarColorChange(t,e)}
+              ></pv-color-swatch-picker>
+            </div>
+
+            <!-- Person entity link -->
+            <div class="cal-field">
+              <label class="pv-label" for="cal-person-${t}">Link to Person</label>
+              <select
+                id="cal-person-${t}"
+                class="pv-input pv-select cal-person-select"
+                .value=${e.person_entity}
+                @change=${e=>this._updateCalendar(t,{person_entity:e.target.value})}
+              >
+                <option value="">(None)</option>
+                ${this._personEntities.map(t=>R`
+                  <option value="${t}" ?selected=${e.person_entity===t}>${this._personLabel(t)}</option>
+                `)}
+              </select>
+            </div>
+          </div>
+        `:""}
       </div>
     `}_renderPage2(){return R`
       <div class="page-content">
@@ -1129,23 +1131,55 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
       .calendar-list {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.625rem;
       }
 
       .cal-row {
         display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-        padding: 1rem;
+        flex-direction: column;
+        padding: 0.875rem 1rem;
         border: 1px solid var(--pv-border-subtle, #E5E7EB);
         border-radius: var(--pv-radius, 12px);
         background: var(--pv-card-bg, #FFFFFF);
-        transition: opacity var(--pv-transition, 200ms ease),
-                    border-color var(--pv-transition, 200ms ease);
+        transition: border-color var(--pv-transition, 200ms ease);
       }
 
-      .cal-row--excluded {
-        opacity: 0.5;
+      .cal-row:has(.cal-checkbox:checked) {
+        border-color: var(--pv-accent, #6366F1);
+      }
+
+      /* Always-visible header row */
+      .cal-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .cal-header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .cal-friendly-name {
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--pv-text, #1A1B1E);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .cal-entity-id {
+        font-size: 0.6875rem;
+        color: var(--pv-text-muted, #9CA3AF);
+        font-family: monospace;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       /* Custom checkbox */
@@ -1154,7 +1188,6 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
         align-items: center;
         cursor: pointer;
         flex-shrink: 0;
-        margin-top: 0.125rem;
       }
 
       .cal-checkbox {
@@ -1188,20 +1221,15 @@ function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPro
         border-color: var(--pv-accent, #6366F1);
       }
 
+      /* Expanded details (only shown when included) */
       .cal-details {
-        flex: 1;
-        min-width: 0;
         display: flex;
         flex-direction: column;
         gap: 0.875rem;
-      }
-
-      .cal-entity-id {
-        font-size: 0.75rem;
-        color: var(--pv-text-muted, #9CA3AF);
-        font-family: monospace;
-        letter-spacing: 0.01em;
-        word-break: break-all;
+        margin-top: 0.875rem;
+        padding-top: 0.875rem;
+        border-top: 1px solid var(--pv-border-subtle, #E5E7EB);
+        animation: pv-fadeIn 200ms ease forwards;
       }
 
       .cal-field {
