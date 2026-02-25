@@ -274,6 +274,32 @@ export class PVViewDay extends LitElement {
         background: var(--pv-today-bg);
       }
 
+      /* Next day footer */
+      .next-day-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 16px;
+        cursor: pointer;
+        color: var(--pv-accent, #6366F1);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        background: var(--pv-border-subtle, rgba(0, 0, 0, 0.03));
+        border-top: 1px solid var(--pv-border);
+        transition: background 200ms ease;
+        flex-shrink: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .next-day-footer:hover {
+        background: color-mix(in srgb, var(--pv-accent, #6366F1) 8%, transparent);
+      }
+
+      .next-day-footer ha-icon {
+        --mdc-icon-size: 20px;
+      }
+
       /* Empty state */
       .empty-state {
         display: flex;
@@ -406,6 +432,7 @@ export class PVViewDay extends LitElement {
               ${personKeys.map(key => this._renderColumn(key, personGroups.get(key) || []))}
             </div>
           </div>
+          ${this._renderNextDayFooter()}
         </div>
       </div>
     `;
@@ -417,10 +444,11 @@ export class PVViewDay extends LitElement {
       const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
       let label: string;
       if (this.timeFormat === '24h') {
-        label = `${String(h).padStart(2, '0')}:00`;
+        label = `${String(h % 24).padStart(2, '0')}:00`;
       } else {
-        const hour12 = h % 12 || 12;
-        const period = h >= 12 ? 'PM' : 'AM';
+        const hNorm = h % 24; // 24 → 0 (midnight)
+        const hour12 = hNorm % 12 || 12;
+        const period = hNorm >= 12 ? 'PM' : 'AM';
         label = `${hour12} ${period}`;
       }
       labels.push(html`
@@ -439,6 +467,32 @@ export class PVViewDay extends LitElement {
       `);
     }
     return lines;
+  }
+
+  private _renderNextDayFooter() {
+    const nextDay = new Date(this.currentDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const label = nextDay.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+    return html`
+      <div class="next-day-footer" @click=${this._goToNextDay}>
+        ${label}
+        <ha-icon icon="mdi:arrow-down"></ha-icon>
+      </div>
+    `;
+  }
+
+  private _goToNextDay() {
+    const nextDay = new Date(this.currentDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    this.dispatchEvent(new CustomEvent('day-click', {
+      detail: { date: nextDay },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private _renderColumn(personKey: string, events: CalendarEvent[]) {

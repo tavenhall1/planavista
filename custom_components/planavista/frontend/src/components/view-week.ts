@@ -343,10 +343,11 @@ export class PVViewWeek extends LitElement {
       const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
       let label: string;
       if (this.timeFormat === '24h') {
-        label = `${String(h).padStart(2, '0')}:00`;
+        label = `${String(h % 24).padStart(2, '0')}:00`;
       } else {
-        const hour12 = h % 12 || 12;
-        const period = h >= 12 ? 'PM' : 'AM';
+        const hNorm = h % 24;
+        const hour12 = hNorm % 12 || 12;
+        const period = hNorm >= 12 ? 'PM' : 'AM';
         label = `${hour12} ${period}`;
       }
       labels.push(html`<div class="time-label" style="top: ${top}%">${label}</div>`);
