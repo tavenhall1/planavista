@@ -42,6 +42,7 @@ export class PVEventCreateDialog extends LitElement {
 
   @query('#title-input') private _titleInput?: HTMLInputElement;
   @query('.location-input') private _locationInput?: HTMLInputElement;
+  @query('.date-display') private _dateDisplay?: HTMLElement;
 
   static styles = [
     baseStyles,
@@ -187,10 +188,8 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       .date-picker-dropdown {
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        z-index: 200;
+        position: fixed;
+        z-index: 9999;
         background: var(--pv-card-bg, #fff);
         border: 1px solid var(--pv-border);
         border-radius: var(--pv-radius-md, 12px);
@@ -586,6 +585,7 @@ export class PVEventCreateDialog extends LitElement {
       </div>
 
       ${this._renderLocationDropdown()}
+      ${this._renderDatePickerDropdown()}
     `;
   }
 
@@ -600,39 +600,57 @@ export class PVEventCreateDialog extends LitElement {
           <ha-icon icon="mdi:calendar"></ha-icon>
           ${this._formatDateDisplay()}
         </div>
-        ${this._datePickerOpen ? html`
-          <div class="date-picker-dropdown">
-            <div class="picker-header">
-              <span class="picker-month-label">
-                ${new Date(this._pickerYear, this._pickerMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-              <div class="picker-nav">
-                <button class="picker-nav-btn" @click=${this._pickerPrevMonth}>
-                  <ha-icon icon="mdi:chevron-left"></ha-icon>
-                </button>
-                <button class="picker-nav-btn" @click=${this._pickerNextMonth}>
-                  <ha-icon icon="mdi:chevron-right"></ha-icon>
-                </button>
-              </div>
-            </div>
-            <div class="picker-weekdays">
-              ${WEEKDAY_LABELS.map(d => html`<span class="picker-weekday">${d}</span>`)}
-            </div>
-            <div class="picker-days">
-              ${this._getPickerDays().map(day => {
-                const isOther = day.getMonth() !== this._pickerMonth;
-                const isToday = this._toDateStr(day) === this._toDateStr(new Date());
-                const isSelected = this._toDateStr(day) === this._date;
-                return html`
-                  <button
-                    class="picker-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
-                    @click=${() => this._selectPickerDay(day)}
-                  >${day.getDate()}</button>
-                `;
-              })}
-            </div>
+      </div>
+    `;
+  }
+
+  private _renderDatePickerDropdown() {
+    if (!this._datePickerOpen) return nothing;
+
+    const el = this._dateDisplay;
+    if (!el) return nothing;
+    const rect = el.getBoundingClientRect();
+
+    // Position below the trigger, but if it would go off-screen, position above
+    const dropdownHeight = 330; // approximate
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+    const top = placeAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4;
+
+    return html`
+      <div
+        class="date-picker-dropdown"
+        style="top: ${top}px; left: ${rect.left}px;"
+      >
+        <div class="picker-header">
+          <span class="picker-month-label">
+            ${new Date(this._pickerYear, this._pickerMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </span>
+          <div class="picker-nav">
+            <button class="picker-nav-btn" @click=${this._pickerPrevMonth}>
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+            <button class="picker-nav-btn" @click=${this._pickerNextMonth}>
+              <ha-icon icon="mdi:chevron-right"></ha-icon>
+            </button>
           </div>
-        ` : nothing}
+        </div>
+        <div class="picker-weekdays">
+          ${WEEKDAY_LABELS.map(d => html`<span class="picker-weekday">${d}</span>`)}
+        </div>
+        <div class="picker-days">
+          ${this._getPickerDays().map(day => {
+            const isOther = day.getMonth() !== this._pickerMonth;
+            const isToday = this._toDateStr(day) === this._toDateStr(new Date());
+            const isSelected = this._toDateStr(day) === this._date;
+            return html`
+              <button
+                class="picker-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
+                @click=${() => this._selectPickerDay(day)}
+              >${day.getDate()}</button>
+            `;
+          })}
+        </div>
       </div>
     `;
   }
@@ -755,17 +773,17 @@ export class PVEventCreateDialog extends LitElement {
 
   private async _searchLocation(query: string) {
     try {
-      // Use HA's home coordinates for location bias
-      const lat = (this.hass as any)?.config?.latitude;
-      const lon = (this.hass as any)?.config?.longitude;
+      // Use HA's home coordinates for location bias and sorting
+      const homeLat = (this.hass as any)?.config?.latitude;
+      const homeLon = (this.hass as any)?.config?.longitude;
 
-      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
+      // Fetch more results so we can sort by distance and return the closest
+      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=20`;
 
-      if (lat != null && lon != null) {
-        // Create a ~100km viewbox around the home location for bias
-        const delta = 1.0; // ~111km at equator
-        url += `&viewbox=${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
-        url += `&bounded=0`; // prefer but don't restrict to viewbox
+      if (homeLat != null && homeLon != null) {
+        const delta = 2.0; // ~220km bias area
+        url += `&viewbox=${homeLon - delta},${homeLat + delta},${homeLon + delta},${homeLat - delta}`;
+        url += `&bounded=0`;
       }
 
       const resp = await fetch(url, {
@@ -773,7 +791,17 @@ export class PVEventCreateDialog extends LitElement {
       });
       if (!resp.ok) throw new Error('Search failed');
       const results = await resp.json();
-      this._locationSuggestions = results.map((r: any) => ({
+
+      // Sort by distance from HA home, then take top 5
+      if (homeLat != null && homeLon != null) {
+        results.sort((a: any, b: any) => {
+          const distA = this._haversine(homeLat, homeLon, parseFloat(a.lat), parseFloat(a.lon));
+          const distB = this._haversine(homeLat, homeLon, parseFloat(b.lat), parseFloat(b.lon));
+          return distA - distB;
+        });
+      }
+
+      this._locationSuggestions = results.slice(0, 5).map((r: any) => ({
         display_name: r.display_name,
       }));
     } catch {
@@ -781,6 +809,18 @@ export class PVEventCreateDialog extends LitElement {
     } finally {
       this._locationLoading = false;
     }
+  }
+
+  /** Haversine distance in km between two lat/lon points */
+  private _haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   private _selectLocation(name: string) {
