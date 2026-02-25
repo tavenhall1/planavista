@@ -68,12 +68,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if "onboarding_complete" in call_data:
             new_data["onboarding_complete"] = bool(call_data["onboarding_complete"])
 
+        # Suppress the background reload that async_update_entry triggers
+        # (the update listener would otherwise destroy the coordinator we're about to update)
+        coord = hass.data[DOMAIN].get(config_entry.entry_id)
+        if coord:
+            coord._suppress_reload = True
+
         # Persist to config entry storage
         hass.config_entries.async_update_entry(config_entry, data=new_data)
 
         # Update coordinator in-memory and refresh data immediately
-        # (avoids heavy full-entry reload which tears down & recreates everything)
-        coord = hass.data[DOMAIN].get(config_entry.entry_id)
         if coord:
             coord.calendars = new_data.get(CONF_CALENDARS, [])
             await coord.async_refresh()
@@ -130,6 +134,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry when options change."""
+    # Skip reload when save_config already handled the update in-memory
+    coord = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if coord and getattr(coord, "_suppress_reload", False):
+        coord._suppress_reload = False
+        _LOGGER.debug("Skipping reload — save_config already applied changes")
+        return
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 

@@ -29,6 +29,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _currentTime = new Date();
   @state() private _filterOpen = false;
   @state() private _wizardOpen = false;
+  @state() private _onboardingDone = false;
 
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
@@ -549,6 +550,7 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _onOnboardingComplete() {
     this._wizardOpen = false;
+    this._onboardingDone = true;
     // Coordinator refreshes server-side; hass pushes updated sensor state → re-render
   }
 
@@ -584,7 +586,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     }
 
     // Onboarding — show setup card until user explicitly launches the wizard
-    if (data.onboarding_complete === false) {
+    if (data.onboarding_complete === false && !this._onboardingDone) {
       if (this._wizardOpen) {
         return html`
           <ha-card>
