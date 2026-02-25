@@ -153,202 +153,32 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Initialize the config flow."""
         self._data = {}
-        self._selected_calendars = []
-        self._calendar_configs = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Handle the initial step - calendar selection."""
-        errors = {}
-
+        """Single confirmation step — wizard handles actual setup in-card."""
         if user_input is not None:
-            self._selected_calendars = user_input.get("calendars", [])
-
-            if not self._selected_calendars:
-                errors["base"] = "no_calendars"
-            else:
-                return await self.async_step_display()
-
-        # Discover available calendars
-        calendar_entities = _discover_calendar_entities(self.hass)
-
-        if not calendar_entities:
-            return self.async_abort(reason="no_calendars_found")
-
-        # Create friendly options for multi-select
-        calendar_options = {
-            entity_id: _get_friendly_name(self.hass, entity_id)
-            for entity_id in calendar_entities
-        }
-
-        schema = vol.Schema(
-            {
-                vol.Required("calendars"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value=k, label=v)
-                            for k, v in calendar_options.items()
-                        ],
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.LIST,
-                    )
-                ),
-            }
-        )
+            return self.async_create_entry(
+                title=NAME,
+                data={
+                    CONF_CALENDARS: [],
+                    "display": {
+                        CONF_TIME_FORMAT: DEFAULT_TIME_FORMAT,
+                        CONF_WEATHER_ENTITY: "",
+                        CONF_FIRST_DAY: DEFAULT_FIRST_DAY,
+                        CONF_DEFAULT_VIEW: DEFAULT_VIEW,
+                        CONF_THEME: DEFAULT_THEME,
+                    },
+                    "onboarding_complete": False,
+                },
+            )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=schema,
-            errors=errors,
+            data_schema=vol.Schema({}),
             description_placeholders={
                 "name": NAME,
-            },
-        )
-
-    async def async_step_display(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Handle display preferences step."""
-        errors = {}
-
-        if user_input is not None:
-            self._data["display"] = {
-                CONF_TIME_FORMAT: user_input[CONF_TIME_FORMAT],
-                CONF_WEATHER_ENTITY: user_input.get(CONF_WEATHER_ENTITY, ""),
-                CONF_FIRST_DAY: user_input[CONF_FIRST_DAY],
-                CONF_DEFAULT_VIEW: user_input[CONF_DEFAULT_VIEW],
-                CONF_THEME: user_input[CONF_THEME],
-            }
-            return await self.async_step_calendars()
-
-        # Discover weather entities
-        weather_entities = _discover_weather_entities(self.hass)
-        weather_options = [""] + weather_entities  # Allow no weather entity
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_TIME_FORMAT, default=DEFAULT_TIME_FORMAT): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value=TIME_FORMAT_12H, label="12-hour (AM/PM)"),
-                            selector.SelectOptionDict(value=TIME_FORMAT_24H, label="24-hour"),
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_WEATHER_ENTITY, default=""): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value=entity, label=_get_friendly_name(self.hass, entity) if entity else "None")
-                            for entity in weather_options
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Required(CONF_FIRST_DAY, default=DEFAULT_FIRST_DAY): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value=FIRST_DAY_MONDAY, label="Monday"),
-                            selector.SelectOptionDict(value=FIRST_DAY_SUNDAY, label="Sunday"),
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Required(CONF_DEFAULT_VIEW, default=DEFAULT_VIEW): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value=view, label=view.title())
-                            for view in CALENDAR_VIEWS
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Required(CONF_THEME, default=DEFAULT_THEME): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(value=theme, label=theme.title())
-                            for theme in THEMES
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-
-        return self.async_show_form(
-            step_id="display",
-            data_schema=schema,
-            errors=errors,
-        )
-
-    async def async_step_calendars(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Handle calendar personalization step."""
-        if user_input is not None:
-            # Save the configuration for this calendar
-            calendar_entity = user_input.pop("_entity_id")
-            color_hex = _rgb_to_hex(user_input[CONF_COLOR])
-            self._calendar_configs.append({
-                "entity_id": calendar_entity,
-                CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
-                CONF_COLOR: color_hex,
-                CONF_COLOR_LIGHT: _get_color_light(color_hex),
-                CONF_ICON: user_input.get(CONF_ICON, "mdi:calendar"),
-                CONF_PERSON_ENTITY: user_input.get(CONF_PERSON_ENTITY, ""),
-                CONF_VISIBLE: True,
-            })
-
-            # Check if there are more calendars to configure
-            if len(self._calendar_configs) < len(self._selected_calendars):
-                return await self.async_step_calendars()
-
-            # All calendars configured, create the entry
-            self._data[CONF_CALENDARS] = self._calendar_configs
-            return self.async_create_entry(title=NAME, data=self._data)
-
-        # Get the next calendar to configure
-        current_index = len(self._calendar_configs)
-        current_calendar = self._selected_calendars[current_index]
-
-        # Get color for this calendar (cycle through defaults)
-        default_color = DEFAULT_COLORS[current_index % len(DEFAULT_COLORS)]
-
-        # Get friendly name
-        friendly_name = _get_friendly_name(self.hass, current_calendar)
-
-        # Get person entities
-        person_entities = _discover_person_entities(self.hass)
-
-        schema = vol.Schema(
-            {
-                vol.Required("_entity_id", default=current_calendar): selector.TextSelector(),
-                vol.Required(CONF_DISPLAY_NAME, default=friendly_name): selector.TextSelector(),
-                vol.Required(CONF_COLOR, default=default_color): selector.ColorRGBSelector(),
-                vol.Optional(CONF_ICON, default="mdi:calendar"): selector.IconSelector(),
-                vol.Optional(CONF_PERSON_ENTITY, default=""): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            selector.SelectOptionDict(
-                                value=entity,
-                                label=_get_friendly_name(self.hass, entity) if entity else "None"
-                            )
-                            for entity in person_entities
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-
-        return self.async_show_form(
-            step_id="calendars",
-            data_schema=schema,
-            description_placeholders={
-                "calendar_name": friendly_name,
-                "current": str(current_index + 1),
-                "total": str(len(self._selected_calendars)),
             },
         )
 

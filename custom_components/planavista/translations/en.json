@@ -2,42 +2,12 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select Calendars",
-        "description": "Choose which calendars to display in PlanaVista",
-        "data": {
-          "calendars": "Calendars to display"
-        }
-      },
-      "display": {
-        "title": "Display Preferences",
-        "description": "Configure how PlanaVista displays time and information",
-        "data": {
-          "time_format": "Time Format",
-          "weather_entity": "Weather Entity (optional)",
-          "first_day": "First Day of Week",
-          "default_view": "Default Calendar View",
-          "theme": "Theme"
-        }
-      },
-      "calendars": {
-        "title": "Calendar Personalization ({current}/{total})",
-        "description": "Customize how {calendar_name} appears in PlanaVista",
-        "data": {
-          "_entity_id": "Calendar Entity",
-          "display_name": "Display Name",
-          "color": "Color",
-          "icon": "Icon",
-          "person_entity": "Link to Person (optional)"
-        }
+        "title": "Welcome to PlanaVista",
+        "description": "PlanaVista has been installed successfully.\n\nTo complete setup:\n\n1. Navigate to the dashboard where you want your calendar\n2. Click the pencil icon (Edit Dashboard) in the top right\n3. Click \"+ Add Card\" and search for \"PlanaVista\"\n4. Save the dashboard\n\nThe first time the card loads, a setup wizard will walk you through choosing your calendars, colors, and theme.\n\nClick Submit to finish installation."
       }
     },
-    "error": {
-      "no_calendars": "Please select at least one calendar",
-      "unknown": "An unexpected error occurred"
-    },
     "abort": {
-      "already_configured": "PlanaVista is already configured",
-      "no_calendars_found": "No calendar integrations found. Please add a calendar integration first."
+      "already_configured": "PlanaVista is already configured."
     }
   },
   "options": {
