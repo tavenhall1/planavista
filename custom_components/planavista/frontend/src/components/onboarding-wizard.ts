@@ -78,7 +78,7 @@ export class PvOnboardingWizard extends LitElement {
         color: preset.color,
         color_light: preset.light,
         person_entity: '',
-        include: true,
+        include: false,  // opt-in: user selects only the calendars they want
       };
     });
     this._calendarsInitialized = true;
@@ -94,6 +94,10 @@ export class PvOnboardingWizard extends LitElement {
   private get _personEntities(): string[] {
     if (!this.hass) return [];
     return Object.keys(this.hass.states).filter(k => k.startsWith('person.')).sort();
+  }
+
+  private _personLabel(entityId: string): string {
+    return this.hass?.states[entityId]?.attributes?.friendly_name || entityId;
   }
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -274,7 +278,7 @@ export class PvOnboardingWizard extends LitElement {
     return html`
       <div class="page-content">
         <h2 class="page-title">Calendars</h2>
-        <p class="page-subtitle">Choose which calendars to display and personalise each one.</p>
+        <p class="page-subtitle">Check the calendars you want to display, then personalise each one.</p>
 
         <div class="calendar-list">
           ${this._calendarConfigs.map((cal, idx) => this._renderCalendarRow(cal, idx))}
@@ -345,7 +349,7 @@ export class PvOnboardingWizard extends LitElement {
             >
               <option value="">(None)</option>
               ${this._personEntities.map(p => html`
-                <option value="${p}" ?selected=${cal.person_entity === p}>${p}</option>
+                <option value="${p}" ?selected=${cal.person_entity === p}>${this._personLabel(p)}</option>
               `)}
             </select>
           </div>
