@@ -166,14 +166,14 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       .pvc-avatar {
-        width: 52px;
-        height: 52px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
-        font-size: 1.25rem;
+        font-weight: 700;
+        font-size: 1.5rem;
         color: white;
         border: 3px solid transparent;
         transition: all 200ms ease;
@@ -194,14 +194,15 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       .pvc-person-name {
-        font-size: 0.6875rem;
+        font-size: 0.8125rem;
         font-weight: 500;
         color: var(--pv-text-secondary);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 68px;
+        max-width: 80px;
         text-align: center;
+        margin-top: 2px;
       }
 
       .pvc-person:not(.hidden) .pvc-person-name {
@@ -653,6 +654,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .currentDate=${currentDate}
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
+          .hideColumnHeaders=${true}
         ></pv-view-day>`;
       case 'week':
         return html`<pv-view-week

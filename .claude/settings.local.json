@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo list:*)",
+      "mcp__Windows-MCP__Shell",
+      "mcp__plugin_serena_serena__list_dir",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git --version:*)",
+      "Bash(git config:*)",
+      "Bash(git clone:*)",
+      "Bash(git -C \"D:\\\\AI\\\\CoderIDE\\\\PlanaVista\\\\planavista\" ls-remote --exit-code origin)"
+    ]
+  }
+}

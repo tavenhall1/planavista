@@ -26,6 +26,7 @@ export class PVViewDay extends LitElement {
   @property({ type: Object }) currentDate: Date = new Date();
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
+  @property({ type: Boolean }) hideColumnHeaders = false;
 
   static styles = [
     baseStyles,
@@ -75,22 +76,24 @@ export class PVViewDay extends LitElement {
       .all-day-chip {
         display: inline-flex;
         align-items: center;
-        padding: 0.25rem 0.625rem;
+        padding: 6px 14px;
         border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
+        font-size: 0.8125rem;
+        font-weight: 600;
         color: white;
         cursor: pointer;
-        transition: all var(--pv-transition);
+        transition: all 200ms ease;
         max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
       }
 
       .all-day-chip:hover {
-        transform: scale(1.02);
-        box-shadow: var(--pv-shadow);
+        transform: scale(1.03);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        filter: brightness(1.05);
       }
 
       /* Column headers */
@@ -192,6 +195,11 @@ export class PVViewDay extends LitElement {
         border-left: 1px solid var(--pv-border);
       }
 
+      /* Alternate column tint for visual separation */
+      .person-column:nth-child(even) {
+        background: rgba(0, 0, 0, 0.008);
+      }
+
       /* Hour lines */
       .hour-line {
         position: absolute;
@@ -202,41 +210,45 @@ export class PVViewDay extends LitElement {
         pointer-events: none;
       }
 
-      /* Positioned events */
+      /* Positioned events — premium solid color blocks */
       .positioned-event {
         position: absolute;
-        left: 2px;
-        right: 2px;
-        padding: 0.25rem 0.375rem;
-        border-radius: var(--pv-radius-sm, 8px);
-        border-left: 3px solid var(--event-color);
-        background: color-mix(in srgb, var(--event-color) 10%, var(--pv-card-bg, white));
+        left: 3px;
+        right: 3px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: var(--event-color);
+        color: white;
         cursor: pointer;
         overflow: hidden;
-        transition: all var(--pv-transition);
+        transition: all 200ms ease;
         z-index: 1;
-        min-height: 24px;
+        min-height: 26px;
+        box-shadow: 0 1px 4px color-mix(in srgb, var(--event-color) 40%, transparent);
       }
 
       .positioned-event:hover {
         z-index: 5;
-        box-shadow: var(--pv-shadow-lg);
-        transform: translateX(1px);
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--event-color) 50%, transparent);
+        transform: scale(1.02);
+        filter: brightness(1.05);
       }
 
       .positioned-event .event-title {
-        font-size: 0.75rem;
-        font-weight: 500;
-        line-height: 1.2;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.25;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        color: white;
       }
 
       .positioned-event .event-time {
-        font-size: 0.625rem;
-        color: var(--pv-text-secondary);
-        margin-top: 1px;
+        font-size: 0.6875rem;
+        color: rgba(255, 255, 255, 0.8);
+        margin-top: 2px;
+        font-weight: 500;
       }
 
       /* Click target for empty slots */
@@ -348,25 +360,27 @@ export class PVViewDay extends LitElement {
           </div>
         ` : nothing}
 
-        <div class="column-headers">
-          <div class="header-gutter"></div>
-          ${personKeys.map(key => {
-            const cal = visibleCalendars.find(c => (c.person_entity || c.entity_id) === key);
-            const avatar = cal?.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
-            const name = cal?.person_entity
-              ? getPersonName(this.hass, cal.person_entity)
-              : cal?.display_name || key;
-            const color = cal?.color || '#6366F1';
-            return html`
-              <div class="person-header">
-                ${avatar
-                  ? html`<img class="person-avatar" src="${avatar}" alt="${name}" />`
-                  : html`<div class="person-initial" style="background: ${color}">${name[0]?.toUpperCase() || '?'}</div>`}
-                <span class="person-name">${name}</span>
-              </div>
-            `;
-          })}
-        </div>
+        ${!this.hideColumnHeaders ? html`
+          <div class="column-headers">
+            <div class="header-gutter"></div>
+            ${personKeys.map(key => {
+              const cal = visibleCalendars.find(c => (c.person_entity || c.entity_id) === key);
+              const avatar = cal?.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
+              const name = cal?.person_entity
+                ? getPersonName(this.hass, cal.person_entity)
+                : cal?.display_name || key;
+              const color = cal?.color || '#6366F1';
+              return html`
+                <div class="person-header">
+                  ${avatar
+                    ? html`<img class="person-avatar" src="${avatar}" alt="${name}" />`
+                    : html`<div class="person-initial" style="background: ${color}">${name[0]?.toUpperCase() || '?'}</div>`}
+                  <span class="person-name">${name}</span>
+                </div>
+              `;
+            })}
+          </div>
+        ` : nothing}
 
         <div class="time-grid-wrapper">
           <div class="time-grid">
