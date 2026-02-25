@@ -1,6 +1,7 @@
 // PlanaVista v1.0
 // Single entry point — imports all cards and registers them with HA
 
+import './cards/planavista-calendar-card';
 import './cards/planavista-grid-card';
 import './cards/planavista-agenda-card';
 import './cards/planavista-clock-card';
@@ -11,8 +12,14 @@ import './cards/planavista-toggles-card';
 window.customCards = window.customCards || [];
 window.customCards.push(
   {
+    type: 'planavista-calendar-card',
+    name: 'PlanaVista (Unified)',
+    description: 'All-in-one calendar with clock, weather, toggles, and views',
+    preview: true,
+  },
+  {
     type: 'planavista-grid-card',
-    name: 'PlanaVista',
+    name: 'PlanaVista Grid',
     description: 'Calendar grid with day, week, and month views',
     preview: true,
   },
