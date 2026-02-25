@@ -275,7 +275,11 @@ export class PVEventCreateDialog extends LitElement {
                 <span class="all-day-label">All Day</span>
                 <div
                   class="pv-toggle ${this._allDay ? 'active' : ''}"
+                  role="switch"
+                  tabindex="0"
+                  aria-checked="${this._allDay}"
                   @click=${() => this._allDay = !this._allDay}
+                  @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._allDay = !this._allDay; }}}
                 ></div>
               </div>
 
@@ -364,6 +368,18 @@ export class PVEventCreateDialog extends LitElement {
     }
     if (!this._calendarEntityId) {
       this._error = 'Please select a calendar';
+      return;
+    }
+
+    // Validate end time > start time for timed events
+    if (!this._allDay && this._endTime <= this._startTime) {
+      this._error = 'End time must be after start time';
+      return;
+    }
+
+    // If editing, ensure we have a UID to delete the original
+    if (this.mode === 'edit' && !this.prefill?.uid) {
+      this._error = 'Cannot edit this event (no unique ID). Try deleting and recreating it.';
       return;
     }
 

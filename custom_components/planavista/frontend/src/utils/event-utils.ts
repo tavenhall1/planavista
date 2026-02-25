@@ -37,7 +37,12 @@ export function groupEventsByDate(events: CalendarEvent[]): Map<string, Calendar
     const endDay = new Date(end);
     endDay.setHours(0, 0, 0, 0);
 
-    while (current <= endDay) {
+    // All-day events use exclusive end dates (CalDAV/iCal spec):
+    // A single all-day event on Feb 24 has end = Feb 25.
+    // Use < instead of <= for all-day to avoid double-counting.
+    const allDay = isAllDayEvent(event);
+
+    while (allDay ? current < endDay : current <= endDay) {
       const key = getDateKey(current);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(event);
@@ -103,27 +108,55 @@ export function getEventsForDateRange(
 /**
  * Calculate event position as percentages for time-grid views.
  * Returns top (%) and height (%) relative to the day grid.
+ * `viewDate` is required to correctly clamp multi-day/overnight events to the visible day.
  */
 export function getEventPosition(
   event: CalendarEvent,
   dayStartHour: number = 0,
-  dayEndHour: number = 24
+  dayEndHour: number = 24,
+  viewDate?: Date
 ): { top: number; height: number } {
   const start = new Date(event.start);
   const end = new Date(event.end);
   const totalMinutes = (dayEndHour - dayStartHour) * 60;
-  const startMinutes = Math.max(0, (start.getHours() - dayStartHour) * 60 + start.getMinutes());
-  const endMinutes = Math.min(totalMinutes, (end.getHours() - dayStartHour) * 60 + end.getMinutes());
-  const durationMinutes = Math.max(endMinutes - startMinutes, 15); // minimum 15 min visual height
+
+  // Clamp start/end to the visible day boundaries for overnight/multi-day events
+  let startMins: number;
+  let endMins: number;
+
+  if (viewDate) {
+    const dayStart = new Date(viewDate);
+    dayStart.setHours(dayStartHour, 0, 0, 0);
+    const dayEnd = new Date(viewDate);
+    dayEnd.setHours(dayEndHour, 0, 0, 0);
+
+    const clampedStart = start < dayStart ? dayStart : start;
+    const clampedEnd = end > dayEnd ? dayEnd : end;
+
+    startMins = (clampedStart.getHours() - dayStartHour) * 60 + clampedStart.getMinutes();
+    endMins = (clampedEnd.getHours() - dayStartHour) * 60 + clampedEnd.getMinutes();
+  } else {
+    startMins = Math.max(0, (start.getHours() - dayStartHour) * 60 + start.getMinutes());
+    endMins = Math.min(totalMinutes, (end.getHours() - dayStartHour) * 60 + end.getMinutes());
+    // Handle overnight: if end is on a different day and endMins would be small, extend to dayEnd
+    if (end.toDateString() !== start.toDateString() && endMins <= 0) {
+      endMins = totalMinutes;
+    }
+  }
+
+  startMins = Math.max(0, Math.min(startMins, totalMinutes));
+  endMins = Math.max(0, Math.min(endMins, totalMinutes));
+  const durationMinutes = Math.max(endMins - startMins, 15); // minimum 15 min visual height
 
   return {
-    top: (startMinutes / totalMinutes) * 100,
+    top: (startMins / totalMinutes) * 100,
     height: (durationMinutes / totalMinutes) * 100,
   };
 }
 
 /**
- * Detect overlapping events and assign columns.
+ * Detect overlapping events and assign columns per overlap cluster.
+ * Events that don't overlap each other get full width (totalColumns=1).
  * Returns events with column and totalColumns properties.
  */
 export function detectOverlaps(events: CalendarEvent[]): Array<CalendarEvent & { column: number; totalColumns: number }> {
@@ -131,38 +164,75 @@ export function detectOverlaps(events: CalendarEvent[]): Array<CalendarEvent & {
     (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
   );
 
-  const result: Array<CalendarEvent & { column: number; totalColumns: number }> = [];
-  const columns: Array<{ end: number }> = [];
+  if (timed.length === 0) return [];
 
-  for (const event of timed) {
-    const eventStart = new Date(event.start).getTime();
-    const eventEnd = new Date(event.end).getTime();
+  // Build overlap clusters: groups of events that transitively overlap
+  type EventInfo = { event: CalendarEvent; start: number; end: number; column: number; cluster: number };
+  const infos: EventInfo[] = timed.map(e => ({
+    event: e,
+    start: new Date(e.start).getTime(),
+    end: new Date(e.end).getTime(),
+    column: 0,
+    cluster: 0,
+  }));
 
-    // Find a column where this event fits (no overlap)
-    let placed = false;
-    for (let i = 0; i < columns.length; i++) {
-      if (eventStart >= columns[i].end) {
-        columns[i].end = eventEnd;
-        result.push({ ...event, column: i, totalColumns: 0 });
-        placed = true;
+  // Assign columns within clusters using a greedy algorithm
+  let clusterIdx = 0;
+  let clusterStart = 0;
+
+  for (let i = 0; i < infos.length; i++) {
+    // Check if this event overlaps with any event in the current cluster
+    let overlapsCluster = false;
+    for (let j = clusterStart; j < i; j++) {
+      if (infos[i].start < infos[j].end) {
+        overlapsCluster = true;
         break;
       }
     }
 
-    if (!placed) {
-      columns.push({ end: eventEnd });
-      result.push({ ...event, column: columns.length - 1, totalColumns: 0 });
+    if (!overlapsCluster && i > clusterStart) {
+      // Finalize previous cluster
+      const clusterEnd = i;
+      let maxCol = 0;
+      for (let j = clusterStart; j < clusterEnd; j++) {
+        maxCol = Math.max(maxCol, infos[j].column + 1);
+      }
+      for (let j = clusterStart; j < clusterEnd; j++) {
+        infos[j].cluster = clusterIdx;
+      }
+      clusterIdx++;
+      clusterStart = i;
     }
+
+    // Assign column: find the first column not occupied by an overlapping event
+    const occupiedCols = new Set<number>();
+    for (let j = clusterStart; j < i; j++) {
+      if (infos[i].start < infos[j].end) {
+        occupiedCols.add(infos[j].column);
+      }
+    }
+    let col = 0;
+    while (occupiedCols.has(col)) col++;
+    infos[i].column = col;
   }
 
-  // Update totalColumns for overlapping groups
-  // Simple approach: find max column used
-  const maxCol = columns.length;
-  for (const event of result) {
-    event.totalColumns = maxCol;
+  // Finalize last cluster
+  infos.forEach((info, idx) => {
+    if (idx >= clusterStart) info.cluster = clusterIdx;
+  });
+
+  // Calculate totalColumns per cluster
+  const clusterMaxCols = new Map<number, number>();
+  for (const info of infos) {
+    const current = clusterMaxCols.get(info.cluster) || 0;
+    clusterMaxCols.set(info.cluster, Math.max(current, info.column + 1));
   }
 
-  return result;
+  return infos.map(info => ({
+    ...info.event,
+    column: info.column,
+    totalColumns: clusterMaxCols.get(info.cluster) || 1,
+  }));
 }
 
 /**

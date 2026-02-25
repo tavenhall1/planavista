@@ -123,14 +123,20 @@ export function getThemeStyles(theme: ThemeName = 'light'): string {
   return Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join('\n  ');
 }
 
+// Cache to avoid re-applying the same theme to the same element
+const _appliedThemeCache = new WeakMap<HTMLElement, ThemeName>();
+
 /**
  * Apply theme CSS variables to a host element dynamically.
+ * Skips if the same theme is already applied (performance optimization).
  */
 export function applyTheme(element: HTMLElement, theme: ThemeName = 'light'): void {
+  if (_appliedThemeCache.get(element) === theme) return;
   const vars = themeVars[theme] || themeVars.light;
   for (const [key, value] of Object.entries(vars)) {
     element.style.setProperty(key, value);
   }
+  _appliedThemeCache.set(element, theme);
 }
 
 /**
@@ -146,7 +152,9 @@ export function getThemeCSSText(theme: ThemeName = 'light'): string {
  */
 export function resolveTheme(configTheme?: string, displayTheme?: string): ThemeName {
   const theme = configTheme || displayTheme || 'light';
+  // Map legacy/backend theme names to frontend theme names
   if (theme === 'planavista') return 'light';
+  if (theme === 'modern') return 'vibrant';
   if (theme in themeVars) return theme as ThemeName;
   return 'light';
 }

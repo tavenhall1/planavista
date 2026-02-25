@@ -155,14 +155,23 @@ class PlanaVistaStateManager {
   ): Promise<void> {
     this.isLoading = true;
     this._notify();
+    let deleteSucceeded = false;
     try {
       await deleteEvent(hass, oldEvent);
+      deleteSucceeded = true;
       await createEvent(hass, newEvent);
       await refreshPlanaVista(hass);
       this.selectedEvent = null;
       this.closeDialog();
     } catch (err) {
       console.error('PlanaVista: Failed to edit event', err);
+      if (deleteSucceeded) {
+        // Original was deleted but replacement failed — inform user clearly
+        throw new Error(
+          'The original event was deleted but the replacement could not be created. ' +
+          'Please create the event manually. Error: ' + (err instanceof Error ? err.message : String(err))
+        );
+      }
       throw err;
     } finally {
       this.isLoading = false;

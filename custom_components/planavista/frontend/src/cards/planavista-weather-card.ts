@@ -222,6 +222,9 @@ export class PlanaVistaWeatherCard extends LitElement {
     const windUnit = weather.attributes.wind_speed_unit || 'mph';
     const showDetails = this._config.show_details !== false;
     const showForecast = this._config.show_forecast === true;
+    // Note: weather.attributes.forecast was deprecated in HA 2023.9.
+    // Some integrations still provide it. Full forecast support via
+    // weather.get_forecasts service is planned for v1.1.
     const forecast: ForecastDay[] = weather.attributes.forecast || [];
     const layout = this._config.layout || 'horizontal';
 
