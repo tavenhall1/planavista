@@ -50,6 +50,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register update listener for config changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Register frontend wizard service
+    async def async_save_config(call) -> None:
+        """Save config submitted by the frontend onboarding wizard."""
+        call_data = call.data
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            _LOGGER.error("save_config: no PlanaVista config entry found")
+            return
+        config_entry = entries[0]
+        new_data = dict(config_entry.data)
+
+        if "calendars" in call_data:
+            new_data[CONF_CALENDARS] = list(call_data["calendars"])
+        if "display" in call_data:
+            new_data["display"] = dict(call_data["display"])
+        if "onboarding_complete" in call_data:
+            new_data["onboarding_complete"] = bool(call_data["onboarding_complete"])
+
+        hass.config_entries.async_update_entry(config_entry, data=new_data)
+        await hass.config_entries.async_reload(config_entry.entry_id)
+        _LOGGER.info("PlanaVista config saved via save_config service")
+
+    hass.services.async_register(DOMAIN, "save_config", async_save_config)
+
     return True
 
 

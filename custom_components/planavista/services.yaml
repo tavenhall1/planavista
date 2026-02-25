@@ -66,3 +66,27 @@ set_calendar_visibility:
 refresh_calendars:
   name: Refresh Calendars
   description: Force refresh all calendar data
+
+save_config:
+  name: Save Config
+  description: Save configuration from the in-card onboarding wizard. Updates calendars, display settings, and onboarding state.
+  fields:
+    calendars:
+      name: Calendars
+      description: List of calendar configurations
+      required: false
+      selector:
+        object:
+    display:
+      name: Display Settings
+      description: Display preferences (time_format, weather_entity, first_day, default_view, theme)
+      required: false
+      selector:
+        object:
+    onboarding_complete:
+      name: Onboarding Complete
+      description: Mark onboarding as complete
+      required: false
+      default: true
+      selector:
+        boolean:
