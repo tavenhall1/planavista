@@ -118,10 +118,9 @@ const themeVars: Record<ThemeName, Record<string, string>> = {
 /**
  * Get CSS custom properties for a given theme as a CSSResult.
  */
-export function getThemeStyles(theme: ThemeName = 'light'): CSSResult {
+export function getThemeStyles(theme: ThemeName = 'light'): string {
   const vars = themeVars[theme] || themeVars.light;
-  const cssText = Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join('\n    ');
-  return css`${new CSSStyleSheet() ? '' : ''}`.constructor(`:host {\n    ${cssText}\n  }`) as unknown as CSSResult;
+  return Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join('\n  ');
 }
 
 /**

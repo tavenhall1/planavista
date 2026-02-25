@@ -5,8 +5,9 @@ __pycache__/
 *.so
 .Python
 *.egg-info/
-dist/
+/dist/
 build/
+# Note: custom_components/planavista/frontend/dist/ is NOT ignored (committed for HACS)
 
 # IDE
 .vscode/

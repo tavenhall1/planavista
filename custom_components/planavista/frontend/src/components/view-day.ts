@@ -387,7 +387,7 @@ export class PVViewDay extends LitElement {
   }
 
   private _renderTimeLabels() {
-    const labels = [];
+    const labels: ReturnType<typeof html>[] = [];
     for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
       const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
       let label: string;
@@ -406,7 +406,7 @@ export class PVViewDay extends LitElement {
   }
 
   private _renderHourLines() {
-    const lines = [];
+    const lines: ReturnType<typeof html>[] = [];
     for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
       const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
       lines.push(html`
