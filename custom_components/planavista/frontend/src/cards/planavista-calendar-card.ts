@@ -424,6 +424,38 @@ export class PlanaVistaCalendarCard extends LitElement {
         color: var(--pv-text-muted);
       }
 
+      /* Setup-pending placeholder shown in card editor preview */
+      .pvc-setup-pending {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 2rem;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .pvc-setup-icon {
+        color: var(--pv-accent, #6366F1);
+        opacity: 0.8;
+        margin-bottom: 0.5rem;
+      }
+
+      .pvc-setup-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--pv-text, #1A1B1E);
+        margin: 0;
+      }
+
+      .pvc-setup-hint {
+        font-size: 0.8125rem;
+        color: var(--pv-text-secondary, #6B7280);
+        margin: 0;
+        max-width: 260px;
+        line-height: 1.5;
+      }
+
       /* Placeholder when no weather configured */
       .pvc-no-weather {
         padding: 6px 10px;
@@ -543,7 +575,23 @@ export class PlanaVistaCalendarCard extends LitElement {
     }
 
     // Show onboarding wizard on first load (new installs)
+    // Suppressed while in edit mode — wizard launches once user closes the editor
     if (data.onboarding_complete === false) {
+      if ((this.hass as any)?.editMode) {
+        return html`
+          <ha-card>
+            <div class="pvc-setup-pending">
+              <div class="pvc-setup-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
+                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+                </svg>
+              </div>
+              <p class="pvc-setup-title">PlanaVista</p>
+              <p class="pvc-setup-hint">Save this card — the setup wizard will launch when you close the editor.</p>
+            </div>
+          </ha-card>
+        `;
+      }
       return html`
         <ha-card>
           <pv-onboarding-wizard
