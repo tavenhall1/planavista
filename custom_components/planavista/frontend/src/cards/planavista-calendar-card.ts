@@ -31,6 +31,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
   @state() private _settingsOpen = false;
+  @state() private _previewOverrides: ThemeOverrides | null = null;
 
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
@@ -818,6 +819,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       first_day: card?.first_day || global?.first_day || 'sunday',
       default_view: card?.default_view || card?.view || global?.default_view || 'week',
       theme: card?.theme || global?.theme || 'light',
+      theme_overrides: global?.theme_overrides,
     };
   }
 
@@ -848,12 +850,14 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _onSettingsSave() {
     this._settingsOpen = false;
+    this._previewOverrides = null;
     // _settingsOpen is now false so updated() will apply the newly saved theme on next hass cycle.
     clearThemeCache(this);
   }
 
   private _onSettingsClose() {
     this._settingsOpen = false;
+    this._previewOverrides = null;
     // Revert to saved theme immediately (undo any preview changes)
     clearThemeCache(this);
     const data = getPlanaVistaData(this.hass, this._config?.entity);
@@ -867,6 +871,9 @@ export class PlanaVistaCalendarCard extends LitElement {
     const resolved = resolveTheme(theme);
     clearThemeCache(this);
     applyThemeWithOverrides(this, resolved, overrides);
+    // Store preview overrides so prop-based settings (avatar_border, event_style)
+    // can be read by _renderView during live preview
+    this._previewOverrides = overrides;
   }
 
   private _showWeatherDetails() {
@@ -1192,6 +1199,11 @@ export class PlanaVistaCalendarCard extends LitElement {
     const currentDate = this._pv.state.currentDate;
     const hiddenCalendars = this._pv.state.hiddenCalendars;
 
+    // Merge preview overrides (live editing) over saved overrides
+    const overrides = this._previewOverrides || display?.theme_overrides;
+    const avatarBorder = overrides?.avatar_border || 'primary';
+    const showStripes = (overrides?.event_style || 'stripes') === 'stripes';
+
     switch (view) {
       case 'day':
         return html`<pv-view-day
@@ -1202,7 +1214,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
           .hideColumnHeaders=${false}
-          .avatarBorderMode=${display?.theme_overrides?.avatar_border || 'primary'}
+          .avatarBorderMode=${avatarBorder}
         ></pv-view-day>`;
       case 'week':
         return html`<pv-view-week
@@ -1214,7 +1226,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .timeFormat=${timeFormat}
           .firstDay=${firstDay}
           .weatherEntity=${display?.weather_entity || ''}
-          .showStripes=${(display?.theme_overrides?.event_style || 'stripes') === 'stripes'}
+          .showStripes=${showStripes}
         ></pv-view-week>`;
       case 'month':
         return html`<pv-view-month
@@ -1225,7 +1237,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .hiddenCalendars=${hiddenCalendars}
           .firstDay=${firstDay}
           .timeFormat=${timeFormat}
-          .showStripes=${(display?.theme_overrides?.event_style || 'stripes') === 'stripes'}
+          .showStripes=${showStripes}
         ></pv-view-month>`;
       case 'agenda':
         return html`<pv-view-agenda
@@ -1236,7 +1248,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
           .weatherEntity=${display?.weather_entity || ''}
-          .showStripes=${(display?.theme_overrides?.event_style || 'stripes') === 'stripes'}
+          .showStripes=${showStripes}
         ></pv-view-agenda>`;
       default:
         return nothing;

@@ -519,7 +519,8 @@ export class PVViewDay extends LitElement {
               const color = cal?.color || '#6366F1';
               const colorLight = cal?.color_light || color;
               const borderColor = this.avatarBorderMode === 'light' ? colorLight
-                : this.avatarBorderMode === 'primary' ? color : undefined;
+                : this.avatarBorderMode === 'primary' ? color
+                : this.avatarBorderMode;
               return html`
                 <div class="person-header">
                   ${avatar
