@@ -40,16 +40,28 @@ CALENDAR_VIEWS: Final = [VIEW_DAY, VIEW_WEEK, VIEW_MONTH, VIEW_AGENDA]
 
 # Curated color presets (primary + light variant pairs)
 COLOR_PRESETS: Final = [
-    {"name": "Ocean",    "color": "#4A90D9", "color_light": "#DCE8F5"},
-    {"name": "Fire",     "color": "#FC6A05", "color_light": "#FEE6D1"},
-    {"name": "Sage",     "color": "#6BA368", "color_light": "#E2F0E1"},
-    {"name": "Lavender", "color": "#9B8EC4", "color_light": "#EDEBF5"},
-    {"name": "Amber",    "color": "#D9A52B", "color_light": "#F7EDCF"},
-    {"name": "Honey",    "color": "#e4f21c", "color_light": "#FAFDE3"},
-    {"name": "Rose",     "color": "#D4728C", "color_light": "#F5E4EA"},
-    {"name": "Teal",     "color": "#4A9E9E", "color_light": "#DDF0F0"},
-    {"name": "Slate",    "color": "#6B7A8D", "color_light": "#E8EAED"},
-    {"name": "Graphite", "color": "#505050", "color_light": "#E8E8E8"},
+    # Palette 1: Earth & Ocean tones
+    {"name": "Ink Black",        "color": "#001219", "color_light": "#A6ACAF"},
+    {"name": "Dark Teal",        "color": "#005F73", "color_light": "#A6C7CE"},
+    {"name": "Dark Cyan",        "color": "#0A9396", "color_light": "#A9D9DA"},
+    {"name": "Pearl Aqua",       "color": "#94D2BD", "color_light": "#DAEFE8"},
+    {"name": "Wheat",            "color": "#E9D8A6", "color_light": "#F7F1E0"},
+    {"name": "Golden Orange",    "color": "#EE9B00", "color_light": "#F9DCA6"},
+    {"name": "Burnt Caramel",    "color": "#CA6702", "color_light": "#ECCAA6"},
+    {"name": "Rusty Spice",      "color": "#BB3E03", "color_light": "#E7BBA7"},
+    {"name": "Oxidized Iron",    "color": "#AE2012", "color_light": "#E3B1AC"},
+    {"name": "Brown Red",        "color": "#9B2226", "color_light": "#DCB2B3"},
+    # Palette 2: Warm & Vivid tones
+    {"name": "Strawberry Red",   "color": "#F94144", "color_light": "#FDBDBE"},
+    {"name": "Pumpkin Spice",    "color": "#F3722C", "color_light": "#FBCEB5"},
+    {"name": "Carrot Orange",    "color": "#F8961E", "color_light": "#FDDAB0"},
+    {"name": "Atomic Tangerine", "color": "#F9844A", "color_light": "#FDD4C0"},
+    {"name": "Tuscan Sun",       "color": "#F9C74F", "color_light": "#FDEBC1"},
+    {"name": "Willow Green",     "color": "#90BE6D", "color_light": "#D8E8CC"},
+    {"name": "Seaweed",          "color": "#43AA8B", "color_light": "#BDE1D6"},
+    {"name": "Ocean Cyan",       "color": "#4D908E", "color_light": "#C1D8D7"},
+    {"name": "Blue Slate",       "color": "#577590", "color_light": "#C4CFD8"},
+    {"name": "Cerulean",         "color": "#277DA1", "color_light": "#B3D2DE"},
 ]
 
 # Backward-compatible flat lists

@@ -15,9 +15,9 @@ function computeLightVariant(hex: string): string {
   const b = parseInt(clean.substring(4, 6), 16);
   if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
 
-  const rLight = Math.round(r + (255 - r) * 0.88);
-  const gLight = Math.round(g + (255 - g) * 0.88);
-  const bLight = Math.round(b + (255 - b) * 0.88);
+  const rLight = Math.round(r + (255 - r) * 0.65);
+  const gLight = Math.round(g + (255 - g) * 0.65);
+  const bLight = Math.round(b + (255 - b) * 0.65);
 
   const toHex = (n: number) => n.toString(16).padStart(2, '0');
   return `#${toHex(rLight)}${toHex(gLight)}${toHex(bLight)}`;
@@ -41,16 +41,28 @@ interface Preset {
 @customElement('pv-color-swatch-picker')
 export class PvColorSwatchPicker extends LitElement {
   static readonly PRESETS: Preset[] = [
-    { name: 'Ocean',    color: '#4A90D9', light: '#DCE8F5' },
-    { name: 'Fire',     color: '#FC6A05', light: '#FEE6D1' },
-    { name: 'Sage',     color: '#6BA368', light: '#E2F0E1' },
-    { name: 'Lavender', color: '#9B8EC4', light: '#EDEBF5' },
-    { name: 'Amber',    color: '#D9A52B', light: '#F7EDCF' },
-    { name: 'Honey',    color: '#e4f21c', light: '#FAFDE3' },
-    { name: 'Rose',     color: '#D4728C', light: '#F5E4EA' },
-    { name: 'Teal',     color: '#4A9E9E', light: '#DDF0F0' },
-    { name: 'Slate',    color: '#6B7A8D', light: '#E8EAED' },
-    { name: 'Graphite', color: '#505050', light: '#E8E8E8' },
+    // Palette 1: Earth & Ocean tones
+    { name: 'Ink Black',        color: '#001219', light: '#A6ACAF' },
+    { name: 'Dark Teal',        color: '#005F73', light: '#A6C7CE' },
+    { name: 'Dark Cyan',        color: '#0A9396', light: '#A9D9DA' },
+    { name: 'Pearl Aqua',       color: '#94D2BD', light: '#DAEFE8' },
+    { name: 'Wheat',            color: '#E9D8A6', light: '#F7F1E0' },
+    { name: 'Golden Orange',    color: '#EE9B00', light: '#F9DCA6' },
+    { name: 'Burnt Caramel',    color: '#CA6702', light: '#ECCAA6' },
+    { name: 'Rusty Spice',      color: '#BB3E03', light: '#E7BBA7' },
+    { name: 'Oxidized Iron',    color: '#AE2012', light: '#E3B1AC' },
+    { name: 'Brown Red',        color: '#9B2226', light: '#DCB2B3' },
+    // Palette 2: Warm & Vivid tones
+    { name: 'Strawberry Red',   color: '#F94144', light: '#FDBDBE' },
+    { name: 'Pumpkin Spice',    color: '#F3722C', light: '#FBCEB5' },
+    { name: 'Carrot Orange',    color: '#F8961E', light: '#FDDAB0' },
+    { name: 'Atomic Tangerine', color: '#F9844A', light: '#FDD4C0' },
+    { name: 'Tuscan Sun',       color: '#F9C74F', light: '#FDEBC1' },
+    { name: 'Willow Green',     color: '#90BE6D', light: '#D8E8CC' },
+    { name: 'Seaweed',          color: '#43AA8B', light: '#BDE1D6' },
+    { name: 'Ocean Cyan',       color: '#4D908E', light: '#C1D8D7' },
+    { name: 'Blue Slate',       color: '#577590', light: '#C4CFD8' },
+    { name: 'Cerulean',         color: '#277DA1', light: '#B3D2DE' },
   ];
 
   /** The currently selected primary color hex (e.g. "#4A90D9"). */
