@@ -41,4 +41,5 @@ env/
 
 # AI development files (local only)
 CLAUDE.md
+BRAND.md
 .serena/
