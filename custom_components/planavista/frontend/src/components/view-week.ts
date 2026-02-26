@@ -2,22 +2,24 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../types';
-import { baseStyles, eventStyles, nowIndicatorStyles } from '../styles/shared';
-import { formatTime, getStartOfWeek, isToday, formatDate } from '../utils/date-utils';
+import { baseStyles, animationStyles } from '../styles/shared';
+import { getStartOfWeek, isToday, getDateKey } from '../utils/date-utils';
 import {
   isAllDayEvent,
   getEventsForDateRange,
-  getEventPosition,
-  detectOverlaps,
   filterVisibleEvents,
   deduplicateSharedEvents,
   SharedEvent,
 } from '../utils/event-utils';
-import { getPersonAvatar } from '../utils/ha-utils';
-import { contrastText } from '../styles/themes';
+import { weatherIcon } from '../utils/weather-icons';
 
-const DAY_START_HOUR = 0;
-const DAY_END_HOUR = 24;
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+interface DayForecast {
+  condition: string;
+  tempHigh: number;
+  tempLow: number;
+}
 
 @customElement('pv-view-week')
 export class PVViewWeek extends LitElement {
@@ -28,11 +30,12 @@ export class PVViewWeek extends LitElement {
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ attribute: false }) firstDay: 'monday' | 'sunday' = 'sunday';
+  @property({ attribute: false }) weatherEntity: string = '';
+  @property({ type: Boolean }) showStripes: boolean = true;
 
   static styles = [
     baseStyles,
-    eventStyles,
-    nowIndicatorStyles,
+    animationStyles,
     css`
       :host { display: block; height: 100%; overflow: hidden; }
 
@@ -40,353 +43,167 @@ export class PVViewWeek extends LitElement {
         display: flex;
         flex-direction: column;
         height: 100%;
-        overflow: hidden;
+        overflow: auto;
       }
 
-      /* Day headers */
-      .day-headers {
-        display: flex;
-        border-bottom: 1px solid var(--pv-border);
-        flex-shrink: 0;
-      }
-
-      .header-gutter {
-        width: 54px;
-        flex-shrink: 0;
-      }
-
-      .day-header {
-        flex: 1;
-        text-align: center;
-        padding: 0.5rem 0.25rem;
-        min-width: 0;
-      }
-
-      .day-header-weekday {
-        font-size: 0.6875rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--pv-text-muted);
-      }
-
-      .day-header-date {
-        font-size: 1.25rem;
-        font-weight: 300;
-        margin-top: 0.125rem;
-        color: var(--pv-text);
-      }
-
-      .day-header.today .day-header-date {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--pv-accent);
-        color: var(--pv-accent-text);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-      }
-
-      .day-header.today .day-header-weekday {
-        color: var(--pv-accent);
+      .week-label {
+        font-size: 1rem;
         font-weight: 600;
+        color: var(--pv-text);
+        padding: 0.75rem 1rem 0.5rem;
+        flex-shrink: 0;
       }
 
-      /* All-day banner */
-      .all-day-banner {
+      .day-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        padding: 0 0.75rem 0.75rem;
+        flex: 1;
+      }
+
+      /* ── Day Card ── */
+      .day-card {
+        background: var(--pv-card-bg, #fff);
+        border: 1px solid var(--pv-border-subtle);
+        border-radius: var(--pv-radius-md, 12px);
+        overflow: hidden;
         display: flex;
-        border-bottom: 1px solid var(--pv-border);
-        min-height: 28px;
-        flex-shrink: 0;
+        flex-direction: column;
+        min-height: 120px;
       }
 
-      .all-day-gutter {
-        width: 54px;
-        flex-shrink: 0;
+      .day-card--today {
+        border-color: var(--pv-accent);
+        box-shadow: 0 0 0 1px var(--pv-accent);
+      }
+
+      .day-card-header {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 0.625rem;
-        color: var(--pv-text-muted);
-        text-transform: uppercase;
-        font-weight: 500;
+        justify-content: space-between;
+        padding: 0.625rem 0.75rem 0.375rem;
+        border-bottom: 1px solid var(--pv-border-subtle);
       }
 
-      .all-day-column {
-        flex: 1;
-        padding: 0.25rem 2px;
+      .day-card-header-left {
         display: flex;
         flex-direction: column;
         gap: 2px;
-        border-left: 1px solid var(--pv-border-subtle);
-        min-width: 0;
       }
 
-      .all-day-event {
-        padding: 0.125rem 0.375rem;
-        border-radius: 4px;
+      .day-name {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--pv-text);
+      }
+
+      .day-card--today .day-name {
+        color: var(--pv-accent);
+      }
+
+      .day-meta {
         font-size: 0.6875rem;
-        font-weight: 500;
-        color: white;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        cursor: pointer;
-        transition: opacity 150ms;
-      }
-
-      .all-day-event:hover { opacity: 0.85; }
-
-      /* Time grid */
-      .time-grid-wrapper {
-        flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-
-      .time-grid-wrapper::-webkit-scrollbar {
-        display: none;
-      }
-
-      .time-grid {
-        display: flex;
-        position: relative;
-        height: ${(DAY_END_HOUR - DAY_START_HOUR) * 80}px;
-        flex-shrink: 0;
-      }
-
-      .time-gutter {
-        width: 54px;
-        flex-shrink: 0;
-        position: relative;
-      }
-
-      .time-label {
-        position: absolute;
-        right: 0.375rem;
-        font-size: 0.625rem;
         color: var(--pv-text-muted);
-        transform: translateY(-50%);
-        font-variant-numeric: tabular-nums;
-      }
-
-      .days-area {
-        flex: 1;
-        display: flex;
-        position: relative;
-      }
-
-      .day-column {
-        flex: 1;
-        position: relative;
-        margin-left: 2px;
-        min-width: 0;
-        overflow: hidden;
-      }
-
-      .day-column:first-child {
-        margin-left: 0;
-      }
-
-      .day-column.today {
-        background: var(--pv-today-bg);
-      }
-
-      .hour-line {
-        position: absolute;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: transparent;
-        pointer-events: none;
-      }
-
-      .hour-band-odd {
-        position: absolute;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.015);
-        pointer-events: none;
-      }
-
-      /* Events */
-      .positioned-event {
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        padding: 0.125rem 0.25rem;
-        border-radius: 4px;
-        border-left: 3px solid var(--event-color);
-        background: var(--event-color-light, color-mix(in srgb, var(--event-color) 12%, white));
-        cursor: pointer;
-        overflow: hidden;
-        transition: all var(--pv-transition);
-        z-index: 1;
-        font-size: 0.6875rem;
-        min-height: 18px;
-      }
-
-      .positioned-event:hover {
-        z-index: 5;
-        background: color-mix(in srgb, var(--event-color) 16%, white);
-        transform: translateY(-1px);
-      }
-
-      .positioned-event .event-title {
-        font-weight: 500;
-        line-height: 1.2;
-        color: var(--event-text, var(--pv-text));
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .positioned-event .event-time {
-        font-size: 0.5625rem;
-        color: var(--event-text, var(--pv-text-secondary));
-      }
-
-      .shared-avatars {
-        position: absolute;
-        bottom: 3px;
-        right: 4px;
         display: flex;
         align-items: center;
+        gap: 0.5rem;
       }
 
-      .shared-avatar {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 1px solid var(--pv-card-bg, #fff);
-        object-fit: cover;
-        margin-left: -4px;
+      .add-event-link {
+        font-size: 0.6875rem;
+        color: var(--pv-accent);
+        cursor: pointer;
+        font-weight: 500;
+        background: none;
+        border: none;
+        padding: 0;
+        font-family: inherit;
       }
 
-      .shared-avatar:first-child {
-        margin-left: 0;
+      .add-event-link:hover {
+        text-decoration: underline;
       }
 
-      .shared-avatar-initial {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 1px solid var(--pv-card-bg, #fff);
+      .day-weather {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+      }
+
+      .day-weather svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .day-weather-temp {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: var(--pv-text-secondary);
+        white-space: nowrap;
+      }
+
+      .day-card-events {
+        flex: 1;
+        padding: 0.375rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        overflow: hidden;
+      }
+
+      .day-card-empty {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.5rem;
-        font-weight: 700;
-        color: white;
-        margin-left: -4px;
-      }
-
-      .shared-avatar-initial:first-child {
-        margin-left: 0;
-      }
-
-      .shared-more {
-        font-size: 0.5rem;
-        font-weight: 600;
+        padding: 0.75rem;
         color: var(--pv-text-muted);
-        margin-left: 2px;
+        font-size: 0.75rem;
+        font-style: italic;
       }
 
-      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+      /* ═══════════ RESPONSIVE ═══════════ */
 
-      /* xs: phones — narrow gutter, hide event time, compact headers */
-      @media (max-width: 479px) {
-        .time-gutter { width: 32px; }
-        .header-gutter { width: 32px; }
-        .all-day-gutter { width: 32px; font-size: 0.5rem; }
-        .time-label { font-size: 0.5rem; right: 0.25rem; }
-        .day-header-weekday { font-size: 0.5625rem; }
-        .day-header-date { font-size: 0.9375rem; }
-        .day-header { padding: 0.25rem 0.125rem; }
-        .positioned-event { left: 1px; right: 1px; padding: 0.0625rem 0.125rem; }
-        .event-title { font-size: 0.5625rem; }
-        .event-time { display: none; }
-        .all-day-event { font-size: 0.5625rem; padding: 0.0625rem 0.25rem; }
-        .shared-avatars { display: none; }
+      /* MD: tablets — 2 columns */
+      @media (max-width: 1023px) {
+        .day-grid { grid-template-columns: repeat(2, 1fr); }
       }
 
-      /* sm: large phones — slightly wider gutter */
-      @media (min-width: 480px) and (max-width: 767px) {
-        .time-gutter { width: 40px; }
-        .header-gutter { width: 40px; }
-        .all-day-gutter { width: 40px; }
-        .time-label { font-size: 0.5625rem; }
-        .day-header-weekday { font-size: 0.5625rem; }
-        .day-header-date { font-size: 1rem; }
-        .event-title { font-size: 0.625rem; }
-        .event-time { font-size: 0.5rem; }
+      /* SM/XS: phones — 1 column (agenda-like) */
+      @media (max-width: 767px) {
+        .day-grid {
+          grid-template-columns: 1fr;
+          gap: 0.375rem;
+          padding: 0 0.5rem 0.5rem;
+        }
+        .week-label { font-size: 0.875rem; padding: 0.5rem 0.75rem 0.375rem; }
+        .day-card { min-height: 80px; }
+        .day-card-header { padding: 0.5rem 0.625rem 0.25rem; }
+        .day-name { font-size: 0.8125rem; }
       }
 
-      /* md: tablets — moderate compression */
-      @media (min-width: 768px) and (max-width: 1023px) {
-        .time-gutter { width: 46px; }
-        .header-gutter { width: 46px; }
-        .all-day-gutter { width: 46px; }
-      }
-
-      /* short height — compress day headers */
-      @media (max-height: 500px) {
-        .day-header { padding: 0.25rem 0.125rem; }
-        .day-header-weekday { font-size: 0.5625rem; }
-        .day-header-date { font-size: 1rem; }
-      }
-
-      /* lg: large screens (1024–1439px) — scale up ~20% */
+      /* LG: large screens */
       @media (min-width: 1024px) {
-        .time-gutter { width: 72px; }
-        .time-label { font-size: 0.8125rem; }
-        .header-gutter { width: 72px; }
-        .all-day-gutter { width: 72px; font-size: 0.8125rem; }
-        .day-header-weekday { font-size: 0.8125rem; }
-        .day-header-date { font-size: 1.375rem; }
-        .all-day-chip { font-size: 0.8125rem; }
-        .event-title { font-size: 0.8125rem; }
-        .event-time { font-size: 0.6875rem; }
+        .week-label { font-size: 1.0625rem; }
+        .day-name { font-size: 1rem; }
+        .day-card { min-height: 140px; }
       }
 
-      /* xl: wall displays (1440px+) — scale up ~40% */
+      /* XL: wall displays */
       @media (min-width: 1440px) {
-        .time-gutter { width: 84px; }
-        .time-label { font-size: 0.9375rem; }
-        .header-gutter { width: 84px; }
-        .all-day-gutter { width: 84px; font-size: 0.9375rem; }
-        .day-header-weekday { font-size: 0.9375rem; }
-        .day-header-date { font-size: 1.625rem; }
-        .all-day-chip { font-size: 0.9375rem; min-height: 28px; padding: 4px 10px; }
-        .positioned-event { min-height: 28px; }
-        .event-title { font-size: 0.9375rem; }
-        .event-time { font-size: 0.8125rem; }
-        .shared-avatar, .shared-avatar-initial { width: 28px; height: 28px; }
+        .week-label { font-size: 1.1875rem; }
+        .day-name { font-size: 1.125rem; }
+        .day-meta { font-size: 0.75rem; }
+        .day-weather svg { width: 28px; height: 28px; }
+        .day-weather-temp { font-size: 0.75rem; }
+        .day-card { min-height: 160px; }
+        .day-card-header { padding: 0.75rem 1rem 0.5rem; }
+        .day-card-events { padding: 0.5rem; gap: 0.375rem; }
       }
     `,
   ];
-
-  firstUpdated() {
-    this._scrollToNow();
-  }
-
-  private _scrollToNow() {
-    requestAnimationFrame(() => {
-      const container = this.shadowRoot?.querySelector('.time-grid-wrapper') as HTMLElement;
-      if (!container) return;
-      const now = new Date();
-      const minutesSinceStart = (now.getHours() - DAY_START_HOUR) * 60 + now.getMinutes();
-      const totalMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
-      if (minutesSinceStart > 0 && minutesSinceStart < totalMinutes) {
-        const scrollTo = (minutesSinceStart / totalMinutes) * container.scrollHeight - container.clientHeight / 3;
-        container.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' });
-      }
-    });
-  }
 
   private _getWeekDays(): Date[] {
     const start = getStartOfWeek(this.currentDate, this.firstDay);
@@ -397,6 +214,37 @@ export class PVViewWeek extends LitElement {
     });
   }
 
+  private _getWeekLabel(days: Date[]): string {
+    const first = days[0];
+    const last = days[6];
+    const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric' };
+
+    if (first.getMonth() === last.getMonth()) {
+      return `${first.toLocaleDateString('en-US', { month: 'long' })} ${first.getDate()} – ${last.getDate()}`;
+    }
+    return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`;
+  }
+
+  private _getForecastMap(): Map<string, DayForecast> {
+    const map = new Map<string, DayForecast>();
+    if (!this.weatherEntity || !this.hass) return map;
+
+    const entity = this.hass.states[this.weatherEntity];
+    if (!entity?.attributes?.forecast) return map;
+
+    for (const fc of entity.attributes.forecast) {
+      if (!fc.datetime) continue;
+      const d = new Date(fc.datetime);
+      const key = getDateKey(d);
+      map.set(key, {
+        condition: fc.condition || '',
+        tempHigh: fc.temperature ?? 0,
+        tempLow: fc.templow ?? fc.temperature ?? 0,
+      });
+    }
+    return map;
+  }
+
   render() {
     const visible = filterVisibleEvents(this.events, this.hiddenCalendars);
     const days = this._getWeekDays();
@@ -405,168 +253,87 @@ export class PVViewWeek extends LitElement {
     const weekEnd = new Date(days[6]);
     weekEnd.setHours(23, 59, 59, 999);
     const weekEvents = getEventsForDateRange(visible, weekStart, weekEnd);
-    const dedupedWeekEvents = deduplicateSharedEvents(weekEvents, this.calendars);
-
-    const now = new Date();
-    const todayStr = now.toDateString();
+    const deduped = deduplicateSharedEvents(weekEvents, this.calendars);
+    const forecasts = this._getForecastMap();
 
     return html`
       <div class="week-container">
-        <div class="day-headers">
-          <div class="header-gutter"></div>
-          ${days.map(day => {
-            const today = day.toDateString() === todayStr;
-            return html`
-              <div class="day-header ${today ? 'today' : ''}">
-                <div class="day-header-weekday">${day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                <div class="day-header-date">${day.getDate()}</div>
-              </div>
-            `;
-          })}
-        </div>
-
-        ${this._renderAllDayBanner(days, dedupedWeekEvents)}
-
-        <div class="time-grid-wrapper">
-          <div class="time-grid">
-            <div class="time-gutter">
-              ${this._renderTimeLabels()}
-            </div>
-            <div class="days-area">
-              ${this._renderHourLines()}
-              ${days.map(day => this._renderDayColumn(day, dedupedWeekEvents, todayStr))}
-            </div>
-          </div>
+        <div class="week-label">${this._getWeekLabel(days)}</div>
+        <div class="day-grid">
+          ${days.map(day => this._renderDayCard(day, deduped, forecasts))}
         </div>
       </div>
     `;
   }
 
-  private _renderAllDayBanner(days: Date[], events: SharedEvent[]) {
-    const allDayEvents = events.filter(e => isAllDayEvent(e));
-    if (allDayEvents.length === 0) return nothing;
-
-    return html`
-      <div class="all-day-banner">
-        <div class="all-day-gutter">All Day</div>
-        ${days.map(day => {
-          const dayStart = new Date(day);
-          dayStart.setHours(0, 0, 0, 0);
-          const dayEnd = new Date(day);
-          dayEnd.setHours(23, 59, 59, 999);
-          const dayAllDay = allDayEvents.filter(e => {
-            const s = new Date(e.start);
-            const en = new Date(e.end);
-            return s < dayEnd && en > dayStart;
-          });
-          return html`
-            <div class="all-day-column">
-              ${dayAllDay.map(e => html`
-                <div
-                  class="all-day-event"
-                  style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
-                  @click=${() => this._onEventClick(e)}
-                >${e.summary}</div>
-              `)}
-            </div>
-          `;
-        })}
-      </div>
-    `;
-  }
-
-  private _renderTimeLabels() {
-    const labels: ReturnType<typeof html>[] = [];
-    for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
-      const top = ((h - DAY_START_HOUR) / (DAY_END_HOUR - DAY_START_HOUR)) * 100;
-      let label: string;
-      if (this.timeFormat === '24h') {
-        label = `${String(h % 24).padStart(2, '0')}:00`;
-      } else {
-        const hNorm = h % 24;
-        const hour12 = hNorm % 12 || 12;
-        const period = hNorm >= 12 ? 'PM' : 'AM';
-        label = `${hour12} ${period}`;
-      }
-      labels.push(html`<div class="time-label" style="top: ${top}%">${label}</div>`);
-    }
-    return labels;
-  }
-
-  private _renderHourLines() {
-    const lines: ReturnType<typeof html>[] = [];
-    const totalHours = DAY_END_HOUR - DAY_START_HOUR;
-    const bandHeight = (1 / totalHours) * 100;
-    for (let h = DAY_START_HOUR; h < DAY_END_HOUR; h++) {
-      const top = ((h - DAY_START_HOUR) / totalHours) * 100;
-      if (h % 2 === 1) {
-        lines.push(html`<div class="hour-band-odd" style="top: ${top}%; height: ${bandHeight}%"></div>`);
-      }
-    }
-    return lines;
-  }
-
-  private _renderDayColumn(day: Date, allEvents: SharedEvent[], todayStr: string) {
-    const isCurrentDay = day.toDateString() === todayStr;
+  private _renderDayCard(day: Date, allEvents: SharedEvent[], forecasts: Map<string, DayForecast>) {
+    const today = isToday(day);
+    const dateKey = getDateKey(day);
     const dayStart = new Date(day);
-    dayStart.setHours(DAY_START_HOUR, 0, 0, 0);
+    dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(day);
-    dayEnd.setHours(DAY_END_HOUR, 0, 0, 0);
+    dayEnd.setHours(23, 59, 59, 999);
 
-    const timedEvents = allEvents.filter(e => {
-      if (isAllDayEvent(e)) return false;
+    // Get events for this day, sort all-day first then by start time
+    const dayEvents = allEvents.filter(e => {
       const s = new Date(e.start);
       const en = new Date(e.end);
-      return s < dayEnd && en > dayStart && s.toDateString() === day.toDateString();
+      return s < dayEnd && en > dayStart;
+    }).sort((a, b) => {
+      const aAll = isAllDayEvent(a);
+      const bAll = isAllDayEvent(b);
+      if (aAll && !bAll) return -1;
+      if (!aAll && bAll) return 1;
+      return new Date(a.start).getTime() - new Date(b.start).getTime();
     });
 
-    const positioned = detectOverlaps(timedEvents);
-
-    // Now indicator
-    const now = new Date();
-    const nowMinutes = (now.getHours() - DAY_START_HOUR) * 60 + now.getMinutes();
-    const totalMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
-    const nowPercent = isCurrentDay ? (nowMinutes / totalMinutes) * 100 : -1;
+    const forecast = forecasts.get(dateKey);
+    const dayName = `${WEEKDAY_SHORT[day.getDay()]} ${day.getDate()}`;
+    const eventCount = dayEvents.length;
 
     return html`
-      <div class="day-column ${isCurrentDay ? 'today' : ''}">
-        ${nowPercent >= 0 && nowPercent <= 100 ? html`
-          <div class="pv-now-line" style="top: ${nowPercent}%"></div>
-        ` : nothing}
-        ${positioned.map(event => {
-          const pos = getEventPosition(event, DAY_START_HOUR, DAY_END_HOUR);
-          const w = event.totalColumns > 1
-            ? `calc(${100 / event.totalColumns}% - 3px)`
-            : 'calc(100% - 4px)';
-          const l = event.totalColumns > 1
-            ? `calc(${(event.column / event.totalColumns) * 100}% + 2px)`
-            : '2px';
-          return html`
-            <div
-              class="positioned-event"
-              style="top:${pos.top}%;height:${pos.height}%;width:${w};left:${l};--event-color:${event.calendar_color};--event-color-light:${event.calendar_color_light || ''};--event-text:${contrastText(event.calendar_color_light || event.calendar_color)}"
-              @click=${() => this._onEventClick(event)}
-            >
-              <div class="event-title">${event.summary}</div>
-              <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
-              ${((event as unknown) as SharedEvent).shared_calendars?.length > 1 ? html`
-                <div class="shared-avatars">
-                  ${((event as unknown) as SharedEvent).shared_calendars.slice(0, 3).map((cal) => {
-                    const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
-                    return avatar
-                      ? html`<img class="shared-avatar" src="${avatar}" alt="${cal.display_name}" />`
-                      : html`<div class="shared-avatar-initial" style="background: ${cal.color}">${cal.display_name[0] || '?'}</div>`;
-                  })}
-                  ${((event as unknown) as SharedEvent).shared_calendars.length > 3 ? html`
-                    <span class="shared-more">+${((event as unknown) as SharedEvent).shared_calendars.length - 3}</span>
-                  ` : nothing}
-                </div>
-              ` : nothing}
+      <div class="day-card ${today ? 'day-card--today' : ''}">
+        <div class="day-card-header">
+          <div class="day-card-header-left">
+            <div class="day-name">${dayName}</div>
+            <div class="day-meta">
+              <span>${eventCount} event${eventCount !== 1 ? 's' : ''}</span>
+              <button class="add-event-link" @click=${() => this._addEvent(day)}>+ Add</button>
             </div>
-          `;
-        })}
+          </div>
+          ${forecast ? html`
+            <div class="day-weather">
+              ${weatherIcon(forecast.condition as any)}
+              <span class="day-weather-temp">${Math.round(forecast.tempHigh)}°/${Math.round(forecast.tempLow)}°</span>
+            </div>
+          ` : nothing}
+        </div>
+        ${dayEvents.length > 0 ? html`
+          <div class="day-card-events">
+            ${dayEvents.map(event => html`
+              <pv-event-chip
+                .hass=${this.hass}
+                .event=${event}
+                .calendars=${this.calendars}
+                .timeFormat=${this.timeFormat}
+                .showStripes=${this.showStripes}
+                @event-click=${(e: CustomEvent) => this._onEventClick(e.detail.event)}
+              ></pv-event-chip>
+            `)}
+          </div>
+        ` : html`
+          <div class="day-card-empty">No events</div>
+        `}
       </div>
     `;
+  }
+
+  private _addEvent(day: Date) {
+    this.dispatchEvent(new CustomEvent('create-event', {
+      detail: { date: day },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   private _onEventClick(event: CalendarEvent) {

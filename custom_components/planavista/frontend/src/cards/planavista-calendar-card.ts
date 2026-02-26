@@ -1213,6 +1213,8 @@ export class PlanaVistaCalendarCard extends LitElement {
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
           .firstDay=${firstDay}
+          .weatherEntity=${display?.weather_entity || ''}
+          .showStripes=${(display?.theme_overrides?.event_style || 'stripes') === 'stripes'}
         ></pv-view-week>`;
       case 'month':
         return html`<pv-view-month
@@ -1222,6 +1224,8 @@ export class PlanaVistaCalendarCard extends LitElement {
           .currentDate=${currentDate}
           .hiddenCalendars=${hiddenCalendars}
           .firstDay=${firstDay}
+          .timeFormat=${timeFormat}
+          .showStripes=${(display?.theme_overrides?.event_style || 'stripes') === 'stripes'}
         ></pv-view-month>`;
       case 'agenda':
         return html`<pv-view-agenda
@@ -1231,6 +1235,8 @@ export class PlanaVistaCalendarCard extends LitElement {
           .currentDate=${currentDate}
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
+          .weatherEntity=${display?.weather_entity || ''}
+          .showStripes=${(display?.theme_overrides?.event_style || 'stripes') === 'stripes'}
         ></pv-view-agenda>`;
       default:
         return nothing;

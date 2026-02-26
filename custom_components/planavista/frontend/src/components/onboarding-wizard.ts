@@ -666,6 +666,20 @@ export class PvOnboardingWizard extends LitElement {
             </div>
           </div>
 
+          <!-- Event Style -->
+          <div class="customize-group">
+            <label class="pv-label">Event Style</label>
+            <div class="pill-group">
+              ${(['stripes', 'solid'] as const).map(style => html`
+                <button
+                  class="pill-btn ${(ov.event_style || 'stripes') === style ? 'pill-btn--active' : ''}"
+                  type="button"
+                  @click=${() => this._setOverride('event_style', style)}
+                >${style === 'stripes' ? 'Stripes' : 'Solid'}</button>
+              `)}
+            </div>
+          </div>
+
           <!-- Reset -->
           ${hasOverrides ? html`
             <button class="reset-btn" type="button" @click=${this._resetOverrides}>

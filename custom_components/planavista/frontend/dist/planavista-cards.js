@@ -1,4 +1,4 @@
-function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPropertyDescriptor(t,i):r;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)o=Reflect.decorate(e,t,i,r);else for(var s=e.length-1;s>=0;s--)(a=e[s])&&(o=(n<3?a(o):n>3?a(t,i,o):a(t,i))||o);return n>3&&o&&Object.defineProperty(t,i,o),o}"function"==typeof SuppressedError&&SuppressedError;const t=globalThis,i=t.ShadowRoot&&(void 0===t.ShadyCSS||t.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,r=Symbol(),a=new WeakMap;let n=class{constructor(e,t,i){if(this._$cssResult$=!0,i!==r)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const t=this.t;if(i&&void 0===e){const i=void 0!==t&&1===t.length;i&&(e=a.get(t)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),i&&a.set(t,e))}return e}toString(){return this.cssText}};const o=(e,...t)=>{const i=1===e.length?e[0]:t.reduce((t,i,r)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[r+1],e[0]);return new n(i,e,r)},s=i?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return(e=>new n("string"==typeof e?e:e+"",void 0,r))(t)})(e):e,{is:l,defineProperty:d,getOwnPropertyDescriptor:c,getOwnPropertyNames:p,getOwnPropertySymbols:h,getPrototypeOf:v}=Object,g=globalThis,m=g.trustedTypes,u=m?m.emptyScript:"",f=g.reactiveElementPolyfillSupport,y=(e,t)=>e,b={toAttribute(e,t){switch(t){case Boolean:e=e?u:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},x=(e,t)=>!l(e,t),w={attribute:!0,type:String,converter:b,reflect:!1,useDefault:!1,hasChanged:x};Symbol.metadata??=Symbol("metadata"),g.litPropertyMetadata??=new WeakMap;let _=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=w){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),r=this.getPropertyDescriptor(e,i,t);void 0!==r&&d(this.prototype,e,r)}}static getPropertyDescriptor(e,t,i){const{get:r,set:a}=c(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:r,set(t){const n=r?.call(this);a?.call(this,t),this.requestUpdate(e,n,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??w}static _$Ei(){if(this.hasOwnProperty(y("elementProperties")))return;const e=v(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(y("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(y("properties"))){const e=this.properties,t=[...p(e),...h(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(s(e))}else void 0!==e&&t.push(s(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const e=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((e,r)=>{if(i)e.adoptedStyleSheets=r.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const i of r){const r=document.createElement("style"),a=t.litNonce;void 0!==a&&r.setAttribute("nonce",a),r.textContent=i.cssText,e.appendChild(r)}})(e,this.constructor.elementStyles),e}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),r=this.constructor._$Eu(e,i);if(void 0!==r&&!0===i.reflect){const a=(void 0!==i.converter?.toAttribute?i.converter:b).toAttribute(t,i.type);this._$Em=e,null==a?this.removeAttribute(r):this.setAttribute(r,a),this._$Em=null}}_$AK(e,t){const i=this.constructor,r=i._$Eh.get(e);if(void 0!==r&&this._$Em!==r){const e=i.getPropertyOptions(r),a="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:b;this._$Em=r;const n=a.fromAttribute(t,e.type);this[r]=n??this._$Ej?.get(r)??n,this._$Em=null}}requestUpdate(e,t,i,r=!1,a){if(void 0!==e){const n=this.constructor;if(!1===r&&(a=this[e]),i??=n.getPropertyOptions(e),!((i.hasChanged??x)(a,t)||i.useDefault&&i.reflect&&a===this._$Ej?.get(e)&&!this.hasAttribute(n._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:r,wrapped:a},n){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,n??t??this[e]),!0!==a||void 0!==n)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===r&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,r=this[t];!0!==e||this._$AL.has(t)||void 0===r||this.C(t,void 0,i,r)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};_.elementStyles=[],_.shadowRootOptions={mode:"open"},_[y("elementProperties")]=new Map,_[y("finalized")]=new Map,f?.({ReactiveElement:_}),(g.reactiveElementVersions??=[]).push("2.1.2");const $=globalThis,k=e=>e,F=$.trustedTypes,C=F?F.createPolicy("lit-html",{createHTML:e=>e}):void 0,E="$lit$",z=`lit$${Math.random().toFixed(9).slice(2)}$`,D="?"+z,A=`<${D}>`,S=document,B=()=>S.createComment(""),M=e=>null===e||"object"!=typeof e&&"function"!=typeof e,T=Array.isArray,O="[ \t\n\f\r]",P=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,H=/-->/g,L=/>/g,I=RegExp(`>|${O}(?:([^\\s"'>=/]+)(${O}*=${O}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),j=/'/g,V=/"/g,N=/^(?:script|style|textarea|title)$/i,U=(e,...t)=>({_$litType$:1,strings:e,values:t}),R=Symbol.for("lit-noChange"),Y=Symbol.for("lit-nothing"),W=new WeakMap,q=S.createTreeWalker(S,129);function Q(e,t){if(!T(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==C?C.createHTML(t):t}const Z=(e,t)=>{const i=e.length-1,r=[];let a,n=2===t?"<svg>":3===t?"<math>":"",o=P;for(let t=0;t<i;t++){const i=e[t];let s,l,d=-1,c=0;for(;c<i.length&&(o.lastIndex=c,l=o.exec(i),null!==l);)c=o.lastIndex,o===P?"!--"===l[1]?o=H:void 0!==l[1]?o=L:void 0!==l[2]?(N.test(l[2])&&(a=RegExp("</"+l[2],"g")),o=I):void 0!==l[3]&&(o=I):o===I?">"===l[0]?(o=a??P,d=-1):void 0===l[1]?d=-2:(d=o.lastIndex-l[2].length,s=l[1],o=void 0===l[3]?I:'"'===l[3]?V:j):o===V||o===j?o=I:o===H||o===L?o=P:(o=I,a=void 0);const p=o===I&&e[t+1].startsWith("/>")?" ":"";n+=o===P?i+A:d>=0?(r.push(s),i.slice(0,d)+E+i.slice(d)+z+p):i+z+(-2===d?t:p)}return[Q(e,n+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),r]};class X{constructor({strings:e,_$litType$:t},i){let r;this.parts=[];let a=0,n=0;const o=e.length-1,s=this.parts,[l,d]=Z(e,t);if(this.el=X.createElement(l,i),q.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(r=q.nextNode())&&s.length<o;){if(1===r.nodeType){if(r.hasAttributes())for(const e of r.getAttributeNames())if(e.endsWith(E)){const t=d[n++],i=r.getAttribute(e).split(z),o=/([.?@])?(.*)/.exec(t);s.push({type:1,index:a,name:o[2],strings:i,ctor:"."===o[1]?te:"?"===o[1]?ie:"@"===o[1]?re:ee}),r.removeAttribute(e)}else e.startsWith(z)&&(s.push({type:6,index:a}),r.removeAttribute(e));if(N.test(r.tagName)){const e=r.textContent.split(z),t=e.length-1;if(t>0){r.textContent=F?F.emptyScript:"";for(let i=0;i<t;i++)r.append(e[i],B()),q.nextNode(),s.push({type:2,index:++a});r.append(e[t],B())}}}else if(8===r.nodeType)if(r.data===D)s.push({type:2,index:a});else{let e=-1;for(;-1!==(e=r.data.indexOf(z,e+1));)s.push({type:7,index:a}),e+=z.length-1}a++}}static createElement(e,t){const i=S.createElement("template");return i.innerHTML=e,i}}function K(e,t,i=e,r){if(t===R)return t;let a=void 0!==r?i._$Co?.[r]:i._$Cl;const n=M(t)?void 0:t._$litDirective$;return a?.constructor!==n&&(a?._$AO?.(!1),void 0===n?a=void 0:(a=new n(e),a._$AT(e,i,r)),void 0!==r?(i._$Co??=[])[r]=a:i._$Cl=a),void 0!==a&&(t=K(e,a._$AS(e,t.values),a,r)),t}class G{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,r=(e?.creationScope??S).importNode(t,!0);q.currentNode=r;let a=q.nextNode(),n=0,o=0,s=i[0];for(;void 0!==s;){if(n===s.index){let t;2===s.type?t=new J(a,a.nextSibling,this,e):1===s.type?t=new s.ctor(a,s.name,s.strings,this,e):6===s.type&&(t=new ae(a,this,e)),this._$AV.push(t),s=i[++o]}n!==s?.index&&(a=q.nextNode(),n++)}return q.currentNode=S,r}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class J{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,r){this.type=2,this._$AH=Y,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=K(this,e,t),M(e)?e===Y||null==e||""===e?(this._$AH!==Y&&this._$AR(),this._$AH=Y):e!==this._$AH&&e!==R&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>T(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==Y&&M(this._$AH)?this._$AA.nextSibling.data=e:this.T(S.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,r="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=X.createElement(Q(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===r)this._$AH.p(t);else{const e=new G(r,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=W.get(e.strings);return void 0===t&&W.set(e.strings,t=new X(e)),t}k(e){T(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,r=0;for(const a of e)r===t.length?t.push(i=new J(this.O(B()),this.O(B()),this,this.options)):i=t[r],i._$AI(a),r++;r<t.length&&(this._$AR(i&&i._$AB.nextSibling,r),t.length=r)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=k(e).nextSibling;k(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ee{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,r,a){this.type=1,this._$AH=Y,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=a,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=Y}_$AI(e,t=this,i,r){const a=this.strings;let n=!1;if(void 0===a)e=K(this,e,t,0),n=!M(e)||e!==this._$AH&&e!==R,n&&(this._$AH=e);else{const r=e;let o,s;for(e=a[0],o=0;o<a.length-1;o++)s=K(this,r[i+o],t,o),s===R&&(s=this._$AH[o]),n||=!M(s)||s!==this._$AH[o],s===Y?e=Y:e!==Y&&(e+=(s??"")+a[o+1]),this._$AH[o]=s}n&&!r&&this.j(e)}j(e){e===Y?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class te extends ee{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===Y?void 0:e}}class ie extends ee{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==Y)}}class re extends ee{constructor(e,t,i,r,a){super(e,t,i,r,a),this.type=5}_$AI(e,t=this){if((e=K(this,e,t,0)??Y)===R)return;const i=this._$AH,r=e===Y&&i!==Y||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,a=e!==Y&&(i===Y||r);r&&this.element.removeEventListener(this.name,this,i),a&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class ae{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){K(this,e)}}const ne=$.litHtmlPolyfillSupport;ne?.(X,J),($.litHtmlVersions??=[]).push("3.3.2");const oe=globalThis;class se extends _{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const r=i?.renderBefore??t;let a=r._$litPart$;if(void 0===a){const e=i?.renderBefore??null;r._$litPart$=a=new J(t.insertBefore(B(),e),e,void 0,i??{})}return a._$AI(e),a})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return R}}se._$litElement$=!0,se.finalized=!0,oe.litElementHydrateSupport?.({LitElement:se});const le=oe.litElementPolyfillSupport;le?.({LitElement:se}),(oe.litElementVersions??=[]).push("4.2.2");const de=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}):customElements.define(e,t)},ce={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pe=(e=ce,t,i)=>{const{kind:r,metadata:a}=i;let n=globalThis.litPropertyMetadata.get(a);if(void 0===n&&globalThis.litPropertyMetadata.set(a,n=new Map),"setter"===r&&((e=Object.create(e)).wrapped=!0),n.set(i.name,e),"accessor"===r){const{name:r}=i;return{set(i){const a=t.get.call(this);t.set.call(this,i),this.requestUpdate(r,a,e,!0,i)},init(t){return void 0!==t&&this.C(r,void 0,e,t),t}}}if("setter"===r){const{name:r}=i;return function(i){const a=this[r];t.call(this,i),this.requestUpdate(r,a,e,!0,i)}}throw Error("Unsupported decorator location: "+r)};function he(e){return(t,i)=>"object"==typeof i?pe(e,t,i):((e,t,i)=>{const r=t.hasOwnProperty(i);return t.constructor.createProperty(i,e),r?Object.getOwnPropertyDescriptor(t,i):void 0})(e,t,i)}function ve(e){return he({...e,state:!0,attribute:!1})}function ge(e,t){return(t,i,r)=>((e,t,i)=>(i.configurable=!0,i.enumerable=!0,Reflect.decorate&&"object"!=typeof t&&Object.defineProperty(e,t,i),i))(t,i,{get(){return(t=>t.renderRoot?.querySelector(e)??null)(this)}})}const me=o`
+function e(e,t,i,r){var a,n=arguments.length,s=n<3?t:null===r?r=Object.getOwnPropertyDescriptor(t,i):r;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,r);else for(var o=e.length-1;o>=0;o--)(a=e[o])&&(s=(n<3?a(s):n>3?a(t,i,s):a(t,i))||s);return n>3&&s&&Object.defineProperty(t,i,s),s}"function"==typeof SuppressedError&&SuppressedError;const t=globalThis,i=t.ShadowRoot&&(void 0===t.ShadyCSS||t.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,r=Symbol(),a=new WeakMap;let n=class{constructor(e,t,i){if(this._$cssResult$=!0,i!==r)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const t=this.t;if(i&&void 0===e){const i=void 0!==t&&1===t.length;i&&(e=a.get(t)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),i&&a.set(t,e))}return e}toString(){return this.cssText}};const s=(e,...t)=>{const i=1===e.length?e[0]:t.reduce((t,i,r)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[r+1],e[0]);return new n(i,e,r)},o=i?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return(e=>new n("string"==typeof e?e:e+"",void 0,r))(t)})(e):e,{is:l,defineProperty:d,getOwnPropertyDescriptor:c,getOwnPropertyNames:p,getOwnPropertySymbols:h,getPrototypeOf:v}=Object,g=globalThis,m=g.trustedTypes,u=m?m.emptyScript:"",y=g.reactiveElementPolyfillSupport,f=(e,t)=>e,b={toAttribute(e,t){switch(t){case Boolean:e=e?u:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},x=(e,t)=>!l(e,t),w={attribute:!0,type:String,converter:b,reflect:!1,useDefault:!1,hasChanged:x};Symbol.metadata??=Symbol("metadata"),g.litPropertyMetadata??=new WeakMap;let _=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=w){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),r=this.getPropertyDescriptor(e,i,t);void 0!==r&&d(this.prototype,e,r)}}static getPropertyDescriptor(e,t,i){const{get:r,set:a}=c(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:r,set(t){const n=r?.call(this);a?.call(this,t),this.requestUpdate(e,n,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??w}static _$Ei(){if(this.hasOwnProperty(f("elementProperties")))return;const e=v(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(f("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(f("properties"))){const e=this.properties,t=[...p(e),...h(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(o(e))}else void 0!==e&&t.push(o(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const e=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((e,r)=>{if(i)e.adoptedStyleSheets=r.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const i of r){const r=document.createElement("style"),a=t.litNonce;void 0!==a&&r.setAttribute("nonce",a),r.textContent=i.cssText,e.appendChild(r)}})(e,this.constructor.elementStyles),e}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),r=this.constructor._$Eu(e,i);if(void 0!==r&&!0===i.reflect){const a=(void 0!==i.converter?.toAttribute?i.converter:b).toAttribute(t,i.type);this._$Em=e,null==a?this.removeAttribute(r):this.setAttribute(r,a),this._$Em=null}}_$AK(e,t){const i=this.constructor,r=i._$Eh.get(e);if(void 0!==r&&this._$Em!==r){const e=i.getPropertyOptions(r),a="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:b;this._$Em=r;const n=a.fromAttribute(t,e.type);this[r]=n??this._$Ej?.get(r)??n,this._$Em=null}}requestUpdate(e,t,i,r=!1,a){if(void 0!==e){const n=this.constructor;if(!1===r&&(a=this[e]),i??=n.getPropertyOptions(e),!((i.hasChanged??x)(a,t)||i.useDefault&&i.reflect&&a===this._$Ej?.get(e)&&!this.hasAttribute(n._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:r,wrapped:a},n){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,n??t??this[e]),!0!==a||void 0!==n)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===r&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,r=this[t];!0!==e||this._$AL.has(t)||void 0===r||this.C(t,void 0,i,r)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};_.elementStyles=[],_.shadowRootOptions={mode:"open"},_[f("elementProperties")]=new Map,_[f("finalized")]=new Map,y?.({ReactiveElement:_}),(g.reactiveElementVersions??=[]).push("2.1.2");const $=globalThis,k=e=>e,F=$.trustedTypes,C=F?F.createPolicy("lit-html",{createHTML:e=>e}):void 0,E="$lit$",D=`lit$${Math.random().toFixed(9).slice(2)}$`,z="?"+D,S=`<${z}>`,A=document,M=()=>A.createComment(""),B=e=>null===e||"object"!=typeof e&&"function"!=typeof e,T=Array.isArray,O="[ \t\n\f\r]",P=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,L=/-->/g,H=/>/g,I=RegExp(`>|${O}(?:([^\\s"'>=/]+)(${O}*=${O}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),j=/'/g,V=/"/g,U=/^(?:script|style|textarea|title)$/i,N=(e,...t)=>({_$litType$:1,strings:e,values:t}),R=Symbol.for("lit-noChange"),Y=Symbol.for("lit-nothing"),W=new WeakMap,q=A.createTreeWalker(A,129);function X(e,t){if(!T(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==C?C.createHTML(t):t}const Q=(e,t)=>{const i=e.length-1,r=[];let a,n=2===t?"<svg>":3===t?"<math>":"",s=P;for(let t=0;t<i;t++){const i=e[t];let o,l,d=-1,c=0;for(;c<i.length&&(s.lastIndex=c,l=s.exec(i),null!==l);)c=s.lastIndex,s===P?"!--"===l[1]?s=L:void 0!==l[1]?s=H:void 0!==l[2]?(U.test(l[2])&&(a=RegExp("</"+l[2],"g")),s=I):void 0!==l[3]&&(s=I):s===I?">"===l[0]?(s=a??P,d=-1):void 0===l[1]?d=-2:(d=s.lastIndex-l[2].length,o=l[1],s=void 0===l[3]?I:'"'===l[3]?V:j):s===V||s===j?s=I:s===L||s===H?s=P:(s=I,a=void 0);const p=s===I&&e[t+1].startsWith("/>")?" ":"";n+=s===P?i+S:d>=0?(r.push(o),i.slice(0,d)+E+i.slice(d)+D+p):i+D+(-2===d?t:p)}return[X(e,n+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),r]};class Z{constructor({strings:e,_$litType$:t},i){let r;this.parts=[];let a=0,n=0;const s=e.length-1,o=this.parts,[l,d]=Q(e,t);if(this.el=Z.createElement(l,i),q.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(r=q.nextNode())&&o.length<s;){if(1===r.nodeType){if(r.hasAttributes())for(const e of r.getAttributeNames())if(e.endsWith(E)){const t=d[n++],i=r.getAttribute(e).split(D),s=/([.?@])?(.*)/.exec(t);o.push({type:1,index:a,name:s[2],strings:i,ctor:"."===s[1]?te:"?"===s[1]?ie:"@"===s[1]?re:ee}),r.removeAttribute(e)}else e.startsWith(D)&&(o.push({type:6,index:a}),r.removeAttribute(e));if(U.test(r.tagName)){const e=r.textContent.split(D),t=e.length-1;if(t>0){r.textContent=F?F.emptyScript:"";for(let i=0;i<t;i++)r.append(e[i],M()),q.nextNode(),o.push({type:2,index:++a});r.append(e[t],M())}}}else if(8===r.nodeType)if(r.data===z)o.push({type:2,index:a});else{let e=-1;for(;-1!==(e=r.data.indexOf(D,e+1));)o.push({type:7,index:a}),e+=D.length-1}a++}}static createElement(e,t){const i=A.createElement("template");return i.innerHTML=e,i}}function K(e,t,i=e,r){if(t===R)return t;let a=void 0!==r?i._$Co?.[r]:i._$Cl;const n=B(t)?void 0:t._$litDirective$;return a?.constructor!==n&&(a?._$AO?.(!1),void 0===n?a=void 0:(a=new n(e),a._$AT(e,i,r)),void 0!==r?(i._$Co??=[])[r]=a:i._$Cl=a),void 0!==a&&(t=K(e,a._$AS(e,t.values),a,r)),t}class G{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,r=(e?.creationScope??A).importNode(t,!0);q.currentNode=r;let a=q.nextNode(),n=0,s=0,o=i[0];for(;void 0!==o;){if(n===o.index){let t;2===o.type?t=new J(a,a.nextSibling,this,e):1===o.type?t=new o.ctor(a,o.name,o.strings,this,e):6===o.type&&(t=new ae(a,this,e)),this._$AV.push(t),o=i[++s]}n!==o?.index&&(a=q.nextNode(),n++)}return q.currentNode=A,r}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class J{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,r){this.type=2,this._$AH=Y,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=K(this,e,t),B(e)?e===Y||null==e||""===e?(this._$AH!==Y&&this._$AR(),this._$AH=Y):e!==this._$AH&&e!==R&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>T(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==Y&&B(this._$AH)?this._$AA.nextSibling.data=e:this.T(A.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,r="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=Z.createElement(X(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===r)this._$AH.p(t);else{const e=new G(r,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=W.get(e.strings);return void 0===t&&W.set(e.strings,t=new Z(e)),t}k(e){T(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,r=0;for(const a of e)r===t.length?t.push(i=new J(this.O(M()),this.O(M()),this,this.options)):i=t[r],i._$AI(a),r++;r<t.length&&(this._$AR(i&&i._$AB.nextSibling,r),t.length=r)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=k(e).nextSibling;k(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ee{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,r,a){this.type=1,this._$AH=Y,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=a,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=Y}_$AI(e,t=this,i,r){const a=this.strings;let n=!1;if(void 0===a)e=K(this,e,t,0),n=!B(e)||e!==this._$AH&&e!==R,n&&(this._$AH=e);else{const r=e;let s,o;for(e=a[0],s=0;s<a.length-1;s++)o=K(this,r[i+s],t,s),o===R&&(o=this._$AH[s]),n||=!B(o)||o!==this._$AH[s],o===Y?e=Y:e!==Y&&(e+=(o??"")+a[s+1]),this._$AH[s]=o}n&&!r&&this.j(e)}j(e){e===Y?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class te extends ee{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===Y?void 0:e}}class ie extends ee{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==Y)}}class re extends ee{constructor(e,t,i,r,a){super(e,t,i,r,a),this.type=5}_$AI(e,t=this){if((e=K(this,e,t,0)??Y)===R)return;const i=this._$AH,r=e===Y&&i!==Y||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,a=e!==Y&&(i===Y||r);r&&this.element.removeEventListener(this.name,this,i),a&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class ae{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){K(this,e)}}const ne=$.litHtmlPolyfillSupport;ne?.(Z,J),($.litHtmlVersions??=[]).push("3.3.2");const se=globalThis;class oe extends _{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const r=i?.renderBefore??t;let a=r._$litPart$;if(void 0===a){const e=i?.renderBefore??null;r._$litPart$=a=new J(t.insertBefore(M(),e),e,void 0,i??{})}return a._$AI(e),a})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return R}}oe._$litElement$=!0,oe.finalized=!0,se.litElementHydrateSupport?.({LitElement:oe});const le=se.litElementPolyfillSupport;le?.({LitElement:oe}),(se.litElementVersions??=[]).push("4.2.2");const de=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}):customElements.define(e,t)},ce={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pe=(e=ce,t,i)=>{const{kind:r,metadata:a}=i;let n=globalThis.litPropertyMetadata.get(a);if(void 0===n&&globalThis.litPropertyMetadata.set(a,n=new Map),"setter"===r&&((e=Object.create(e)).wrapped=!0),n.set(i.name,e),"accessor"===r){const{name:r}=i;return{set(i){const a=t.get.call(this);t.set.call(this,i),this.requestUpdate(r,a,e,!0,i)},init(t){return void 0!==t&&this.C(r,void 0,e,t),t}}}if("setter"===r){const{name:r}=i;return function(i){const a=this[r];t.call(this,i),this.requestUpdate(r,a,e,!0,i)}}throw Error("Unsupported decorator location: "+r)};function he(e){return(t,i)=>"object"==typeof i?pe(e,t,i):((e,t,i)=>{const r=t.hasOwnProperty(i);return t.constructor.createProperty(i,e),r?Object.getOwnPropertyDescriptor(t,i):void 0})(e,t,i)}function ve(e){return he({...e,state:!0,attribute:!1})}function ge(e,t){return(t,i,r)=>((e,t,i)=>(i.configurable=!0,i.enumerable=!0,Reflect.decorate&&"object"!=typeof t&&Object.defineProperty(e,t,i),i))(t,i,{get(){return(t=>t.renderRoot?.querySelector(e)??null)(this)}})}const me=s`
   :host {
     display: block;
     font-family: var(--pv-font-family, Inter, -apple-system, system-ui, sans-serif);
@@ -19,7 +19,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
   ha-card:hover {
     box-shadow: var(--pv-shadow-lg);
   }
-`,ue=o`
+`,ue=s`
   .pv-display {
     font-size: 3.5rem;
     font-weight: 300;
@@ -60,7 +60,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
     text-transform: uppercase;
     color: var(--pv-text-muted);
   }
-`,fe=o`
+`,ye=s`
   .pv-btn {
     display: inline-flex;
     align-items: center;
@@ -134,7 +134,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
     border-radius: 9999px;
     padding: 0.5rem 1rem;
   }
-`,ye=o`
+`,fe=s`
   .pv-event {
     position: relative;
     padding: 0.375rem 0.5rem 0.375rem 0.75rem;
@@ -188,7 +188,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
     text-overflow: ellipsis;
     max-width: 100%;
   }
-`,be=o`
+`,be=s`
   .pv-overlay {
     position: fixed;
     inset: 0;
@@ -241,7 +241,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
     width: calc(100% - 2rem);
     animation: pv-scaleIn var(--pv-transition, 200ms ease) forwards;
   }
-`,xe=o`
+`,xe=s`
   .pv-input {
     width: 100%;
     padding: 0.75rem 1rem;
@@ -312,7 +312,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
   .pv-toggle.active::after {
     transform: translateX(20px);
   }
-`,we=o`
+`,we=s`
   .pv-now-line {
     position: absolute;
     left: 0;
@@ -342,7 +342,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
   .pv-now-line {
     animation: pv-nowPulse 3s ease-in-out infinite;
   }
-`,_e=o`
+`,_e=s`
   @keyframes pv-fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -377,7 +377,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
     from { transform: translateX(-24px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
   }
-`,$e=o`
+`,$e=s`
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -395,9 +395,9 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
   ::-webkit-scrollbar-thumb:hover {
     background: var(--pv-text-muted);
   }
-`;var ke;let Fe=ke=class extends se{constructor(){super(...arguments),this.value="",this.valueLight="",this._isCustom=!1}updated(e){if(super.updated(e),e.has("value")&&this.value){const e=ke.PRESETS.some(e=>e.color.toLowerCase()===this.value.toLowerCase());this._isCustom=!e}}_selectPreset(e){this._isCustom=!1,this._emit(e.color,e.light)}_openCustomPicker(){this._colorInput?.click()}_onCustomColorChange(e){const t=e.target.value,i=function(e){let t=e.replace("#","");if(3===t.length&&(t=t.split("").map(e=>e+e).join("")),6!==t.length)return e;const i=parseInt(t.substring(0,2),16),r=parseInt(t.substring(2,4),16),a=parseInt(t.substring(4,6),16);if(isNaN(i)||isNaN(r)||isNaN(a))return e;const n=Math.round(i+.88*(255-i)),o=Math.round(r+.88*(255-r)),s=Math.round(a+.88*(255-a)),l=e=>e.toString(16).padStart(2,"0");return`#${l(n)}${l(o)}${l(s)}`}(t);this._isCustom=!0,this._emit(t,i)}_emit(e,t){this.value=e,this.valueLight=t,this.dispatchEvent(new CustomEvent("color-change",{detail:{color:e,colorLight:t},bubbles:!0,composed:!0}))}_isSelected(e){return this.value.toLowerCase()===e.toLowerCase()}render(){const e=ke.PRESETS,t=this._isCustom?this.value:"",i=this._isCustom&&!!this.value;return U`
+`;var ke;let Fe=ke=class extends oe{constructor(){super(...arguments),this.value="",this.valueLight="",this._isCustom=!1}updated(e){if(super.updated(e),e.has("value")&&this.value){const e=ke.PRESETS.some(e=>e.color.toLowerCase()===this.value.toLowerCase());this._isCustom=!e}}_selectPreset(e){this._isCustom=!1,this._emit(e.color,e.light)}_openCustomPicker(){this._colorInput?.click()}_onCustomColorChange(e){const t=e.target.value,i=function(e){let t=e.replace("#","");if(3===t.length&&(t=t.split("").map(e=>e+e).join("")),6!==t.length)return e;const i=parseInt(t.substring(0,2),16),r=parseInt(t.substring(2,4),16),a=parseInt(t.substring(4,6),16);if(isNaN(i)||isNaN(r)||isNaN(a))return e;const n=Math.round(i+.88*(255-i)),s=Math.round(r+.88*(255-r)),o=Math.round(a+.88*(255-a)),l=e=>e.toString(16).padStart(2,"0");return`#${l(n)}${l(s)}${l(o)}`}(t);this._isCustom=!0,this._emit(t,i)}_emit(e,t){this.value=e,this.valueLight=t,this.dispatchEvent(new CustomEvent("color-change",{detail:{color:e,colorLight:t},bubbles:!0,composed:!0}))}_isSelected(e){return this.value.toLowerCase()===e.toLowerCase()}render(){const e=ke.PRESETS,t=this._isCustom?this.value:"",i=this._isCustom&&!!this.value;return N`
       <div class="swatch-grid" role="group" aria-label="Color presets">
-        ${e.map(e=>{const t=this._isSelected(e.color);return U`
+        ${e.map(e=>{const t=this._isSelected(e.color);return N`
             <button
               class="swatch-btn"
               type="button"
@@ -428,7 +428,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             class="custom-circle ${t?"has-color":""}"
             style="${t?`background-color: ${t}`:""}"
           >
-            ${t?"":U`<span aria-hidden="true">+</span>`}
+            ${t?"":N`<span aria-hidden="true">+</span>`}
           </div>
         </button>
 
@@ -443,7 +443,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           @input=${this._onCustomColorChange}
         />
       </div>
-    `}};Fe.PRESETS=[{name:"Ocean",color:"#4A90D9",light:"#DCE8F5"},{name:"Fire",color:"#FC6A05",light:"#FEE6D1"},{name:"Sage",color:"#6BA368",light:"#E2F0E1"},{name:"Lavender",color:"#9B8EC4",light:"#EDEBF5"},{name:"Amber",color:"#D9A52B",light:"#F7EDCF"},{name:"Honey",color:"#e4f21c",light:"#FAFDE3"},{name:"Rose",color:"#D4728C",light:"#F5E4EA"},{name:"Teal",color:"#4A9E9E",light:"#DDF0F0"},{name:"Slate",color:"#6B7A8D",light:"#E8EAED"},{name:"Graphite",color:"#505050",light:"#E8E8E8"}],Fe.styles=[me,o`
+    `}};Fe.PRESETS=[{name:"Ocean",color:"#4A90D9",light:"#DCE8F5"},{name:"Fire",color:"#FC6A05",light:"#FEE6D1"},{name:"Sage",color:"#6BA368",light:"#E2F0E1"},{name:"Lavender",color:"#9B8EC4",light:"#EDEBF5"},{name:"Amber",color:"#D9A52B",light:"#F7EDCF"},{name:"Honey",color:"#e4f21c",light:"#FAFDE3"},{name:"Rose",color:"#D4728C",light:"#F5E4EA"},{name:"Teal",color:"#4A9E9E",light:"#DDF0F0"},{name:"Slate",color:"#6B7A8D",light:"#E8EAED"},{name:"Graphite",color:"#505050",light:"#E8E8E8"}],Fe.styles=[me,s`
       :host {
         display: block;
       }
@@ -590,16 +590,16 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         border: none;
         padding: 0;
       }
-    `],e([he({type:String})],Fe.prototype,"value",void 0),e([he({type:String})],Fe.prototype,"valueLight",void 0),e([ve()],Fe.prototype,"_isCustom",void 0),e([ge("#custom-color-input")],Fe.prototype,"_colorInput",void 0),Fe=ke=e([de("pv-color-swatch-picker")],Fe);let Ce=class extends se{constructor(){super(...arguments),this.mode="onboarding",this._page=0,this._timeFormat="12h",this._firstDay="sunday",this._weatherEntity="",this._defaultView="week",this._calendarConfigs=[],this._calendarsInitialized=!1,this._dragIdx=null,this._dragOverIdx=null,this._theme="light",this._themeOverrides={},this._customizeOpen=!1,this._saving=!1,this._saveError="",this._settingsInitialized=!1}firstUpdated(){const e=this.renderRoot.querySelector('button, [href], input, select, [tabindex]:not([tabindex="-1"])');e?.focus()}updated(e){super.updated(e),e.has("hass")&&this.hass&&!this._calendarsInitialized&&this._initCalendars(),"settings"===this.mode&&this.config&&!this._settingsInitialized&&(this._initFromConfig(),this._settingsInitialized=!0)}_initFromConfig(){const e=this.config?.display||{};this._timeFormat=e.time_format||"12h",this._firstDay=e.first_day||"sunday",this._weatherEntity=e.weather_entity||"",this._defaultView=e.default_view||"week",this._theme=e.theme||"light",this._themeOverrides=e.theme_overrides?{...e.theme_overrides}:{},this._customizeOpen=Object.keys(this._themeOverrides).length>0}_initCalendars(){const e=Fe.PRESETS,t=Object.keys(this.hass.states).filter(e=>e.startsWith("calendar.")).sort(),i="settings"===this.mode&&this.config?.calendars?new Map(this.config.calendars.map(e=>[e.entity_id,e])):new Map;this._calendarConfigs=t.map((t,r)=>{const a=i.get(t);if(a)return{entity_id:t,display_name:a.display_name||t,color:a.color||e[r%e.length].color,color_light:a.color_light||e[r%e.length].light,person_entity:a.person_entity||"",include:!0};const n=e[r%e.length],o=this.hass.states[t]?.attributes?.friendly_name;return{entity_id:t,display_name:o||t,color:n.color,color_light:n.light,person_entity:"",include:!1}}),this._calendarsInitialized=!0}get _weatherEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("weather.")).sort():[]}get _personEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("person.")).sort():[]}_entityLabel(e){return this.hass?.states[e]?.attributes?.friendly_name||e}_personLabel(e){return this._entityLabel(e)}_goBack(){this._page>0&&(this._page-=1)}async _goNext(){this._page<2?this._page+=1:await this._finish()}async _finish(){this._saving=!0,this._saveError="";try{const e={calendars:this._calendarConfigs.filter(e=>e.include).map(e=>({entity_id:e.entity_id,display_name:e.display_name,color:e.color,color_light:e.color_light,icon:"mdi:calendar",person_entity:e.person_entity,visible:!0})),display:{time_format:this._timeFormat,weather_entity:this._weatherEntity,first_day:this._firstDay,default_view:this._defaultView,theme:this._theme,theme_overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:void 0}};"onboarding"===this.mode&&(e.onboarding_complete=!0),await this.hass.callService("planavista","save_config",e);const t="settings"===this.mode?"settings-save":"onboarding-complete";this.dispatchEvent(new CustomEvent(t,{bubbles:!0,composed:!0}))}catch(e){console.error("[pv-onboarding-wizard] save_config failed:",e),this._saveError="settings"===this.mode?"Save failed — please try again.":"Setup failed — please try again."}finally{this._saving=!1}}_cancel(){this.dispatchEvent(new CustomEvent("settings-close",{bubbles:!0,composed:!0}))}_updateCalendar(e,t){const i=[...this._calendarConfigs];i[e]={...i[e],...t},this._calendarConfigs=i}_onCalendarColorChange(e,t){t.stopPropagation(),this._updateCalendar(e,{color:t.detail.color,color_light:t.detail.colorLight})}_dispatchThemePreview(){this.dispatchEvent(new CustomEvent("theme-preview",{detail:{theme:this._theme,overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:null},bubbles:!0,composed:!0}))}_setOverride(e,t){if(void 0===t||""===t){const{[e]:t,...i}=this._themeOverrides;this._themeOverrides=i}else this._themeOverrides={...this._themeOverrides,[e]:t};this._dispatchThemePreview()}_resetOverrides(){this._themeOverrides={},this._dispatchThemePreview()}_renderProgressDots(){return U`
+    `],e([he({type:String})],Fe.prototype,"value",void 0),e([he({type:String})],Fe.prototype,"valueLight",void 0),e([ve()],Fe.prototype,"_isCustom",void 0),e([ge("#custom-color-input")],Fe.prototype,"_colorInput",void 0),Fe=ke=e([de("pv-color-swatch-picker")],Fe);let Ce=class extends oe{constructor(){super(...arguments),this.mode="onboarding",this._page=0,this._timeFormat="12h",this._firstDay="sunday",this._weatherEntity="",this._defaultView="week",this._calendarConfigs=[],this._calendarsInitialized=!1,this._dragIdx=null,this._dragOverIdx=null,this._theme="light",this._themeOverrides={},this._customizeOpen=!1,this._saving=!1,this._saveError="",this._settingsInitialized=!1}firstUpdated(){const e=this.renderRoot.querySelector('button, [href], input, select, [tabindex]:not([tabindex="-1"])');e?.focus()}updated(e){super.updated(e),e.has("hass")&&this.hass&&!this._calendarsInitialized&&this._initCalendars(),"settings"===this.mode&&this.config&&!this._settingsInitialized&&(this._initFromConfig(),this._settingsInitialized=!0)}_initFromConfig(){const e=this.config?.display||{};this._timeFormat=e.time_format||"12h",this._firstDay=e.first_day||"sunday",this._weatherEntity=e.weather_entity||"",this._defaultView=e.default_view||"week",this._theme=e.theme||"light",this._themeOverrides=e.theme_overrides?{...e.theme_overrides}:{},this._customizeOpen=Object.keys(this._themeOverrides).length>0}_initCalendars(){const e=Fe.PRESETS,t=Object.keys(this.hass.states).filter(e=>e.startsWith("calendar.")).sort(),i="settings"===this.mode&&this.config?.calendars?new Map(this.config.calendars.map(e=>[e.entity_id,e])):new Map;this._calendarConfigs=t.map((t,r)=>{const a=i.get(t);if(a)return{entity_id:t,display_name:a.display_name||t,color:a.color||e[r%e.length].color,color_light:a.color_light||e[r%e.length].light,person_entity:a.person_entity||"",include:!0};const n=e[r%e.length],s=this.hass.states[t]?.attributes?.friendly_name;return{entity_id:t,display_name:s||t,color:n.color,color_light:n.light,person_entity:"",include:!1}}),this._calendarsInitialized=!0}get _weatherEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("weather.")).sort():[]}get _personEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("person.")).sort():[]}_entityLabel(e){return this.hass?.states[e]?.attributes?.friendly_name||e}_personLabel(e){return this._entityLabel(e)}_goBack(){this._page>0&&(this._page-=1)}async _goNext(){this._page<2?this._page+=1:await this._finish()}async _finish(){this._saving=!0,this._saveError="";try{const e={calendars:this._calendarConfigs.filter(e=>e.include).map(e=>({entity_id:e.entity_id,display_name:e.display_name,color:e.color,color_light:e.color_light,icon:"mdi:calendar",person_entity:e.person_entity,visible:!0})),display:{time_format:this._timeFormat,weather_entity:this._weatherEntity,first_day:this._firstDay,default_view:this._defaultView,theme:this._theme,theme_overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:void 0}};"onboarding"===this.mode&&(e.onboarding_complete=!0),await this.hass.callService("planavista","save_config",e);const t="settings"===this.mode?"settings-save":"onboarding-complete";this.dispatchEvent(new CustomEvent(t,{bubbles:!0,composed:!0}))}catch(e){console.error("[pv-onboarding-wizard] save_config failed:",e),this._saveError="settings"===this.mode?"Save failed — please try again.":"Setup failed — please try again."}finally{this._saving=!1}}_cancel(){this.dispatchEvent(new CustomEvent("settings-close",{bubbles:!0,composed:!0}))}_updateCalendar(e,t){const i=[...this._calendarConfigs];i[e]={...i[e],...t},this._calendarConfigs=i}_onCalendarColorChange(e,t){t.stopPropagation(),this._updateCalendar(e,{color:t.detail.color,color_light:t.detail.colorLight})}_dispatchThemePreview(){this.dispatchEvent(new CustomEvent("theme-preview",{detail:{theme:this._theme,overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:null},bubbles:!0,composed:!0}))}_setOverride(e,t){if(void 0===t||""===t){const{[e]:t,...i}=this._themeOverrides;this._themeOverrides=i}else this._themeOverrides={...this._themeOverrides,[e]:t};this._dispatchThemePreview()}_resetOverrides(){this._themeOverrides={},this._dispatchThemePreview()}_renderProgressDots(){return N`
       <div class="progress-dots" aria-label="Step ${this._page+1} of 3">
-        ${[0,1,2].map(e=>U`
+        ${[0,1,2].map(e=>N`
           <div
             class="dot ${e===this._page?"dot--active":""}"
             aria-current="${e===this._page?"step":"false"}"
           ></div>
         `)}
       </div>
-    `}_renderPage0(){return U`
+    `}_renderPage0(){return N`
       <div class="page-content">
         <h2 class="page-title">Preferences</h2>
         <p class="page-subtitle">Customize how PlanaVista looks and behaves.</p>
@@ -648,7 +648,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             @change=${e=>{this._weatherEntity=e.target.value}}
           >
             <option value="">(None)</option>
-            ${this._weatherEntities.map(e=>U`
+            ${this._weatherEntities.map(e=>N`
               <option value="${e}" ?selected=${this._weatherEntity===e}>${this._entityLabel(e)}</option>
             `)}
           </select>
@@ -658,7 +658,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <div class="field-group">
           <label class="pv-label">Default View</label>
           <div class="view-grid" role="group" aria-label="Default calendar view">
-            ${[{key:"day",label:"Day",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-7c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"},{key:"week",label:"Week",icon:"M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"},{key:"month",label:"Month",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"},{key:"agenda",label:"Agenda",icon:"M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"}].map(e=>U`
+            ${[{key:"day",label:"Day",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-7c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"},{key:"week",label:"Week",icon:"M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"},{key:"month",label:"Month",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"},{key:"agenda",label:"Agenda",icon:"M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"}].map(e=>N`
               <button
                 class="view-card ${this._defaultView===e.key?"view-card--active":""}"
                 type="button"
@@ -674,13 +674,13 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
         </div>
       </div>
-    `}_renderPage1(){return 0===this._calendarConfigs.length?U`
+    `}_renderPage1(){return 0===this._calendarConfigs.length?N`
         <div class="page-content">
           <h2 class="page-title">Calendars</h2>
           <p class="page-subtitle">No calendar entities found in Home Assistant.</p>
           <p class="empty-hint">Add calendar integrations (Google Calendar, CalDAV, etc.) and re-run setup.</p>
         </div>
-      `:U`
+      `:N`
       <div class="page-content">
         <h2 class="page-title">Calendars</h2>
         <p class="page-subtitle">Check the calendars you want to display, then personalise each one.</p>
@@ -689,7 +689,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           ${this._calendarConfigs.map((e,t)=>this._renderCalendarRow(e,t))}
         </div>
       </div>
-    `}_onDragStart(e,t){this._dragIdx=e,t.dataTransfer&&(t.dataTransfer.effectAllowed="move",t.dataTransfer.setData("text/plain",String(e)))}_onDragOver(e,t){t.preventDefault(),t.dataTransfer&&(t.dataTransfer.dropEffect="move"),this._dragOverIdx=e}_onDragLeave(){this._dragOverIdx=null}_onDrop(e,t){if(t.preventDefault(),null!==this._dragIdx&&this._dragIdx!==e){const t=[...this._calendarConfigs],[i]=t.splice(this._dragIdx,1);t.splice(e,0,i),this._calendarConfigs=t}this._dragIdx=null,this._dragOverIdx=null}_onDragEnd(){this._dragIdx=null,this._dragOverIdx=null}_renderCalendarRow(e,t){const i=this._dragIdx===t,r=this._dragOverIdx===t&&this._dragIdx!==t;return U`
+    `}_onDragStart(e,t){this._dragIdx=e,t.dataTransfer&&(t.dataTransfer.effectAllowed="move",t.dataTransfer.setData("text/plain",String(e)))}_onDragOver(e,t){t.preventDefault(),t.dataTransfer&&(t.dataTransfer.dropEffect="move"),this._dragOverIdx=e}_onDragLeave(){this._dragOverIdx=null}_onDrop(e,t){if(t.preventDefault(),null!==this._dragIdx&&this._dragIdx!==e){const t=[...this._calendarConfigs],[i]=t.splice(this._dragIdx,1);t.splice(e,0,i),this._calendarConfigs=t}this._dragIdx=null,this._dragOverIdx=null}_onDragEnd(){this._dragIdx=null,this._dragOverIdx=null}_renderCalendarRow(e,t){const i=this._dragIdx===t,r=this._dragOverIdx===t&&this._dragIdx!==t;return N`
       <div class="cal-row ${i?"cal-row--dragging":""} ${r?"cal-row--dragover":""}"
         draggable="true"
         @dragstart=${e=>this._onDragStart(t,e)}
@@ -713,7 +713,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
               @change=${e=>this._updateCalendar(t,{include:e.target.checked})}
             />
             <span class="cal-checkbox-visual" aria-hidden="true">
-              ${e.include?U`
+              ${e.include?N`
                 <svg viewBox="0 0 24 24" width="14" height="14">
                   <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
                 </svg>
@@ -727,7 +727,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         </div>
 
         <!-- Expandable details — only shown when included -->
-        ${e.include?U`
+        ${e.include?N`
           <div class="cal-details">
             <!-- Display name input -->
             <div class="cal-field">
@@ -762,7 +762,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 @change=${e=>this._updateCalendar(t,{person_entity:e.target.value})}
               >
                 <option value="">(None)</option>
-                ${this._personEntities.map(t=>U`
+                ${this._personEntities.map(t=>N`
                   <option value="${t}" ?selected=${e.person_entity===t}>${this._personLabel(t)}</option>
                 `)}
               </select>
@@ -770,7 +770,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
         `:""}
       </div>
-    `}_renderCustomize(){const e=this._themeOverrides,t=Object.keys(e).length>0;return U`
+    `}_renderCustomize(){const e=this._themeOverrides,t=Object.keys(e).length>0;return N`
       <!-- Customize toggle -->
       <button
         class="customize-toggle"
@@ -783,7 +783,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         </svg>
       </button>
 
-      ${this._customizeOpen?U`
+      ${this._customizeOpen?N`
         <div class="customize-section">
 
           <!-- Accent Color -->
@@ -807,7 +807,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                   .value=${e.background||"#FFFFFF"}
                   @input=${e=>this._setOverride("background",e.target.value)}
                 />
-                ${e.background?U`
+                ${e.background?N`
                   <span class="bg-color-hex">${e.background}</span>
                 `:""}
               </div>
@@ -818,7 +818,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Header Style</label>
             <div class="header-style-grid">
-              ${[{key:"gradient_purple",label:"Purple",gradient:"linear-gradient(135deg, #667eea, #764ba2)"},{key:"gradient_teal",label:"Teal",gradient:"linear-gradient(135deg, #0D9488, #2563EB)"},{key:"gradient_sunset",label:"Sunset",gradient:"linear-gradient(135deg, #F59E0B, #EF4444)"},{key:"solid_accent",label:"Accent",gradient:e.accent||"#6366F1"},{key:"solid_dark",label:"Dark",gradient:"#1A1B1E"}].map(t=>U`
+              ${[{key:"gradient_purple",label:"Purple",gradient:"linear-gradient(135deg, #667eea, #764ba2)"},{key:"gradient_teal",label:"Teal",gradient:"linear-gradient(135deg, #0D9488, #2563EB)"},{key:"gradient_sunset",label:"Sunset",gradient:"linear-gradient(135deg, #F59E0B, #EF4444)"},{key:"solid_accent",label:"Accent",gradient:e.accent||"#6366F1"},{key:"solid_dark",label:"Dark",gradient:"#1A1B1E"}].map(t=>N`
                 <button
                   class="header-style-btn ${e.header_style===t.key?"header-style-btn--active":""}"
                   type="button"
@@ -837,7 +837,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 <span class="header-style-label">Custom</span>
               </button>
             </div>
-            ${"custom"===e.header_style?U`
+            ${"custom"===e.header_style?N`
               <div class="header-custom-row">
                 <input type="color" class="bg-color-input"
                   .value=${e.header_custom||"#333333"}
@@ -852,7 +852,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Corners</label>
             <div class="pill-group">
-              ${["sharp","rounded","pill"].map(t=>U`
+              ${["sharp","rounded","pill"].map(t=>N`
                 <button
                   class="pill-btn ${(e.corner_style||"rounded")===t?"pill-btn--active":""}"
                   type="button"
@@ -866,7 +866,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Shadows</label>
             <div class="pill-group">
-              ${["none","subtle","bold"].map(t=>U`
+              ${["none","subtle","bold"].map(t=>N`
                 <button
                   class="pill-btn ${(e.shadow_depth||"subtle")===t?"pill-btn--active":""}"
                   type="button"
@@ -880,7 +880,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Avatar Border</label>
             <div class="pill-group">
-              ${["primary","light"].map(t=>U`
+              ${["primary","light"].map(t=>N`
                 <button
                   class="pill-btn ${(e.avatar_border||"primary")===t?"pill-btn--active":""}"
                   type="button"
@@ -894,7 +894,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 .value=${e.avatar_border&&"primary"!==e.avatar_border&&"light"!==e.avatar_border?e.avatar_border:"#6366F1"}
                 @input=${e=>this._setOverride("avatar_border",e.target.value)}
               />
-              ${e.avatar_border&&"primary"!==e.avatar_border&&"light"!==e.avatar_border?U`
+              ${e.avatar_border&&"primary"!==e.avatar_border&&"light"!==e.avatar_border?N`
                 <span class="bg-color-hex">${e.avatar_border}</span>
               `:""}
             </div>
@@ -912,15 +912,29 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                   .value=${e.now_color||"#EF4444"}
                   @input=${e=>this._setOverride("now_color",e.target.value)}
                 />
-                ${e.now_color?U`
+                ${e.now_color?N`
                   <span class="bg-color-hex">${e.now_color}</span>
                 `:""}
               </div>
             </div>
           </div>
 
+          <!-- Event Style -->
+          <div class="customize-group">
+            <label class="pv-label">Event Style</label>
+            <div class="pill-group">
+              ${["stripes","solid"].map(t=>N`
+                <button
+                  class="pill-btn ${(e.event_style||"stripes")===t?"pill-btn--active":""}"
+                  type="button"
+                  @click=${()=>this._setOverride("event_style",t)}
+                >${"stripes"===t?"Stripes":"Solid"}</button>
+              `)}
+            </div>
+          </div>
+
           <!-- Reset -->
-          ${t?U`
+          ${t?N`
             <button class="reset-btn" type="button" @click=${this._resetOverrides}>
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
@@ -931,13 +945,13 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
         </div>
       `:""}
-    `}_renderPage2(){return U`
+    `}_renderPage2(){return N`
       <div class="page-content">
         <h2 class="page-title">Theme</h2>
         <p class="page-subtitle">Pick a visual style for your calendar.</p>
 
         <div class="theme-grid">
-          ${[{key:"light",name:"Clean Light",description:"White background, subtle shadows",previewBg:"#FFFFFF",previewAccent:"#6366F1",previewText:"#1A1B1E"},{key:"dark",name:"Deep Dark",description:"Dark gray background, glowing accents",previewBg:"#1E1E2E",previewAccent:"#818CF8",previewText:"#E5E7EB"},{key:"minimal",name:"Minimal",description:"Barely-there UI, content first",previewBg:"#FAFAF9",previewAccent:"#374151",previewText:"#374151"},{key:"vibrant",name:"Vibrant",description:"Rich colors, bold personality",previewBg:"#4F46E5",previewAccent:"#F59E0B",previewText:"#FFFFFF"}].map(e=>U`
+          ${[{key:"light",name:"Clean Light",description:"White background, subtle shadows",previewBg:"#FFFFFF",previewAccent:"#6366F1",previewText:"#1A1B1E"},{key:"dark",name:"Deep Dark",description:"Dark gray background, glowing accents",previewBg:"#1E1E2E",previewAccent:"#818CF8",previewText:"#E5E7EB"},{key:"minimal",name:"Minimal",description:"Barely-there UI, content first",previewBg:"#FAFAF9",previewAccent:"#374151",previewText:"#374151"},{key:"vibrant",name:"Vibrant",description:"Rich colors, bold personality",previewBg:"#4F46E5",previewAccent:"#F59E0B",previewText:"#FFFFFF"}].map(e=>N`
             <button
               class="theme-card ${this._theme===e.key?"theme-card--active":""}"
               type="button"
@@ -970,7 +984,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
               </div>
 
               <!-- Selected checkmark -->
-              ${this._theme===e.key?U`
+              ${this._theme===e.key?N`
                 <div class="theme-check" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="16" height="16">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
@@ -983,7 +997,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
         ${this._renderCustomize()}
       </div>
-    `}render(){const e="settings"===this.mode,t=["Preferences","Calendars","Theme"],i=2===this._page;let r;r=e?this._saving?"Saving…":"Save":i?this._saving?"Saving…":"Finish":"Next";const a=e||i,n=!e&&!i;return U`
+    `}render(){const e="settings"===this.mode,t=["Preferences","Calendars","Theme"],i=2===this._page;let r;r=e?this._saving?"Saving…":"Save":i?this._saving?"Saving…":"Finish":"Next";const a=e||i,n=!e&&!i;return N`
       <div class="wizard-container" role="dialog" aria-modal="true"
         aria-label="${e?"PlanaVista Settings":"PlanaVista Setup"} — ${t[this._page]}">
 
@@ -991,7 +1005,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
           <!-- Left: Close (settings) or Back (onboarding) -->
           <div class="wizard-nav-left">
-            ${e?U`
+            ${e?N`
               <button class="pv-btn pv-btn-secondary back-btn" type="button"
                 @click=${this._cancel}>
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -999,7 +1013,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 </svg>
                 Close
               </button>
-            `:U`
+            `:N`
               <button
                 class="pv-btn pv-btn-secondary back-btn ${0===this._page?"back-btn--hidden":""}"
                 type="button"
@@ -1017,9 +1031,9 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
           <!-- Center: Tabs (settings) or Brand+Dots (onboarding) -->
           <div class="wizard-header-center">
-            ${e?U`
+            ${e?N`
               <div class="settings-tabs" role="tablist">
-                ${t.map((e,t)=>U`
+                ${t.map((e,t)=>N`
                   <button
                     class="settings-tab ${this._page===t?"settings-tab--active":""}"
                     role="tab"
@@ -1029,7 +1043,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                   >${e}</button>
                 `)}
               </div>
-            `:U`
+            `:N`
               <div class="wizard-brand">
                 <span class="wizard-logo" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="18" height="18">
@@ -1050,17 +1064,17 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
               ?disabled=${this._saving}
               @click=${e?()=>this._finish():()=>this._goNext()}
             >
-              ${a?U`
-                ${this._saving?U`
+              ${a?N`
+                ${this._saving?N`
                   <span class="spinner" aria-hidden="true"></span>
-                `:U`
+                `:N`
                   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
                   </svg>
                 `}
               `:""}
               ${r}
-              ${n?U`
+              ${n?N`
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                   <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
                 </svg>
@@ -1069,7 +1083,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
         </div>
 
-        ${this._saveError?U`<p class="save-error-banner" role="alert">${this._saveError}</p>`:Y}
+        ${this._saveError?N`<p class="save-error-banner" role="alert">${this._saveError}</p>`:Y}
 
         <div class="wizard-content">
           ${0===this._page?this._renderPage0():""}
@@ -1078,7 +1092,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         </div>
 
       </div>
-    `}};async function Ee(e,t){const i={summary:t.summary};t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.description&&(i.description=t.description),t.location&&(i.location=t.location),await e.callService("calendar","create_event",i,{entity_id:t.entity_id})}async function ze(e,t){const i={entity_id:t.entity_id,uid:t.uid};t.recurrence_id&&(i.recurrence_id=t.recurrence_id),await e.callService("planavista","delete_event",i)}async function De(e,t="sensor.planavista_config"){await e.callService("homeassistant","update_entity",{entity_id:t})}function Ae(e,t="sensor.planavista_config"){const i=e.states[t];if(!i)return null;const r=i.attributes,a=r.events||[];if(a.length>0&&!Ae._uidLogged){Ae._uidLogged=!0;const e=a.filter(e=>e.uid),t=a.filter(e=>!e.uid);console.log(`[PlanaVista] Event UID check: ${e.length} with uid, ${t.length} without uid (total ${a.length})`),t.length>0&&console.log("[PlanaVista] Events missing uid:",t.slice(0,3).map(e=>({summary:e.summary,keys:Object.keys(e)})))}return{calendars:r.calendars||[],events:a,display:r.display||{time_format:"12h",weather_entity:"",first_day:"sunday",default_view:"day",theme:"light"},onboarding_complete:r.onboarding_complete,version:r.version}}function Se(e,t){if(!t)return null;const i=e.states[t];return i?.attributes?.entity_picture||null}function Be(e,t){if(!t)return"";const i=e.states[t];return i?.attributes?.friendly_name||t.replace("person.","")}function Me(e,t="12h"){const i=new Date(e);return"24h"===t?i.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:!1}):i.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:!0})}function Te(e,t="medium"){switch(t){case"long":return e.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});case"medium":return e.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});case"short":return e.toLocaleDateString("en-US",{month:"numeric",day:"numeric"});case"weekday":return e.toLocaleDateString("en-US",{weekday:"long"})}}function Oe(e){const t=new Date;return e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}function Pe(e,t="sunday"){const i=new Date(e),r=i.getDay(),a="monday"===t?0===r?-6:1-r:-r;return i.setDate(i.getDate()+a),i.setHours(0,0,0,0),i}function He(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}Ce.styles=[me,fe,xe,_e,$e,o`
+    `}};function Ee(e,t="12h"){const i=new Date(e);return"24h"===t?i.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:!1}):i.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:!0})}function De(e,t="medium"){switch(t){case"long":return e.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});case"medium":return e.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});case"short":return e.toLocaleDateString("en-US",{month:"numeric",day:"numeric"});case"weekday":return e.toLocaleDateString("en-US",{weekday:"long"})}}function ze(e){const t=new Date;return e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}function Se(e,t="sunday"){const i=new Date(e),r=i.getDay(),a="monday"===t?0===r?-6:1-r:-r;return i.setDate(i.getDate()+a),i.setHours(0,0,0,0),i}function Ae(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}function Me(e,t){const i=new Map(t.map(e=>[e.entity_id,e])),r=new Map;for(const t of e){const e=`${t.summary}|${t.start}|${t.end}`;if(r.has(e)){const a=r.get(e),n=i.get(t.calendar_entity_id);n&&a.shared_calendars.push({entity_id:n.entity_id,color:n.color,color_light:n.color_light,person_entity:n.person_entity,display_name:n.display_name})}else{const a=i.get(t.calendar_entity_id);r.set(e,{...t,shared_calendars:a?[{entity_id:a.entity_id,color:a.color,color_light:a.color_light,person_entity:a.person_entity,display_name:a.display_name}]:[]})}}return Array.from(r.values())}function Be(e){const t=e.start,i=e.end;if(!t.includes("T")&&!i.includes("T"))return!0;const r=new Date(t),a=new Date(i);return 0===r.getHours()&&0===r.getMinutes()&&0===a.getHours()&&0===a.getMinutes()&&a.getTime()-r.getTime()>=864e5}function Te(e){const t=new Map;for(const i of e){const e=new Date(i.start),r=new Date(i.end),a=new Date(e);a.setHours(0,0,0,0);const n=new Date(r);n.setHours(0,0,0,0);const s=Be(i);for(;s?a<n:a<=n;){const e=Ae(a);t.has(e)||t.set(e,[]),t.get(e).push(i),a.setDate(a.getDate()+1)}}for(const[,e]of t)e.sort((e,t)=>{const i=Be(e),r=Be(t);return i&&!r?-1:!i&&r?1:new Date(e.start).getTime()-new Date(t.start).getTime()});return t}function Oe(e,t,i){return e.filter(e=>{const r=new Date(e.start),a=new Date(e.end);return r<i&&a>t})}function Pe(e,t){return e.filter(e=>!t.has(e.calendar_entity_id))}function Le(e){const t=parseInt(e.slice(1,3),16)/255,i=parseInt(e.slice(3,5),16)/255,r=parseInt(e.slice(5,7),16)/255,a=e=>e<=.03928?e/12.92:Math.pow((e+.055)/1.055,2.4);return.2126*a(t)+.7152*a(i)+.0722*a(r)}function He(e){return Le(e)>.4?"#1A1B1E":"#FFFFFF"}Ce.styles=[me,ye,xe,_e,$e,s`
       :host {
         display: flex;
         flex-direction: column;
@@ -1870,7 +1884,179 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .wizard-content { padding: 1.25rem; }
         .page-title { font-size: 1.25rem; }
       }
-    `],e([he({attribute:!1})],Ce.prototype,"hass",void 0),e([he({type:String})],Ce.prototype,"mode",void 0),e([he({attribute:!1})],Ce.prototype,"config",void 0),e([ve()],Ce.prototype,"_page",void 0),e([ve()],Ce.prototype,"_timeFormat",void 0),e([ve()],Ce.prototype,"_firstDay",void 0),e([ve()],Ce.prototype,"_weatherEntity",void 0),e([ve()],Ce.prototype,"_defaultView",void 0),e([ve()],Ce.prototype,"_calendarConfigs",void 0),e([ve()],Ce.prototype,"_calendarsInitialized",void 0),e([ve()],Ce.prototype,"_dragIdx",void 0),e([ve()],Ce.prototype,"_dragOverIdx",void 0),e([ve()],Ce.prototype,"_theme",void 0),e([ve()],Ce.prototype,"_themeOverrides",void 0),e([ve()],Ce.prototype,"_customizeOpen",void 0),e([ve()],Ce.prototype,"_saving",void 0),e([ve()],Ce.prototype,"_saveError",void 0),Ce=e([de("pv-onboarding-wizard")],Ce);class Le{constructor(){this.hiddenCalendars=new Set,this.currentView="day",this.currentDate=new Date,this.selectedEvent=null,this.dialogOpen=null,this.createPrefill=null,this.isLoading=!1,this._hosts=new Set,this._autoAdvanceTimer=null,this.startAutoAdvance()}static getInstance(){return Le._instance||(Le._instance=new Le),Le._instance}subscribe(e){this._hosts.add(e)}unsubscribe(e){this._hosts.delete(e)}_notify(){for(const e of this._hosts)e.requestUpdate()}toggleCalendar(e){this.hiddenCalendars.has(e)?this.hiddenCalendars.delete(e):this.hiddenCalendars.add(e),this._notify()}setView(e){this.currentView!==e&&(this.currentView=e,this._notify())}navigateDate(e){this.currentDate="today"===e?new Date:function(e,t,i){const r=new Date(e),a="next"===i?1:-1;switch(t){case"day":r.setDate(r.getDate()+a);break;case"week":case"agenda":r.setDate(r.getDate()+7*a);break;case"month":r.setMonth(r.getMonth()+a)}return r}(this.currentDate,this.currentView,e),this._notify()}setDate(e){this.currentDate=new Date(e),this._notify()}selectEvent(e){this.selectedEvent=e,this._notify()}openCreateDialog(e){this.dialogOpen="create",this.createPrefill=e||null,this._notify()}openEditDialog(e){this.dialogOpen="edit",this.selectedEvent=e,this.createPrefill={...e},this._notify()}closeDialog(){this.dialogOpen=null,this.createPrefill=null,this._notify()}async doCreateEvent(e,t){this.isLoading=!0,this._notify();try{await Ee(e,t),await De(e),this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to create event",e),e}finally{this.isLoading=!1,this._notify()}}async doDeleteEvent(e,t){this.isLoading=!0,this._notify();try{await ze(e,t),await De(e),this.selectedEvent=null,this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to delete event",e),e}finally{this.isLoading=!1,this._notify()}}async doEditEvent(e,t,i){this.isLoading=!0,this._notify();let r=!1;try{await ze(e,t),r=!0,await Ee(e,i),await De(e),this.selectedEvent=null,this.closeDialog()}catch(e){if(console.error("PlanaVista: Failed to edit event",e),r)throw new Error("The original event was deleted but the replacement could not be created. Please create the event manually. Error: "+(e instanceof Error?e.message:String(e)));throw e}finally{this.isLoading=!1,this._notify()}}startAutoAdvance(){this._autoAdvanceTimer||(this._autoAdvanceTimer=setInterval(()=>{const e=new Date;e.getDate()===this.currentDate.getDate()&&e.getMonth()===this.currentDate.getMonth()&&e.getFullYear()===this.currentDate.getFullYear()||this.currentDate.toDateString()===new Date(Date.now()-6e4).toDateString()&&(this.currentDate=e,this._notify())},6e4))}stopAutoAdvance(){this._autoAdvanceTimer&&(clearInterval(this._autoAdvanceTimer),this._autoAdvanceTimer=null)}}class Ie{constructor(e){this.host=e,this._state=Le.getInstance(),e.addController(this)}hostConnected(){this._state.subscribe(this.host)}hostDisconnected(){this._state.unsubscribe(this.host)}get state(){return this._state}}function je(e){const t=parseInt(e.slice(1,3),16)/255,i=parseInt(e.slice(3,5),16)/255,r=parseInt(e.slice(5,7),16)/255,a=e=>e<=.03928?e/12.92:Math.pow((e+.055)/1.055,2.4);return.2126*a(t)+.7152*a(i)+.0722*a(r)}function Ve(e){return je(e)>.4?"#1A1B1E":"#FFFFFF"}const Ne={sharp:{radius:"4px",radiusLg:"6px",radiusSm:"2px"},rounded:{radius:"12px",radiusLg:"16px",radiusSm:"8px"},pill:{radius:"20px",radiusLg:"24px",radiusSm:"14px"}},Ue={none:{shadow:"none",shadowLg:"none",shadowXl:"none"},subtle:{shadow:"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)",shadowLg:"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)",shadowXl:"0 20px 40px rgba(0, 0, 0, 0.12)"},bold:{shadow:"0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1)",shadowLg:"0 12px 32px rgba(0, 0, 0, 0.18), 0 6px 14px rgba(0, 0, 0, 0.1)",shadowXl:"0 24px 48px rgba(0, 0, 0, 0.24)"}},Re={gradient_purple:{gradient:"linear-gradient(135deg, #667eea 0%, #764ba2 100%)",text:"#FFFFFF"},gradient_teal:{gradient:"linear-gradient(135deg, #0D9488 0%, #2563EB 100%)",text:"#FFFFFF"},gradient_sunset:{gradient:"linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",text:"#FFFFFF"},solid_accent:{gradient:"",text:"#FFFFFF"},solid_dark:{gradient:"#1A1B1E",text:"#FFFFFF"}},Ye={light:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#6366F1","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(99, 102, 241, 0.06)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.12)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #667eea 0%, #764ba2 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.3)"},dark:{"--pv-bg":"#1A1B1E","--pv-card-bg":"#25262B","--pv-card-bg-elevated":"#2C2E33","--pv-text":"#E4E5E7","--pv-text-secondary":"#909296","--pv-text-muted":"#5C5F66","--pv-border":"#373A40","--pv-border-subtle":"#2C2E33","--pv-accent":"#818CF8","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(129, 140, 248, 0.08)","--pv-now-color":"#F87171","--pv-event-hover":"rgba(255, 255, 255, 0.04)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.4)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #3730A3 0%, #581C87 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.6)"},minimal:{"--pv-bg":"#FFFFFF","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#111827","--pv-text-secondary":"#6B7280","--pv-text-muted":"#D1D5DB","--pv-border":"#F3F4F6","--pv-border-subtle":"#F9FAFB","--pv-accent":"#111827","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(17, 24, 39, 0.03)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.02)","--pv-shadow":"0 0 0 1px rgba(0, 0, 0, 0.05)","--pv-shadow-lg":"0 4px 12px rgba(0, 0, 0, 0.05)","--pv-shadow-xl":"0 8px 24px rgba(0, 0, 0, 0.08)","--pv-radius":"8px","--pv-radius-lg":"12px","--pv-radius-sm":"6px","--pv-transition":"150ms ease","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"#111827","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.2)"},vibrant:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#7C3AED","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(124, 58, 237, 0.06)","--pv-now-color":"#F43F5E","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(124, 58, 237, 0.1), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(124, 58, 237, 0.15), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(124, 58, 237, 0.2)","--pv-radius":"14px","--pv-radius-lg":"20px","--pv-radius-sm":"10px","--pv-transition":"250ms cubic-bezier(0.34, 1.56, 0.64, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(124, 58, 237, 0.2)"}},We=new WeakMap;function qe(e,t,i){const r=`${t}:${JSON.stringify(i||{})}`;if(We.get(e)===r)return;const a={...Ye[t]||Ye.light};if(i){if(i.accent&&(a["--pv-accent"]=i.accent,a["--pv-accent-text"]=Ve(i.accent),a["--pv-today-bg"]=(n=i.accent,`rgba(${parseInt(n.slice(1,3),16)}, ${parseInt(n.slice(3,5),16)}, ${parseInt(n.slice(5,7),16)}, 0.06)`)),i.background){if(a["--pv-bg"]=i.background,je(i.background)>.5)a["--pv-card-bg"]="#FFFFFF",a["--pv-card-bg-elevated"]="#FFFFFF";else{const e=parseInt(i.background.slice(1,3),16),t=parseInt(i.background.slice(3,5),16),r=parseInt(i.background.slice(5,7),16),n=(e,t)=>Math.min(255,e+t);a["--pv-card-bg"]=`#${n(e,12).toString(16).padStart(2,"0")}${n(t,12).toString(16).padStart(2,"0")}${n(r,12).toString(16).padStart(2,"0")}`,a["--pv-card-bg-elevated"]=`#${n(e,20).toString(16).padStart(2,"0")}${n(t,20).toString(16).padStart(2,"0")}${n(r,20).toString(16).padStart(2,"0")}`}a["--pv-text"]=Ve(i.background);const e=je(a["--pv-text"])>.5?{secondary:"#909296",muted:"#5C5F66"}:{secondary:"#6B7280",muted:"#9CA3AF"};a["--pv-text-secondary"]=e.secondary,a["--pv-text-muted"]=e.muted;const t=je(i.background)>.5?{border:"#E5E7EB",borderSubtle:"#F3F4F6"}:{border:"#373A40",borderSubtle:"#2C2E33"};a["--pv-border"]=t.border,a["--pv-border-subtle"]=t.borderSubtle,a["--pv-event-hover"]=je(i.background)>.5?"rgba(0, 0, 0, 0.03)":"rgba(255, 255, 255, 0.04)",a["--pv-backdrop"]=je(i.background)>.5?"rgba(0, 0, 0, 0.3)":"rgba(0, 0, 0, 0.6)"}if(i.header_style)if("custom"===i.header_style&&i.header_custom)a["--pv-header-gradient"]=i.header_custom,a["--pv-header-text"]=Ve(i.header_custom);else if("solid_accent"===i.header_style){const e=i.accent||a["--pv-accent"];a["--pv-header-gradient"]=e,a["--pv-header-text"]=Ve(e)}else{const e=Re[i.header_style];e&&(a["--pv-header-gradient"]=e.gradient,a["--pv-header-text"]=e.text)}if(i.corner_style&&Ne[i.corner_style]){const e=Ne[i.corner_style];a["--pv-radius"]=e.radius,a["--pv-radius-lg"]=e.radiusLg,a["--pv-radius-sm"]=e.radiusSm}if(i.shadow_depth&&Ue[i.shadow_depth]){const e=Ue[i.shadow_depth];a["--pv-shadow"]=e.shadow,a["--pv-shadow-lg"]=e.shadowLg,a["--pv-shadow-xl"]=e.shadowXl}i.avatar_border&&"primary"!==i.avatar_border&&"light"!==i.avatar_border&&(a["--pv-avatar-border"]=i.avatar_border),i.now_color&&(a["--pv-now-color"]=i.now_color)}var n;for(const[t,i]of Object.entries(a))e.style.setProperty(t,i);We.set(e,r)}function Qe(e){We.delete(e)}function Ze(e,t){const i=e||t||"light";return"planavista"===i?"light":"modern"===i?"vibrant":i in Ye?i:"light"}function Xe(e){const t=e.start,i=e.end;if(!t.includes("T")&&!i.includes("T"))return!0;const r=new Date(t),a=new Date(i);return 0===r.getHours()&&0===r.getMinutes()&&0===a.getHours()&&0===a.getMinutes()&&a.getTime()-r.getTime()>=864e5}function Ke(e){const t=new Map;for(const i of e){const e=new Date(i.start),r=new Date(i.end),a=new Date(e);a.setHours(0,0,0,0);const n=new Date(r);n.setHours(0,0,0,0);const o=Xe(i);for(;o?a<n:a<=n;){const e=He(a);t.has(e)||t.set(e,[]),t.get(e).push(i),a.setDate(a.getDate()+1)}}for(const[,e]of t)e.sort((e,t)=>{const i=Xe(e),r=Xe(t);return i&&!r?-1:!i&&r?1:new Date(e.start).getTime()-new Date(t.start).getTime()});return t}function Ge(e,t,i){return e.filter(e=>{const r=new Date(e.start),a=new Date(e.end);return r<i&&a>t})}function Je(e,t=0,i=24,r){const a=new Date(e.start),n=new Date(e.end),o=60*(i-t);let s,l;return s=Math.max(0,60*(a.getHours()-t)+a.getMinutes()),l=Math.min(o,60*(n.getHours()-t)+n.getMinutes()),n.toDateString()!==a.toDateString()&&l<=0&&(l=o),s=Math.max(0,Math.min(s,o)),l=Math.max(0,Math.min(l,o)),{top:s/o*100,height:Math.max(l-s,15)/o*100}}function et(e){const t=e.filter(e=>!Xe(e)).sort((e,t)=>new Date(e.start).getTime()-new Date(t.start).getTime());if(0===t.length)return[];const i=t.map(e=>({event:e,start:new Date(e.start).getTime(),end:new Date(e.end).getTime(),column:0,cluster:0}));let r=0,a=0;for(let e=0;e<i.length;e++){let t=!1;for(let r=a;r<e;r++)if(i[e].start<i[r].end){t=!0;break}if(!t&&e>a){const t=e;let n=0;for(let e=a;e<t;e++)n=Math.max(n,i[e].column+1);for(let e=a;e<t;e++)i[e].cluster=r;r++,a=e}const n=new Set;for(let t=a;t<e;t++)i[e].start<i[t].end&&n.add(i[t].column);let o=0;for(;n.has(o);)o++;i[e].column=o}i.forEach((e,t)=>{t>=a&&(e.cluster=r)});const n=new Map;for(const e of i){const t=n.get(e.cluster)||0;n.set(e.cluster,Math.max(t,e.column+1))}return i.map(e=>({...e.event,column:e.column,totalColumns:n.get(e.cluster)||1}))}function tt(e,t){return e.filter(e=>!t.has(e.calendar_entity_id))}const it={sunny:e=>U`
+    `],e([he({attribute:!1})],Ce.prototype,"hass",void 0),e([he({type:String})],Ce.prototype,"mode",void 0),e([he({attribute:!1})],Ce.prototype,"config",void 0),e([ve()],Ce.prototype,"_page",void 0),e([ve()],Ce.prototype,"_timeFormat",void 0),e([ve()],Ce.prototype,"_firstDay",void 0),e([ve()],Ce.prototype,"_weatherEntity",void 0),e([ve()],Ce.prototype,"_defaultView",void 0),e([ve()],Ce.prototype,"_calendarConfigs",void 0),e([ve()],Ce.prototype,"_calendarsInitialized",void 0),e([ve()],Ce.prototype,"_dragIdx",void 0),e([ve()],Ce.prototype,"_dragOverIdx",void 0),e([ve()],Ce.prototype,"_theme",void 0),e([ve()],Ce.prototype,"_themeOverrides",void 0),e([ve()],Ce.prototype,"_customizeOpen",void 0),e([ve()],Ce.prototype,"_saving",void 0),e([ve()],Ce.prototype,"_saveError",void 0),Ce=e([de("pv-onboarding-wizard")],Ce);const Ie={sharp:{radius:"4px",radiusLg:"6px",radiusSm:"2px"},rounded:{radius:"12px",radiusLg:"16px",radiusSm:"8px"},pill:{radius:"20px",radiusLg:"24px",radiusSm:"14px"}},je={none:{shadow:"none",shadowLg:"none",shadowXl:"none"},subtle:{shadow:"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)",shadowLg:"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)",shadowXl:"0 20px 40px rgba(0, 0, 0, 0.12)"},bold:{shadow:"0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1)",shadowLg:"0 12px 32px rgba(0, 0, 0, 0.18), 0 6px 14px rgba(0, 0, 0, 0.1)",shadowXl:"0 24px 48px rgba(0, 0, 0, 0.24)"}},Ve={gradient_purple:{gradient:"linear-gradient(135deg, #667eea 0%, #764ba2 100%)",text:"#FFFFFF"},gradient_teal:{gradient:"linear-gradient(135deg, #0D9488 0%, #2563EB 100%)",text:"#FFFFFF"},gradient_sunset:{gradient:"linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",text:"#FFFFFF"},solid_accent:{gradient:"",text:"#FFFFFF"},solid_dark:{gradient:"#1A1B1E",text:"#FFFFFF"}},Ue={light:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#6366F1","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(99, 102, 241, 0.06)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.12)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #667eea 0%, #764ba2 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.3)"},dark:{"--pv-bg":"#1A1B1E","--pv-card-bg":"#25262B","--pv-card-bg-elevated":"#2C2E33","--pv-text":"#E4E5E7","--pv-text-secondary":"#909296","--pv-text-muted":"#5C5F66","--pv-border":"#373A40","--pv-border-subtle":"#2C2E33","--pv-accent":"#818CF8","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(129, 140, 248, 0.08)","--pv-now-color":"#F87171","--pv-event-hover":"rgba(255, 255, 255, 0.04)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.4)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #3730A3 0%, #581C87 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.6)"},minimal:{"--pv-bg":"#FFFFFF","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#111827","--pv-text-secondary":"#6B7280","--pv-text-muted":"#D1D5DB","--pv-border":"#F3F4F6","--pv-border-subtle":"#F9FAFB","--pv-accent":"#111827","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(17, 24, 39, 0.03)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.02)","--pv-shadow":"0 0 0 1px rgba(0, 0, 0, 0.05)","--pv-shadow-lg":"0 4px 12px rgba(0, 0, 0, 0.05)","--pv-shadow-xl":"0 8px 24px rgba(0, 0, 0, 0.08)","--pv-radius":"8px","--pv-radius-lg":"12px","--pv-radius-sm":"6px","--pv-transition":"150ms ease","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"#111827","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.2)"},vibrant:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#7C3AED","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(124, 58, 237, 0.06)","--pv-now-color":"#F43F5E","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(124, 58, 237, 0.1), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(124, 58, 237, 0.15), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(124, 58, 237, 0.2)","--pv-radius":"14px","--pv-radius-lg":"20px","--pv-radius-sm":"10px","--pv-transition":"250ms cubic-bezier(0.34, 1.56, 0.64, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(124, 58, 237, 0.2)"}},Ne=new WeakMap;function Re(e,t,i){const r=`${t}:${JSON.stringify(i||{})}`;if(Ne.get(e)===r)return;const a={...Ue[t]||Ue.light};if(i){if(i.accent&&(a["--pv-accent"]=i.accent,a["--pv-accent-text"]=He(i.accent),a["--pv-today-bg"]=(n=i.accent,`rgba(${parseInt(n.slice(1,3),16)}, ${parseInt(n.slice(3,5),16)}, ${parseInt(n.slice(5,7),16)}, 0.06)`)),i.background){if(a["--pv-bg"]=i.background,Le(i.background)>.5)a["--pv-card-bg"]="#FFFFFF",a["--pv-card-bg-elevated"]="#FFFFFF";else{const e=parseInt(i.background.slice(1,3),16),t=parseInt(i.background.slice(3,5),16),r=parseInt(i.background.slice(5,7),16),n=(e,t)=>Math.min(255,e+t);a["--pv-card-bg"]=`#${n(e,12).toString(16).padStart(2,"0")}${n(t,12).toString(16).padStart(2,"0")}${n(r,12).toString(16).padStart(2,"0")}`,a["--pv-card-bg-elevated"]=`#${n(e,20).toString(16).padStart(2,"0")}${n(t,20).toString(16).padStart(2,"0")}${n(r,20).toString(16).padStart(2,"0")}`}a["--pv-text"]=He(i.background);const e=Le(a["--pv-text"])>.5?{secondary:"#909296",muted:"#5C5F66"}:{secondary:"#6B7280",muted:"#9CA3AF"};a["--pv-text-secondary"]=e.secondary,a["--pv-text-muted"]=e.muted;const t=Le(i.background)>.5?{border:"#E5E7EB",borderSubtle:"#F3F4F6"}:{border:"#373A40",borderSubtle:"#2C2E33"};a["--pv-border"]=t.border,a["--pv-border-subtle"]=t.borderSubtle,a["--pv-event-hover"]=Le(i.background)>.5?"rgba(0, 0, 0, 0.03)":"rgba(255, 255, 255, 0.04)",a["--pv-backdrop"]=Le(i.background)>.5?"rgba(0, 0, 0, 0.3)":"rgba(0, 0, 0, 0.6)"}if(i.header_style)if("custom"===i.header_style&&i.header_custom)a["--pv-header-gradient"]=i.header_custom,a["--pv-header-text"]=He(i.header_custom);else if("solid_accent"===i.header_style){const e=i.accent||a["--pv-accent"];a["--pv-header-gradient"]=e,a["--pv-header-text"]=He(e)}else{const e=Ve[i.header_style];e&&(a["--pv-header-gradient"]=e.gradient,a["--pv-header-text"]=e.text)}if(i.corner_style&&Ie[i.corner_style]){const e=Ie[i.corner_style];a["--pv-radius"]=e.radius,a["--pv-radius-lg"]=e.radiusLg,a["--pv-radius-sm"]=e.radiusSm}if(i.shadow_depth&&je[i.shadow_depth]){const e=je[i.shadow_depth];a["--pv-shadow"]=e.shadow,a["--pv-shadow-lg"]=e.shadowLg,a["--pv-shadow-xl"]=e.shadowXl}i.avatar_border&&"primary"!==i.avatar_border&&"light"!==i.avatar_border&&(a["--pv-avatar-border"]=i.avatar_border),i.now_color&&(a["--pv-now-color"]=i.now_color)}var n;for(const[t,i]of Object.entries(a))e.style.setProperty(t,i);Ne.set(e,r)}function Ye(e){Ne.delete(e)}function We(e,t){const i=e||t||"light";return"planavista"===i?"light":"modern"===i?"vibrant":i in Ue?i:"light"}async function qe(e,t){const i={summary:t.summary};t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.description&&(i.description=t.description),t.location&&(i.location=t.location),await e.callService("calendar","create_event",i,{entity_id:t.entity_id})}async function Xe(e,t){const i={entity_id:t.entity_id,uid:t.uid};t.recurrence_id&&(i.recurrence_id=t.recurrence_id),await e.callService("planavista","delete_event",i)}async function Qe(e,t="sensor.planavista_config"){await e.callService("homeassistant","update_entity",{entity_id:t})}function Ze(e,t="sensor.planavista_config"){const i=e.states[t];if(!i)return null;const r=i.attributes,a=r.events||[];if(a.length>0&&!Ze._uidLogged){Ze._uidLogged=!0;const e=a.filter(e=>e.uid),t=a.filter(e=>!e.uid);console.log(`[PlanaVista] Event UID check: ${e.length} with uid, ${t.length} without uid (total ${a.length})`),t.length>0&&console.log("[PlanaVista] Events missing uid:",t.slice(0,3).map(e=>({summary:e.summary,keys:Object.keys(e)})))}return{calendars:r.calendars||[],events:a,display:r.display||{time_format:"12h",weather_entity:"",first_day:"sunday",default_view:"day",theme:"light"},onboarding_complete:r.onboarding_complete,version:r.version}}function Ke(e,t){if(!t)return null;const i=e.states[t];return i?.attributes?.entity_picture||null}function Ge(e,t){if(!t)return"";const i=e.states[t];return i?.attributes?.friendly_name||t.replace("person.","")}let Je=class extends oe{constructor(){super(...arguments),this.calendars=[],this.timeFormat="12h",this.compact=!1,this.showStripes=!0}render(){const e=this.event;if(!e)return Y;const t=e.shared_calendars||[],i=t.length>1,r=function(e,t){if(e.organizer){const t=e.shared_calendars.find(t=>t.display_name?.toLowerCase()===e.organizer?.toLowerCase()||t.entity_id===e.organizer);if(t)return t}for(const i of t){const t=e.shared_calendars.find(e=>e.entity_id===i.entity_id);if(t)return t}return e.shared_calendars[0]}(e,this.calendars),a=r?.color||e.calendar_color||"var(--pv-accent)";let n;n=this.showStripes&&i?`background: ${function(e){if(e.length<=1)return"";const t=[];return e.forEach((e,i)=>{const r=e.color_light||e.color,a=20*i,n=20*(i+1);t.push(`${r} ${a}px`,`${r} ${n}px`)}),`repeating-linear-gradient(135deg, ${t.join(", ")})`}(t)}`:this.showStripes?`background: ${t[0]?.color_light||e.calendar_color_light||e.calendar_color}`:"background: var(--pv-card-bg, #FFFFFF)";const s=this.showStripes?t[0]?.color_light||e.calendar_color_light||e.calendar_color:"#FFFFFF",o=this.showStripes?He(s):"var(--pv-text)",l=this.compact?"chip chip--compact":"chip",d=this.compact?"chip-title chip-title--wrap":"chip-title chip-title--nowrap",c=!e.start.includes("T")||new Date(e.end).getTime()-new Date(e.start).getTime()>=864e5&&e.start.includes("T00:00")&&e.end.includes("T00:00");return N`
+      <div
+        class="${l}"
+        style="${n}; --chip-border-color: ${a}; --chip-text: ${o}"
+        @click=${this._onClick}
+      >
+        <div class="chip-body">
+          <div class="${d}">${e.summary}</div>
+          ${this.compact?Y:N`
+            <div class="chip-time">
+              ${c?"All day":`${Ee(e.start,this.timeFormat)} – ${Ee(e.end,this.timeFormat)}`}
+            </div>
+          `}
+        </div>
+        ${!this.compact&&t.length>0?this._renderAvatars(t):Y}
+      </div>
+    `}_renderAvatars(e){const t=e.slice(0,4),i=e.length-4;return N`
+      <div class="chip-avatars">
+        ${t.map(e=>{const t=e.person_entity?Ke(this.hass,e.person_entity):null,i=e.person_entity?Ge(this.hass,e.person_entity):e.display_name||"?";return t?N`<img class="chip-avatar" src="${t}" alt="${i}" />`:N`<div class="chip-initial" style="background: ${e.color}">${i[0]?.toUpperCase()||"?"}</div>`})}
+        ${i>0?N`<div class="chip-overflow">+${i}</div>`:Y}
+      </div>
+    `}_onClick(){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:this.event},bubbles:!0,composed:!0}))}};Je.styles=[me,s`
+      :host { display: block; }
+
+      .chip {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.5rem 0.625rem;
+        border-radius: 6px;
+        border-left: 3px solid var(--chip-border-color);
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .chip:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      }
+
+      .chip:active {
+        transform: scale(0.98);
+      }
+
+      .chip-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .chip-title {
+        font-weight: 600;
+        font-size: 0.875rem;
+        line-height: 1.3;
+        color: var(--chip-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chip-title--wrap {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        white-space: normal;
+      }
+
+      .chip-title--nowrap {
+        white-space: nowrap;
+      }
+
+      .chip-time {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--chip-text);
+        opacity: 0.8;
+        margin-top: 2px;
+      }
+
+      .chip-avatars {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        gap: 0;
+        margin-left: auto;
+        padding-top: 2px;
+      }
+
+      .chip-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.8);
+        margin-left: -6px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .chip-avatar:first-child {
+        margin-left: 0;
+      }
+
+      .chip-initial {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.8);
+        margin-left: -6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.625rem;
+        font-weight: 700;
+        color: white;
+        flex-shrink: 0;
+      }
+
+      .chip-initial:first-child {
+        margin-left: 0;
+      }
+
+      .chip-overflow {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.8);
+        margin-left: -6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.5rem;
+        font-weight: 700;
+        color: var(--pv-text-secondary);
+        background: var(--pv-card-bg, #f0f0f0);
+        flex-shrink: 0;
+      }
+
+      /* Compact mode (month view) */
+      .chip--compact {
+        padding: 0.25rem 0.5rem;
+        border-left-width: 2px;
+        border-radius: 4px;
+      }
+
+      .chip--compact .chip-title {
+        font-size: 0.6875rem;
+        font-weight: 500;
+      }
+
+      /* Responsive — small screens */
+      @media (max-width: 479px) {
+        .chip { padding: 0.375rem 0.5rem; }
+        .chip-title { font-size: 0.8125rem; }
+        .chip-time { font-size: 0.6875rem; }
+        .chip-avatar, .chip-initial, .chip-overflow { width: 20px; height: 20px; font-size: 0.5rem; }
+      }
+
+      /* Large screens */
+      @media (min-width: 1024px) {
+        .chip { padding: 0.625rem 0.75rem; }
+        .chip-title { font-size: 0.9375rem; }
+        .chip-time { font-size: 0.8125rem; }
+        .chip-avatar, .chip-initial, .chip-overflow { width: 28px; height: 28px; }
+      }
+
+      /* XL screens */
+      @media (min-width: 1440px) {
+        .chip { padding: 0.75rem 0.875rem; }
+        .chip-title { font-size: 1.0625rem; }
+        .chip-time { font-size: 0.875rem; }
+        .chip-avatar, .chip-initial, .chip-overflow { width: 32px; height: 32px; font-size: 0.625rem; }
+      }
+    `],e([he({attribute:!1})],Je.prototype,"hass",void 0),e([he({attribute:!1})],Je.prototype,"event",void 0),e([he({attribute:!1})],Je.prototype,"calendars",void 0),e([he({attribute:!1})],Je.prototype,"timeFormat",void 0),e([he({type:Boolean})],Je.prototype,"compact",void 0),e([he({type:Boolean})],Je.prototype,"showStripes",void 0),Je=e([de("pv-event-chip")],Je);class et{constructor(){this.hiddenCalendars=new Set,this.currentView="day",this.currentDate=new Date,this.selectedEvent=null,this.dialogOpen=null,this.createPrefill=null,this.isLoading=!1,this._hosts=new Set,this._autoAdvanceTimer=null,this.startAutoAdvance()}static getInstance(){return et._instance||(et._instance=new et),et._instance}subscribe(e){this._hosts.add(e)}unsubscribe(e){this._hosts.delete(e)}_notify(){for(const e of this._hosts)e.requestUpdate()}toggleCalendar(e){this.hiddenCalendars.has(e)?this.hiddenCalendars.delete(e):this.hiddenCalendars.add(e),this._notify()}setView(e){this.currentView!==e&&(this.currentView=e,this._notify())}navigateDate(e){this.currentDate="today"===e?new Date:function(e,t,i){const r=new Date(e),a="next"===i?1:-1;switch(t){case"day":r.setDate(r.getDate()+a);break;case"week":case"agenda":r.setDate(r.getDate()+7*a);break;case"month":r.setMonth(r.getMonth()+a)}return r}(this.currentDate,this.currentView,e),this._notify()}setDate(e){this.currentDate=new Date(e),this._notify()}selectEvent(e){this.selectedEvent=e,this._notify()}openCreateDialog(e){this.dialogOpen="create",this.createPrefill=e||null,this._notify()}openEditDialog(e){this.dialogOpen="edit",this.selectedEvent=e,this.createPrefill={...e},this._notify()}closeDialog(){this.dialogOpen=null,this.createPrefill=null,this._notify()}async doCreateEvent(e,t){this.isLoading=!0,this._notify();try{await qe(e,t),await Qe(e),this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to create event",e),e}finally{this.isLoading=!1,this._notify()}}async doDeleteEvent(e,t){this.isLoading=!0,this._notify();try{await Xe(e,t),await Qe(e),this.selectedEvent=null,this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to delete event",e),e}finally{this.isLoading=!1,this._notify()}}async doEditEvent(e,t,i){this.isLoading=!0,this._notify();let r=!1;try{await Xe(e,t),r=!0,await qe(e,i),await Qe(e),this.selectedEvent=null,this.closeDialog()}catch(e){if(console.error("PlanaVista: Failed to edit event",e),r)throw new Error("The original event was deleted but the replacement could not be created. Please create the event manually. Error: "+(e instanceof Error?e.message:String(e)));throw e}finally{this.isLoading=!1,this._notify()}}startAutoAdvance(){this._autoAdvanceTimer||(this._autoAdvanceTimer=setInterval(()=>{const e=new Date;e.getDate()===this.currentDate.getDate()&&e.getMonth()===this.currentDate.getMonth()&&e.getFullYear()===this.currentDate.getFullYear()||this.currentDate.toDateString()===new Date(Date.now()-6e4).toDateString()&&(this.currentDate=e,this._notify())},6e4))}stopAutoAdvance(){this._autoAdvanceTimer&&(clearInterval(this._autoAdvanceTimer),this._autoAdvanceTimer=null)}}class tt{constructor(e){this.host=e,this._state=et.getInstance(),e.addController(this)}hostConnected(){this._state.subscribe(this.host)}hostDisconnected(){this._state.unsubscribe(this.host)}get state(){return this._state}}function it(e,t=48){return(rt[e]||rt.cloudy)(t)}const rt={sunny:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="12" fill="#FBBF24" />
       <g stroke="#FBBF24" stroke-width="3" stroke-linecap="round">
@@ -1883,17 +2069,17 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <line x1="13.6" y1="50.4" x2="19.3" y2="44.7" class="pv-sun-ray" />
         <line x1="44.7" y1="19.3" x2="50.4" y2="13.6" class="pv-sun-ray" />
       </g>
-    </svg>`,"clear-night":e=>U`
+    </svg>`,"clear-night":e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M38 14C30 14 23 20 21 28C20 31 20 35 21 38C23 44 28 49 35 50C38 51 41 51 44 50C36 52 27 48 23 40C19 32 21 22 28 16C31 14 34 13 38 14Z" fill="#94A3B8" />
       <circle cx="44" cy="16" r="1.5" fill="#94A3B8" opacity="0.6" />
       <circle cx="50" cy="24" r="1" fill="#94A3B8" opacity="0.4" />
       <circle cx="46" cy="32" r="1.2" fill="#94A3B8" opacity="0.5" />
-    </svg>`,cloudy:e=>U`
+    </svg>`,cloudy:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2C52 32.2 52 32.2 52 32.3" fill="#CBD5E1" />
       <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2V40C52 40 50 40 48 40Z" fill="#94A3B8" />
-    </svg>`,partlycloudy:e=>U`
+    </svg>`,partlycloudy:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="26" cy="22" r="10" fill="#FBBF24" />
       <g stroke="#FBBF24" stroke-width="2.5" stroke-linecap="round">
@@ -1907,7 +2093,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <line x1="34.5" y1="13.5" x2="37.3" y2="10.7" />
       </g>
       <path d="M50 46H22C17.6 46 14 42.4 14 38C14 33.6 17.6 30 22 30C22.3 30 22.5 30 22.8 30C24.3 25.4 28.8 22 34 22C40.3 22 45.5 26.5 46.2 32.5C46.8 32.3 47.4 32.2 48 32.2C51 32.2 53.5 34.7 53.5 37.7V46H50Z" fill="#CBD5E1" />
-    </svg>`,rainy:e=>U`
+    </svg>`,rainy:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 34H18C13.6 34 10 30.4 10 26C10 21.6 13.6 18 18 18C18.2 18 18.5 18 18.7 18C20.2 12.6 25.2 9 31 9C37.9 9 43.5 13.9 44.2 20.5C44.8 20.3 45.4 20.2 46 20.2C49.3 20.2 52 22.9 52 26.2V34H48Z" fill="#94A3B8" />
       <g stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round">
@@ -1917,7 +2103,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <line x1="27" y1="48" x2="25" y2="56" class="pv-rain-drop" style="animation-delay: 0.15s" />
         <line x1="37" y1="48" x2="35" y2="56" class="pv-rain-drop" style="animation-delay: 0.45s" />
       </g>
-    </svg>`,pouring:e=>U`
+    </svg>`,pouring:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#64748B" />
       <g stroke="#3B82F6" stroke-width="3" stroke-linecap="round">
@@ -1931,7 +2117,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <line x1="38" y1="48" x2="35" y2="58" class="pv-rain-drop" style="animation-delay: 0.45s" />
         <line x1="46" y1="48" x2="43" y2="58" class="pv-rain-drop" style="animation-delay: 0.6s" />
       </g>
-    </svg>`,snowy:e=>U`
+    </svg>`,snowy:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="#94A3B8" />
       <circle cx="20" cy="42" r="2.5" fill="#BFDBFE" class="pv-snow-flake" />
@@ -1939,7 +2125,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
       <circle cx="44" cy="43" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.6s" />
       <circle cx="25" cy="52" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.15s" />
       <circle cx="38" cy="51" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.45s" />
-    </svg>`,"snowy-rainy":e=>U`
+    </svg>`,"snowy-rainy":e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="#94A3B8" />
       <g stroke="#60A5FA" stroke-width="2" stroke-linecap="round">
@@ -1949,7 +2135,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
       <circle cx="32" cy="42" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.15s" />
       <circle cx="27" cy="52" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.45s" />
       <circle cx="37" cy="50" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.6s" />
-    </svg>`,fog:e=>U`
+    </svg>`,fog:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
         <line x1="12" y1="24" x2="52" y2="24" opacity="0.4" />
@@ -1957,7 +2143,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <line x1="12" y1="40" x2="52" y2="40" opacity="0.8" />
         <line x1="18" y1="48" x2="46" y2="48" opacity="0.5" />
       </g>
-    </svg>`,hail:e=>U`
+    </svg>`,hail:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#94A3B8" />
       <circle cx="20" cy="40" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
@@ -1965,11 +2151,11 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
       <circle cx="44" cy="38" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
       <circle cx="26" cy="52" r="2.5" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
       <circle cx="38" cy="54" r="2.5" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
-    </svg>`,lightning:e=>U`
+    </svg>`,lightning:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#64748B" />
       <path d="M34 30L28 42H34L30 56L42 40H36L40 30H34Z" fill="#FBBF24" stroke="#F59E0B" stroke-width="0.5" />
-    </svg>`,"lightning-rainy":e=>U`
+    </svg>`,"lightning-rainy":e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 28H18C13.6 28 10 24.4 10 20C10 15.6 13.6 12 18 12C18.2 12 18.5 12 18.7 12C20.2 6.6 25.2 3 31 3C37.9 3 43.5 7.9 44.2 14.5C44.8 14.3 45.4 14.2 46 14.2C49.3 14.2 52 16.9 52 20.2V28H48Z" fill="#64748B" />
       <path d="M34 28L28 40H34L30 52L42 38H36L40 28H34Z" fill="#FBBF24" />
@@ -1979,26 +2165,26 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         <line x1="22" y1="48" x2="20" y2="56" class="pv-rain-drop" style="animation-delay: 0.1s" />
         <line x1="44" y1="46" x2="42" y2="54" class="pv-rain-drop" style="animation-delay: 0.4s" />
       </g>
-    </svg>`,windy:e=>U`
+    </svg>`,windy:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
         <path d="M10 24 Q30 24 38 20 Q46 16 48 20 Q50 24 46 24" fill="none" />
         <path d="M8 34 Q28 34 40 30 Q48 28 50 32 Q52 36 48 36" fill="none" />
         <path d="M14 44 Q30 44 36 40 Q42 36 44 40 Q46 44 42 44" fill="none" />
       </g>
-    </svg>`,"windy-variant":e=>U`
+    </svg>`,"windy-variant":e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 28H22C17.6 28 14 24.4 14 20C14 15.6 17.6 12 22 12C22.2 12 22.5 12 22.7 12C24.2 7 28.8 4 34 4C40.3 4 45.5 8.5 46.2 14.5C46.8 14.3 47.4 14.2 48 14.2C51 14.2 53.5 16.7 53.5 19.7V28H48Z" fill="#CBD5E1" />
       <g stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round">
         <path d="M8 36 Q28 36 36 33 Q44 30 46 34 Q48 38 44 38" fill="none" />
         <path d="M12 46 Q28 46 34 43 Q40 40 42 44 Q44 48 40 48" fill="none" />
       </g>
-    </svg>`,exceptional:e=>U`
+    </svg>`,exceptional:e=>N`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="20" stroke="#F59E0B" stroke-width="3" fill="none" />
       <line x1="32" y1="18" x2="32" y2="34" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" />
       <circle cx="32" cy="42" r="2" fill="#F59E0B" />
-    </svg>`};let rt=class extends se{constructor(){super(...arguments),this._config={}}setConfig(e){this._config=e}render(){return U`
+    </svg>`};let at=class extends oe{constructor(){super(...arguments),this._config={}}setConfig(e){this._config=e}render(){return N`
       <div class="editor-wrap">
         <div class="editor-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
@@ -2012,7 +2198,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           through choosing your calendars, colors, and theme.
         </p>
       </div>
-    `}};rt.styles=o`
+    `}};at.styles=s`
     :host {
       display: block;
     }
@@ -2045,21 +2231,21 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
       max-width: 320px;
       margin: 0;
     }
-  `,e([he({attribute:!1})],rt.prototype,"hass",void 0),rt=e([de("planavista-calendar-card-editor")],rt);let at=class extends se{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.hideColumnHeaders=!1,this.avatarBorderMode="primary"}firstUpdated(){this._scrollToNow()}updated(e){super.updated(e),e.has("currentDate")&&this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const e=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!e)return;this._scrollContainer=e;const t=new Date,i=60*(t.getHours()-0)+t.getMinutes();if(i>0&&i<1440){const t=i/1440*e.scrollHeight-e.clientHeight/3;e.scrollTo({top:Math.max(0,t),behavior:"smooth"})}})}render(){const e=tt(this.events,this.hiddenCalendars),t=new Date(this.currentDate);t.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setHours(23,59,59,999);const r=Ge(e,t,i),a=r.filter(e=>Xe(e)),n=r.filter(e=>!Xe(e)),o=this.calendars.filter(e=>!1!==e.visible&&!this.hiddenCalendars.has(e.entity_id)),s=function(e,t){const i=new Map,r=new Map(t.map(e=>[e.entity_id,e]));for(const e of t)if(!1!==e.visible){const t=e.person_entity||e.entity_id;i.has(t)||i.set(t,[])}for(const t of e){const e=r.get(t.calendar_entity_id),a=e?.person_entity||t.calendar_entity_id;i.has(a)||i.set(a,[]),i.get(a).push(t)}return i}(n,o),l=Array.from(s.keys()),d=new Date,c=d.toDateString()===this.currentDate.toDateString(),p=60*(d.getHours()-0)+d.getMinutes(),h=c?p/1440*100:-1;return 0===o.length?U`
+  `,e([he({attribute:!1})],at.prototype,"hass",void 0),at=e([de("planavista-calendar-card-editor")],at);let nt=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.hideColumnHeaders=!1,this.avatarBorderMode="primary"}firstUpdated(){this._scrollToNow()}updated(e){super.updated(e),e.has("currentDate")&&this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const e=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!e)return;this._scrollContainer=e;const t=new Date,i=60*(t.getHours()-0)+t.getMinutes();if(i>0&&i<1440){const t=i/1440*e.scrollHeight-e.clientHeight/3;e.scrollTo({top:Math.max(0,t),behavior:"smooth"})}})}render(){const e=Pe(this.events,this.hiddenCalendars),t=new Date(this.currentDate);t.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setHours(23,59,59,999);const r=Oe(e,t,i),a=r.filter(e=>Be(e)),n=r.filter(e=>!Be(e)),s=this.calendars.filter(e=>!1!==e.visible&&!this.hiddenCalendars.has(e.entity_id)),o=function(e,t){const i=new Map,r=new Map(t.map(e=>[e.entity_id,e]));for(const e of t)if(!1!==e.visible){const t=e.person_entity||e.entity_id;i.has(t)||i.set(t,[])}for(const t of e){const e=r.get(t.calendar_entity_id),a=e?.person_entity||t.calendar_entity_id;i.has(a)||i.set(a,[]),i.get(a).push(t)}return i}(n,s),l=Array.from(o.keys()),d=new Date,c=d.toDateString()===this.currentDate.toDateString(),p=60*(d.getHours()-0)+d.getMinutes(),h=c?p/1440*100:-1;return 0===s.length?N`
         <div class="empty-state">
           <ha-icon icon="mdi:calendar-blank"></ha-icon>
           <p>No calendars visible</p>
         </div>
-      `:U`
+      `:N`
       <div class="day-container">
-        ${a.length>0?U`
+        ${a.length>0?N`
           <div class="all-day-section">
             <div class="all-day-gutter">All Day</div>
             <div class="all-day-events">
-              ${a.map(e=>U`
+              ${a.map(e=>N`
                 <div
                   class="all-day-chip"
-                  style="background: ${e.calendar_color}; color: ${Ve(e.calendar_color)}"
+                  style="background: ${e.calendar_color}; color: ${He(e.calendar_color)}"
                   @click=${()=>this._onEventClick(e)}
                 >${e.summary}</div>
               `)}
@@ -2067,20 +2253,20 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
         `:Y}
 
-        ${this.hideColumnHeaders?Y:U`
+        ${this.hideColumnHeaders?Y:N`
           <div class="column-headers">
             <div class="header-gutter"></div>
-            ${l.map(e=>{const t=o.find(t=>(t.person_entity||t.entity_id)===e),i=t?.person_entity?Se(this.hass,t.person_entity):null,r=t?.person_entity?Be(this.hass,t.person_entity):t?.display_name||e,a=t?.color||"#6366F1",n=t?.color_light||a,s="light"===this.avatarBorderMode?n:"primary"===this.avatarBorderMode?a:void 0;return U`
+            ${l.map(e=>{const t=s.find(t=>(t.person_entity||t.entity_id)===e),i=t?.person_entity?Ke(this.hass,t.person_entity):null,r=t?.person_entity?Ge(this.hass,t.person_entity):t?.display_name||e,a=t?.color||"#6366F1",n=t?.color_light||a,o="light"===this.avatarBorderMode?n:"primary"===this.avatarBorderMode?a:void 0;return N`
                 <div class="person-header">
-                  ${i?U`<img class="person-avatar" src="${i}" alt="${r}"
-                        style="${s?`--pv-avatar-border: ${s}`:""}" />`:U`<div class="person-initial" style="background: ${a}">${r[0]?.toUpperCase()||"?"}</div>`}
+                  ${i?N`<img class="person-avatar" src="${i}" alt="${r}"
+                        style="${o?`--pv-avatar-border: ${o}`:""}" />`:N`<div class="person-initial" style="background: ${a}">${r[0]?.toUpperCase()||"?"}</div>`}
                   <span class="person-name">${r}</span>
                 </div>
               `})}
           </div>
         `}
 
-        ${c?Y:U`
+        ${c?Y:N`
           <div class="date-banner">
             <ha-icon icon="mdi:calendar-today"></ha-icon>
             ${this.currentDate.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
@@ -2094,27 +2280,27 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             </div>
             <div class="columns-area">
               ${this._renderHourLines()}
-              ${h>=0&&h<=100?U`
+              ${h>=0&&h<=100?N`
                 <div class="pv-now-line" style="top: ${h}%"></div>
               `:Y}
-              ${l.map(e=>this._renderColumn(e,s.get(e)||[]))}
+              ${l.map(e=>this._renderColumn(e,o.get(e)||[]))}
             </div>
           </div>
           ${this._renderNextDayFooter()}
         </div>
       </div>
-    `}_renderTimeLabels(){const e=[];for(let t=0;t<=24;t++){const i=(t-0)/24*100;let r;if("24h"===this.timeFormat)r=`${String(t%24).padStart(2,"0")}:00`;else{const e=t%24;r=`${e%12||12} ${e>=12?"PM":"AM"}`}e.push(U`
+    `}_renderTimeLabels(){const e=[];for(let t=0;t<=24;t++){const i=(t-0)/24*100;let r;if("24h"===this.timeFormat)r=`${String(t%24).padStart(2,"0")}:00`;else{const e=t%24;r=`${e%12||12} ${e>=12?"PM":"AM"}`}e.push(N`
         <div class="time-label" style="top: ${i}%">${r}</div>
-      `)}return e}_renderHourLines(){const e=[],t=1/24*100;for(let i=0;i<24;i++){const r=(i-0)/24*100;i%2==1&&e.push(U`
+      `)}return e}_renderHourLines(){const e=[],t=1/24*100;for(let i=0;i<24;i++){const r=(i-0)/24*100;i%2==1&&e.push(N`
           <div class="hour-band-odd" style="top: ${r}%; height: ${t}%"></div>
-        `)}return e}_renderNextDayFooter(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1);const t=e.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return U`
+        `)}return e}_renderNextDayFooter(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1);const t=e.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return N`
       <div class="next-day-footer" @click=${this._goToNextDay}>
         ${t}
         <ha-icon icon="mdi:arrow-down"></ha-icon>
       </div>
-    `}_goToToday(){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:new Date},bubbles:!0,composed:!0}))}_goToNextDay(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_renderColumn(e,t){const i=et(t);return U`
+    `}_goToToday(){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:new Date},bubbles:!0,composed:!0}))}_goToNextDay(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_renderColumn(e,t){const i=function(e){const t=e.filter(e=>!Be(e)).sort((e,t)=>new Date(e.start).getTime()-new Date(t.start).getTime());if(0===t.length)return[];const i=t.map(e=>({event:e,start:new Date(e.start).getTime(),end:new Date(e.end).getTime(),column:0,cluster:0}));let r=0,a=0;for(let e=0;e<i.length;e++){let t=!1;for(let r=a;r<e;r++)if(i[e].start<i[r].end){t=!0;break}if(!t&&e>a){const t=e;let n=0;for(let e=a;e<t;e++)n=Math.max(n,i[e].column+1);for(let e=a;e<t;e++)i[e].cluster=r;r++,a=e}const n=new Set;for(let t=a;t<e;t++)i[e].start<i[t].end&&n.add(i[t].column);let s=0;for(;n.has(s);)s++;i[e].column=s}i.forEach((e,t)=>{t>=a&&(e.cluster=r)});const n=new Map;for(const e of i){const t=n.get(e.cluster)||0;n.set(e.cluster,Math.max(t,e.column+1))}return i.map(e=>({...e.event,column:e.column,totalColumns:n.get(e.cluster)||1}))}(t);return N`
       <div class="person-column">
-        ${i.map(e=>{const t=Je(e,0,24),i=e.totalColumns>1?`calc(${100/e.totalColumns}% - 6px)`:"calc(100% - 6px)",r=e.totalColumns>1?`calc(${e.column/e.totalColumns*100}% + 3px)`:"3px";return U`
+        ${i.map(e=>{const t=function(e,t=0,i=24){const r=new Date(e.start),a=new Date(e.end),n=60*(i-t);let s,o;return s=Math.max(0,60*(r.getHours()-t)+r.getMinutes()),o=Math.min(n,60*(a.getHours()-t)+a.getMinutes()),a.toDateString()!==r.toDateString()&&o<=0&&(o=n),s=Math.max(0,Math.min(s,n)),o=Math.max(0,Math.min(o,n)),{top:s/n*100,height:Math.max(o-s,15)/n*100}}(e,0,24),i=e.totalColumns>1?`calc(${100/e.totalColumns}% - 6px)`:"calc(100% - 6px)",r=e.totalColumns>1?`calc(${e.column/e.totalColumns*100}% + 3px)`:"3px";return N`
             <div
               class="positioned-event"
               style="
@@ -2124,16 +2310,16 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 left: ${r};
                 --event-color: ${e.calendar_color};
                 --event-color-light: ${e.calendar_color_light||""};
-                --event-text: ${Ve(e.calendar_color_light||e.calendar_color)};
+                --event-text: ${He(e.calendar_color_light||e.calendar_color)};
               "
               @click=${()=>this._onEventClick(e)}
             >
               <div class="event-title">${e.summary}</div>
-              <div class="event-time">${Me(e.start,this.timeFormat)}</div>
+              <div class="event-time">${Ee(e.start,this.timeFormat)}</div>
             </div>
           `})}
       </div>
-    `}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};at.styles=[me,ye,we,_e,o`
+    `}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};nt.styles=[me,fe,we,_e,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .day-container {
@@ -2524,442 +2710,264 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .person-name { font-size: 1.125rem; }
         .next-day-footer { font-size: 1.1875rem; padding: 18px; }
       }
-    `],e([he({attribute:!1})],at.prototype,"hass",void 0),e([he({type:Array})],at.prototype,"events",void 0),e([he({type:Array})],at.prototype,"calendars",void 0),e([he({type:Object})],at.prototype,"currentDate",void 0),e([he({type:Object})],at.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],at.prototype,"timeFormat",void 0),e([he({type:Boolean})],at.prototype,"hideColumnHeaders",void 0),e([he({attribute:!1})],at.prototype,"avatarBorderMode",void 0),at=e([de("pv-view-day")],at);let nt=class extends se{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.firstDay="sunday"}firstUpdated(){this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const e=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!e)return;const t=new Date,i=60*(t.getHours()-0)+t.getMinutes();if(i>0&&i<1440){const t=i/1440*e.scrollHeight-e.clientHeight/3;e.scrollTo({top:Math.max(0,t),behavior:"smooth"})}})}_getWeekDays(){const e=Pe(this.currentDate,this.firstDay);return Array.from({length:7},(t,i)=>{const r=new Date(e);return r.setDate(r.getDate()+i),r})}render(){const e=tt(this.events,this.hiddenCalendars),t=this._getWeekDays(),i=new Date(t[0]);i.setHours(0,0,0,0);const r=new Date(t[6]);r.setHours(23,59,59,999);const a=function(e,t){const i=new Map(t.map(e=>[e.entity_id,e])),r=new Map;for(const t of e){const e=`${t.summary}|${t.start}|${t.end}`;if(r.has(e)){const a=r.get(e),n=i.get(t.calendar_entity_id);n&&a.shared_calendars.push({entity_id:n.entity_id,color:n.color,color_light:n.color_light,person_entity:n.person_entity,display_name:n.display_name})}else{const a=i.get(t.calendar_entity_id);r.set(e,{...t,shared_calendars:a?[{entity_id:a.entity_id,color:a.color,color_light:a.color_light,person_entity:a.person_entity,display_name:a.display_name}]:[]})}}return Array.from(r.values())}(Ge(e,i,r),this.calendars),n=(new Date).toDateString();return U`
+    `],e([he({attribute:!1})],nt.prototype,"hass",void 0),e([he({type:Array})],nt.prototype,"events",void 0),e([he({type:Array})],nt.prototype,"calendars",void 0),e([he({type:Object})],nt.prototype,"currentDate",void 0),e([he({type:Object})],nt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],nt.prototype,"timeFormat",void 0),e([he({type:Boolean})],nt.prototype,"hideColumnHeaders",void 0),e([he({attribute:!1})],nt.prototype,"avatarBorderMode",void 0),nt=e([de("pv-view-day")],nt);const st=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let ot=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.firstDay="sunday",this.weatherEntity="",this.showStripes=!0}_getWeekDays(){const e=Se(this.currentDate,this.firstDay);return Array.from({length:7},(t,i)=>{const r=new Date(e);return r.setDate(r.getDate()+i),r})}_getWeekLabel(e){const t=e[0],i=e[6],r={month:"long",day:"numeric"};return t.getMonth()===i.getMonth()?`${t.toLocaleDateString("en-US",{month:"long"})} ${t.getDate()} – ${i.getDate()}`:`${t.toLocaleDateString("en-US",r)} – ${i.toLocaleDateString("en-US",r)}`}_getForecastMap(){const e=new Map;if(!this.weatherEntity||!this.hass)return e;const t=this.hass.states[this.weatherEntity];if(!t?.attributes?.forecast)return e;for(const i of t.attributes.forecast){if(!i.datetime)continue;const t=Ae(new Date(i.datetime));e.set(t,{condition:i.condition||"",tempHigh:i.temperature??0,tempLow:i.templow??i.temperature??0})}return e}render(){const e=Pe(this.events,this.hiddenCalendars),t=this._getWeekDays(),i=new Date(t[0]);i.setHours(0,0,0,0);const r=new Date(t[6]);r.setHours(23,59,59,999);const a=Me(Oe(e,i,r),this.calendars),n=this._getForecastMap();return N`
       <div class="week-container">
-        <div class="day-headers">
-          <div class="header-gutter"></div>
-          ${t.map(e=>{const t=e.toDateString()===n;return U`
-              <div class="day-header ${t?"today":""}">
-                <div class="day-header-weekday">${e.toLocaleDateString("en-US",{weekday:"short"})}</div>
-                <div class="day-header-date">${e.getDate()}</div>
-              </div>
-            `})}
+        <div class="week-label">${this._getWeekLabel(t)}</div>
+        <div class="day-grid">
+          ${t.map(e=>this._renderDayCard(e,a,n))}
         </div>
-
-        ${this._renderAllDayBanner(t,a)}
-
-        <div class="time-grid-wrapper">
-          <div class="time-grid">
-            <div class="time-gutter">
-              ${this._renderTimeLabels()}
-            </div>
-            <div class="days-area">
-              ${this._renderHourLines()}
-              ${t.map(e=>this._renderDayColumn(e,a,n))}
+      </div>
+    `}_renderDayCard(e,t,i){const r=ze(e),a=Ae(e),n=new Date(e);n.setHours(0,0,0,0);const s=new Date(e);s.setHours(23,59,59,999);const o=t.filter(e=>{const t=new Date(e.start),i=new Date(e.end);return t<s&&i>n}).sort((e,t)=>{const i=Be(e),r=Be(t);return i&&!r?-1:!i&&r?1:new Date(e.start).getTime()-new Date(t.start).getTime()}),l=i.get(a),d=`${st[e.getDay()]} ${e.getDate()}`,c=o.length;return N`
+      <div class="day-card ${r?"day-card--today":""}">
+        <div class="day-card-header">
+          <div class="day-card-header-left">
+            <div class="day-name">${d}</div>
+            <div class="day-meta">
+              <span>${c} event${1!==c?"s":""}</span>
+              <button class="add-event-link" @click=${()=>this._addEvent(e)}>+ Add</button>
             </div>
           </div>
+          ${l?N`
+            <div class="day-weather">
+              ${it(l.condition)}
+              <span class="day-weather-temp">${Math.round(l.tempHigh)}°/${Math.round(l.tempLow)}°</span>
+            </div>
+          `:Y}
         </div>
+        ${o.length>0?N`
+          <div class="day-card-events">
+            ${o.map(e=>N`
+              <pv-event-chip
+                .hass=${this.hass}
+                .event=${e}
+                .calendars=${this.calendars}
+                .timeFormat=${this.timeFormat}
+                .showStripes=${this.showStripes}
+                @event-click=${e=>this._onEventClick(e.detail.event)}
+              ></pv-event-chip>
+            `)}
+          </div>
+        `:N`
+          <div class="day-card-empty">No events</div>
+        `}
       </div>
-    `}_renderAllDayBanner(e,t){const i=t.filter(e=>Xe(e));return 0===i.length?Y:U`
-      <div class="all-day-banner">
-        <div class="all-day-gutter">All Day</div>
-        ${e.map(e=>{const t=new Date(e);t.setHours(0,0,0,0);const r=new Date(e);r.setHours(23,59,59,999);const a=i.filter(e=>{const i=new Date(e.start),a=new Date(e.end);return i<r&&a>t});return U`
-            <div class="all-day-column">
-              ${a.map(e=>U`
-                <div
-                  class="all-day-event"
-                  style="background: ${e.calendar_color}; color: ${Ve(e.calendar_color)}"
-                  @click=${()=>this._onEventClick(e)}
-                >${e.summary}</div>
-              `)}
-            </div>
-          `})}
-      </div>
-    `}_renderTimeLabels(){const e=[];for(let t=0;t<=24;t++){const i=(t-0)/24*100;let r;if("24h"===this.timeFormat)r=`${String(t%24).padStart(2,"0")}:00`;else{const e=t%24;r=`${e%12||12} ${e>=12?"PM":"AM"}`}e.push(U`<div class="time-label" style="top: ${i}%">${r}</div>`)}return e}_renderHourLines(){const e=[],t=1/24*100;for(let i=0;i<24;i++){const r=(i-0)/24*100;i%2==1&&e.push(U`<div class="hour-band-odd" style="top: ${r}%; height: ${t}%"></div>`)}return e}_renderDayColumn(e,t,i){const r=e.toDateString()===i,a=new Date(e);a.setHours(0,0,0,0);const n=new Date(e);n.setHours(24,0,0,0);const o=t.filter(t=>{if(Xe(t))return!1;const i=new Date(t.start),r=new Date(t.end);return i<n&&r>a&&i.toDateString()===e.toDateString()}),s=et(o),l=new Date,d=60*(l.getHours()-0)+l.getMinutes(),c=r?d/1440*100:-1;return U`
-      <div class="day-column ${r?"today":""}">
-        ${c>=0&&c<=100?U`
-          <div class="pv-now-line" style="top: ${c}%"></div>
-        `:Y}
-        ${s.map(e=>{const t=Je(e,0,24),i=e.totalColumns>1?`calc(${100/e.totalColumns}% - 3px)`:"calc(100% - 4px)",r=e.totalColumns>1?`calc(${e.column/e.totalColumns*100}% + 2px)`:"2px";return U`
-            <div
-              class="positioned-event"
-              style="top:${t.top}%;height:${t.height}%;width:${i};left:${r};--event-color:${e.calendar_color};--event-color-light:${e.calendar_color_light||""};--event-text:${Ve(e.calendar_color_light||e.calendar_color)}"
-              @click=${()=>this._onEventClick(e)}
-            >
-              <div class="event-title">${e.summary}</div>
-              <div class="event-time">${Me(e.start,this.timeFormat)}</div>
-              ${e.shared_calendars?.length>1?U`
-                <div class="shared-avatars">
-                  ${e.shared_calendars.slice(0,3).map(e=>{const t=e.person_entity?Se(this.hass,e.person_entity):null;return t?U`<img class="shared-avatar" src="${t}" alt="${e.display_name}" />`:U`<div class="shared-avatar-initial" style="background: ${e.color}">${e.display_name[0]||"?"}</div>`})}
-                  ${e.shared_calendars.length>3?U`
-                    <span class="shared-more">+${e.shared_calendars.length-3}</span>
-                  `:Y}
-                </div>
-              `:Y}
-            </div>
-          `})}
-      </div>
-    `}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};nt.styles=[me,ye,we,o`
+    `}_addEvent(e){this.dispatchEvent(new CustomEvent("create-event",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};ot.styles=[me,_e,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .week-container {
         display: flex;
         flex-direction: column;
         height: 100%;
-        overflow: hidden;
+        overflow: auto;
       }
 
-      /* Day headers */
-      .day-headers {
-        display: flex;
-        border-bottom: 1px solid var(--pv-border);
-        flex-shrink: 0;
-      }
-
-      .header-gutter {
-        width: 54px;
-        flex-shrink: 0;
-      }
-
-      .day-header {
-        flex: 1;
-        text-align: center;
-        padding: 0.5rem 0.25rem;
-        min-width: 0;
-      }
-
-      .day-header-weekday {
-        font-size: 0.6875rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--pv-text-muted);
-      }
-
-      .day-header-date {
-        font-size: 1.25rem;
-        font-weight: 300;
-        margin-top: 0.125rem;
-        color: var(--pv-text);
-      }
-
-      .day-header.today .day-header-date {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--pv-accent);
-        color: var(--pv-accent-text);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-      }
-
-      .day-header.today .day-header-weekday {
-        color: var(--pv-accent);
+      .week-label {
+        font-size: 1rem;
         font-weight: 600;
+        color: var(--pv-text);
+        padding: 0.75rem 1rem 0.5rem;
+        flex-shrink: 0;
       }
 
-      /* All-day banner */
-      .all-day-banner {
+      .day-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        padding: 0 0.75rem 0.75rem;
+        flex: 1;
+      }
+
+      /* ── Day Card ── */
+      .day-card {
+        background: var(--pv-card-bg, #fff);
+        border: 1px solid var(--pv-border-subtle);
+        border-radius: var(--pv-radius-md, 12px);
+        overflow: hidden;
         display: flex;
-        border-bottom: 1px solid var(--pv-border);
-        min-height: 28px;
-        flex-shrink: 0;
+        flex-direction: column;
+        min-height: 120px;
       }
 
-      .all-day-gutter {
-        width: 54px;
-        flex-shrink: 0;
+      .day-card--today {
+        border-color: var(--pv-accent);
+        box-shadow: 0 0 0 1px var(--pv-accent);
+      }
+
+      .day-card-header {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 0.625rem;
-        color: var(--pv-text-muted);
-        text-transform: uppercase;
-        font-weight: 500;
+        justify-content: space-between;
+        padding: 0.625rem 0.75rem 0.375rem;
+        border-bottom: 1px solid var(--pv-border-subtle);
       }
 
-      .all-day-column {
-        flex: 1;
-        padding: 0.25rem 2px;
+      .day-card-header-left {
         display: flex;
         flex-direction: column;
         gap: 2px;
-        border-left: 1px solid var(--pv-border-subtle);
-        min-width: 0;
       }
 
-      .all-day-event {
-        padding: 0.125rem 0.375rem;
-        border-radius: 4px;
+      .day-name {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--pv-text);
+      }
+
+      .day-card--today .day-name {
+        color: var(--pv-accent);
+      }
+
+      .day-meta {
         font-size: 0.6875rem;
-        font-weight: 500;
-        color: white;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        cursor: pointer;
-        transition: opacity 150ms;
-      }
-
-      .all-day-event:hover { opacity: 0.85; }
-
-      /* Time grid */
-      .time-grid-wrapper {
-        flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-
-      .time-grid-wrapper::-webkit-scrollbar {
-        display: none;
-      }
-
-      .time-grid {
-        display: flex;
-        position: relative;
-        height: ${1920}px;
-        flex-shrink: 0;
-      }
-
-      .time-gutter {
-        width: 54px;
-        flex-shrink: 0;
-        position: relative;
-      }
-
-      .time-label {
-        position: absolute;
-        right: 0.375rem;
-        font-size: 0.625rem;
         color: var(--pv-text-muted);
-        transform: translateY(-50%);
-        font-variant-numeric: tabular-nums;
-      }
-
-      .days-area {
-        flex: 1;
-        display: flex;
-        position: relative;
-      }
-
-      .day-column {
-        flex: 1;
-        position: relative;
-        margin-left: 2px;
-        min-width: 0;
-        overflow: hidden;
-      }
-
-      .day-column:first-child {
-        margin-left: 0;
-      }
-
-      .day-column.today {
-        background: var(--pv-today-bg);
-      }
-
-      .hour-line {
-        position: absolute;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: transparent;
-        pointer-events: none;
-      }
-
-      .hour-band-odd {
-        position: absolute;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.015);
-        pointer-events: none;
-      }
-
-      /* Events */
-      .positioned-event {
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        padding: 0.125rem 0.25rem;
-        border-radius: 4px;
-        border-left: 3px solid var(--event-color);
-        background: var(--event-color-light, color-mix(in srgb, var(--event-color) 12%, white));
-        cursor: pointer;
-        overflow: hidden;
-        transition: all var(--pv-transition);
-        z-index: 1;
-        font-size: 0.6875rem;
-        min-height: 18px;
-      }
-
-      .positioned-event:hover {
-        z-index: 5;
-        background: color-mix(in srgb, var(--event-color) 16%, white);
-        transform: translateY(-1px);
-      }
-
-      .positioned-event .event-title {
-        font-weight: 500;
-        line-height: 1.2;
-        color: var(--event-text, var(--pv-text));
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .positioned-event .event-time {
-        font-size: 0.5625rem;
-        color: var(--event-text, var(--pv-text-secondary));
-      }
-
-      .shared-avatars {
-        position: absolute;
-        bottom: 3px;
-        right: 4px;
         display: flex;
         align-items: center;
+        gap: 0.5rem;
       }
 
-      .shared-avatar {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 1px solid var(--pv-card-bg, #fff);
-        object-fit: cover;
-        margin-left: -4px;
+      .add-event-link {
+        font-size: 0.6875rem;
+        color: var(--pv-accent);
+        cursor: pointer;
+        font-weight: 500;
+        background: none;
+        border: none;
+        padding: 0;
+        font-family: inherit;
       }
 
-      .shared-avatar:first-child {
-        margin-left: 0;
+      .add-event-link:hover {
+        text-decoration: underline;
       }
 
-      .shared-avatar-initial {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 1px solid var(--pv-card-bg, #fff);
+      .day-weather {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+      }
+
+      .day-weather svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .day-weather-temp {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: var(--pv-text-secondary);
+        white-space: nowrap;
+      }
+
+      .day-card-events {
+        flex: 1;
+        padding: 0.375rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        overflow: hidden;
+      }
+
+      .day-card-empty {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.5rem;
-        font-weight: 700;
-        color: white;
-        margin-left: -4px;
-      }
-
-      .shared-avatar-initial:first-child {
-        margin-left: 0;
-      }
-
-      .shared-more {
-        font-size: 0.5rem;
-        font-weight: 600;
+        padding: 0.75rem;
         color: var(--pv-text-muted);
-        margin-left: 2px;
+        font-size: 0.75rem;
+        font-style: italic;
       }
 
-      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+      /* ═══════════ RESPONSIVE ═══════════ */
 
-      /* xs: phones — narrow gutter, hide event time, compact headers */
-      @media (max-width: 479px) {
-        .time-gutter { width: 32px; }
-        .header-gutter { width: 32px; }
-        .all-day-gutter { width: 32px; font-size: 0.5rem; }
-        .time-label { font-size: 0.5rem; right: 0.25rem; }
-        .day-header-weekday { font-size: 0.5625rem; }
-        .day-header-date { font-size: 0.9375rem; }
-        .day-header { padding: 0.25rem 0.125rem; }
-        .positioned-event { left: 1px; right: 1px; padding: 0.0625rem 0.125rem; }
-        .event-title { font-size: 0.5625rem; }
-        .event-time { display: none; }
-        .all-day-event { font-size: 0.5625rem; padding: 0.0625rem 0.25rem; }
-        .shared-avatars { display: none; }
+      /* MD: tablets — 2 columns */
+      @media (max-width: 1023px) {
+        .day-grid { grid-template-columns: repeat(2, 1fr); }
       }
 
-      /* sm: large phones — slightly wider gutter */
-      @media (min-width: 480px) and (max-width: 767px) {
-        .time-gutter { width: 40px; }
-        .header-gutter { width: 40px; }
-        .all-day-gutter { width: 40px; }
-        .time-label { font-size: 0.5625rem; }
-        .day-header-weekday { font-size: 0.5625rem; }
-        .day-header-date { font-size: 1rem; }
-        .event-title { font-size: 0.625rem; }
-        .event-time { font-size: 0.5rem; }
+      /* SM/XS: phones — 1 column (agenda-like) */
+      @media (max-width: 767px) {
+        .day-grid {
+          grid-template-columns: 1fr;
+          gap: 0.375rem;
+          padding: 0 0.5rem 0.5rem;
+        }
+        .week-label { font-size: 0.875rem; padding: 0.5rem 0.75rem 0.375rem; }
+        .day-card { min-height: 80px; }
+        .day-card-header { padding: 0.5rem 0.625rem 0.25rem; }
+        .day-name { font-size: 0.8125rem; }
       }
 
-      /* md: tablets — moderate compression */
-      @media (min-width: 768px) and (max-width: 1023px) {
-        .time-gutter { width: 46px; }
-        .header-gutter { width: 46px; }
-        .all-day-gutter { width: 46px; }
-      }
-
-      /* short height — compress day headers */
-      @media (max-height: 500px) {
-        .day-header { padding: 0.25rem 0.125rem; }
-        .day-header-weekday { font-size: 0.5625rem; }
-        .day-header-date { font-size: 1rem; }
-      }
-
-      /* lg: large screens (1024–1439px) — scale up ~20% */
+      /* LG: large screens */
       @media (min-width: 1024px) {
-        .time-gutter { width: 72px; }
-        .time-label { font-size: 0.8125rem; }
-        .header-gutter { width: 72px; }
-        .all-day-gutter { width: 72px; font-size: 0.8125rem; }
-        .day-header-weekday { font-size: 0.8125rem; }
-        .day-header-date { font-size: 1.375rem; }
-        .all-day-chip { font-size: 0.8125rem; }
-        .event-title { font-size: 0.8125rem; }
-        .event-time { font-size: 0.6875rem; }
+        .week-label { font-size: 1.0625rem; }
+        .day-name { font-size: 1rem; }
+        .day-card { min-height: 140px; }
       }
 
-      /* xl: wall displays (1440px+) — scale up ~40% */
+      /* XL: wall displays */
       @media (min-width: 1440px) {
-        .time-gutter { width: 84px; }
-        .time-label { font-size: 0.9375rem; }
-        .header-gutter { width: 84px; }
-        .all-day-gutter { width: 84px; font-size: 0.9375rem; }
-        .day-header-weekday { font-size: 0.9375rem; }
-        .day-header-date { font-size: 1.625rem; }
-        .all-day-chip { font-size: 0.9375rem; min-height: 28px; padding: 4px 10px; }
-        .positioned-event { min-height: 28px; }
-        .event-title { font-size: 0.9375rem; }
-        .event-time { font-size: 0.8125rem; }
-        .shared-avatar, .shared-avatar-initial { width: 28px; height: 28px; }
+        .week-label { font-size: 1.1875rem; }
+        .day-name { font-size: 1.125rem; }
+        .day-meta { font-size: 0.75rem; }
+        .day-weather svg { width: 28px; height: 28px; }
+        .day-weather-temp { font-size: 0.75rem; }
+        .day-card { min-height: 160px; }
+        .day-card-header { padding: 0.75rem 1rem 0.5rem; }
+        .day-card-events { padding: 0.5rem; gap: 0.375rem; }
       }
-    `],e([he({attribute:!1})],nt.prototype,"hass",void 0),e([he({type:Array})],nt.prototype,"events",void 0),e([he({type:Array})],nt.prototype,"calendars",void 0),e([he({type:Object})],nt.prototype,"currentDate",void 0),e([he({type:Object})],nt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],nt.prototype,"timeFormat",void 0),e([he({attribute:!1})],nt.prototype,"firstDay",void 0),nt=e([de("pv-view-week")],nt);const ot=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],st=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];let lt=class extends se{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.firstDay="sunday"}render(){const e=tt(this.events,this.hiddenCalendars),t=function(e,t="sunday"){const i=Pe(new Date(e.getFullYear(),e.getMonth(),1),t),r=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(i.getDate()+e),r.push(t)}return r}(this.currentDate,this.firstDay),i=Ke(e),r=this.currentDate.getMonth(),a="monday"===this.firstDay?st:ot;return U`
+    `],e([he({attribute:!1})],ot.prototype,"hass",void 0),e([he({type:Array})],ot.prototype,"events",void 0),e([he({type:Array})],ot.prototype,"calendars",void 0),e([he({type:Object})],ot.prototype,"currentDate",void 0),e([he({type:Object})],ot.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],ot.prototype,"timeFormat",void 0),e([he({attribute:!1})],ot.prototype,"firstDay",void 0),e([he({attribute:!1})],ot.prototype,"weatherEntity",void 0),e([he({type:Boolean})],ot.prototype,"showStripes",void 0),ot=e([de("pv-view-week")],ot);const lt=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],dt=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];let ct=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.firstDay="sunday",this.timeFormat="12h",this.showStripes=!0}render(){const e=Me(Pe(this.events,this.hiddenCalendars),this.calendars),t=function(e,t="sunday"){const i=Se(new Date(e.getFullYear(),e.getMonth(),1),t),r=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(i.getDate()+e),r.push(t)}return r}(this.currentDate,this.firstDay),i=Te(e),r=this.currentDate.getMonth(),a="monday"===this.firstDay?dt:lt,n=this.currentDate.toLocaleDateString("en-US",{month:"long",year:"numeric"});return N`
       <div class="month-container">
+        <div class="month-name">${n}</div>
         <div class="weekday-header">
-          ${a.map(e=>U`<div class="weekday-name">${e}</div>`)}
+          ${a.map(e=>N`<div class="weekday-name">${e}</div>`)}
         </div>
         <div class="month-grid">
           ${t.map(e=>this._renderDayCell(e,r,i))}
         </div>
       </div>
-    `}_renderDayCell(e,t,i){const r=He(e),a=i.get(r)||[],n=e.getMonth()!==t,o=Oe(e),s=a.slice(0,3),l=a.length-3;return U`
+    `}_renderDayCell(e,t,i){const r=Ae(e),a=i.get(r)||[],n=e.getMonth()!==t,s=ze(e),o=a.slice(0,3),l=a.length-3;return N`
       <div
-        class="day-cell ${n?"other-month":""} ${o?"today":""}"
+        class="day-cell ${n?"other-month":""} ${s?"today":""}"
         @click=${()=>this._onDayClick(e)}
       >
         <div class="day-number">${e.getDate()}</div>
         <div class="day-events">
-          ${s.map(e=>U`
-            <div
-              class="month-event-pill"
-              style="--event-color: ${e.calendar_color}; --event-color-light: ${e.calendar_color_light||""}; --event-text: ${Ve(e.calendar_color_light||e.calendar_color)}"
-              @click=${t=>{t.stopPropagation(),this._onEventClick(e)}}
-            >${e.summary}</div>
+          ${o.map(e=>N`
+            <pv-event-chip
+              .hass=${this.hass}
+              .event=${e}
+              .calendars=${this.calendars}
+              .timeFormat=${this.timeFormat}
+              .compact=${!0}
+              .showStripes=${this.showStripes}
+              @event-click=${e=>{e.stopPropagation(),this._onEventClick(e.detail.event)}}
+            ></pv-event-chip>
           `)}
-          ${l>0?U`
+          ${l>0?N`
             <div class="more-events" @click=${t=>{t.stopPropagation(),this._onDayClick(e)}}>
               +${l} more
             </div>
           `:Y}
         </div>
       </div>
-    `}_onDayClick(e){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};lt.styles=[me,ye,o`
+    `}_onDayClick(e){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};ct.styles=[me,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .month-container {
         display: flex;
         flex-direction: column;
         height: 100%;
+      }
+
+      .month-name {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--pv-text);
+        padding: 0.5rem 0.75rem;
+        text-align: center;
+        flex-shrink: 0;
       }
 
       .weekday-header {
@@ -3040,26 +3048,6 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         gap: 1px;
       }
 
-      .month-event-pill {
-        padding: 0.0625rem 0.375rem;
-        border-radius: 3px;
-        border-left: 2px solid var(--event-color, var(--pv-accent));
-        background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
-        font-size: 0.625rem;
-        font-weight: 500;
-        color: var(--event-text, var(--pv-text));
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        cursor: pointer;
-        line-height: 1.4;
-        transition: all 150ms;
-      }
-
-      .month-event-pill:hover {
-        background: color-mix(in srgb, var(--event-color, var(--pv-accent)) 16%, white);
-      }
-
       .more-events {
         font-size: 0.625rem;
         color: var(--pv-text-secondary);
@@ -3074,92 +3062,88 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones — compact day cells, truncate event pills */
+      /* xs: phones — compact day cells */
       @media (max-width: 479px) {
+        .month-name { font-size: 0.9375rem; padding: 0.375rem 0.5rem; }
         .weekday-name { font-size: 0.5625rem; padding: 0.25rem 0; letter-spacing: 0.02em; }
         .day-number { font-size: 0.6875rem; padding: 0.0625rem 0.125rem; }
         .day-cell { padding: 0.125rem; }
         .day-cell.today .day-number { width: 20px; height: 20px; font-size: 0.625rem; }
-        .month-event-pill { font-size: 0.5rem; padding: 0 0.25rem; border-left-width: 2px; }
         .more-events { font-size: 0.5rem; }
       }
 
-      /* sm: large phones — slightly larger */
+      /* sm: large phones */
       @media (min-width: 480px) and (max-width: 767px) {
         .weekday-name { font-size: 0.625rem; }
         .day-number { font-size: 0.75rem; }
-        .month-event-pill { font-size: 0.5625rem; }
       }
 
       /* short height — tighter cells */
       @media (max-height: 500px) {
         .day-cell { padding: 0.125rem; }
         .day-number { font-size: 0.6875rem; }
-        .month-event-pill { font-size: 0.5625rem; }
       }
 
-      /* lg: large screens (1024–1439px) — scale up ~20% */
+      /* lg: large screens (1024–1439px) */
       @media (min-width: 1024px) {
+        .month-name { font-size: 1.25rem; }
         .weekday-name { font-size: 0.8125rem; padding: 0.625rem 0; }
         .day-number { font-size: 0.9375rem; padding: 0.25rem 0.375rem; }
         .day-cell.today .day-number { width: 30px; height: 30px; font-size: 0.875rem; }
-        .month-event-pill { font-size: 0.8125rem; padding: 2px 8px; }
         .more-events { font-size: 0.75rem; }
       }
 
-      /* xl: wall displays (1440px+) — scale up ~40% */
+      /* xl: wall displays (1440px+) */
       @media (min-width: 1440px) {
+        .month-name { font-size: 1.375rem; }
         .weekday-name { font-size: 0.9375rem; padding: 0.75rem 0; }
         .day-number { font-size: 1.0625rem; padding: 0.375rem 0.5rem; }
         .day-cell.today .day-number { width: 36px; height: 36px; font-size: 1rem; }
         .day-cell { padding: 0.375rem; }
-        .month-event-pill { font-size: 0.9375rem; padding: 3px 10px; min-height: 24px; }
+        .day-events { gap: 2px; }
         .more-events { font-size: 0.875rem; }
       }
-    `],e([he({attribute:!1})],lt.prototype,"hass",void 0),e([he({type:Array})],lt.prototype,"events",void 0),e([he({type:Array})],lt.prototype,"calendars",void 0),e([he({type:Object})],lt.prototype,"currentDate",void 0),e([he({type:Object})],lt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],lt.prototype,"firstDay",void 0),lt=e([de("pv-view-month")],lt);let dt=class extends se{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.maxEvents=20,this.daysAhead=14,this.showCalendarName=!0,this.showEndTime=!1}render(){const e=tt(this.events,this.hiddenCalendars),t=new Date(this.currentDate);t.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setDate(i.getDate()+this.daysAhead),i.setHours(23,59,59,999);const r=Ge(e,t,i),a=Ke(r),n=Array.from(a.keys()).sort();let o=0;const s=this.maxHeight?`max-height: ${this.maxHeight}`:"";return 0===r.length?U`
-        <div class="empty-state">
-          <ha-icon icon="mdi:calendar-check"></ha-icon>
-          <p>No upcoming events</p>
+    `],e([he({attribute:!1})],ct.prototype,"hass",void 0),e([he({type:Array})],ct.prototype,"events",void 0),e([he({type:Array})],ct.prototype,"calendars",void 0),e([he({type:Object})],ct.prototype,"currentDate",void 0),e([he({type:Object})],ct.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],ct.prototype,"firstDay",void 0),e([he({attribute:!1})],ct.prototype,"timeFormat",void 0),e([he({type:Boolean})],ct.prototype,"showStripes",void 0),ct=e([de("pv-view-month")],ct);const pt=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let ht=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.weatherEntity="",this.showStripes=!0,this._daysLoaded=14}render(){const e=new Date;e.setHours(0,0,0,0);const t=[];for(let i=0;i<this._daysLoaded;i++){const r=new Date(e);r.setDate(r.getDate()+i),t.push(r)}const i=Te(Me(Pe(this.events,this.hiddenCalendars),this.calendars)),r=this._getForecastMap();return N`
+      <div class="agenda-container">
+        ${t.map(e=>this._renderDayCard(e,i,r))}
+        <div class="load-more" @click=${this._loadMore}>
+          Load more days
         </div>
-      `:U`
-      <div class="agenda-container" style="${s}">
-        ${n.map(e=>{if(o>=this.maxEvents)return Y;const t=a.get(e)||[],i=new Date(e+"T00:00:00"),r=function(e){if(Oe(e))return"Today";if(function(e){const t=new Date;return t.setDate(t.getDate()+1),e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}(e))return"Tomorrow";const t=new Date,i=Math.floor((e.getTime()-t.getTime())/864e5);return i<7&&i>=0?e.toLocaleDateString("en-US",{weekday:"long"}):Te(e,"medium")}(i),n=Te(i,"medium"),s=Oe(i),l=function(e){const t=new Date;t.setHours(0,0,0,0);const i=new Date(e);return i.setHours(0,0,0,0),i<t}(i)&&!s;return U`
-            <div class="date-group" style="${l?"opacity: 0.6":""}">
-              <div class="date-header ${s?"today":""}">
-                <span class="date-header-relative">${r}</span>
-                ${r!==n?U`<span class="date-header-full">${n}</span>`:Y}
-              </div>
-              ${t.map(e=>o>=this.maxEvents?Y:(o++,this._renderEvent(e)))}
-            </div>
-          `})}
       </div>
-    `}_renderEvent(e){const t=Xe(e),i=t?null:Me(e.start,this.timeFormat),r=t||!this.showEndTime?null:Me(e.end,this.timeFormat);return U`
-      <div class="agenda-event" style="--event-color: ${e.calendar_color}; --event-color-light: ${e.calendar_color_light||""}; --event-text: ${Ve(e.calendar_color_light||e.calendar_color)}" @click=${()=>this._onEventClick(e)}>
-        <div class="event-color-bar" style="background: ${e.calendar_color}"></div>
-        <div class="event-content">
-          <div class="event-title">${e.summary}</div>
-          <div class="event-meta">
-            ${t?U`<span class="all-day-label">All Day</span>`:U`
-                <span class="event-time-text">
-                  ${i}${r?U` – ${r}`:Y}
-                </span>
-              `}
-            ${this.showCalendarName?U`
-              <span class="event-calendar-name">
-                <span class="calendar-dot" style="background: ${e.calendar_color}"></span>
-                ${e.calendar_name}
-              </span>
-            `:Y}
+    `}_renderDayCard(e,t,i){const r=Ae(e),a=t.get(r)||[],n=ze(e),s=i.get(r),o=function(e){if(ze(e))return"Today";if(function(e){const t=new Date;return t.setDate(t.getDate()+1),e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}(e))return"Tomorrow";const t=new Date,i=Math.floor((e.getTime()-t.getTime())/864e5);return i<7&&i>=0?e.toLocaleDateString("en-US",{weekday:"long"}):De(e,"medium")}(e),l=De(e,"long"),d=[...a].sort((e,t)=>{const i=Be(e),r=Be(t);return i&&!r?-1:!i&&r?1:e.start.localeCompare(t.start)});return N`
+      <div class="day-card ${n?"day-card--today":""}">
+        <div class="day-card-header">
+          <div class="day-card-header-left">
+            <span class="day-name ${n?"day-name--today":""}">
+              ${pt[e.getDay()]} ${e.getDate()}
+            </span>
+            ${o?N`<span class="day-relative">${o}</span>`:N`<span class="day-relative">${l}</span>`}
           </div>
-          ${e.location?U`
-            <div class="event-location">
-              <ha-icon icon="mdi:map-marker-outline"></ha-icon>
-              ${e.location}
+          ${s?N`
+            <div class="day-weather">
+              ${it(s.condition,20)}
+              <span class="day-weather-temps">${Math.round(s.tempHigh)}°/${Math.round(s.tempLow)}°</span>
             </div>
           `:Y}
         </div>
+        <div class="day-subheader">
+          <span>${d.length} event${1!==d.length?"s":""}</span>
+          <button class="add-event-link" @click=${()=>this._addEvent(e)}>+ Add event</button>
+        </div>
+        <div class="day-events">
+          ${d.length>0?d.map(e=>N`
+                <pv-event-chip
+                  .hass=${this.hass}
+                  .event=${e}
+                  .calendars=${this.calendars}
+                  .timeFormat=${this.timeFormat}
+                  .showStripes=${this.showStripes}
+                  @event-click=${e=>this._onEventClick(e.detail.event)}
+                ></pv-event-chip>
+              `):N`<div class="empty-day">No events</div>`}
+        </div>
       </div>
-    `}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};dt.styles=[me,ye,_e,o`
+    `}_getForecastMap(){const e=new Map;if(!this.weatherEntity||!this.hass)return e;const t=this.hass.states[this.weatherEntity];if(!t)return e;const i=t.attributes?.forecast;if(!i)return e;for(const t of i){const i=Ae(new Date(t.datetime));e.set(i,{condition:t.condition,tempHigh:t.temperature,tempLow:t.templow})}return e}_loadMore(){this._daysLoaded+=14}_addEvent(e){this.dispatchEvent(new CustomEvent("create-event",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};ht.styles=[me,_e,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .agenda-container {
@@ -3167,181 +3151,167 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         flex-direction: column;
         height: 100%;
         overflow-y: auto;
+        scroll-behavior: smooth;
       }
 
-      .date-group {
-        animation: pv-fadeIn 200ms ease;
-      }
-
-      .date-header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        padding: 0.625rem 1rem;
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: var(--pv-text);
-        background: var(--pv-card-bg, #fff);
-        border-bottom: 1px solid var(--pv-border-subtle);
-      }
-
-      .date-header.today {
-        color: var(--pv-accent);
-      }
-
-      .date-header-relative {
-        font-weight: 600;
-      }
-
-      .date-header-full {
-        font-weight: 400;
-        color: var(--pv-text-secondary);
-        margin-left: 0.5rem;
-      }
-
-      .agenda-event {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        transition: background var(--pv-transition, 200ms ease);
-        border-bottom: 1px solid var(--pv-border-subtle);
-      }
-
-      .agenda-event:hover {
-        background: var(--event-color-light, var(--pv-event-hover));
-      }
-
-      .agenda-event:active {
-        background: color-mix(in srgb, var(--pv-event-hover) 150%, transparent);
-      }
-
-      .event-color-bar {
-        width: 4px;
-        min-height: 36px;
-        border-radius: 2px;
-        flex-shrink: 0;
-        align-self: stretch;
-      }
-
-      .event-content {
-        flex: 1;
-        min-width: 0;
-      }
-
-      .event-title {
-        font-size: 0.9375rem;
-        font-weight: 500;
-        line-height: 1.3;
-        color: var(--event-text, var(--pv-text));
-      }
-
-      .event-meta {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 0.25rem;
-        font-size: 0.8125rem;
-        color: var(--event-text, var(--pv-text-secondary));
-      }
-
-      .event-time-text {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-      }
-
-      .event-calendar-name {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-      }
-
-      .calendar-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-
-      .event-location {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.75rem;
-        color: var(--pv-text-muted);
-        margin-top: 0.25rem;
-      }
-
-      .event-location ha-icon {
-        --mdc-icon-size: 14px;
-      }
-
-      .empty-state {
+      .day-card {
         display: flex;
         flex-direction: column;
+        margin: 0 0.75rem 0.75rem;
+        background: var(--pv-card-bg, #fff);
+        border-radius: var(--pv-radius-md, 12px);
+        border: 1px solid var(--pv-border-subtle);
+        overflow: hidden;
+      }
+
+      .day-card--today {
+        border-color: var(--pv-accent);
+        box-shadow: 0 0 0 1px var(--pv-accent);
+      }
+
+      .day-card-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding: 0.625rem 0.75rem 0.375rem;
+        border-bottom: 1px solid var(--pv-border-subtle);
+        position: sticky;
+        top: 0;
+        background: var(--pv-card-bg, #fff);
+        z-index: 2;
+      }
+
+      .day-card-header-left {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+      }
+
+      .day-name {
+        font-size: 1.0625rem;
+        font-weight: 700;
+        color: var(--pv-text);
+      }
+
+      .day-name--today {
+        color: var(--pv-accent);
+      }
+
+      .day-relative {
+        font-size: 0.75rem;
+        color: var(--pv-text-muted);
+        font-weight: 400;
+      }
+
+      .day-weather {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.6875rem;
+        color: var(--pv-text-secondary);
+      }
+
+      .day-weather svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .day-weather-temps {
+        font-weight: 500;
+      }
+
+      .day-subheader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.25rem 0.75rem 0.375rem;
+        font-size: 0.6875rem;
+        color: var(--pv-text-muted);
+      }
+
+      .add-event-link {
+        color: var(--pv-accent);
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.6875rem;
+        background: none;
+        border: none;
+        padding: 0;
+        font-family: inherit;
+      }
+
+      .add-event-link:hover {
+        text-decoration: underline;
+      }
+
+      .day-events {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+        padding: 0.375rem 0.5rem 0.5rem;
+      }
+
+      .empty-day {
+        color: var(--pv-text-muted);
+        font-size: 0.75rem;
+        padding: 0.75rem;
+        text-align: center;
+        font-style: italic;
+      }
+
+      .load-more {
+        display: flex;
         align-items: center;
         justify-content: center;
-        padding: 3rem 1rem;
-        color: var(--pv-text-muted);
-        text-align: center;
-      }
-
-      .empty-state ha-icon {
-        --mdc-icon-size: 48px;
-        opacity: 0.3;
-        margin-bottom: 1rem;
-      }
-
-      .all-day-label {
-        font-weight: 500;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin: 0 0.75rem 0.75rem;
+        background: var(--pv-card-bg, #fff);
+        border-radius: var(--pv-radius-md, 12px);
+        border: 1px dashed var(--pv-border);
         color: var(--pv-accent);
-        font-size: 0.75rem;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: background 150ms ease;
       }
 
-      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
+      .load-more:hover {
+        background: var(--pv-today-bg, rgba(99, 102, 241, 0.06));
+      }
 
-      /* xs: phones — tighter padding */
+      /* ═══════════ RESPONSIVE ═══════════ */
+
+      /* SM/XS: phones */
       @media (max-width: 479px) {
-        .agenda-event { padding: 0.5rem 0.75rem; gap: 0.5rem; }
-        .event-title { font-size: 0.8125rem; }
-        .event-meta { font-size: 0.75rem; gap: 0.5rem; }
-        .event-location { font-size: 0.6875rem; }
-        .date-header { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+        .day-card { margin: 0 0.5rem 0.5rem; }
+        .day-name { font-size: 0.9375rem; }
+        .day-card-header { padding: 0.5rem 0.625rem 0.25rem; }
+        .day-subheader { padding: 0.125rem 0.625rem 0.25rem; }
       }
 
-      /* md+: constrain width for readability */
+      /* MD+: constrain width */
       @media (min-width: 768px) {
-        .agenda-container { max-width: 720px; margin: 0 auto; }
+        .agenda-container { max-width: 800px; margin: 0 auto; width: 100%; }
       }
 
-      /* lg: large screens (1024–1439px) — scale up ~20% */
+      /* LG: large screens */
       @media (min-width: 1024px) {
-        .agenda-container { max-width: 800px; }
-        .date-header { padding: 0.75rem 1.25rem; font-size: 0.9375rem; }
-        .agenda-event { padding: 0.875rem 1.25rem; gap: 0.875rem; }
-        .event-title { font-size: 1.0625rem; }
-        .event-meta { font-size: 0.9375rem; }
-        .event-location { font-size: 0.8125rem; }
-        .event-color-bar { width: 5px; }
-        .calendar-dot { width: 10px; height: 10px; }
+        .day-name { font-size: 1.125rem; }
+        .day-card-header { padding: 0.75rem 1rem 0.5rem; }
+        .day-events { padding: 0.5rem 0.625rem 0.625rem; gap: 0.5rem; }
       }
 
-      /* xl: wall displays (1440px+) — scale up ~40% */
+      /* XL: wall displays */
       @media (min-width: 1440px) {
         .agenda-container { max-width: 900px; }
-        .date-header { padding: 0.875rem 1.5rem; font-size: 1.0625rem; }
-        .agenda-event { padding: 1rem 1.5rem; gap: 1rem; }
-        .event-title { font-size: 1.1875rem; }
-        .event-meta { font-size: 1.0625rem; }
-        .event-location { font-size: 0.9375rem; }
-        .event-location ha-icon { --mdc-icon-size: 18px; }
-        .event-color-bar { width: 6px; min-height: 44px; }
-        .calendar-dot { width: 12px; height: 12px; }
-        .all-day-label { font-size: 0.875rem; }
-        .empty-state ha-icon { --mdc-icon-size: 64px; }
+        .day-name { font-size: 1.25rem; }
+        .day-weather svg { width: 24px; height: 24px; }
+        .day-weather-temps { font-size: 0.75rem; }
+        .day-subheader { font-size: 0.75rem; }
+        .day-events { padding: 0.625rem 0.75rem 0.75rem; gap: 0.5rem; }
       }
-    `],e([he({attribute:!1})],dt.prototype,"hass",void 0),e([he({type:Array})],dt.prototype,"events",void 0),e([he({type:Array})],dt.prototype,"calendars",void 0),e([he({type:Object})],dt.prototype,"currentDate",void 0),e([he({type:Object})],dt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],dt.prototype,"timeFormat",void 0),e([he({type:Number})],dt.prototype,"maxEvents",void 0),e([he({type:Number})],dt.prototype,"daysAhead",void 0),e([he({type:Boolean})],dt.prototype,"showCalendarName",void 0),e([he({type:Boolean})],dt.prototype,"showEndTime",void 0),e([he({attribute:!1})],dt.prototype,"maxHeight",void 0),dt=e([de("pv-view-agenda")],dt);let ct=class extends se{constructor(){super(...arguments),this.event=null,this.timeFormat="12h",this._confirmDelete=!1,this._deleting=!1,this._deleteError="",this._pv=new Ie(this)}render(){if(!this.event)return Y;const e=this.event,t=Xe(e),i=new Date(e.start);return U`
+    `],e([he({attribute:!1})],ht.prototype,"hass",void 0),e([he({type:Array})],ht.prototype,"events",void 0),e([he({type:Array})],ht.prototype,"calendars",void 0),e([he({type:Object})],ht.prototype,"currentDate",void 0),e([he({type:Object})],ht.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],ht.prototype,"timeFormat",void 0),e([he({attribute:!1})],ht.prototype,"weatherEntity",void 0),e([he({type:Boolean})],ht.prototype,"showStripes",void 0),e([ve()],ht.prototype,"_daysLoaded",void 0),ht=e([de("pv-view-agenda")],ht);let vt=class extends oe{constructor(){super(...arguments),this.event=null,this.timeFormat="12h",this._confirmDelete=!1,this._deleting=!1,this._deleteError="",this._pv=new tt(this)}render(){if(!this.event)return Y;const e=this.event,t=Be(e),i=new Date(e.start);return N`
       <div class="pv-overlay" @click=${this._close}>
         <div class="pv-popup" @click=${e=>e.stopPropagation()} style="position: relative;">
           <button class="pv-btn-icon close-btn" @click=${this._close}>
@@ -3360,25 +3330,25 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             <div class="detail-row">
               <ha-icon icon="mdi:clock-outline"></ha-icon>
               <div class="detail-text">
-                <div>${Te(i,"long")}</div>
-                ${t?U`
+                <div>${De(i,"long")}</div>
+                ${t?N`
                   <div style="color: var(--pv-text-secondary); font-size: 0.875rem">All Day</div>
-                `:U`
+                `:N`
                   <div style="color: var(--pv-text-secondary); font-size: 0.875rem">
-                    ${Me(e.start,this.timeFormat)} – ${Me(e.end,this.timeFormat)}
+                    ${Ee(e.start,this.timeFormat)} – ${Ee(e.end,this.timeFormat)}
                   </div>
                 `}
               </div>
             </div>
 
-            ${e.location?U`
+            ${e.location?N`
               <div class="detail-row">
                 <ha-icon icon="mdi:map-marker-outline"></ha-icon>
                 <div class="detail-text">${e.location}</div>
               </div>
             `:Y}
 
-            ${e.description?U`
+            ${e.description?N`
               <div class="detail-row">
                 <ha-icon icon="mdi:text"></ha-icon>
                 <div class="detail-text" style="white-space: pre-wrap;">${e.description}</div>
@@ -3386,12 +3356,12 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             `:Y}
           </div>
 
-          ${this._confirmDelete?U`
+          ${this._confirmDelete?N`
             <div class="delete-confirm">
               <div class="delete-confirm-text">
                 Delete "${e.summary}"?
               </div>
-              ${this._deleteError?U`
+              ${this._deleteError?N`
                 <div style="color: #EF4444; font-size: 0.8125rem; margin-top: 0.5rem;">${this._deleteError}</div>
               `:Y}
               <div class="delete-confirm-actions">
@@ -3403,7 +3373,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 </button>
               </div>
             </div>
-          `:U`
+          `:N`
             <div class="popup-actions">
               <button class="pv-btn pv-btn-secondary" @click=${this._edit}>
                 <ha-icon icon="mdi:pencil-outline"></ha-icon>
@@ -3418,7 +3388,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           `}
         </div>
       </div>
-    `}_close(){this._confirmDelete=!1,this._deleting=!1,this._deleteError="",this._pv.state.selectEvent(null)}_edit(){this.event&&this._pv.state.openEditDialog(this.event)}async _delete(){if(this.event?.uid){this._deleting=!0,this._deleteError="";try{const e={entity_id:this.event.calendar_entity_id,uid:this.event.uid,recurrence_id:this.event.recurrence_id};await this._pv.state.doDeleteEvent(this.hass,e)}catch(e){console.error("PlanaVista: Delete failed",e),this._deleteError="Failed to delete event. Please try again.",this._deleting=!1}}else this._deleteError="Cannot delete — this event has no unique ID. Delete it from your calendar app directly."}};ct.styles=[me,fe,be,_e,o`
+    `}_close(){this._confirmDelete=!1,this._deleting=!1,this._deleteError="",this._pv.state.selectEvent(null)}_edit(){this.event&&this._pv.state.openEditDialog(this.event)}async _delete(){if(this.event?.uid){this._deleting=!0,this._deleteError="";try{const e={entity_id:this.event.calendar_entity_id,uid:this.event.uid,recurrence_id:this.event.recurrence_id};await this._pv.state.doDeleteEvent(this.hass,e)}catch(e){console.error("PlanaVista: Delete failed",e),this._deleteError="Failed to delete event. Please try again.",this._deleting=!1}}else this._deleteError="Cannot delete — this event has no unique ID. Delete it from your calendar app directly."}};vt.styles=[me,ye,be,_e,s`
       :host { display: block; }
 
       .popup-header {
@@ -3530,7 +3500,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         top: 0.75rem;
         right: 0.75rem;
       }
-    `],e([he({attribute:!1})],ct.prototype,"hass",void 0),e([he({type:Object})],ct.prototype,"event",void 0),e([he({attribute:!1})],ct.prototype,"timeFormat",void 0),e([ve()],ct.prototype,"_confirmDelete",void 0),e([ve()],ct.prototype,"_deleting",void 0),e([ve()],ct.prototype,"_deleteError",void 0),ct=e([de("pv-event-popup")],ct);const pt=["Su","Mo","Tu","We","Th","Fr","Sa"];let ht=class extends se{constructor(){super(...arguments),this.calendars=[],this.open=!1,this.mode="create",this.prefill=null,this._title="",this._calendarEntityId="",this._date="",this._startTime="",this._endTime="",this._allDay=!1,this._description="",this._location="",this._showMore=!1,this._saving=!1,this._error="",this._datePickerOpen=!1,this._pickerMonth=0,this._pickerYear=0,this._locationSuggestions=[],this._locationLoading=!1,this._locationFocused=!1,this._locationDebounceTimer=null,this._pv=new Ie(this)}updated(e){super.updated(e),e.has("open")&&this.open&&(this._initForm(),this._datePickerOpen=!1,requestAnimationFrame(()=>{this._titleInput?.focus()}))}_initForm(){if(this._error="",this._saving=!1,this._showMore=!1,this._locationSuggestions=[],this._locationFocused=!1,this.prefill){if(this._title=this.prefill.summary||"",this._calendarEntityId=this.prefill.calendar_entity_id||this.calendars[0]?.entity_id||"",this._description=this.prefill.description||"",this._location=this.prefill.location||"",this.prefill.start){const e=new Date(this.prefill.start);this._date=this._toDateStr(e),this._pickerYear=e.getFullYear(),this._pickerMonth=e.getMonth(),!this.prefill.start.includes("T")||0===e.getHours()&&0===e.getMinutes()?(this._allDay=!0,this._startTime="",this._endTime=""):(this._allDay=!1,this._startTime=this._toTimeStr(e),this.prefill.end&&(this._endTime=this._toTimeStr(new Date(this.prefill.end))))}else this._setDefaults();(this._description||this._location)&&(this._showMore=!0)}else this._setDefaults()}_setDefaults(){this._title="",this._calendarEntityId=this.calendars[0]?.entity_id||"";const e=new Date;this._date=this._toDateStr(e),this._pickerYear=e.getFullYear(),this._pickerMonth=e.getMonth();const t=15*Math.ceil(e.getMinutes()/15);e.setMinutes(t,0,0),this._startTime=this._toTimeStr(e);const i=new Date(e);i.setHours(i.getHours()+1),this._endTime=this._toTimeStr(i),this._allDay=!1,this._description="",this._location=""}_toDateStr(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}_toTimeStr(e){return`${String(e.getHours()).padStart(2,"0")}:${String(e.getMinutes()).padStart(2,"0")}`}_formatDateDisplay(){if(!this._date)return"Select a date";const[e,t,i]=this._date.split("-").map(Number);return new Date(e,t-1,i).toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric",year:"numeric"})}render(){if(!this.open)return Y;const e=this.calendars.filter(e=>!1!==e.visible),t="edit"===this.mode,i=t?"Edit Event":"New Event";return U`
+    `],e([he({attribute:!1})],vt.prototype,"hass",void 0),e([he({type:Object})],vt.prototype,"event",void 0),e([he({attribute:!1})],vt.prototype,"timeFormat",void 0),e([ve()],vt.prototype,"_confirmDelete",void 0),e([ve()],vt.prototype,"_deleting",void 0),e([ve()],vt.prototype,"_deleteError",void 0),vt=e([de("pv-event-popup")],vt);const gt=["Su","Mo","Tu","We","Th","Fr","Sa"];let mt=class extends oe{constructor(){super(...arguments),this.calendars=[],this.open=!1,this.mode="create",this.prefill=null,this._title="",this._calendarEntityId="",this._date="",this._startTime="",this._endTime="",this._allDay=!1,this._description="",this._location="",this._showMore=!1,this._saving=!1,this._error="",this._datePickerOpen=!1,this._pickerMonth=0,this._pickerYear=0,this._locationSuggestions=[],this._locationLoading=!1,this._locationFocused=!1,this._locationDebounceTimer=null,this._pv=new tt(this)}updated(e){super.updated(e),e.has("open")&&this.open&&(this._initForm(),this._datePickerOpen=!1,requestAnimationFrame(()=>{this._titleInput?.focus()}))}_initForm(){if(this._error="",this._saving=!1,this._showMore=!1,this._locationSuggestions=[],this._locationFocused=!1,this.prefill){if(this._title=this.prefill.summary||"",this._calendarEntityId=this.prefill.calendar_entity_id||this.calendars[0]?.entity_id||"",this._description=this.prefill.description||"",this._location=this.prefill.location||"",this.prefill.start){const e=new Date(this.prefill.start);this._date=this._toDateStr(e),this._pickerYear=e.getFullYear(),this._pickerMonth=e.getMonth(),!this.prefill.start.includes("T")||0===e.getHours()&&0===e.getMinutes()?(this._allDay=!0,this._startTime="",this._endTime=""):(this._allDay=!1,this._startTime=this._toTimeStr(e),this.prefill.end&&(this._endTime=this._toTimeStr(new Date(this.prefill.end))))}else this._setDefaults();(this._description||this._location)&&(this._showMore=!0)}else this._setDefaults()}_setDefaults(){this._title="",this._calendarEntityId=this.calendars[0]?.entity_id||"";const e=new Date;this._date=this._toDateStr(e),this._pickerYear=e.getFullYear(),this._pickerMonth=e.getMonth();const t=15*Math.ceil(e.getMinutes()/15);e.setMinutes(t,0,0),this._startTime=this._toTimeStr(e);const i=new Date(e);i.setHours(i.getHours()+1),this._endTime=this._toTimeStr(i),this._allDay=!1,this._description="",this._location=""}_toDateStr(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}_toTimeStr(e){return`${String(e.getHours()).padStart(2,"0")}:${String(e.getMinutes()).padStart(2,"0")}`}_formatDateDisplay(){if(!this._date)return"Select a date";const[e,t,i]=this._date.split("-").map(Number);return new Date(e,t-1,i).toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric",year:"numeric"})}render(){if(!this.open)return Y;const e=this.calendars.filter(e=>!1!==e.visible),t="edit"===this.mode,i=t?"Edit Event":"New Event";return N`
       <div class="pv-overlay" @click=${this._onOverlayClick}>
         <div class="pv-dialog" @click=${e=>e.stopPropagation()}>
           <div class="pv-dialog-header">
@@ -3542,7 +3512,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
           <div class="pv-dialog-body">
             <div class="form-grid">
-              ${this._error?U`<div class="error-msg">${this._error}</div>`:Y}
+              ${this._error?N`<div class="error-msg">${this._error}</div>`:Y}
 
               <div class="form-field">
                 <input
@@ -3558,7 +3528,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
               <div class="form-field">
                 <label class="pv-label">Calendar</label>
                 <div class="calendar-select">
-                  ${e.map(e=>U`
+                  ${e.map(e=>N`
                     <button
                       class="cal-option ${this._calendarEntityId===e.entity_id?"selected":""}"
                       style="${this._calendarEntityId===e.entity_id?`background: ${e.color}; --cal-bg: ${e.color}`:`--cal-bg: ${e.color}`}"
@@ -3588,7 +3558,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 ></div>
               </div>
 
-              ${this._allDay?Y:U`
+              ${this._allDay?Y:N`
                 <div class="form-row">
                   <div class="form-field">
                     <label class="pv-label">Start Time</label>
@@ -3611,7 +3581,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                 </div>
               `}
 
-              ${this._showMore?U`
+              ${this._showMore?N`
                 <div class="form-field">
                   <label class="pv-label">Description</label>
                   <textarea
@@ -3627,7 +3597,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
                   <label class="pv-label">Location</label>
                   ${this._renderLocationField()}
                 </div>
-              `:U`
+              `:N`
                 <button class="show-more-btn" @click=${()=>this._showMore=!0}>
                   + Add description, location
                 </button>
@@ -3652,14 +3622,14 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
       ${this._renderLocationDropdown()}
       ${this._renderDatePickerDropdown()}
-    `}_renderDatePicker(){return U`
+    `}_renderDatePicker(){return N`
       <div class="date-picker-wrap">
         <div class="date-display" @click=${this._toggleDatePicker}>
           <ha-icon icon="mdi:calendar"></ha-icon>
           ${this._formatDateDisplay()}
         </div>
       </div>
-    `}_renderDatePickerDropdown(){if(!this._datePickerOpen)return Y;const e=this._dateDisplay;if(!e)return Y;const t=e.getBoundingClientRect(),i=window.innerHeight-t.bottom-8<330&&t.top>330?t.top-330-4:t.bottom+4;return U`
+    `}_renderDatePickerDropdown(){if(!this._datePickerOpen)return Y;const e=this._dateDisplay;if(!e)return Y;const t=e.getBoundingClientRect(),i=window.innerHeight-t.bottom-8<330&&t.top>330?t.top-330-4:t.bottom+4;return N`
       <div
         class="date-picker-dropdown"
         style="top: ${i}px; left: ${t.left}px;"
@@ -3678,10 +3648,10 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
         </div>
         <div class="picker-weekdays">
-          ${pt.map(e=>U`<span class="picker-weekday">${e}</span>`)}
+          ${gt.map(e=>N`<span class="picker-weekday">${e}</span>`)}
         </div>
         <div class="picker-days">
-          ${this._getPickerDays().map(e=>{const t=e.getMonth()!==this._pickerMonth,i=this._toDateStr(e)===this._toDateStr(new Date),r=this._toDateStr(e)===this._date;return U`
+          ${this._getPickerDays().map(e=>{const t=e.getMonth()!==this._pickerMonth,i=this._toDateStr(e)===this._toDateStr(new Date),r=this._toDateStr(e)===this._date;return N`
               <button
                 class="picker-day ${t?"other-month":""} ${i?"today":""} ${r?"selected":""}"
                 @click=${()=>this._selectPickerDay(e)}
@@ -3689,7 +3659,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             `})}
         </div>
       </div>
-    `}_toggleDatePicker(){if(this._datePickerOpen=!this._datePickerOpen,this._datePickerOpen&&this._date){const[e,t]=this._date.split("-").map(Number);this._pickerYear=e,this._pickerMonth=t-1}}_pickerPrevMonth(){this._pickerMonth--,this._pickerMonth<0&&(this._pickerMonth=11,this._pickerYear--)}_pickerNextMonth(){this._pickerMonth++,this._pickerMonth>11&&(this._pickerMonth=0,this._pickerYear++)}_getPickerDays(){const e=new Date(this._pickerYear,this._pickerMonth,1),t=e.getDay(),i=new Date(e);i.setDate(i.getDate()-t);const r=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(t.getDate()+e),r.push(t)}return r}_selectPickerDay(e){this._date=this._toDateStr(e),this._datePickerOpen=!1}_renderLocationField(){return U`
+    `}_toggleDatePicker(){if(this._datePickerOpen=!this._datePickerOpen,this._datePickerOpen&&this._date){const[e,t]=this._date.split("-").map(Number);this._pickerYear=e,this._pickerMonth=t-1}}_pickerPrevMonth(){this._pickerMonth--,this._pickerMonth<0&&(this._pickerMonth=11,this._pickerYear--)}_pickerNextMonth(){this._pickerMonth++,this._pickerMonth>11&&(this._pickerMonth=0,this._pickerYear++)}_getPickerDays(){const e=new Date(this._pickerYear,this._pickerMonth,1),t=e.getDay(),i=new Date(e);i.setDate(i.getDate()-t);const r=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(t.getDate()+e),r.push(t)}return r}_selectPickerDay(e){this._date=this._toDateStr(e),this._datePickerOpen=!1}_renderLocationField(){return N`
       <div class="location-wrap">
         <input
           class="pv-input location-input"
@@ -3701,25 +3671,25 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           @blur=${()=>{setTimeout(()=>{this._locationFocused=!1},250)}}
         />
       </div>
-    `}_renderLocationDropdown(){if(!this._locationFocused||!this._locationSuggestions.length&&!this._locationLoading)return Y;const e=this._locationInput;if(!e)return Y;const t=e.getBoundingClientRect();return U`
+    `}_renderLocationDropdown(){if(!this._locationFocused||!this._locationSuggestions.length&&!this._locationLoading)return Y;const e=this._locationInput;if(!e)return Y;const t=e.getBoundingClientRect();return N`
       <div
         class="location-suggestions-fixed"
         style="top: ${t.bottom}px; left: ${t.left}px; width: ${t.width}px;"
       >
-        ${this._locationLoading?U`
+        ${this._locationLoading?N`
           <div class="location-loading">Searching...</div>
         `:Y}
-        ${this._locationSuggestions.map(e=>U`
+        ${this._locationSuggestions.map(e=>N`
           <div class="location-suggestion" @mousedown=${()=>this._selectLocation(e.display_name)}>
             <ha-icon icon="mdi:map-marker"></ha-icon>
             <span>${e.display_name}</span>
           </div>
         `)}
-        ${this._locationSuggestions.length>0?U`
+        ${this._locationSuggestions.length>0?N`
           <div class="location-powered">Powered by OpenStreetMap</div>
         `:Y}
       </div>
-    `}_onLocationInput(e){const t=e.target.value;if(this._location=t,this._locationDebounceTimer&&clearTimeout(this._locationDebounceTimer),t.trim().length<3)return this._locationSuggestions=[],void(this._locationLoading=!1);this._locationLoading=!0,this._locationDebounceTimer=setTimeout(()=>{this._searchLocation(t.trim())},350)}async _searchLocation(e){try{const t=this.hass?.config?.latitude,i=this.hass?.config?.longitude;let r=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(e)}&format=json&addressdetails=1&limit=20`;if(null!=t&&null!=i){const e=2;r+=`&viewbox=${i-e},${t+e},${i+e},${t-e}`,r+="&bounded=0"}const a=await fetch(r,{headers:{"Accept-Language":"en"}});if(!a.ok)throw new Error("Search failed");const n=await a.json();null!=t&&null!=i&&n.sort((e,r)=>this._haversine(t,i,parseFloat(e.lat),parseFloat(e.lon))-this._haversine(t,i,parseFloat(r.lat),parseFloat(r.lon))),this._locationSuggestions=n.slice(0,5).map(e=>({display_name:e.display_name}))}catch{this._locationSuggestions=[]}finally{this._locationLoading=!1}}_haversine(e,t,i,r){const a=(i-e)*Math.PI/180,n=(r-t)*Math.PI/180,o=Math.sin(a/2)*Math.sin(a/2)+Math.cos(e*Math.PI/180)*Math.cos(i*Math.PI/180)*Math.sin(n/2)*Math.sin(n/2);return 12742*Math.atan2(Math.sqrt(o),Math.sqrt(1-o))}_selectLocation(e){this._location=e,this._locationSuggestions=[],this._locationFocused=!1}_onOverlayClick(){this._close()}_close(){this._datePickerOpen=!1,this._locationSuggestions=[],this._pv.state.closeDialog()}async _save(){if(this._title.trim())if(this._calendarEntityId)if(!this._allDay&&this._endTime<=this._startTime)this._error="End time must be after start time";else{this._error="",this._saving=!0;try{const e={entity_id:this._calendarEntityId,summary:this._title.trim()};if(this._allDay){e.start_date=this._date;const t=new Date(this._date);t.setDate(t.getDate()+1),e.end_date=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`}else e.start_date_time=`${this._date}T${this._startTime}:00`,e.end_date_time=`${this._date}T${this._endTime}:00`;if(this._description.trim()&&(e.description=this._description.trim()),this._location.trim()&&(e.location=this._location.trim()),"edit"===this.mode){if(!this.prefill?.uid)return this._error="Cannot edit — this event has no unique ID. Try deleting it from your calendar app and re-creating it here.",void(this._saving=!1);const t={entity_id:this.prefill.calendar_entity_id,uid:this.prefill.uid,recurrence_id:this.prefill.recurrence_id};await this._pv.state.doEditEvent(this.hass,t,e)}else await this._pv.state.doCreateEvent(this.hass,e)}catch(e){this._error=`Failed to save event: ${e?.message||"Unknown error"}`,this._saving=!1}}else this._error="Please select a calendar";else this._error="Please enter an event title"}};ht.styles=[me,fe,xe,be,_e,o`
+    `}_onLocationInput(e){const t=e.target.value;if(this._location=t,this._locationDebounceTimer&&clearTimeout(this._locationDebounceTimer),t.trim().length<3)return this._locationSuggestions=[],void(this._locationLoading=!1);this._locationLoading=!0,this._locationDebounceTimer=setTimeout(()=>{this._searchLocation(t.trim())},350)}async _searchLocation(e){try{const t=this.hass?.config?.latitude,i=this.hass?.config?.longitude;let r=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(e)}&format=json&addressdetails=1&limit=20`;if(null!=t&&null!=i){const e=2;r+=`&viewbox=${i-e},${t+e},${i+e},${t-e}`,r+="&bounded=0"}const a=await fetch(r,{headers:{"Accept-Language":"en"}});if(!a.ok)throw new Error("Search failed");const n=await a.json();null!=t&&null!=i&&n.sort((e,r)=>this._haversine(t,i,parseFloat(e.lat),parseFloat(e.lon))-this._haversine(t,i,parseFloat(r.lat),parseFloat(r.lon))),this._locationSuggestions=n.slice(0,5).map(e=>({display_name:e.display_name}))}catch{this._locationSuggestions=[]}finally{this._locationLoading=!1}}_haversine(e,t,i,r){const a=(i-e)*Math.PI/180,n=(r-t)*Math.PI/180,s=Math.sin(a/2)*Math.sin(a/2)+Math.cos(e*Math.PI/180)*Math.cos(i*Math.PI/180)*Math.sin(n/2)*Math.sin(n/2);return 12742*Math.atan2(Math.sqrt(s),Math.sqrt(1-s))}_selectLocation(e){this._location=e,this._locationSuggestions=[],this._locationFocused=!1}_onOverlayClick(){this._close()}_close(){this._datePickerOpen=!1,this._locationSuggestions=[],this._pv.state.closeDialog()}async _save(){if(this._title.trim())if(this._calendarEntityId)if(!this._allDay&&this._endTime<=this._startTime)this._error="End time must be after start time";else{this._error="",this._saving=!0;try{const e={entity_id:this._calendarEntityId,summary:this._title.trim()};if(this._allDay){e.start_date=this._date;const t=new Date(this._date);t.setDate(t.getDate()+1),e.end_date=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`}else e.start_date_time=`${this._date}T${this._startTime}:00`,e.end_date_time=`${this._date}T${this._endTime}:00`;if(this._description.trim()&&(e.description=this._description.trim()),this._location.trim()&&(e.location=this._location.trim()),"edit"===this.mode){if(!this.prefill?.uid)return this._error="Cannot edit — this event has no unique ID. Try deleting it from your calendar app and re-creating it here.",void(this._saving=!1);const t={entity_id:this.prefill.calendar_entity_id,uid:this.prefill.uid,recurrence_id:this.prefill.recurrence_id};await this._pv.state.doEditEvent(this.hass,t,e)}else await this._pv.state.doCreateEvent(this.hass,e)}catch(e){this._error=`Failed to save event: ${e?.message||"Unknown error"}`,this._saving=!1}}else this._error="Please select a calendar";else this._error="Please enter an event title"}};mt.styles=[me,ye,xe,be,_e,s`
       :host { display: block; }
 
       .form-grid {
@@ -4068,21 +4038,21 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         from { transform: translateY(100%); }
         to { transform: translateY(0); }
       }
-    `],e([he({attribute:!1})],ht.prototype,"hass",void 0),e([he({type:Array})],ht.prototype,"calendars",void 0),e([he({type:Boolean})],ht.prototype,"open",void 0),e([he({type:String})],ht.prototype,"mode",void 0),e([he({type:Object})],ht.prototype,"prefill",void 0),e([ve()],ht.prototype,"_title",void 0),e([ve()],ht.prototype,"_calendarEntityId",void 0),e([ve()],ht.prototype,"_date",void 0),e([ve()],ht.prototype,"_startTime",void 0),e([ve()],ht.prototype,"_endTime",void 0),e([ve()],ht.prototype,"_allDay",void 0),e([ve()],ht.prototype,"_description",void 0),e([ve()],ht.prototype,"_location",void 0),e([ve()],ht.prototype,"_showMore",void 0),e([ve()],ht.prototype,"_saving",void 0),e([ve()],ht.prototype,"_error",void 0),e([ve()],ht.prototype,"_datePickerOpen",void 0),e([ve()],ht.prototype,"_pickerMonth",void 0),e([ve()],ht.prototype,"_pickerYear",void 0),e([ve()],ht.prototype,"_locationSuggestions",void 0),e([ve()],ht.prototype,"_locationLoading",void 0),e([ve()],ht.prototype,"_locationFocused",void 0),e([ge("#title-input")],ht.prototype,"_titleInput",void 0),e([ge(".location-input")],ht.prototype,"_locationInput",void 0),e([ge(".date-display")],ht.prototype,"_dateDisplay",void 0),ht=e([de("pv-event-create-dialog")],ht);let vt=class extends se{constructor(){super(...arguments),this._currentTime=new Date,this._filterOpen=!1,this._wizardOpen=!1,this._onboardingDone=!1,this._settingsOpen=!1,this._pv=new Ie(this),this._clockTimer=null,this._touchStartX=0,this._filterCloseHandler=e=>this._onFilterClickOutside(e)}connectedCallback(){super.connectedCallback(),this._clockTimer=setInterval(()=>{this._currentTime=new Date},1e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockTimer&&(clearInterval(this._clockTimer),this._clockTimer=null),document.removeEventListener("click",this._filterCloseHandler)}setConfig(e){this._config={entity:"sensor.planavista_config",...e};const t=e?.view||e?.default_view;t&&this._pv.state.setView(t)}firstUpdated(){if(!this._config?.view&&!this._config?.default_view){const e=this.hass?Ae(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),!this._settingsOpen&&(e.has("hass")||e.has("_config")||e.has("_settingsOpen"))){const e=Ae(this.hass,this._config?.entity);qe(this,Ze(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}}_getData(){return Ae(this.hass,this._config?.entity)}_getWeatherEntity(){const e=this._getData(),t=this._config?.weather_entity||e?.display?.weather_entity;return t?this.hass?.states?.[t]:null}_getWeatherEntityId(){const e=this._getData();return this._config?.weather_entity||e?.display?.weather_entity||null}_resolveDisplay(){const e=this._getData(),t=e?.display,i=this._config;return{time_format:i?.time_format||t?.time_format||"12h",weather_entity:i?.weather_entity||t?.weather_entity||"",first_day:i?.first_day||t?.first_day||"sunday",default_view:i?.default_view||i?.view||t?.default_view||"week",theme:i?.theme||t?.theme||"light"}}_getVisibleCalendars(){const e=this._getData(),t=(e?.calendars||[]).filter(e=>!1!==e.visible),i=this._config?.calendars;return i&&Array.isArray(i)&&i.length>0?t.filter(e=>i.includes(e.entity_id)):t}_onOnboardingComplete(){this._wizardOpen=!1,this._onboardingDone=!0,Qe(this)}_openSettings(){this._settingsOpen=!0}_onSettingsSave(){this._settingsOpen=!1,Qe(this)}_onSettingsClose(){this._settingsOpen=!1,Qe(this);const e=Ae(this.hass,this._config?.entity);qe(this,Ze(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}_onThemePreview(e){const{theme:t,overrides:i}=e.detail,r=Ze(t);Qe(this),qe(this,r,i)}_showWeatherDetails(){const e=this._getWeatherEntityId();if(e){const t=new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0});this.dispatchEvent(t)}}render(){if(!this._config||!this.hass)return Y;const e=this._getData();if(!e)return U`
+    `],e([he({attribute:!1})],mt.prototype,"hass",void 0),e([he({type:Array})],mt.prototype,"calendars",void 0),e([he({type:Boolean})],mt.prototype,"open",void 0),e([he({type:String})],mt.prototype,"mode",void 0),e([he({type:Object})],mt.prototype,"prefill",void 0),e([ve()],mt.prototype,"_title",void 0),e([ve()],mt.prototype,"_calendarEntityId",void 0),e([ve()],mt.prototype,"_date",void 0),e([ve()],mt.prototype,"_startTime",void 0),e([ve()],mt.prototype,"_endTime",void 0),e([ve()],mt.prototype,"_allDay",void 0),e([ve()],mt.prototype,"_description",void 0),e([ve()],mt.prototype,"_location",void 0),e([ve()],mt.prototype,"_showMore",void 0),e([ve()],mt.prototype,"_saving",void 0),e([ve()],mt.prototype,"_error",void 0),e([ve()],mt.prototype,"_datePickerOpen",void 0),e([ve()],mt.prototype,"_pickerMonth",void 0),e([ve()],mt.prototype,"_pickerYear",void 0),e([ve()],mt.prototype,"_locationSuggestions",void 0),e([ve()],mt.prototype,"_locationLoading",void 0),e([ve()],mt.prototype,"_locationFocused",void 0),e([ge("#title-input")],mt.prototype,"_titleInput",void 0),e([ge(".location-input")],mt.prototype,"_locationInput",void 0),e([ge(".date-display")],mt.prototype,"_dateDisplay",void 0),mt=e([de("pv-event-create-dialog")],mt);let ut=class extends oe{constructor(){super(...arguments),this._currentTime=new Date,this._filterOpen=!1,this._wizardOpen=!1,this._onboardingDone=!1,this._settingsOpen=!1,this._pv=new tt(this),this._clockTimer=null,this._touchStartX=0,this._filterCloseHandler=e=>this._onFilterClickOutside(e)}connectedCallback(){super.connectedCallback(),this._clockTimer=setInterval(()=>{this._currentTime=new Date},1e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockTimer&&(clearInterval(this._clockTimer),this._clockTimer=null),document.removeEventListener("click",this._filterCloseHandler)}setConfig(e){this._config={entity:"sensor.planavista_config",...e};const t=e?.view||e?.default_view;t&&this._pv.state.setView(t)}firstUpdated(){if(!this._config?.view&&!this._config?.default_view){const e=this.hass?Ze(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),!this._settingsOpen&&(e.has("hass")||e.has("_config")||e.has("_settingsOpen"))){const e=Ze(this.hass,this._config?.entity);Re(this,We(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}}_getData(){return Ze(this.hass,this._config?.entity)}_getWeatherEntity(){const e=this._getData(),t=this._config?.weather_entity||e?.display?.weather_entity;return t?this.hass?.states?.[t]:null}_getWeatherEntityId(){const e=this._getData();return this._config?.weather_entity||e?.display?.weather_entity||null}_resolveDisplay(){const e=this._getData(),t=e?.display,i=this._config;return{time_format:i?.time_format||t?.time_format||"12h",weather_entity:i?.weather_entity||t?.weather_entity||"",first_day:i?.first_day||t?.first_day||"sunday",default_view:i?.default_view||i?.view||t?.default_view||"week",theme:i?.theme||t?.theme||"light"}}_getVisibleCalendars(){const e=this._getData(),t=(e?.calendars||[]).filter(e=>!1!==e.visible),i=this._config?.calendars;return i&&Array.isArray(i)&&i.length>0?t.filter(e=>i.includes(e.entity_id)):t}_onOnboardingComplete(){this._wizardOpen=!1,this._onboardingDone=!0,Ye(this)}_openSettings(){this._settingsOpen=!0}_onSettingsSave(){this._settingsOpen=!1,Ye(this)}_onSettingsClose(){this._settingsOpen=!1,Ye(this);const e=Ze(this.hass,this._config?.entity);Re(this,We(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}_onThemePreview(e){const{theme:t,overrides:i}=e.detail,r=We(t);Ye(this),Re(this,r,i)}_showWeatherDetails(){const e=this._getWeatherEntityId();if(e){const t=new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0});this.dispatchEvent(t)}}render(){if(!this._config||!this.hass)return Y;const e=this._getData();if(!e)return N`
         <ha-card>
           <div class="pvc-empty">
             <p>PlanaVista entity not found</p>
             <p style="font-size: 0.8rem;">Check that the PlanaVista integration is configured.</p>
           </div>
         </ha-card>
-      `;if(!1===e.onboarding_complete&&!this._onboardingDone)return this._wizardOpen?U`
+      `;if(!1===e.onboarding_complete&&!this._onboardingDone)return this._wizardOpen?N`
           <ha-card>
             <pv-onboarding-wizard
               .hass=${this.hass}
               @onboarding-complete=${this._onOnboardingComplete}
             ></pv-onboarding-wizard>
           </ha-card>
-        `:U`
+        `:N`
         <ha-card>
           <div class="pvc-setup-pending"
             role="button"
@@ -4100,9 +4070,9 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
             <p class="pvc-setup-hint">Tap to begin setup</p>
           </div>
         </ha-card>
-      `;const t=this._pv.state,i=t.currentView;t.currentDate;const r=this._getVisibleCalendars(),a=e.events||[],n=this._resolveDisplay(),o=!!this._config?.hide_header,s=tt(a,t.hiddenCalendars);return U`
+      `;const t=this._pv.state,i=t.currentView;t.currentDate;const r=this._getVisibleCalendars(),a=e.events||[],n=this._resolveDisplay(),s=!!this._config?.hide_header,o=Pe(a,t.hiddenCalendars);return N`
       <ha-card>
-        ${o?Y:this._renderHeader(n)}
+        ${s?Y:this._renderHeader(n)}
         ${this._renderToolbar(r,i)}
         <div class="pvc-body"
           @touchstart=${this._onTouchStart}
@@ -4110,10 +4080,10 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           @event-click=${this._onEventClick}
           @day-click=${this._onDayClick}
         >
-          ${this._renderView(i,s,r,n)}
+          ${this._renderView(i,o,r,n)}
         </div>
 
-        ${t.selectedEvent?U`
+        ${t.selectedEvent?N`
           <pv-event-popup
             .hass=${this.hass}
             .event=${t.selectedEvent}
@@ -4121,7 +4091,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           ></pv-event-popup>
         `:Y}
 
-        ${t.dialogOpen?U`
+        ${t.dialogOpen?N`
           <pv-event-create-dialog
             .hass=${this.hass}
             .calendars=${r}
@@ -4131,7 +4101,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           ></pv-event-create-dialog>
         `:Y}
 
-        ${this._settingsOpen?U`
+        ${this._settingsOpen?N`
           <div class="pvc-settings-overlay">
             <pv-onboarding-wizard
               .hass=${this.hass}
@@ -4144,13 +4114,13 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
         `:Y}
       </ha-card>
-    `}_renderHeader(e){const t=this._config?.hide_weather?null:this._getWeatherEntity(),i=e?.time_format||"12h",r=this._currentTime,a=r.getHours(),n=String(r.getMinutes()).padStart(2,"0");let o;o="24h"===i?U`<span class="pvc-time-display">${a}:${n}</span>`:U`<span class="pvc-time-display">${a%12||12}:${n}</span><span class="pvc-time-ampm">${a>=12?"PM":"AM"}</span>`;const s=r.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return U`
+    `}_renderHeader(e){const t=this._config?.hide_weather?null:this._getWeatherEntity(),i=e?.time_format||"12h",r=this._currentTime,a=r.getHours(),n=String(r.getMinutes()).padStart(2,"0");let s;s="24h"===i?N`<span class="pvc-time-display">${a}:${n}</span>`:N`<span class="pvc-time-display">${a%12||12}:${n}</span><span class="pvc-time-ampm">${a>=12?"PM":"AM"}</span>`;const o=r.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return N`
       <div class="pvc-header">
-        ${t?U`
+        ${t?N`
           <div class="pvc-weather" @click=${this._showWeatherDetails}
                title="Click for weather details">
             <div class="pvc-weather-icon">
-              ${function(e,t=48){return(it[e]||it.cloudy)(t)}(t.state||"cloudy",48)}
+              ${it(t.state||"cloudy",48)}
             </div>
             <div class="pvc-weather-info">
               <span class="pvc-weather-temp">
@@ -4161,13 +4131,13 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
               </span>
             </div>
           </div>
-        `:U`<div class="pvc-no-weather"></div>`}
+        `:N`<div class="pvc-no-weather"></div>`}
 
-        <div class="pvc-header-date">${s}</div>
+        <div class="pvc-header-date">${o}</div>
 
-        <div class="pvc-header-time">${o}</div>
+        <div class="pvc-header-time">${s}</div>
       </div>
-    `}_getTempUnit(e){return(e.attributes.temperature_unit||"").includes("C")?"C":"F"}_renderToolbar(e,t){const i=e.filter(e=>this._pv.state.hiddenCalendars.has(e.entity_id)).length;return U`
+    `}_getTempUnit(e){return(e.attributes.temperature_unit||"").includes("C")?"C":"F"}_renderToolbar(e,t){const i=e.filter(e=>this._pv.state.hiddenCalendars.has(e.entity_id)).length;return N`
       <div class="pvc-toolbar">
         <div class="pvc-filter-wrap">
           <button
@@ -4176,19 +4146,19 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           >
             <ha-icon icon="mdi:filter-variant" style="--mdc-icon-size: 20px"></ha-icon>
             Calendars
-            ${i>0?U`<span class="pvc-filter-badge">${e.length-i}/${e.length}</span>`:Y}
+            ${i>0?N`<span class="pvc-filter-badge">${e.length-i}/${e.length}</span>`:Y}
           </button>
 
-          ${this._filterOpen?U`
+          ${this._filterOpen?N`
             <div class="pvc-filter-panel">
-              ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?Se(this.hass,e.person_entity):null,r=e.display_name||(e.person_entity?Be(this.hass,e.person_entity):e.entity_id),a=(r||"?")[0].toUpperCase();return U`
+              ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?Ke(this.hass,e.person_entity):null,r=e.display_name||(e.person_entity?Ge(this.hass,e.person_entity):e.entity_id),a=(r||"?")[0].toUpperCase();return N`
                   <div
                     class="pvc-filter-item ${t?"active":""}"
                     style="--item-color: ${e.color}"
                     @click=${()=>this._pv.state.toggleCalendar(e.entity_id)}
                   >
                     <div class="pvc-filter-check">
-                      ${t?U`<span class="pvc-filter-check-icon">✓</span>`:Y}
+                      ${t?N`<span class="pvc-filter-check-icon">✓</span>`:Y}
                     </div>
                     <div
                       class="pvc-filter-avatar"
@@ -4203,7 +4173,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
 
         <!-- Mobile inline calendar chips (shown on xs/sm via CSS) -->
         <div class="pvc-cal-strip">
-          ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?Se(this.hass,e.person_entity):null,r=e.display_name||(e.person_entity?Be(this.hass,e.person_entity):e.entity_id),a=(r||"?")[0].toUpperCase();return U`
+          ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?Ke(this.hass,e.person_entity):null,r=e.display_name||(e.person_entity?Ge(this.hass,e.person_entity):e.entity_id),a=(r||"?")[0].toUpperCase();return N`
               <button
                 class="pvc-cal-chip ${t?"active":""}"
                 style="--chip-color: ${e.color}"
@@ -4236,7 +4206,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </div>
 
           <div class="pvc-view-tabs">
-            ${["day","week","month","agenda"].map(e=>U`
+            ${["day","week","month","agenda"].map(e=>N`
               <button
                 class="pvc-view-tab ${t===e?"active":""}"
                 @click=${()=>this._pv.state.setView(e)}
@@ -4250,38 +4220,44 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
           </button>
         </div>
       </div>
-    `}_toggleFilterDropdown(e){e.stopPropagation(),this._filterOpen=!this._filterOpen,this._filterOpen?requestAnimationFrame(()=>{document.addEventListener("click",this._filterCloseHandler)}):document.removeEventListener("click",this._filterCloseHandler)}_onFilterClickOutside(e){const t=e.composedPath(),i=this.shadowRoot?.querySelector(".pvc-filter-panel"),r=this.shadowRoot?.querySelector(".pvc-filter-btn");i&&!t.includes(i)&&r&&!t.includes(r)&&(this._filterOpen=!1,document.removeEventListener("click",this._filterCloseHandler))}_renderView(e,t,i,r){const a=r?.time_format||"12h",n=r?.first_day||"sunday",o=this._pv.state.currentDate,s=this._pv.state.hiddenCalendars;switch(e){case"day":return U`<pv-view-day
+    `}_toggleFilterDropdown(e){e.stopPropagation(),this._filterOpen=!this._filterOpen,this._filterOpen?requestAnimationFrame(()=>{document.addEventListener("click",this._filterCloseHandler)}):document.removeEventListener("click",this._filterCloseHandler)}_onFilterClickOutside(e){const t=e.composedPath(),i=this.shadowRoot?.querySelector(".pvc-filter-panel"),r=this.shadowRoot?.querySelector(".pvc-filter-btn");i&&!t.includes(i)&&r&&!t.includes(r)&&(this._filterOpen=!1,document.removeEventListener("click",this._filterCloseHandler))}_renderView(e,t,i,r){const a=r?.time_format||"12h",n=r?.first_day||"sunday",s=this._pv.state.currentDate,o=this._pv.state.hiddenCalendars;switch(e){case"day":return N`<pv-view-day
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${o}
-          .hiddenCalendars=${s}
+          .currentDate=${s}
+          .hiddenCalendars=${o}
           .timeFormat=${a}
           .hideColumnHeaders=${!1}
           .avatarBorderMode=${r?.theme_overrides?.avatar_border||"primary"}
-        ></pv-view-day>`;case"week":return U`<pv-view-week
+        ></pv-view-day>`;case"week":return N`<pv-view-week
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${o}
-          .hiddenCalendars=${s}
+          .currentDate=${s}
+          .hiddenCalendars=${o}
           .timeFormat=${a}
           .firstDay=${n}
-        ></pv-view-week>`;case"month":return U`<pv-view-month
+          .weatherEntity=${r?.weather_entity||""}
+          .showStripes=${"stripes"===(r?.theme_overrides?.event_style||"stripes")}
+        ></pv-view-week>`;case"month":return N`<pv-view-month
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${o}
-          .hiddenCalendars=${s}
+          .currentDate=${s}
+          .hiddenCalendars=${o}
           .firstDay=${n}
-        ></pv-view-month>`;case"agenda":return U`<pv-view-agenda
+          .timeFormat=${a}
+          .showStripes=${"stripes"===(r?.theme_overrides?.event_style||"stripes")}
+        ></pv-view-month>`;case"agenda":return N`<pv-view-agenda
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${o}
-          .hiddenCalendars=${s}
+          .currentDate=${s}
+          .hiddenCalendars=${o}
           .timeFormat=${a}
-        ></pv-view-agenda>`;default:return Y}}_onEventClick(e){this._pv.state.selectEvent(e.detail.event)}_onDayClick(e){this._pv.state.setDate(e.detail.date),this._pv.state.setView("day")}_onTouchStart(e){this._touchStartX=e.touches[0].clientX}_onTouchEnd(e){const t=e.changedTouches[0].clientX-this._touchStartX;Math.abs(t)>50&&this._pv.state.navigateDate(t>0?"prev":"next")}static getConfigElement(){return document.createElement("planavista-calendar-card-editor")}static getStubConfig(){return{entity:"sensor.planavista_config"}}getCardSize(){return 10}};vt.styles=[me,fe,ue,_e,o`
+          .weatherEntity=${r?.weather_entity||""}
+          .showStripes=${"stripes"===(r?.theme_overrides?.event_style||"stripes")}
+        ></pv-view-agenda>`;default:return Y}}_onEventClick(e){this._pv.state.selectEvent(e.detail.event)}_onDayClick(e){this._pv.state.setDate(e.detail.date),this._pv.state.setView("day")}_onTouchStart(e){this._touchStartX=e.touches[0].clientX}_onTouchEnd(e){const t=e.changedTouches[0].clientX-this._touchStartX;Math.abs(t)>50&&this._pv.state.navigateDate(t>0?"prev":"next")}static getConfigElement(){return document.createElement("planavista-calendar-card-editor")}static getStubConfig(){return{entity:"sensor.planavista_config"}}getCardSize(){return 10}};ut.styles=[me,ye,ue,_e,s`
       :host {
         display: block;
         height: calc(100vh - var(--header-height, 56px));
@@ -4974,4 +4950,4 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .pvc-view-tab { padding: 10px 20px; font-size: 1.0625rem; min-height: 52px; }
         .pvc-settings-btn { width: 56px; height: 56px; --mdc-icon-size: 28px; }
       }
-    `],e([he({attribute:!1})],vt.prototype,"hass",void 0),e([ve()],vt.prototype,"_config",void 0),e([ve()],vt.prototype,"_currentTime",void 0),e([ve()],vt.prototype,"_filterOpen",void 0),e([ve()],vt.prototype,"_wizardOpen",void 0),e([ve()],vt.prototype,"_onboardingDone",void 0),e([ve()],vt.prototype,"_settingsOpen",void 0),vt=e([de("planavista-calendar-card")],vt),window.customCards=window.customCards||[],window.customCards.push({type:"planavista-calendar-card",name:"PlanaVista",description:"All-in-one calendar with clock, weather, toggles, and views",preview:!0}),console.info("%c PLANAVISTA %c v1.0.0 ","color: white; background: #6366F1; font-weight: bold; border-radius: 4px 0 0 4px; padding: 2px 6px;","color: #6366F1; background: #EEF2FF; font-weight: bold; border-radius: 0 4px 4px 0; padding: 2px 6px;");
+    `],e([he({attribute:!1})],ut.prototype,"hass",void 0),e([ve()],ut.prototype,"_config",void 0),e([ve()],ut.prototype,"_currentTime",void 0),e([ve()],ut.prototype,"_filterOpen",void 0),e([ve()],ut.prototype,"_wizardOpen",void 0),e([ve()],ut.prototype,"_onboardingDone",void 0),e([ve()],ut.prototype,"_settingsOpen",void 0),ut=e([de("planavista-calendar-card")],ut),window.customCards=window.customCards||[],window.customCards.push({type:"planavista-calendar-card",name:"PlanaVista",description:"All-in-one calendar with clock, weather, toggles, and views",preview:!0}),console.info("%c PLANAVISTA %c v1.0.0 ","color: white; background: #6366F1; font-weight: bold; border-radius: 4px 0 0 4px; padding: 2px 6px;","color: #6366F1; background: #EEF2FF; font-weight: bold; border-radius: 0 4px 4px 0; padding: 2px 6px;");

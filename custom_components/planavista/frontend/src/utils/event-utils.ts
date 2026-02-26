@@ -297,3 +297,47 @@ export function filterVisibleEvents(
 ): CalendarEvent[] {
   return events.filter(e => !hiddenCalendars.has(e.calendar_entity_id));
 }
+
+/**
+ * Build a CSS repeating-linear-gradient for multi-participant diagonal stripes.
+ * Uses each participant's color_light for soft pastel bands.
+ */
+export function buildStripeGradient(
+  sharedCalendars: SharedEvent['shared_calendars']
+): string {
+  if (sharedCalendars.length <= 1) return '';
+  const bandWidth = 20; // px per participant stripe
+  const stops: string[] = [];
+  sharedCalendars.forEach((cal, i) => {
+    const color = cal.color_light || cal.color;
+    const start = i * bandWidth;
+    const end = (i + 1) * bandWidth;
+    stops.push(`${color} ${start}px`, `${color} ${end}px`);
+  });
+  return `repeating-linear-gradient(135deg, ${stops.join(', ')})`;
+}
+
+/**
+ * Resolve the "organizer" calendar for an event.
+ * 1. Try event.organizer field, match to a calendar config
+ * 2. Fallback: first calendar in user's ordered list that appears in shared_calendars
+ */
+export function getOrganizerCalendar(
+  event: SharedEvent,
+  calendars: CalendarConfig[]
+): SharedEvent['shared_calendars'][0] | undefined {
+  // Try organizer field
+  if ((event as any).organizer) {
+    const orgMatch = event.shared_calendars.find(sc =>
+      sc.display_name?.toLowerCase() === (event as any).organizer?.toLowerCase() ||
+      sc.entity_id === (event as any).organizer
+    );
+    if (orgMatch) return orgMatch;
+  }
+  // Fallback: first calendar in user's ordered config list
+  for (const cal of calendars) {
+    const match = event.shared_calendars.find(sc => sc.entity_id === cal.entity_id);
+    if (match) return match;
+  }
+  return event.shared_calendars[0];
+}

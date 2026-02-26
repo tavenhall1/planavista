@@ -96,6 +96,7 @@ export interface ThemeOverrides {
   shadow_depth?: string;      // 'none' | 'subtle' | 'bold'
   avatar_border?: string;     // 'primary' | 'light' | hex color for custom uniform color
   now_color?: string;         // hex color for now indicator line
+  event_style?: 'stripes' | 'solid';  // multi-participant event rendering mode
 }
 
 export interface DisplayConfig {

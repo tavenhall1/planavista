@@ -4,6 +4,7 @@
 // Reusable sub-components
 import './components/color-swatch-picker';
 import './components/onboarding-wizard';
+import './components/pv-event-chip';
 
 import './cards/planavista-calendar-card';
 
