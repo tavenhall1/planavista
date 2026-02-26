@@ -338,6 +338,34 @@ export class PVViewWeek extends LitElement {
         .day-header-weekday { font-size: 0.5625rem; }
         .day-header-date { font-size: 1rem; }
       }
+
+      /* lg: large screens (1024–1439px) — scale up ~20% */
+      @media (min-width: 1024px) {
+        .time-gutter { width: 72px; }
+        .time-label { font-size: 0.8125rem; }
+        .header-gutter { width: 72px; }
+        .all-day-gutter { width: 72px; font-size: 0.8125rem; }
+        .day-header-weekday { font-size: 0.8125rem; }
+        .day-header-date { font-size: 1.375rem; }
+        .all-day-chip { font-size: 0.8125rem; }
+        .event-title { font-size: 0.8125rem; }
+        .event-time { font-size: 0.6875rem; }
+      }
+
+      /* xl: wall displays (1440px+) — scale up ~40% */
+      @media (min-width: 1440px) {
+        .time-gutter { width: 84px; }
+        .time-label { font-size: 0.9375rem; }
+        .header-gutter { width: 84px; }
+        .all-day-gutter { width: 84px; font-size: 0.9375rem; }
+        .day-header-weekday { font-size: 0.9375rem; }
+        .day-header-date { font-size: 1.625rem; }
+        .all-day-chip { font-size: 0.9375rem; min-height: 28px; padding: 4px 10px; }
+        .positioned-event { min-height: 28px; }
+        .event-title { font-size: 0.9375rem; }
+        .event-time { font-size: 0.8125rem; }
+        .shared-avatar, .shared-avatar-initial { width: 28px; height: 28px; }
+      }
     `,
   ];
 

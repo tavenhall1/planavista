@@ -695,6 +695,46 @@ export class PlanaVistaCalendarCard extends LitElement {
         .pvc-header-time { display: none; }
         .pvc-header-date { font-size: 0.875rem; }
       }
+
+      /* lg: large desktops / small wall displays (1024–1439px) — scale up ~20% */
+      @media (min-width: 1024px) {
+        .pvc-header { padding: 22px 28px; }
+        .pvc-weather-temp { font-size: 2rem; }
+        .pvc-weather-condition { font-size: 0.9375rem; }
+        .pvc-header-date { font-size: 1.5rem; }
+        .pvc-time-display { font-size: 2.5rem; }
+        .pvc-time-ampm { font-size: 1rem; }
+
+        .pvc-toolbar { padding: 14px 20px; gap: 10px; }
+        .pvc-filter-btn { padding: 10px 20px; font-size: 1rem; min-height: 48px; }
+        .pvc-new-btn { padding: 11px 22px; font-size: 1.0625rem; min-height: 48px; }
+        .pvc-today-btn { padding: 8px 18px; font-size: 1rem; min-height: 44px; }
+        .pvc-nav-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
+        .pvc-view-tab { padding: 8px 16px; font-size: 0.9375rem; min-height: 44px; }
+        .pvc-settings-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
+      }
+
+      /* xl: wall-mounted touch displays (1440px+, 27"+) — scale up ~40% */
+      @media (min-width: 1440px) {
+        .pvc-header { padding: 26px 36px; }
+        .pvc-weather-icon { --icon-size: 56px; }
+        .pvc-weather-temp { font-size: 2.375rem; }
+        .pvc-weather-condition { font-size: 1.0625rem; }
+        .pvc-header-date { font-size: 1.75rem; }
+        .pvc-time-display { font-size: 3rem; }
+        .pvc-time-ampm { font-size: 1.125rem; }
+
+        .pvc-toolbar { padding: 16px 24px; gap: 12px; }
+        .pvc-filter-btn { padding: 12px 24px; font-size: 1.125rem; min-height: 56px; }
+        .pvc-filter-badge { min-width: 24px; height: 24px; font-size: 0.8125rem; }
+        .pvc-filter-avatar { width: 40px; height: 40px; font-size: 1rem; }
+        .pvc-filter-name { font-size: 1.0625rem; }
+        .pvc-new-btn { padding: 14px 28px; font-size: 1.1875rem; min-height: 56px; }
+        .pvc-today-btn { padding: 10px 22px; font-size: 1.125rem; min-height: 52px; }
+        .pvc-nav-btn { width: 56px; height: 56px; --mdc-icon-size: 28px; }
+        .pvc-view-tab { padding: 10px 20px; font-size: 1.0625rem; min-height: 52px; }
+        .pvc-settings-btn { width: 56px; height: 56px; --mdc-icon-size: 28px; }
+      }
     `,
   ];
 

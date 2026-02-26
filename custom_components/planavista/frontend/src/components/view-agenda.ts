@@ -191,6 +191,33 @@ export class PVViewAgenda extends LitElement {
       @media (min-width: 768px) {
         .agenda-container { max-width: 720px; margin: 0 auto; }
       }
+
+      /* lg: large screens (1024–1439px) — scale up ~20% */
+      @media (min-width: 1024px) {
+        .agenda-container { max-width: 800px; }
+        .date-header { padding: 0.75rem 1.25rem; font-size: 0.9375rem; }
+        .agenda-event { padding: 0.875rem 1.25rem; gap: 0.875rem; }
+        .event-title { font-size: 1.0625rem; }
+        .event-meta { font-size: 0.9375rem; }
+        .event-location { font-size: 0.8125rem; }
+        .event-color-bar { width: 5px; }
+        .calendar-dot { width: 10px; height: 10px; }
+      }
+
+      /* xl: wall displays (1440px+) — scale up ~40% */
+      @media (min-width: 1440px) {
+        .agenda-container { max-width: 900px; }
+        .date-header { padding: 0.875rem 1.5rem; font-size: 1.0625rem; }
+        .agenda-event { padding: 1rem 1.5rem; gap: 1rem; }
+        .event-title { font-size: 1.1875rem; }
+        .event-meta { font-size: 1.0625rem; }
+        .event-location { font-size: 0.9375rem; }
+        .event-location ha-icon { --mdc-icon-size: 18px; }
+        .event-color-bar { width: 6px; min-height: 44px; }
+        .calendar-dot { width: 12px; height: 12px; }
+        .all-day-label { font-size: 0.875rem; }
+        .empty-state ha-icon { --mdc-icon-size: 64px; }
+      }
     `,
   ];
 

@@ -395,6 +395,35 @@ export class PVViewDay extends LitElement {
       @media (min-height: 901px) {
         .person-avatar, .person-initial { width: 64px; height: 64px; }
       }
+
+      /* lg: large screens (1024–1439px) — scale up ~20% */
+      @media (min-width: 1024px) {
+        .time-gutter { width: 72px; }
+        .time-label { font-size: 0.8125rem; }
+        .all-day-gutter { width: 72px; font-size: 0.8125rem; }
+        .header-gutter { width: 72px; }
+        .all-day-chip { font-size: 0.9375rem; min-height: 30px; }
+        .positioned-event { min-height: 30px; }
+        .event-title { font-size: 1rem; }
+        .event-time { font-size: 0.8125rem; }
+        .person-name { font-size: 1rem; }
+        .next-day-footer { font-size: 1.0625rem; }
+      }
+
+      /* xl: wall displays (1440px+) — scale up ~40% */
+      @media (min-width: 1440px) {
+        .time-gutter { width: 84px; }
+        .time-label { font-size: 0.9375rem; }
+        .all-day-gutter { width: 84px; font-size: 0.9375rem; }
+        .header-gutter { width: 84px; }
+        .all-day-chip { font-size: 1.0625rem; min-height: 34px; padding: 6px 14px; }
+        .positioned-event { min-height: 34px; padding: 8px 12px; }
+        .event-title { font-size: 1.125rem; }
+        .event-time { font-size: 0.9375rem; }
+        .person-avatar, .person-initial { width: 72px; height: 72px; font-size: 1.5rem; }
+        .person-name { font-size: 1.125rem; }
+        .next-day-footer { font-size: 1.1875rem; padding: 18px; }
+      }
     `,
   ];
 

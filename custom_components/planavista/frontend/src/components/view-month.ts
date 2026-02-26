@@ -166,6 +166,25 @@ export class PVViewMonth extends LitElement {
         .day-number { font-size: 0.6875rem; }
         .month-event-pill { font-size: 0.5625rem; }
       }
+
+      /* lg: large screens (1024–1439px) — scale up ~20% */
+      @media (min-width: 1024px) {
+        .weekday-name { font-size: 0.8125rem; padding: 0.625rem 0; }
+        .day-number { font-size: 0.9375rem; padding: 0.25rem 0.375rem; }
+        .day-cell.today .day-number { width: 30px; height: 30px; font-size: 0.875rem; }
+        .month-event-pill { font-size: 0.8125rem; padding: 2px 8px; }
+        .more-events { font-size: 0.75rem; }
+      }
+
+      /* xl: wall displays (1440px+) — scale up ~40% */
+      @media (min-width: 1440px) {
+        .weekday-name { font-size: 0.9375rem; padding: 0.75rem 0; }
+        .day-number { font-size: 1.0625rem; padding: 0.375rem 0.5rem; }
+        .day-cell.today .day-number { width: 36px; height: 36px; font-size: 1rem; }
+        .day-cell { padding: 0.375rem; }
+        .month-event-pill { font-size: 0.9375rem; padding: 3px 10px; min-height: 24px; }
+        .more-events { font-size: 0.875rem; }
+      }
     `,
   ];
 
