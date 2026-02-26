@@ -17,6 +17,7 @@ import {
   getEventsForDateRange,
   filterVisibleEvents,
 } from '../utils/event-utils';
+import { contrastText } from '../styles/themes';
 
 @customElement('pv-view-agenda')
 export class PVViewAgenda extends LitElement {
@@ -111,7 +112,7 @@ export class PVViewAgenda extends LitElement {
         font-size: 0.9375rem;
         font-weight: 500;
         line-height: 1.3;
-        color: var(--pv-text);
+        color: var(--event-text, var(--pv-text));
       }
 
       .event-meta {
@@ -119,7 +120,7 @@ export class PVViewAgenda extends LitElement {
         gap: 0.75rem;
         margin-top: 0.25rem;
         font-size: 0.8125rem;
-        color: var(--pv-text-secondary);
+        color: var(--event-text, var(--pv-text-secondary));
       }
 
       .event-time-text {
@@ -285,7 +286,7 @@ export class PVViewAgenda extends LitElement {
       : formatTime(event.end, this.timeFormat);
 
     return html`
-      <div class="agenda-event" style="--event-color: ${event.calendar_color}; --event-color-light: ${event.calendar_color_light || ''}" @click=${() => this._onEventClick(event)}>
+      <div class="agenda-event" style="--event-color: ${event.calendar_color}; --event-color-light: ${event.calendar_color_light || ''}; --event-text: ${contrastText(event.calendar_color_light || event.calendar_color)}" @click=${() => this._onEventClick(event)}>
         <div class="event-color-bar" style="background: ${event.calendar_color}"></div>
         <div class="event-content">
           <div class="event-title">${event.summary}</div>

@@ -272,8 +272,8 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
                         event["start"] = event["start"].isoformat()
                     if "end" in event and hasattr(event["end"], "isoformat"):
                         event["end"] = event["end"].isoformat()
-                    # Ensure UID and metadata are available for edit/delete operations
-                    event.setdefault("uid", "")
+                    # Ensure metadata fields are available for edit/delete operations
+                    # Note: uid comes from HA's calendar entity — don't set empty default
                     event.setdefault("description", "")
                     event.setdefault("location", "")
                     event.setdefault("recurrence_id", "")

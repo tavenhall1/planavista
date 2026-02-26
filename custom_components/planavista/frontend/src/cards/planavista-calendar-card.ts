@@ -1202,6 +1202,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
           .hideColumnHeaders=${false}
+          .avatarBorderMode=${display?.theme_overrides?.avatar_border || 'primary'}
         ></pv-view-day>`;
       case 'week':
         return html`<pv-view-week

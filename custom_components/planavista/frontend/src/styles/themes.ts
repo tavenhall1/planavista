@@ -15,7 +15,7 @@ function luminance(hex: string): number {
 }
 
 /** Returns '#FFFFFF' or '#1A1B1E' for best contrast against bg. */
-function contrastText(bgHex: string): string {
+export function contrastText(bgHex: string): string {
   return luminance(bgHex) > 0.4 ? '#1A1B1E' : '#FFFFFF';
 }
 
@@ -326,6 +326,17 @@ export function applyThemeWithOverrides(
       merged['--pv-shadow'] = shadows.shadow;
       merged['--pv-shadow-lg'] = shadows.shadowLg;
       merged['--pv-shadow-xl'] = shadows.shadowXl;
+    }
+
+    // Avatar border — only set CSS var for custom hex colors
+    // 'primary' and 'light' modes are handled per-avatar in view-day.ts
+    if (overrides.avatar_border && overrides.avatar_border !== 'primary' && overrides.avatar_border !== 'light') {
+      merged['--pv-avatar-border'] = overrides.avatar_border;
+    }
+
+    // Now indicator color
+    if (overrides.now_color) {
+      merged['--pv-now-color'] = overrides.now_color;
     }
   }
 

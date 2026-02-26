@@ -895,11 +895,6 @@ export class PVEventCreateDialog extends LitElement {
       return;
     }
 
-    if (this.mode === 'edit' && !this.prefill?.uid) {
-      this._error = 'Cannot edit this event (no unique ID). Try deleting and recreating it.';
-      return;
-    }
-
     this._error = '';
     this._saving = true;
 
@@ -923,6 +918,7 @@ export class PVEventCreateDialog extends LitElement {
       if (this._location.trim()) data.location = this._location.trim();
 
       if (this.mode === 'edit' && this.prefill?.uid) {
+        // Edit = delete old event + create replacement
         const deleteData: DeleteEventData = {
           entity_id: this.prefill.calendar_entity_id!,
           uid: this.prefill.uid,
@@ -930,6 +926,8 @@ export class PVEventCreateDialog extends LitElement {
         };
         await this._pv.state.doEditEvent(this.hass, deleteData, data);
       } else {
+        // Create new event (also used when editing an event without UID —
+        // the old event cannot be removed automatically in that case)
         await this._pv.state.doCreateEvent(this.hass, data);
       }
     } catch (err: any) {

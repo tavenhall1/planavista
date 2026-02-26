@@ -180,7 +180,7 @@ export const eventStyles = css`
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1.3;
-    color: var(--pv-text);
+    color: var(--event-text, var(--pv-text));
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -188,7 +188,7 @@ export const eventStyles = css`
 
   .pv-event-time {
     font-size: 0.6875rem;
-    color: var(--pv-text-secondary);
+    color: var(--event-text, var(--pv-text-secondary));
     margin-top: 1px;
   }
 
@@ -200,7 +200,7 @@ export const eventStyles = css`
     border-radius: 4px;
     border-left: 2px solid var(--event-color, var(--pv-accent));
     background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
-    color: var(--pv-text);
+    color: var(--event-text, var(--pv-text));
     font-size: 0.6875rem;
     font-weight: 500;
     white-space: nowrap;

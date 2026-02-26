@@ -623,6 +623,49 @@ export class PvOnboardingWizard extends LitElement {
             </div>
           </div>
 
+          <!-- Avatar Border -->
+          <div class="customize-group">
+            <label class="pv-label">Avatar Border</label>
+            <div class="pill-group">
+              ${(['primary', 'light'] as const).map(mode => html`
+                <button
+                  class="pill-btn ${(ov.avatar_border || 'primary') === mode ? 'pill-btn--active' : ''}"
+                  type="button"
+                  @click=${() => this._setOverride('avatar_border', mode)}
+                >${mode === 'primary' ? 'Primary' : 'Light'}</button>
+              `)}
+            </div>
+            <div class="bg-custom-row" style="margin-top: 0.375rem;">
+              <label class="bg-custom-label">Custom:</label>
+              <input type="color" class="bg-color-input"
+                .value=${(ov.avatar_border && ov.avatar_border !== 'primary' && ov.avatar_border !== 'light') ? ov.avatar_border : '#6366F1'}
+                @input=${(e: Event) => this._setOverride('avatar_border', (e.target as HTMLInputElement).value)}
+              />
+              ${ov.avatar_border && ov.avatar_border !== 'primary' && ov.avatar_border !== 'light' ? html`
+                <span class="bg-color-hex">${ov.avatar_border}</span>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Now Line Color -->
+          <div class="customize-group">
+            <label class="pv-label">Now Indicator</label>
+            <div class="bg-options">
+              <button class="pill-btn ${!ov.now_color ? 'pill-btn--active' : ''}" type="button"
+                @click=${() => this._setOverride('now_color', undefined)}>Theme Default</button>
+              <div class="bg-custom-row">
+                <label class="bg-custom-label">Custom:</label>
+                <input type="color" class="bg-color-input"
+                  .value=${ov.now_color || '#EF4444'}
+                  @input=${(e: Event) => this._setOverride('now_color', (e.target as HTMLInputElement).value)}
+                />
+                ${ov.now_color ? html`
+                  <span class="bg-color-hex">${ov.now_color}</span>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+
           <!-- Reset -->
           ${hasOverrides ? html`
             <button class="reset-btn" type="button" @click=${this._resetOverrides}>

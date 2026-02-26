@@ -13,6 +13,7 @@ import {
   filterVisibleEvents,
 } from '../utils/event-utils';
 import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
+import { contrastText } from '../styles/themes';
 
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;
@@ -27,6 +28,7 @@ export class PVViewDay extends LitElement {
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) hideColumnHeaders = false;
+  @property({ attribute: false }) avatarBorderMode: string = 'primary';
 
   static styles = [
     baseStyles,
@@ -125,7 +127,7 @@ export class PVViewDay extends LitElement {
         border-radius: 50%;
         object-fit: cover;
         flex-shrink: 0;
-        border: 3px solid var(--pv-border-subtle);
+        border: 3px solid var(--pv-avatar-border, var(--pv-border-subtle));
       }
 
       .person-initial {
@@ -254,12 +256,12 @@ export class PVViewDay extends LitElement {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: var(--pv-text);
+        color: var(--event-text, var(--pv-text));
       }
 
       .positioned-event .event-time {
         font-size: 0.6875rem;
-        color: var(--pv-text-secondary);
+        color: var(--event-text, var(--pv-text-secondary));
         margin-top: 2px;
         font-weight: 500;
       }
@@ -497,7 +499,7 @@ export class PVViewDay extends LitElement {
               ${allDayEvents.map(e => html`
                 <div
                   class="all-day-chip"
-                  style="background: ${e.calendar_color}"
+                  style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
                   @click=${() => this._onEventClick(e)}
                 >${e.summary}</div>
               `)}
@@ -515,10 +517,14 @@ export class PVViewDay extends LitElement {
                 ? getPersonName(this.hass, cal.person_entity)
                 : cal?.display_name || key;
               const color = cal?.color || '#6366F1';
+              const colorLight = cal?.color_light || color;
+              const borderColor = this.avatarBorderMode === 'light' ? colorLight
+                : this.avatarBorderMode === 'primary' ? color : undefined;
               return html`
                 <div class="person-header">
                   ${avatar
-                    ? html`<img class="person-avatar" src="${avatar}" alt="${name}" />`
+                    ? html`<img class="person-avatar" src="${avatar}" alt="${name}"
+                        style="${borderColor ? `--pv-avatar-border: ${borderColor}` : ''}" />`
                     : html`<div class="person-initial" style="background: ${color}">${name[0]?.toUpperCase() || '?'}</div>`}
                   <span class="person-name">${name}</span>
                 </div>
@@ -651,6 +657,7 @@ export class PVViewDay extends LitElement {
                 left: ${left};
                 --event-color: ${event.calendar_color};
                 --event-color-light: ${event.calendar_color_light || ''};
+                --event-text: ${contrastText(event.calendar_color_light || event.calendar_color)};
               "
               @click=${() => this._onEventClick(event)}
             >

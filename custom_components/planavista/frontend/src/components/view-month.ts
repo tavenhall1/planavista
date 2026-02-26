@@ -5,6 +5,7 @@ import { CalendarEvent, CalendarConfig } from '../types';
 import { baseStyles, eventStyles } from '../styles/shared';
 import { getMonthGrid, isToday, getDateKey } from '../utils/date-utils';
 import { groupEventsByDate, filterVisibleEvents } from '../utils/event-utils';
+import { contrastText } from '../styles/themes';
 
 const MAX_VISIBLE_EVENTS = 3;
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -116,7 +117,7 @@ export class PVViewMonth extends LitElement {
         background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
         font-size: 0.625rem;
         font-weight: 500;
-        color: var(--pv-text);
+        color: var(--event-text, var(--pv-text));
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -229,7 +230,7 @@ export class PVViewMonth extends LitElement {
           ${visibleEvents.map(e => html`
             <div
               class="month-event-pill"
-              style="--event-color: ${e.calendar_color}; --event-color-light: ${e.calendar_color_light || ''}"
+              style="--event-color: ${e.calendar_color}; --event-color-light: ${e.calendar_color_light || ''}; --event-text: ${contrastText(e.calendar_color_light || e.calendar_color)}"
               @click=${(ev: Event) => { ev.stopPropagation(); this._onEventClick(e); }}
             >${e.summary}</div>
           `)}

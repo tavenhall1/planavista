@@ -14,6 +14,7 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 import { getPersonAvatar } from '../utils/ha-utils';
+import { contrastText } from '../styles/themes';
 
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;
@@ -238,7 +239,7 @@ export class PVViewWeek extends LitElement {
       .positioned-event .event-title {
         font-weight: 500;
         line-height: 1.2;
-        color: var(--pv-text);
+        color: var(--event-text, var(--pv-text));
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -246,7 +247,7 @@ export class PVViewWeek extends LitElement {
 
       .positioned-event .event-time {
         font-size: 0.5625rem;
-        color: var(--pv-text-secondary);
+        color: var(--event-text, var(--pv-text-secondary));
       }
 
       .shared-avatars {
@@ -463,7 +464,7 @@ export class PVViewWeek extends LitElement {
               ${dayAllDay.map(e => html`
                 <div
                   class="all-day-event"
-                  style="background: ${e.calendar_color}"
+                  style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
                   @click=${() => this._onEventClick(e)}
                 >${e.summary}</div>
               `)}
@@ -543,7 +544,7 @@ export class PVViewWeek extends LitElement {
           return html`
             <div
               class="positioned-event"
-              style="top:${pos.top}%;height:${pos.height}%;width:${w};left:${l};--event-color:${event.calendar_color};--event-color-light:${event.calendar_color_light || ''}"
+              style="top:${pos.top}%;height:${pos.height}%;width:${w};left:${l};--event-color:${event.calendar_color};--event-color-light:${event.calendar_color_light || ''};--event-text:${contrastText(event.calendar_color_light || event.calendar_color)}"
               @click=${() => this._onEventClick(event)}
             >
               <div class="event-title">${event.summary}</div>

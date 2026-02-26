@@ -94,6 +94,8 @@ export interface ThemeOverrides {
   header_custom?: string;     // hex color (only used when header_style='custom')
   corner_style?: string;      // 'sharp' | 'rounded' | 'pill'
   shadow_depth?: string;      // 'none' | 'subtle' | 'bold'
+  avatar_border?: string;     // 'primary' | 'light' | hex color for custom uniform color
+  now_color?: string;         // hex color for now indicator line
 }
 
 export interface DisplayConfig {

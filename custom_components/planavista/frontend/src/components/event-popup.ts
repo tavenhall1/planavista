@@ -15,6 +15,7 @@ export class PVEventPopup extends LitElement {
 
   @state() private _confirmDelete = false;
   @state() private _deleting = false;
+  @state() private _deleteError = '';
 
   private _pv = new PlanaVistaController(this);
 
@@ -207,8 +208,11 @@ export class PVEventPopup extends LitElement {
               <div class="delete-confirm-text">
                 Delete "${event.summary}"?
               </div>
+              ${this._deleteError ? html`
+                <div style="color: #EF4444; font-size: 0.8125rem; margin-top: 0.5rem;">${this._deleteError}</div>
+              ` : nothing}
               <div class="delete-confirm-actions">
-                <button class="pv-btn pv-btn-secondary" @click=${() => this._confirmDelete = false}>
+                <button class="pv-btn pv-btn-secondary" @click=${() => { this._confirmDelete = false; this._deleteError = ''; }}>
                   Cancel
                 </button>
                 <button class="pv-btn btn-delete" ?disabled=${this._deleting} @click=${this._delete}>
@@ -225,6 +229,7 @@ export class PVEventPopup extends LitElement {
   private _close() {
     this._confirmDelete = false;
     this._deleting = false;
+    this._deleteError = '';
     this._pv.state.selectEvent(null);
   }
 
@@ -236,11 +241,13 @@ export class PVEventPopup extends LitElement {
 
   private async _delete() {
     if (!this.event?.uid) {
-      console.warn('PlanaVista: Cannot delete event without UID');
+      this._confirmDelete = false;
+      this._deleteError = 'Cannot delete — this event has no unique ID. Delete it from your calendar app directly.';
       return;
     }
 
     this._deleting = true;
+    this._deleteError = '';
     try {
       const data: DeleteEventData = {
         entity_id: this.event.calendar_entity_id,
@@ -250,6 +257,7 @@ export class PVEventPopup extends LitElement {
       await this._pv.state.doDeleteEvent(this.hass, data);
     } catch (err) {
       console.error('PlanaVista: Delete failed', err);
+      this._deleteError = 'Failed to delete event. Please try again.';
       this._deleting = false;
     }
   }
