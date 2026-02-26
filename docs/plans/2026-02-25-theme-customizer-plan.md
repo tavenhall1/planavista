@@ -825,3 +825,140 @@ git commit -m "build: compile theme customizer"
 ```bash
 git push
 ```
+
+---
+
+### Task 7: Add drag-to-reorder calendars in settings
+
+**Files:**
+- Modify: `custom_components/planavista/frontend/src/components/onboarding-wizard.ts`
+
+This adds drag handles to each calendar row on page 1, allowing users to reorder calendars by dragging. The saved order (array position in the `calendars` array) is used everywhere calendars appear: day view columns, filter dropdown, avatar strip.
+
+**Step 1: Add drag state**
+
+Add state for tracking drag operations:
+
+```typescript
+@state() private _dragIdx: number | null = null;
+@state() private _dragOverIdx: number | null = null;
+```
+
+**Step 2: Add drag handlers**
+
+```typescript
+private _onDragStart(idx: number, e: DragEvent) {
+  this._dragIdx = idx;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(idx));
+  }
+}
+
+private _onDragOver(idx: number, e: DragEvent) {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  this._dragOverIdx = idx;
+}
+
+private _onDragLeave() {
+  this._dragOverIdx = null;
+}
+
+private _onDrop(idx: number, e: DragEvent) {
+  e.preventDefault();
+  if (this._dragIdx !== null && this._dragIdx !== idx) {
+    const updated = [...this._calendarConfigs];
+    const [moved] = updated.splice(this._dragIdx, 1);
+    updated.splice(idx, 0, moved);
+    this._calendarConfigs = updated;
+  }
+  this._dragIdx = null;
+  this._dragOverIdx = null;
+}
+
+private _onDragEnd() {
+  this._dragIdx = null;
+  this._dragOverIdx = null;
+}
+```
+
+**Step 3: Update `_renderCalendarRow` to add drag handle and attributes**
+
+Modify the `.cal-row` div to be draggable and add a grip icon:
+
+```typescript
+private _renderCalendarRow(cal: CalendarEntry, idx: number) {
+  const isDragging = this._dragIdx === idx;
+  const isDragOver = this._dragOverIdx === idx && this._dragIdx !== idx;
+
+  return html`
+    <div class="cal-row ${isDragging ? 'cal-row--dragging' : ''} ${isDragOver ? 'cal-row--dragover' : ''}"
+      draggable="true"
+      @dragstart=${(e: DragEvent) => this._onDragStart(idx, e)}
+      @dragover=${(e: DragEvent) => this._onDragOver(idx, e)}
+      @dragleave=${this._onDragLeave}
+      @drop=${(e: DragEvent) => this._onDrop(idx, e)}
+      @dragend=${this._onDragEnd}
+    >
+      <div class="cal-header">
+        <!-- Drag handle -->
+        <div class="cal-drag-handle" aria-label="Drag to reorder">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+          </svg>
+        </div>
+        <!-- existing checkbox + info -->
+        ...
+      </div>
+      ...
+    </div>
+  `;
+}
+```
+
+**Step 4: Add CSS for drag handle and drag states**
+
+```css
+.cal-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--pv-text-muted, #9CA3AF);
+  border-radius: 4px;
+  transition: color var(--pv-transition, 200ms ease);
+}
+
+.cal-drag-handle:hover {
+  color: var(--pv-text-secondary, #6B7280);
+}
+
+.cal-drag-handle:active {
+  cursor: grabbing;
+}
+
+.cal-row--dragging {
+  opacity: 0.4;
+}
+
+.cal-row--dragover {
+  border-color: var(--pv-accent, #6366F1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pv-accent, #6366F1) 20%, transparent);
+}
+```
+
+**Step 5: No backend changes needed**
+
+The calendar order is determined by array position in the `calendars` array passed to `save_config`. The existing save flow already preserves array order. All views that render calendars (day view columns, filter dropdown, avatar strip) iterate the `calendars` array in order, so reordering in the settings panel automatically reflects everywhere.
+
+**Step 6: Build and commit**
+
+```bash
+cd custom_components/planavista/frontend && npx rollup -c
+git add custom_components/planavista/frontend/
+git commit -m "feat(settings): add drag-to-reorder for calendars"
+```
