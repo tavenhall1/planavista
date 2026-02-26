@@ -87,12 +87,22 @@ export interface CalendarEvent {
   calendar_color_light: string;
 }
 
+export interface ThemeOverrides {
+  accent?: string;            // hex color for accent
+  background?: string;        // hex color for bg override
+  header_style?: string;      // preset key: 'gradient_purple' | 'gradient_teal' | 'gradient_sunset' | 'solid_accent' | 'solid_dark' | 'custom'
+  header_custom?: string;     // hex color (only used when header_style='custom')
+  corner_style?: string;      // 'sharp' | 'rounded' | 'pill'
+  shadow_depth?: string;      // 'none' | 'subtle' | 'bold'
+}
+
 export interface DisplayConfig {
   time_format: '12h' | '24h';
   weather_entity: string;
   first_day: 'monday' | 'sunday';
   default_view: 'day' | 'week' | 'month' | 'agenda';
   theme: string;
+  theme_overrides?: ThemeOverrides;
 }
 
 export interface PlanaVistaData {
