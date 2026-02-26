@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { baseStyles, buttonStyles, formStyles, animationStyles, scrollbarStyles } from '../styles/shared';
+import { ThemeOverrides } from '../types';
 import { PvColorSwatchPicker } from './color-swatch-picker';
 
 interface CalendarEntry {
@@ -49,6 +50,10 @@ export class PvOnboardingWizard extends LitElement {
   // Page 2 — Theme
   @state() private _theme: 'light' | 'dark' | 'minimal' | 'vibrant' = 'light';
 
+  // Page 2 — Theme customization overrides
+  @state() private _themeOverrides: ThemeOverrides = {};
+  @state() private _customizeOpen = false;
+
   @state() private _saving = false;
   @state() private _saveError = '';
   private _settingsInitialized = false;
@@ -83,6 +88,8 @@ export class PvOnboardingWizard extends LitElement {
     this._weatherEntity = display.weather_entity || '';
     this._defaultView = display.default_view || 'week';
     this._theme = display.theme || 'light';
+    this._themeOverrides = display.theme_overrides ? { ...display.theme_overrides } : {};
+    this._customizeOpen = Object.keys(this._themeOverrides).length > 0;
   }
 
   private _initCalendars() {
@@ -178,6 +185,7 @@ export class PvOnboardingWizard extends LitElement {
           first_day: this._firstDay,
           default_view: this._defaultView,
           theme: this._theme,
+          theme_overrides: Object.keys(this._themeOverrides).length > 0 ? this._themeOverrides : undefined,
         },
       };
       if (this.mode === 'onboarding') {
@@ -218,6 +226,34 @@ export class PvOnboardingWizard extends LitElement {
       color: e.detail.color,
       color_light: e.detail.colorLight,
     });
+  }
+
+  // ─── Theme customization ─────────────────────────────────────────────────────
+
+  private _dispatchThemePreview() {
+    this.dispatchEvent(new CustomEvent('theme-preview', {
+      detail: {
+        theme: this._theme,
+        overrides: Object.keys(this._themeOverrides).length > 0 ? this._themeOverrides : null,
+      },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  private _setOverride(key: keyof ThemeOverrides, value: string | undefined) {
+    if (value === undefined || value === '') {
+      const { [key]: _, ...rest } = this._themeOverrides;
+      this._themeOverrides = rest as ThemeOverrides;
+    } else {
+      this._themeOverrides = { ...this._themeOverrides, [key]: value };
+    }
+    this._dispatchThemePreview();
+  }
+
+  private _resetOverrides() {
+    this._themeOverrides = {};
+    this._dispatchThemePreview();
   }
 
   // ─── Render helpers ──────────────────────────────────────────────────────────
@@ -415,6 +451,140 @@ export class PvOnboardingWizard extends LitElement {
     `;
   }
 
+  private _renderCustomize() {
+    const ov = this._themeOverrides;
+    const hasOverrides = Object.keys(ov).length > 0;
+
+    return html`
+      <!-- Customize toggle -->
+      <button
+        class="customize-toggle"
+        type="button"
+        @click=${() => { this._customizeOpen = !this._customizeOpen; }}
+      >
+        <span class="customize-toggle-label">Customize</span>
+        <svg class="customize-toggle-chevron ${this._customizeOpen ? 'open' : ''}" viewBox="0 0 24 24" width="18" height="18">
+          <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" fill="currentColor"/>
+        </svg>
+      </button>
+
+      ${this._customizeOpen ? html`
+        <div class="customize-section">
+
+          <!-- Accent Color -->
+          <div class="customize-group">
+            <label class="pv-label">Accent Color</label>
+            <pv-color-swatch-picker
+              .value=${ov.accent || ''}
+              @color-change=${(e: CustomEvent<{ color: string }>) => this._setOverride('accent', e.detail.color)}
+            ></pv-color-swatch-picker>
+          </div>
+
+          <!-- Background -->
+          <div class="customize-group">
+            <label class="pv-label">Background</label>
+            <div class="bg-options">
+              <button class="pill-btn ${!ov.background ? 'pill-btn--active' : ''}" type="button"
+                @click=${() => this._setOverride('background', undefined)}>Base Default</button>
+              <div class="bg-custom-row">
+                <label class="bg-custom-label">Custom:</label>
+                <input type="color" class="bg-color-input"
+                  .value=${ov.background || '#FFFFFF'}
+                  @input=${(e: Event) => this._setOverride('background', (e.target as HTMLInputElement).value)}
+                />
+                ${ov.background ? html`
+                  <span class="bg-color-hex">${ov.background}</span>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Header Style -->
+          <div class="customize-group">
+            <label class="pv-label">Header Style</label>
+            <div class="header-style-grid">
+              ${([
+                { key: 'gradient_purple', label: 'Purple', gradient: 'linear-gradient(135deg, #667eea, #764ba2)' },
+                { key: 'gradient_teal', label: 'Teal', gradient: 'linear-gradient(135deg, #0D9488, #2563EB)' },
+                { key: 'gradient_sunset', label: 'Sunset', gradient: 'linear-gradient(135deg, #F59E0B, #EF4444)' },
+                { key: 'solid_accent', label: 'Accent', gradient: ov.accent || '#6366F1' },
+                { key: 'solid_dark', label: 'Dark', gradient: '#1A1B1E' },
+              ] as Array<{ key: string; label: string; gradient: string }>).map(h => html`
+                <button
+                  class="header-style-btn ${ov.header_style === h.key ? 'header-style-btn--active' : ''}"
+                  type="button"
+                  @click=${() => this._setOverride('header_style', h.key)}
+                >
+                  <div class="header-style-preview" style="background: ${h.gradient};"></div>
+                  <span class="header-style-label">${h.label}</span>
+                </button>
+              `)}
+              <button
+                class="header-style-btn ${ov.header_style === 'custom' ? 'header-style-btn--active' : ''}"
+                type="button"
+                @click=${() => this._setOverride('header_style', 'custom')}
+              >
+                <div class="header-style-preview" style="background: ${ov.header_custom || '#333'};"></div>
+                <span class="header-style-label">Custom</span>
+              </button>
+            </div>
+            ${ov.header_style === 'custom' ? html`
+              <div class="header-custom-row">
+                <input type="color" class="bg-color-input"
+                  .value=${ov.header_custom || '#333333'}
+                  @input=${(e: Event) => {
+                    this._themeOverrides = { ...this._themeOverrides, header_custom: (e.target as HTMLInputElement).value };
+                    this._dispatchThemePreview();
+                  }}
+                />
+                <span class="bg-color-hex">${ov.header_custom || '#333333'}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Corners -->
+          <div class="customize-group">
+            <label class="pv-label">Corners</label>
+            <div class="pill-group">
+              ${(['sharp', 'rounded', 'pill'] as const).map(style => html`
+                <button
+                  class="pill-btn ${(ov.corner_style || 'rounded') === style ? 'pill-btn--active' : ''}"
+                  type="button"
+                  @click=${() => this._setOverride('corner_style', style)}
+                >${style.charAt(0).toUpperCase() + style.slice(1)}</button>
+              `)}
+            </div>
+          </div>
+
+          <!-- Shadows -->
+          <div class="customize-group">
+            <label class="pv-label">Shadows</label>
+            <div class="pill-group">
+              ${(['none', 'subtle', 'bold'] as const).map(depth => html`
+                <button
+                  class="pill-btn ${(ov.shadow_depth || 'subtle') === depth ? 'pill-btn--active' : ''}"
+                  type="button"
+                  @click=${() => this._setOverride('shadow_depth', depth)}
+                >${depth.charAt(0).toUpperCase() + depth.slice(1)}</button>
+              `)}
+            </div>
+          </div>
+
+          <!-- Reset -->
+          ${hasOverrides ? html`
+            <button class="reset-btn" type="button" @click=${this._resetOverrides}>
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+              </svg>
+              Reset to Base Theme
+            </button>
+          ` : ''}
+
+        </div>
+      ` : ''}
+    `;
+  }
+
   private _renderPage2() {
     const themes: Array<{
       key: 'light' | 'dark' | 'minimal' | 'vibrant';
@@ -469,7 +639,7 @@ export class PvOnboardingWizard extends LitElement {
               class="theme-card ${this._theme === t.key ? 'theme-card--active' : ''}"
               type="button"
               aria-pressed="${this._theme === t.key}"
-              @click=${() => { this._theme = t.key; }}
+              @click=${() => { this._theme = t.key; this._dispatchThemePreview(); }}
             >
               <!-- Mini preview -->
               <div
@@ -507,6 +677,8 @@ export class PvOnboardingWizard extends LitElement {
             </button>
           `)}
         </div>
+
+        ${this._renderCustomize()}
       </div>
     `;
   }
