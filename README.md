@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/PlanaVista-readme-hero-v1.png" alt="PlanaVista" width="100%">
+  <img src="assets/readme-hero.png" alt="PlanaVista" width="100%">
 </p>
 
 <h1 align="center">PlanaVista</h1>
@@ -182,7 +182,7 @@ MIT License — Copyright (c) 2025-2026 Stephen Hall. See [LICENSE](LICENSE).
 ---
 
 <p align="center">
-  <img src="assets/Planavista-icon-512.jpg" alt="PlanaVista" width="64"><br>
+  <img src="assets/icon-512.png" alt="PlanaVista" width="64"><br>
   <strong>PlanaVista</strong> — Your panoramic view of family life<br>
   <sub>Made for the Home Assistant community</sub>
 </p>
