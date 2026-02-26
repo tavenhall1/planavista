@@ -249,9 +249,51 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
     async def _fetch_calendar_events(
         self, entity_id: str, start: datetime, end: datetime
     ) -> list[dict]:
-        """Fetch events from a calendar entity."""
+        """Fetch events from a calendar entity.
+
+        Tries direct entity access first (returns CalendarEvent objects with uid),
+        then falls back to the calendar.get_events service (which may omit uid).
+        """
+        # Approach 1: Direct entity access — gives us CalendarEvent objects with uid
         try:
-            # Use the calendar.get_events service
+            entity_comp = self.hass.data.get(CALENDAR_DOMAIN)
+            if entity_comp and hasattr(entity_comp, "get_entity"):
+                entity = entity_comp.get_entity(entity_id)
+                if entity and hasattr(entity, "async_get_events"):
+                    raw_events = await entity.async_get_events(self.hass, start, end)
+                    events = []
+                    for ev in raw_events:
+                        d = {
+                            "summary": ev.summary or "",
+                            "description": ev.description or "",
+                            "location": ev.location or "",
+                            "uid": ev.uid or "",
+                            "recurrence_id": ev.recurrence_id or "",
+                        }
+                        if hasattr(ev.start, "isoformat"):
+                            d["start"] = ev.start.isoformat()
+                        else:
+                            d["start"] = str(ev.start)
+                        if hasattr(ev.end, "isoformat"):
+                            d["end"] = ev.end.isoformat()
+                        else:
+                            d["end"] = str(ev.end)
+                        events.append(d)
+                    _LOGGER.debug(
+                        "PlanaVista: fetched %d events from %s via direct entity (uid available: %s)",
+                        len(events),
+                        entity_id,
+                        any(e.get("uid") for e in events),
+                    )
+                    return events
+        except Exception as err:
+            _LOGGER.debug(
+                "PlanaVista: direct entity access failed for %s, falling back to service: %s",
+                entity_id, err,
+            )
+
+        # Approach 2: Fallback — calendar.get_events service (may omit uid)
+        try:
             response = await self.hass.services.async_call(
                 CALENDAR_DOMAIN,
                 "get_events",
@@ -266,17 +308,20 @@ class PlanaVistaCoordinator(DataUpdateCoordinator):
 
             if response and entity_id in response:
                 events = response[entity_id].get("events", [])
-                # Convert datetime objects to ISO strings and ensure all metadata passes through
                 for event in events:
                     if "start" in event and hasattr(event["start"], "isoformat"):
                         event["start"] = event["start"].isoformat()
                     if "end" in event and hasattr(event["end"], "isoformat"):
                         event["end"] = event["end"].isoformat()
-                    # Ensure metadata fields are available for edit/delete operations
-                    # Note: uid comes from HA's calendar entity — don't set empty default
                     event.setdefault("description", "")
                     event.setdefault("location", "")
                     event.setdefault("recurrence_id", "")
+                _LOGGER.debug(
+                    "PlanaVista: fetched %d events from %s via service (uid available: %s)",
+                    len(events),
+                    entity_id,
+                    any(e.get("uid") for e in events),
+                )
                 return events
             return []
         except Exception as err:

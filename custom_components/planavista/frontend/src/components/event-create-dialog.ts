@@ -917,7 +917,12 @@ export class PVEventCreateDialog extends LitElement {
       if (this._description.trim()) data.description = this._description.trim();
       if (this._location.trim()) data.location = this._location.trim();
 
-      if (this.mode === 'edit' && this.prefill?.uid) {
+      if (this.mode === 'edit') {
+        if (!this.prefill?.uid) {
+          this._error = 'Cannot edit — this event has no unique ID. Try deleting it from your calendar app and re-creating it here.';
+          this._saving = false;
+          return;
+        }
         // Edit = delete old event + create replacement
         const deleteData: DeleteEventData = {
           entity_id: this.prefill.calendar_entity_id!,
@@ -926,8 +931,6 @@ export class PVEventCreateDialog extends LitElement {
         };
         await this._pv.state.doEditEvent(this.hass, deleteData, data);
       } else {
-        // Create new event (also used when editing an event without UID —
-        // the old event cannot be removed automatically in that case)
         await this._pv.state.doCreateEvent(this.hass, data);
       }
     } catch (err: any) {

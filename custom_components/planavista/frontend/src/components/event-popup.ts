@@ -241,7 +241,7 @@ export class PVEventPopup extends LitElement {
 
   private async _delete() {
     if (!this.event?.uid) {
-      this._confirmDelete = false;
+      // Keep _confirmDelete true so the error message stays visible in the confirm view
       this._deleteError = 'Cannot delete — this event has no unique ID. Delete it from your calendar app directly.';
       return;
     }
