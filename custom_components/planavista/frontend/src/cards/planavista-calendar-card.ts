@@ -1,9 +1,9 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig } from '../types';
+import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig, ThemeOverrides } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
-import { applyTheme, resolveTheme, clearThemeCache } from '../styles/themes';
+import { applyTheme, resolveTheme, clearThemeCache, applyThemeWithOverrides } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { formatDate } from '../utils/date-utils';
 import { getPlanaVistaData, getPersonAvatar, getPersonName } from '../utils/ha-utils';
@@ -781,8 +781,8 @@ export class PlanaVistaCalendarCard extends LitElement {
     if (changedProps.has('hass') || changedProps.has('_config') || changedProps.has('_settingsOpen')) {
       const data = getPlanaVistaData(this.hass, this._config?.entity);
       const theme = resolveTheme(this._config?.theme, data?.display?.theme);
-      console.log('[PlanaVista] theme resolve:', { cardTheme: this._config?.theme, displayTheme: data?.display?.theme, resolved: theme, display: data?.display });
-      applyTheme(this, theme);
+      const overrides = data?.display?.theme_overrides || null;
+      applyThemeWithOverrides(this, theme, overrides);
     }
   }
 
@@ -851,6 +851,13 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _onSettingsClose() {
     this._settingsOpen = false;
+  }
+
+  private _onThemePreview(e: CustomEvent<{ theme: string; overrides: ThemeOverrides | null }>) {
+    const { theme, overrides } = e.detail;
+    const resolved = resolveTheme(theme);
+    clearThemeCache(this);
+    applyThemeWithOverrides(this, resolved, overrides);
   }
 
   private _showWeatherDetails() {
@@ -965,6 +972,7 @@ export class PlanaVistaCalendarCard extends LitElement {
               .config=${data}
               @settings-save=${this._onSettingsSave}
               @settings-close=${this._onSettingsClose}
+              @theme-preview=${this._onThemePreview}
             ></pv-onboarding-wizard>
           </div>
         ` : nothing}
