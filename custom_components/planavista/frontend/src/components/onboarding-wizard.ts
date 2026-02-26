@@ -1330,6 +1330,173 @@ export class PvOnboardingWizard extends LitElement {
         justify-content: center;
       }
 
+      /* ── Customize accordion (page 2) ─────────────────────── */
+
+      .customize-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 1.5rem;
+        padding: 0.75rem 0;
+        border: none;
+        border-top: 1px solid var(--pv-border-subtle, #E5E7EB);
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .customize-toggle-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--pv-text-secondary, #6B7280);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .customize-toggle-chevron {
+        fill: var(--pv-text-secondary, #6B7280);
+        transition: transform var(--pv-transition, 200ms ease);
+      }
+
+      .customize-toggle-chevron.open {
+        transform: rotate(180deg);
+      }
+
+      .customize-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        padding-top: 0.5rem;
+        animation: pv-fadeIn 200ms ease forwards;
+      }
+
+      .customize-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      /* Background options */
+      .bg-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .bg-custom-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .bg-custom-label {
+        font-size: 0.8125rem;
+        color: var(--pv-text-secondary, #6B7280);
+        font-weight: 500;
+      }
+
+      .bg-color-input {
+        width: 36px;
+        height: 36px;
+        border: 2px solid var(--pv-border-subtle, #E5E7EB);
+        border-radius: 8px;
+        padding: 2px;
+        cursor: pointer;
+        background: transparent;
+      }
+
+      .bg-color-hex {
+        font-size: 0.75rem;
+        font-family: monospace;
+        color: var(--pv-text-muted, #9CA3AF);
+      }
+
+      /* Header style grid */
+      .header-style-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      @media (max-width: 400px) {
+        .header-style-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      .header-style-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 6px;
+        border: 2px solid var(--pv-border-subtle, #E5E7EB);
+        border-radius: var(--pv-radius-sm, 8px);
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all var(--pv-transition, 200ms ease);
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .header-style-btn:hover {
+        border-color: var(--pv-accent, #6366F1);
+      }
+
+      .header-style-btn--active {
+        border-color: var(--pv-accent, #6366F1);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--pv-accent, #6366F1) 25%, transparent);
+      }
+
+      .header-style-preview {
+        width: 100%;
+        height: 24px;
+        border-radius: 4px;
+      }
+
+      .header-style-label {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: var(--pv-text-secondary, #6B7280);
+      }
+
+      .header-custom-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      /* Reset button */
+      .reset-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--pv-border-subtle, #E5E7EB);
+        border-radius: 9999px;
+        background: transparent;
+        color: var(--pv-text-secondary, #6B7280);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all var(--pv-transition, 200ms ease);
+        align-self: flex-start;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .reset-btn svg {
+        fill: currentColor;
+      }
+
+      .reset-btn:hover {
+        border-color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent, #6366F1);
+      }
+
       /* ── Save error banner ───────────────────────────────────── */
 
       .save-error-banner {
