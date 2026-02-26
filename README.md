@@ -177,7 +177,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT License — Copyright (c) 2025-2026 Stephen Hall. See [LICENSE](LICENSE).
+GPL v3 — Copyright (c) 2025-2026 Stephen Hall. See [LICENSE](LICENSE).
 
 ---
 
