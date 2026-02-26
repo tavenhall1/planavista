@@ -44,7 +44,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ## Development Setup
 
-See [CLAUDE.md](CLAUDE.md) for full architecture details, file structure, and development workflow.
+See the repository structure and code comments for architecture details.
 
 ### Quick Start
 

@@ -1,54 +1,19 @@
 // PlanaVista v1.0
-// Single entry point — imports all cards and registers them with HA
+// Single entry point — imports the unified card and registers it with HA
 
 // Reusable sub-components
 import './components/color-swatch-picker';
 import './components/onboarding-wizard';
 
 import './cards/planavista-calendar-card';
-import './cards/planavista-grid-card';
-import './cards/planavista-agenda-card';
-import './cards/planavista-clock-card';
-import './cards/planavista-weather-card';
-import './cards/planavista-toggles-card';
 
-// Register all cards with the HA card picker
+// Register card with the HA card picker
 window.customCards = window.customCards || [];
 window.customCards.push(
   {
     type: 'planavista-calendar-card',
-    name: 'PlanaVista (Unified)',
+    name: 'PlanaVista',
     description: 'All-in-one calendar with clock, weather, toggles, and views',
-    preview: true,
-  },
-  {
-    type: 'planavista-grid-card',
-    name: 'PlanaVista Grid',
-    description: 'Calendar grid with day, week, and month views',
-    preview: true,
-  },
-  {
-    type: 'planavista-agenda-card',
-    name: 'PlanaVista Agenda',
-    description: 'Upcoming events list',
-    preview: true,
-  },
-  {
-    type: 'planavista-clock-card',
-    name: 'PlanaVista Clock',
-    description: 'Time and date display',
-    preview: true,
-  },
-  {
-    type: 'planavista-weather-card',
-    name: 'PlanaVista Weather',
-    description: 'Weather conditions and forecast',
-    preview: true,
-  },
-  {
-    type: 'planavista-toggles-card',
-    name: 'PlanaVista Toggles',
-    description: 'Calendar visibility toggles',
     preview: true,
   },
 );
