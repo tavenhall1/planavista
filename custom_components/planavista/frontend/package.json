@@ -2,6 +2,8 @@
   "name": "planavista-cards",
   "version": "1.0.0",
   "description": "PlanaVista cards for Home Assistant",
+  "author": "Stephen Hall",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
