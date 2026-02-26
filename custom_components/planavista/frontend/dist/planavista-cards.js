@@ -3160,6 +3160,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       .day-card {
         display: flex;
         flex-direction: column;
+        flex-shrink: 0;
         margin: 0 0.75rem 0.75rem;
         background: var(--pv-card-bg, #fff);
         border-radius: var(--pv-radius-md, 12px);
@@ -3266,6 +3267,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
         gap: 0.5rem;
         padding: 1rem;
         margin: 0 0.75rem 0.75rem;
