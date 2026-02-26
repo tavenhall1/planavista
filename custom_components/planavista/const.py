@@ -45,7 +45,7 @@ COLOR_PRESETS: Final = [
     {"name": "Sage",     "color": "#6BA368", "color_light": "#E2F0E1"},
     {"name": "Lavender", "color": "#9B8EC4", "color_light": "#EDEBF5"},
     {"name": "Amber",    "color": "#D9A52B", "color_light": "#F7EDCF"},
-    {"name": "Honey",    "color": "#CDCB2E", "color_light": "#F3F3DA"},
+    {"name": "Honey",    "color": "#e4f21c", "color_light": "#FAFDE3"},
     {"name": "Rose",     "color": "#D4728C", "color_light": "#F5E4EA"},
     {"name": "Teal",     "color": "#4A9E9E", "color_light": "#DDF0F0"},
     {"name": "Slate",    "color": "#6B7A8D", "color_light": "#E8EAED"},

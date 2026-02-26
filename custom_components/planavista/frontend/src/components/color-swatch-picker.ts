@@ -46,7 +46,7 @@ export class PvColorSwatchPicker extends LitElement {
     { name: 'Sage',     color: '#6BA368', light: '#E2F0E1' },
     { name: 'Lavender', color: '#9B8EC4', light: '#EDEBF5' },
     { name: 'Amber',    color: '#D9A52B', light: '#F7EDCF' },
-    { name: 'Honey',    color: '#CDCB2E', light: '#F3F3DA' },
+    { name: 'Honey',    color: '#e4f21c', light: '#FAFDE3' },
     { name: 'Rose',     color: '#D4728C', light: '#F5E4EA' },
     { name: 'Teal',     color: '#4A9E9E', light: '#DDF0F0' },
     { name: 'Slate',    color: '#6B7A8D', light: '#E8EAED' },
