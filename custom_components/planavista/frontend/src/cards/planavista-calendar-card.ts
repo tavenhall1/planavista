@@ -35,7 +35,6 @@ export class PlanaVistaCalendarCard extends LitElement {
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
   private _touchStartX = 0;
-  private _previewActive = false;
   private _filterCloseHandler = (e: MouseEvent) => this._onFilterClickOutside(e);
 
   static styles = [
@@ -779,13 +778,14 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    // While settings panel is open, the wizard owns theme via theme-preview events.
+    // Only apply saved theme from sensor when settings are closed.
+    if (this._settingsOpen) return;
     if (changedProps.has('hass') || changedProps.has('_config') || changedProps.has('_settingsOpen')) {
-      if (!this._previewActive) {
-        const data = getPlanaVistaData(this.hass, this._config?.entity);
-        const theme = resolveTheme(this._config?.theme, data?.display?.theme);
-        const overrides = data?.display?.theme_overrides || null;
-        applyThemeWithOverrides(this, theme, overrides);
-      }
+      const data = getPlanaVistaData(this.hass, this._config?.entity);
+      const theme = resolveTheme(this._config?.theme, data?.display?.theme);
+      const overrides = data?.display?.theme_overrides || null;
+      applyThemeWithOverrides(this, theme, overrides);
     }
   }
 
@@ -848,14 +848,12 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _onSettingsSave() {
     this._settingsOpen = false;
-    this._previewActive = false;
-    // Force theme re-application on next hass update with newly saved values
+    // _settingsOpen is now false so updated() will apply the newly saved theme on next hass cycle.
     clearThemeCache(this);
   }
 
   private _onSettingsClose() {
     this._settingsOpen = false;
-    this._previewActive = false;
     // Revert to saved theme immediately (undo any preview changes)
     clearThemeCache(this);
     const data = getPlanaVistaData(this.hass, this._config?.entity);
@@ -865,7 +863,6 @@ export class PlanaVistaCalendarCard extends LitElement {
   }
 
   private _onThemePreview(e: CustomEvent<{ theme: string; overrides: ThemeOverrides | null }>) {
-    this._previewActive = true;
     const { theme, overrides } = e.detail;
     const resolved = resolveTheme(theme);
     clearThemeCache(this);
