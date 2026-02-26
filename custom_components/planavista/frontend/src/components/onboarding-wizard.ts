@@ -46,6 +46,8 @@ export class PvOnboardingWizard extends LitElement {
   // Page 1 — Calendars
   @state() private _calendarConfigs: CalendarEntry[] = [];
   @state() private _calendarsInitialized = false;
+  @state() private _dragIdx: number | null = null;
+  @state() private _dragOverIdx: number | null = null;
 
   // Page 2 — Theme
   @state() private _theme: 'light' | 'dark' | 'minimal' | 'vibrant' = 'light';
@@ -378,11 +380,62 @@ export class PvOnboardingWizard extends LitElement {
     `;
   }
 
+  // ─── Drag-to-reorder handlers ────────────────────────────────────────────────
+
+  private _onDragStart(idx: number, e: DragEvent) {
+    this._dragIdx = idx;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    }
+  }
+
+  private _onDragOver(idx: number, e: DragEvent) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    this._dragOverIdx = idx;
+  }
+
+  private _onDragLeave() {
+    this._dragOverIdx = null;
+  }
+
+  private _onDrop(idx: number, e: DragEvent) {
+    e.preventDefault();
+    if (this._dragIdx !== null && this._dragIdx !== idx) {
+      const updated = [...this._calendarConfigs];
+      const [moved] = updated.splice(this._dragIdx, 1);
+      updated.splice(idx, 0, moved);
+      this._calendarConfigs = updated;
+    }
+    this._dragIdx = null;
+    this._dragOverIdx = null;
+  }
+
+  private _onDragEnd() {
+    this._dragIdx = null;
+    this._dragOverIdx = null;
+  }
+
   private _renderCalendarRow(cal: CalendarEntry, idx: number) {
+    const isDragging = this._dragIdx === idx;
+    const isDragOver = this._dragOverIdx === idx && this._dragIdx !== idx;
     return html`
-      <div class="cal-row">
+      <div class="cal-row ${isDragging ? 'cal-row--dragging' : ''} ${isDragOver ? 'cal-row--dragover' : ''}"
+        draggable="true"
+        @dragstart=${(e: DragEvent) => this._onDragStart(idx, e)}
+        @dragover=${(e: DragEvent) => this._onDragOver(idx, e)}
+        @dragleave=${this._onDragLeave}
+        @drop=${(e: DragEvent) => this._onDrop(idx, e)}
+        @dragend=${this._onDragEnd}
+      >
         <!-- Always-visible header: checkbox + calendar name -->
         <div class="cal-header">
+          <div class="cal-drag-handle" aria-label="Drag to reorder">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </div>
           <label class="cal-checkbox-wrap" title="${cal.include ? 'Exclude this calendar' : 'Include this calendar'}">
             <input
               type="checkbox"
@@ -1101,7 +1154,7 @@ export class PvOnboardingWizard extends LitElement {
         border: 1px solid var(--pv-border-subtle, #E5E7EB);
         border-radius: var(--pv-radius, 12px);
         background: var(--pv-card-bg, #FFFFFF);
-        transition: border-color var(--pv-transition, 200ms ease);
+        transition: border-color var(--pv-transition, 200ms ease), box-shadow var(--pv-transition, 200ms ease), opacity var(--pv-transition, 200ms ease);
       }
 
       .cal-row:has(.cal-checkbox:checked) {
@@ -1113,6 +1166,36 @@ export class PvOnboardingWizard extends LitElement {
         display: flex;
         align-items: center;
         gap: 0.75rem;
+      }
+
+      .cal-drag-handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+        cursor: grab;
+        color: var(--pv-text-muted, #9CA3AF);
+        border-radius: 4px;
+        transition: color var(--pv-transition, 200ms ease);
+      }
+
+      .cal-drag-handle:hover {
+        color: var(--pv-text-secondary, #6B7280);
+      }
+
+      .cal-drag-handle:active {
+        cursor: grabbing;
+      }
+
+      .cal-row--dragging {
+        opacity: 0.4;
+      }
+
+      .cal-row--dragover {
+        border-color: var(--pv-accent, #6366F1);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--pv-accent, #6366F1) 20%, transparent);
       }
 
       .cal-header-info {
