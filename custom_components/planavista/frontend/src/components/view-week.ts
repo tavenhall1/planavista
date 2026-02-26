@@ -1,5 +1,5 @@
-import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../types';
 import { baseStyles, animationStyles } from '../styles/shared';
@@ -32,6 +32,16 @@ export class PVViewWeek extends LitElement {
   @property({ attribute: false }) firstDay: 'monday' | 'sunday' = 'sunday';
   @property({ attribute: false }) weatherEntity: string = '';
   @property({ type: Boolean }) showStripes: boolean = true;
+
+  @state() private _forecast: Array<{
+    datetime: string;
+    condition: string;
+    temperature: number;
+    templow?: number;
+  }> = [];
+
+  private _weatherUnsub?: () => void;
+  private _subscribedEntity = '';
 
   static styles = [
     baseStyles,
@@ -191,16 +201,17 @@ export class PVViewWeek extends LitElement {
         .day-card { min-height: 140px; }
       }
 
-      /* XL: wall displays */
+      /* XL: wall displays — ~50% larger */
       @media (min-width: 1440px) {
-        .week-label { font-size: 1.1875rem; }
-        .day-name { font-size: 1.125rem; }
-        .day-meta { font-size: 0.75rem; }
-        .day-weather svg { width: 28px; height: 28px; }
-        .day-weather-temp { font-size: 0.75rem; }
-        .day-card { min-height: 160px; }
-        .day-card-header { padding: 0.75rem 1rem 0.5rem; }
-        .day-card-events { padding: 0.5rem; gap: 0.375rem; }
+        .week-label { font-size: 1.5rem; }
+        .day-name { font-size: 1.375rem; }
+        .day-meta { font-size: 0.9375rem; }
+        .add-event-link { font-size: 0.9375rem; }
+        .day-weather svg { width: 36px; height: 36px; }
+        .day-weather-temp { font-size: 0.9375rem; }
+        .day-card { min-height: 180px; }
+        .day-card-header { padding: 1rem 1.25rem 0.625rem; }
+        .day-card-events { padding: 0.75rem; gap: 0.5rem; }
       }
     `,
   ];
@@ -225,21 +236,68 @@ export class PVViewWeek extends LitElement {
     return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`;
   }
 
+  updated(changed: PropertyValues) {
+    super.updated(changed);
+    if (changed.has('weatherEntity') || changed.has('hass')) {
+      this._subscribeWeather();
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubWeather();
+  }
+
+  private _unsubWeather() {
+    if (this._weatherUnsub) {
+      this._weatherUnsub();
+      this._weatherUnsub = undefined;
+    }
+    this._subscribedEntity = '';
+  }
+
+  private async _subscribeWeather() {
+    if (!this.weatherEntity || !this.hass?.connection) {
+      this._unsubWeather();
+      this._forecast = [];
+      return;
+    }
+    // Only re-subscribe if entity changed
+    if (this._subscribedEntity === this.weatherEntity && this._weatherUnsub) return;
+    this._unsubWeather();
+    this._subscribedEntity = this.weatherEntity;
+
+    try {
+      // Try modern HA subscription API (2024.3+)
+      this._weatherUnsub = await (this.hass.connection as any).subscribeMessage(
+        (msg: any) => {
+          this._forecast = msg.forecast || [];
+        },
+        {
+          type: 'weather/subscribe_forecast',
+          forecast_type: 'daily',
+          entity_id: this.weatherEntity,
+        }
+      );
+    } catch {
+      // Fallback: try legacy attribute
+      const entity = this.hass.states[this.weatherEntity];
+      if (entity?.attributes?.forecast) {
+        this._forecast = entity.attributes.forecast;
+      }
+    }
+  }
+
   private _getForecastMap(): Map<string, DayForecast> {
     const map = new Map<string, DayForecast>();
-    if (!this.weatherEntity || !this.hass) return map;
-
-    const entity = this.hass.states[this.weatherEntity];
-    if (!entity?.attributes?.forecast) return map;
-
-    for (const fc of entity.attributes.forecast) {
+    for (const fc of this._forecast) {
       if (!fc.datetime) continue;
       const d = new Date(fc.datetime);
       const key = getDateKey(d);
       map.set(key, {
         condition: fc.condition || '',
         tempHigh: fc.temperature ?? 0,
-        tempLow: fc.templow ?? fc.temperature ?? 0,
+        tempLow: (fc as any).templow ?? fc.temperature ?? 0,
       });
     }
     return map;

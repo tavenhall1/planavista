@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, WeatherCondition } from '../types';
@@ -39,6 +39,15 @@ export class PVViewAgenda extends LitElement {
   @property({ type: Boolean }) showStripes: boolean = true;
 
   @state() private _daysLoaded = DAYS_PER_PAGE;
+  @state() private _forecast: Array<{
+    datetime: string;
+    condition: string;
+    temperature: number;
+    templow?: number;
+  }> = [];
+
+  private _weatherUnsub?: () => void;
+  private _subscribedEntity = '';
 
   static styles = [
     baseStyles,
@@ -202,14 +211,18 @@ export class PVViewAgenda extends LitElement {
         .day-events { padding: 0.5rem 0.625rem 0.625rem; gap: 0.5rem; }
       }
 
-      /* XL: wall displays */
+      /* XL: wall displays — ~50% larger */
       @media (min-width: 1440px) {
-        .agenda-container { max-width: 900px; }
-        .day-name { font-size: 1.25rem; }
-        .day-weather svg { width: 24px; height: 24px; }
-        .day-weather-temps { font-size: 0.75rem; }
-        .day-subheader { font-size: 0.75rem; }
-        .day-events { padding: 0.625rem 0.75rem 0.75rem; gap: 0.5rem; }
+        .agenda-container { max-width: 960px; }
+        .day-name { font-size: 1.5rem; }
+        .day-relative { font-size: 1rem; }
+        .day-weather svg { width: 32px; height: 32px; }
+        .day-weather-temps { font-size: 0.9375rem; }
+        .day-subheader { font-size: 0.9375rem; }
+        .add-event-link { font-size: 0.9375rem; }
+        .day-card-header { padding: 0.875rem 1.125rem 0.5rem; }
+        .day-events { padding: 0.75rem 1rem 1rem; gap: 0.625rem; }
+        .load-more { font-size: 1.125rem; padding: 1.25rem; }
       }
     `,
   ];
@@ -306,29 +319,66 @@ export class PVViewAgenda extends LitElement {
     `;
   }
 
+  updated(changed: PropertyValues) {
+    super.updated(changed);
+    if (changed.has('weatherEntity') || changed.has('hass')) {
+      this._subscribeWeather();
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubWeather();
+  }
+
+  private _unsubWeather() {
+    if (this._weatherUnsub) {
+      this._weatherUnsub();
+      this._weatherUnsub = undefined;
+    }
+    this._subscribedEntity = '';
+  }
+
+  private async _subscribeWeather() {
+    if (!this.weatherEntity || !this.hass?.connection) {
+      this._unsubWeather();
+      this._forecast = [];
+      return;
+    }
+    if (this._subscribedEntity === this.weatherEntity && this._weatherUnsub) return;
+    this._unsubWeather();
+    this._subscribedEntity = this.weatherEntity;
+
+    try {
+      this._weatherUnsub = await (this.hass.connection as any).subscribeMessage(
+        (msg: any) => {
+          this._forecast = msg.forecast || [];
+        },
+        {
+          type: 'weather/subscribe_forecast',
+          forecast_type: 'daily',
+          entity_id: this.weatherEntity,
+        }
+      );
+    } catch {
+      // Fallback: try legacy attribute
+      const entity = this.hass.states[this.weatherEntity];
+      if (entity?.attributes?.forecast) {
+        this._forecast = entity.attributes.forecast;
+      }
+    }
+  }
+
   private _getForecastMap(): Map<string, DayForecast> {
     const map = new Map<string, DayForecast>();
-    if (!this.weatherEntity || !this.hass) return map;
-
-    const entity = this.hass.states[this.weatherEntity];
-    if (!entity) return map;
-
-    const forecasts = entity.attributes?.forecast as Array<{
-      datetime: string;
-      condition: string;
-      temperature: number;
-      templow: number;
-    }> | undefined;
-
-    if (!forecasts) return map;
-
-    for (const f of forecasts) {
-      const date = new Date(f.datetime);
-      const key = getDateKey(date);
+    for (const fc of this._forecast) {
+      if (!fc.datetime) continue;
+      const d = new Date(fc.datetime);
+      const key = getDateKey(d);
       map.set(key, {
-        condition: f.condition,
-        tempHigh: f.temperature,
-        tempLow: f.templow,
+        condition: fc.condition || '',
+        tempHigh: fc.temperature ?? 0,
+        tempLow: (fc as any).templow ?? fc.temperature ?? 0,
       });
     }
     return map;

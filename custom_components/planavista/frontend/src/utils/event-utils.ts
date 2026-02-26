@@ -299,22 +299,30 @@ export function filterVisibleEvents(
 }
 
 /**
- * Build a CSS repeating-linear-gradient for multi-participant diagonal stripes.
+ * Build a CSS linear-gradient for multi-participant diagonal stripes.
+ * One stripe per participant — organizer (first) gets a larger band.
  * Uses each participant's color_light for soft pastel bands.
  */
 export function buildStripeGradient(
   sharedCalendars: SharedEvent['shared_calendars']
 ): string {
-  if (sharedCalendars.length <= 1) return '';
-  const bandWidth = 20; // px per participant stripe
+  const n = sharedCalendars.length;
+  if (n <= 1) return '';
+
+  // Organizer (first entry) gets a larger share of the stripe
+  const organizerPct = n === 2 ? 60 : Math.min(50, Math.round(100 / n * 1.5));
+  const otherPct = (100 - organizerPct) / (n - 1);
+
   const stops: string[] = [];
+  let pos = 0;
   sharedCalendars.forEach((cal, i) => {
     const color = cal.color_light || cal.color;
-    const start = i * bandWidth;
-    const end = (i + 1) * bandWidth;
-    stops.push(`${color} ${start}px`, `${color} ${end}px`);
+    const width = i === 0 ? organizerPct : otherPct;
+    stops.push(`${color} ${pos}%`);
+    pos += width;
+    stops.push(`${color} ${pos}%`);
   });
-  return `repeating-linear-gradient(135deg, ${stops.join(', ')})`;
+  return `linear-gradient(135deg, ${stops.join(', ')})`;
 }
 
 /**

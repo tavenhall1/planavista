@@ -163,12 +163,14 @@ export class PVEventChip extends LitElement {
         .chip-avatar, .chip-initial, .chip-overflow { width: 28px; height: 28px; }
       }
 
-      /* XL screens */
+      /* XL screens — ~50% larger for wall displays */
       @media (min-width: 1440px) {
-        .chip { padding: 0.75rem 0.875rem; }
-        .chip-title { font-size: 1.0625rem; }
-        .chip-time { font-size: 0.875rem; }
-        .chip-avatar, .chip-initial, .chip-overflow { width: 32px; height: 32px; font-size: 0.625rem; }
+        .chip { padding: 1rem 1.25rem; gap: 0.75rem; border-left-width: 4px; }
+        .chip-title { font-size: 1.375rem; }
+        .chip-time { font-size: 1.125rem; }
+        .chip-avatar, .chip-initial, .chip-overflow { width: 40px; height: 40px; font-size: 0.8125rem; }
+        .chip--compact { padding: 0.375rem 0.75rem; border-left-width: 3px; }
+        .chip--compact .chip-title { font-size: 1rem; }
       }
     `,
   ];
