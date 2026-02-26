@@ -90,6 +90,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.services.async_register(DOMAIN, "save_config", async_save_config)
 
+    # ── Delete event service (calls entity method directly, no calendar.delete_event needed) ──
+    async def async_delete_event(call) -> None:
+        """Delete a calendar event by UID via direct entity access."""
+        entity_id = call.data.get("entity_id")
+        uid = call.data.get("uid")
+        recurrence_id = call.data.get("recurrence_id", "")
+
+        if not entity_id or not uid:
+            _LOGGER.error("planavista.delete_event: entity_id and uid are required")
+            return
+
+        entity_comp = hass.data.get(CALENDAR_DOMAIN)
+        if not entity_comp or not hasattr(entity_comp, "get_entity"):
+            raise Exception("Calendar platform not available")
+
+        entity = entity_comp.get_entity(entity_id)
+        if not entity:
+            raise Exception(f"Calendar entity {entity_id} not found")
+
+        if not hasattr(entity, "async_delete_event"):
+            raise Exception(f"Calendar {entity_id} does not support event deletion")
+
+        kwargs = {"uid": uid}
+        if recurrence_id:
+            kwargs["recurrence_id"] = recurrence_id
+        await entity.async_delete_event(**kwargs)
+        _LOGGER.info("PlanaVista: deleted event uid=%s from %s", uid, entity_id)
+
+    hass.services.async_register(DOMAIN, "delete_event", async_delete_event)
+
     return True
 
 

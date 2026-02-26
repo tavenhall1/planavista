@@ -20,15 +20,17 @@ export async function createEvent(hass: HomeAssistant, data: CreateEventData): P
 }
 
 /**
- * Delete a calendar event via HA service.
+ * Delete a calendar event via PlanaVista backend service.
+ * Uses direct entity access (bypasses calendar.delete_event which may not exist).
  */
 export async function deleteEvent(hass: HomeAssistant, data: DeleteEventData): Promise<void> {
   const serviceData: Record<string, any> = {
+    entity_id: data.entity_id,
     uid: data.uid,
   };
   if (data.recurrence_id) serviceData.recurrence_id = data.recurrence_id;
 
-  await hass.callService('calendar', 'delete_event', serviceData, { entity_id: data.entity_id });
+  await hass.callService('planavista', 'delete_event', serviceData);
 }
 
 /**
