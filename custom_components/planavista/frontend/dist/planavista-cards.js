@@ -2348,7 +2348,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
       }
 
       .positioned-event .event-title {
-        font-size: 0.8125rem;
+        font-size: 0.9375rem;
         font-weight: 600;
         line-height: 1.25;
         white-space: nowrap;
@@ -2358,7 +2358,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
       }
 
       .positioned-event .event-time {
-        font-size: 0.6875rem;
+        font-size: 0.8125rem;
         color: var(--event-text, var(--pv-text-secondary));
         margin-top: 2px;
         font-weight: 500;
@@ -2464,7 +2464,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .all-day-gutter { width: 40px; font-size: 0.5625rem; }
         .time-label { font-size: 0.5625rem; }
         .positioned-event { padding: 3px 6px; }
-        .event-title { font-size: 0.6875rem; }
+        .event-title { font-size: 0.75rem; }
         .event-time { display: none; }
         .next-day-footer { padding: 10px; font-size: 0.8125rem; }
       }
@@ -2475,7 +2475,7 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .time-gutter { width: 48px; }
         .all-day-gutter { width: 48px; }
         .positioned-event { padding: 4px 8px; }
-        .event-title { font-size: 0.75rem; }
+        .event-title { font-size: 0.875rem; }
       }
 
       /* md: tablets — smaller avatars */
@@ -2504,8 +2504,8 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .header-gutter { width: 72px; }
         .all-day-chip { font-size: 0.9375rem; min-height: 30px; }
         .positioned-event { min-height: 30px; }
-        .event-title { font-size: 1rem; }
-        .event-time { font-size: 0.8125rem; }
+        .event-title { font-size: 1.0625rem; }
+        .event-time { font-size: 0.9375rem; }
         .person-name { font-size: 1rem; }
         .next-day-footer { font-size: 1.0625rem; }
       }
@@ -2518,8 +2518,8 @@ function e(e,t,i,r){var a,n=arguments.length,o=n<3?t:null===r?r=Object.getOwnPro
         .header-gutter { width: 84px; }
         .all-day-chip { font-size: 1.0625rem; min-height: 34px; padding: 6px 14px; }
         .positioned-event { min-height: 34px; padding: 8px 12px; }
-        .event-title { font-size: 1.125rem; }
-        .event-time { font-size: 0.9375rem; }
+        .event-title { font-size: 1.1875rem; }
+        .event-time { font-size: 1.0625rem; }
         .person-avatar, .person-initial { width: 72px; height: 72px; font-size: 1.5rem; }
         .person-name { font-size: 1.125rem; }
         .next-day-footer { font-size: 1.1875rem; padding: 18px; }
