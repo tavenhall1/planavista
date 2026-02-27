@@ -240,6 +240,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # ── WebSocket: look up Google Calendar event organizer ──
     websocket_api.async_register_command(hass, ws_get_event_organizer)
 
+    # ── WebSocket: update event in-place via Google Calendar API ──
+    websocket_api.async_register_command(hass, ws_update_event)
+
     return True
 
 
@@ -527,6 +530,146 @@ async def ws_get_event_organizer(
     except Exception as err:
         _LOGGER.warning("PlanaVista: organizer lookup failed: %s", err)
         connection.send_result(msg["id"], {"organizer_entity_id": None})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/update_event",
+        vol.Required("entity_id"): str,
+        vol.Required("uid"): str,
+        vol.Optional("summary"): str,
+        vol.Optional("description"): str,
+        vol.Optional("location"): str,
+        vol.Optional("start_date_time"): str,
+        vol.Optional("end_date_time"): str,
+        vol.Optional("start_date"): str,
+        vol.Optional("end_date"): str,
+        vol.Optional("attendee_entity_ids"): [str],
+    }
+)
+@websocket_api.async_response
+async def ws_update_event(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict,
+) -> None:
+    """Update a calendar event in-place via Google Calendar API PATCH.
+
+    Preserves the event ID and attendee linking, unlike delete + recreate.
+    """
+    entity_id = msg["entity_id"]
+    uid = msg["uid"]
+
+    cal_id = _get_google_calendar_id(hass, entity_id)
+    if not cal_id:
+        connection.send_error(msg["id"], "not_google", "Entity is not a Google Calendar")
+        return
+
+    access_token = await _ensure_google_token(hass, entity_id)
+    if not access_token:
+        connection.send_error(msg["id"], "no_token", "Could not obtain Google OAuth token")
+        return
+
+    http_session = async_get_clientsession(hass)
+    encoded_cal = urllib.parse.quote(cal_id, safe="")
+    encoded_uid = urllib.parse.quote(uid, safe="")
+
+    # Step 1: Find the Google event ID from the iCal UID
+    list_url = (
+        f"https://www.googleapis.com/calendar/v3/calendars/"
+        f"{encoded_cal}/events?iCalUID={encoded_uid}&maxResults=1"
+    )
+
+    try:
+        async with http_session.get(
+            list_url,
+            headers={"Authorization": f"Bearer {access_token}"},
+        ) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                connection.send_error(
+                    msg["id"], "lookup_failed",
+                    f"Failed to look up event: HTTP {resp.status}: {text}",
+                )
+                return
+            data = await resp.json()
+            items = data.get("items", [])
+            if not items:
+                connection.send_error(msg["id"], "not_found", "Event not found")
+                return
+            event_id = items[0]["id"]
+    except Exception as err:
+        connection.send_error(msg["id"], "lookup_error", str(err))
+        return
+
+    # Step 2: Build PATCH body
+    body: dict = {}
+    if "summary" in msg:
+        body["summary"] = msg["summary"]
+    if "description" in msg:
+        body["description"] = msg["description"]
+    if "location" in msg:
+        body["location"] = msg["location"]
+
+    tz = str(hass.config.time_zone) if hass.config.time_zone else "UTC"
+
+    if msg.get("start_date"):
+        body["start"] = {"date": msg["start_date"]}
+        body["end"] = {"date": msg["end_date"]}
+    elif msg.get("start_date_time"):
+        body["start"] = {"dateTime": msg["start_date_time"], "timeZone": tz}
+        body["end"] = {"dateTime": msg["end_date_time"], "timeZone": tz}
+
+    if "attendee_entity_ids" in msg:
+        attendee_emails = []
+        # Include organizer's own email
+        attendee_emails.append(cal_id)
+        for att_id in msg["attendee_entity_ids"]:
+            att_cal_id = _get_google_calendar_id(hass, att_id)
+            if att_cal_id:
+                attendee_emails.append(att_cal_id)
+        # Deduplicate while preserving order
+        seen = set()
+        unique_emails = []
+        for email in attendee_emails:
+            lower = email.lower()
+            if lower not in seen:
+                seen.add(lower)
+                unique_emails.append(email)
+        body["attendees"] = [{"email": email} for email in unique_emails]
+
+    # Step 3: PATCH the event
+    encoded_event = urllib.parse.quote(event_id, safe="")
+    patch_url = (
+        f"https://www.googleapis.com/calendar/v3/calendars/"
+        f"{encoded_cal}/events/{encoded_event}?sendUpdates=all"
+    )
+
+    try:
+        async with http_session.patch(
+            patch_url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+        ) as resp:
+            if resp.status not in (200, 201):
+                text = await resp.text()
+                connection.send_error(
+                    msg["id"], "patch_failed",
+                    f"Google Calendar API PATCH error {resp.status}: {text}",
+                )
+                return
+            result = await resp.json()
+            _LOGGER.info(
+                "PlanaVista: updated event uid=%s (id=%s) on calendar %s",
+                uid, event_id, cal_id,
+            )
+            connection.send_result(msg["id"], {"success": True, "event_id": result.get("id")})
+    except Exception as err:
+        _LOGGER.error("PlanaVista: update_event PATCH failed: %s", err)
+        connection.send_error(msg["id"], "patch_error", str(err))
 
 
 class PlanaVistaCoordinator(DataUpdateCoordinator):

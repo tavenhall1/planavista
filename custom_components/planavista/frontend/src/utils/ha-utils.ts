@@ -61,6 +61,42 @@ export async function deleteEvent(hass: HomeAssistant, data: DeleteEventData): P
 }
 
 /**
+ * Update a calendar event in-place via Google Calendar API PATCH.
+ * Preserves the event ID and attendee linking (no delete+recreate).
+ */
+export async function updateEvent(
+  hass: HomeAssistant,
+  data: {
+    entity_id: string;
+    uid: string;
+    summary?: string;
+    description?: string;
+    location?: string;
+    start_date_time?: string;
+    end_date_time?: string;
+    start_date?: string;
+    end_date?: string;
+    attendee_entity_ids?: string[];
+  },
+): Promise<{ success: boolean; event_id?: string }> {
+  const wsData: Record<string, any> = {
+    type: 'planavista/update_event',
+    entity_id: data.entity_id,
+    uid: data.uid,
+  };
+  if (data.summary !== undefined) wsData.summary = data.summary;
+  if (data.description !== undefined) wsData.description = data.description;
+  if (data.location !== undefined) wsData.location = data.location;
+  if (data.start_date_time) wsData.start_date_time = data.start_date_time;
+  if (data.end_date_time) wsData.end_date_time = data.end_date_time;
+  if (data.start_date) wsData.start_date = data.start_date;
+  if (data.end_date) wsData.end_date = data.end_date;
+  if (data.attendee_entity_ids) wsData.attendee_entity_ids = data.attendee_entity_ids;
+
+  return (hass as any).callWS(wsData);
+}
+
+/**
  * Trigger a refresh of the PlanaVista coordinator.
  */
 export async function refreshPlanaVista(hass: HomeAssistant, entityId = 'sensor.planavista_config'): Promise<void> {

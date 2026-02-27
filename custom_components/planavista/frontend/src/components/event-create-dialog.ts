@@ -3,7 +3,7 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
-import { createEvent, createEventWithAttendees, deleteEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
+import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -30,6 +30,7 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _showMore = false;
   @state() private _saving = false;
   @state() private _error = '';
+  @state() private _removeGuestsHint = false;
 
   // Date picker state
   @state() private _datePickerOpen = false;
@@ -530,6 +531,7 @@ export class PVEventCreateDialog extends LitElement {
     this._showMore = false;
     this._locationSuggestions = [];
     this._locationFocused = false;
+    this._removeGuestsHint = !!(this.prefill as any)?._removeGuestsHint;
 
     if (this.prefill) {
       this._title = this.prefill.summary || '';
@@ -666,6 +668,19 @@ export class PVEventCreateDialog extends LitElement {
 
               <div class="form-field">
                 <label class="pv-label">${isEdit ? 'Participants' : 'Calendars'}</label>
+                ${this._removeGuestsHint ? html`
+                  <div style="
+                    display: flex; align-items: center; gap: 0.5rem;
+                    padding: 0.5rem 0.75rem; margin-bottom: 0.5rem;
+                    background: color-mix(in srgb, var(--pv-accent, #6366F1) 8%, transparent);
+                    border: 1px solid color-mix(in srgb, var(--pv-accent, #6366F1) 20%, transparent);
+                    border-radius: var(--pv-radius-sm, 8px);
+                    font-size: 0.8125rem; color: var(--pv-text-secondary);
+                  ">
+                    <ha-icon icon="mdi:information-outline" style="--mdc-icon-size: 16px; color: var(--pv-accent, #6366F1); flex-shrink: 0;"></ha-icon>
+                    Tap a guest to remove them from this event
+                  </div>
+                ` : nothing}
                 <div class="calendar-select">
                   ${visibleCalendars.map(cal => {
                     const selected = this._selectedCalendars.has(cal.entity_id);
@@ -1131,6 +1146,7 @@ export class PVEventCreateDialog extends LitElement {
     }
 
     this._selectedCalendars = next;
+    this._removeGuestsHint = false;
   }
 
   private _onOverlayClick() {
@@ -1141,6 +1157,59 @@ export class PVEventCreateDialog extends LitElement {
     this._datePickerOpen = false;
     this._activeTimePicker = null;
     this._locationSuggestions = [];
+    this._pv.state.closeDialog();
+  }
+
+  private async _editFallback(
+    baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string },
+    selected: Set<string>,
+    original: Set<string>,
+  ) {
+    const uid = this.prefill?.uid;
+    const recurrenceId = this.prefill?.recurrence_id;
+    const primaryEntityId = this.prefill?.calendar_entity_id;
+
+    const added = [...selected].filter(id => !original.has(id));
+    const removed = [...original].filter(id => !selected.has(id));
+    const kept = [...selected].filter(id => original.has(id));
+
+    if (primaryEntityId && kept.includes(primaryEntityId) && uid) {
+      const deleteData: DeleteEventData = {
+        entity_id: primaryEntityId,
+        uid,
+        recurrence_id: recurrenceId,
+      };
+      const createData: CreateEventData = { ...baseData, entity_id: primaryEntityId } as CreateEventData;
+      await this._pv.state.doEditEvent(this.hass, deleteData, createData);
+    } else if (primaryEntityId && removed.includes(primaryEntityId) && uid) {
+      await deleteEvent(this.hass, { entity_id: primaryEntityId, uid, recurrence_id: recurrenceId });
+    }
+
+    for (const entityId of kept) {
+      if (entityId === primaryEntityId) continue;
+      if (uid) {
+        try {
+          await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+        } catch { /* may not exist */ }
+      }
+      await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
+    }
+
+    for (const entityId of added) {
+      await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
+    }
+
+    for (const entityId of removed) {
+      if (entityId === primaryEntityId) continue;
+      if (uid) {
+        try {
+          await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+        } catch { /* may not exist */ }
+      }
+    }
+
+    await refreshPlanaVista(this.hass);
+    this._pv.state.selectedEvent = null;
     this._pv.state.closeDialog();
   }
 
@@ -1185,61 +1254,60 @@ export class PVEventCreateDialog extends LitElement {
       const original = this._originalCalendars;
 
       if (this.mode === 'edit') {
-        // Compute participant diff
-        const added = [...selected].filter(id => !original.has(id));
-        const removed = [...original].filter(id => !selected.has(id));
-        const kept = [...selected].filter(id => original.has(id));
-
-        // Edit the primary calendar (the one we have the uid for)
-        const primaryEntityId = this.prefill?.calendar_entity_id;
-        if (primaryEntityId && kept.includes(primaryEntityId) && this.prefill?.uid) {
-          const deleteData: DeleteEventData = {
-            entity_id: primaryEntityId,
-            uid: this.prefill.uid,
-            recurrence_id: this.prefill.recurrence_id,
-          };
-          const createData: CreateEventData = { ...baseData, entity_id: primaryEntityId } as CreateEventData;
-          await this._pv.state.doEditEvent(this.hass, deleteData, createData);
-        } else if (primaryEntityId && removed.includes(primaryEntityId) && this.prefill?.uid) {
-          // Primary calendar was removed — just delete from it
-          await deleteEvent(this.hass, {
-            entity_id: primaryEntityId,
-            uid: this.prefill.uid,
-            recurrence_id: this.prefill.recurrence_id,
-          });
-        }
-
-        // Edit other kept calendars (they also have the event — delete old + create new)
         const uid = this.prefill?.uid;
-        const recurrenceId = this.prefill?.recurrence_id;
-        for (const entityId of kept) {
-          if (entityId === primaryEntityId) continue; // already handled above
-          if (uid) {
-            try {
-              await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
-            } catch { /* may not exist with same uid on this calendar */ }
+        const isSharedEvent = original.size > 1;
+        const organizerEntity = this._organizerEntityId || this.prefill?.calendar_entity_id || '';
+
+        if (isSharedEvent && uid && organizerEntity) {
+          // Shared Google Calendar event — use PATCH to update in-place
+          // This preserves the event ID and attendee linking
+          const allParticipantEntityIds = [...selected];
+          try {
+            await updateEvent(this.hass, {
+              entity_id: organizerEntity,
+              uid,
+              summary: baseData.summary,
+              description: baseData.description || '',
+              location: baseData.location || '',
+              start_date_time: baseData.start_date_time,
+              end_date_time: baseData.end_date_time,
+              start_date: baseData.start_date,
+              end_date: baseData.end_date,
+              attendee_entity_ids: allParticipantEntityIds,
+            });
+          } catch (err) {
+            console.warn('[PlanaVista] update_event WS failed, falling back to delete+recreate:', err);
+            // Fallback: delete + recreate on each calendar (breaks linking but at least works)
+            await this._editFallback(baseData, selected, original);
           }
-          await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
-        }
 
-        // Create on newly added calendars
-        for (const entityId of added) {
-          await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
-        }
-
-        // Delete from removed calendars
-        for (const entityId of removed) {
-          if (entityId === primaryEntityId) continue; // already handled above
-          if (uid) {
+          // Delayed refresh: give Google ~3s to propagate
+          const calEntities = [...selected, ...original];
+          const hass = this.hass;
+          this._pv.state.selectedEvent = null;
+          this._pv.state.closeDialog();
+          setTimeout(async () => {
             try {
-              await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
-            } catch { /* may not exist with same uid on this calendar */ }
+              const unique = [...new Set(calEntities)];
+              for (const eid of unique) {
+                await hass.callService('homeassistant', 'update_entity', { entity_id: eid });
+              }
+              await refreshPlanaVista(hass);
+            } catch { /* best-effort */ }
+          }, 3000);
+        } else {
+          // Single-calendar event — use existing delete+recreate flow
+          const primaryEntityId = this.prefill?.calendar_entity_id;
+          if (primaryEntityId && uid) {
+            const deleteData: DeleteEventData = {
+              entity_id: primaryEntityId,
+              uid,
+              recurrence_id: this.prefill?.recurrence_id,
+            };
+            const createData: CreateEventData = { ...baseData, entity_id: primaryEntityId } as CreateEventData;
+            await this._pv.state.doEditEvent(this.hass, deleteData, createData);
           }
         }
-
-        await refreshPlanaVista(this.hass);
-        this._pv.state.selectedEvent = null;
-        this._pv.state.closeDialog();
       } else {
         // Create mode
         const entityIds = [...selected];

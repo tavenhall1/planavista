@@ -1249,7 +1249,28 @@ export class PlanaVistaCalendarCard extends LitElement {
     const showStripes = (overrides?.event_style || 'stripes') === 'stripes';
 
     switch (view) {
-      case 'day':
+      case 'day': {
+        // Precompute shared event map: group all events by UID to detect shared events
+        const sharedEventMap = new Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>>();
+        const pvData = getPlanaVistaData(this.hass);
+        const allEvents = pvData?.events || [];
+        for (const ev of allEvents) {
+          const uid = (ev as any).uid;
+          if (!uid) continue;
+          if (!sharedEventMap.has(uid)) sharedEventMap.set(uid, []);
+          const arr = sharedEventMap.get(uid)!;
+          const eid = (ev as any).calendar_entity_id;
+          // Deduplicate by calendar entity (recurring events share UIDs)
+          if (!arr.some(p => p.entity_id === eid)) {
+            const cal = calendars.find(c => c.entity_id === eid);
+            arr.push({
+              entity_id: eid,
+              calendar_name: (ev as any).calendar_name || cal?.display_name || '',
+              calendar_color: (ev as any).calendar_color || cal?.color || '',
+              person_entity: cal?.person_entity || '',
+            });
+          }
+        }
         return html`<pv-view-day
           .hass=${this.hass}
           .events=${events}
@@ -1259,7 +1280,9 @@ export class PlanaVistaCalendarCard extends LitElement {
           .timeFormat=${timeFormat}
           .hideColumnHeaders=${false}
           .avatarBorderMode=${avatarBorder}
+          .sharedEventMap=${sharedEventMap}
         ></pv-view-day>`;
+      }
       case 'week':
         return html`<pv-view-week
           .hass=${this.hass}

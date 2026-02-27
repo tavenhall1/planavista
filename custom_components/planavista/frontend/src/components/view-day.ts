@@ -29,6 +29,7 @@ export class PVViewDay extends LitElement {
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) hideColumnHeaders = false;
   @property({ attribute: false }) avatarBorderMode: string = 'primary';
+  @property({ attribute: false }) sharedEventMap: Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>> = new Map();
 
   static styles = [
     baseStyles,
@@ -264,6 +265,44 @@ export class PVViewDay extends LitElement {
         color: var(--event-text, var(--pv-text-secondary));
         margin-top: 2px;
         font-weight: 500;
+      }
+
+      .event-participants {
+        display: flex;
+        margin-top: 2px;
+      }
+
+      .event-participant-avatar {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.5px solid var(--participant-color, var(--event-color));
+        margin-left: -4px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .event-participant-avatar:first-child {
+        margin-left: 0;
+      }
+
+      .event-participant-initial {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.5px solid var(--participant-color, var(--event-color));
+        margin-left: -4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.5rem;
+        font-weight: 700;
+        color: white;
+        flex-shrink: 0;
+      }
+
+      .event-participant-initial:first-child {
+        margin-left: 0;
       }
 
       /* Click target for empty slots */
@@ -648,6 +687,10 @@ export class PVViewDay extends LitElement {
             ? `calc(${(event.column / event.totalColumns) * 100}% + 3px)`
             : '3px';
 
+          // Check if this is a shared event with multiple participants
+          const sharedInfo = event.uid ? this.sharedEventMap.get(event.uid) : undefined;
+          const isShared = sharedInfo && sharedInfo.length > 1;
+
           return html`
             <div
               class="positioned-event"
@@ -664,6 +707,23 @@ export class PVViewDay extends LitElement {
             >
               <div class="event-title">${event.summary}</div>
               <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
+              ${isShared ? html`
+                <div class="event-participants">
+                  ${sharedInfo!.map(p => {
+                    const avatar = p.person_entity ? getPersonAvatar(this.hass, p.person_entity) : null;
+                    const name = p.person_entity
+                      ? getPersonName(this.hass, p.person_entity)
+                      : p.calendar_name;
+                    return avatar
+                      ? html`<img class="event-participant-avatar"
+                          src="${avatar}" alt="${name}"
+                          style="--participant-color: ${p.calendar_color}" />`
+                      : html`<div class="event-participant-initial"
+                          style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}"
+                        >${name[0]?.toUpperCase() || '?'}</div>`;
+                  })}
+                </div>
+              ` : nothing}
             </div>
           `;
         })}

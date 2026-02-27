@@ -98,10 +98,14 @@ class PlanaVistaStateManager {
     this._notify();
   }
 
-  openEditDialog(event: CalendarEvent): void {
+  openEditDialog(event: CalendarEvent, hints?: { removeGuests?: boolean }): void {
     this.dialogOpen = 'edit';
     this.selectedEvent = event;
-    this.createPrefill = { ...event };
+    const prefill: any = { ...event };
+    if (hints?.removeGuests) {
+      prefill._removeGuestsHint = true;
+    }
+    this.createPrefill = prefill;
     this._notify();
   }
 

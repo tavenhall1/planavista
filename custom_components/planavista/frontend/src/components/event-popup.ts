@@ -336,11 +336,11 @@ export class PVEventPopup extends LitElement {
                       <div class="delete-option-desc">Removes the event from all ${shared!.length} calendars</div>
                     </div>
                   </button>
-                  <button class="delete-option" @click=${() => { this._deleteMode = 'remove-me'; }}>
+                  <button class="delete-option" @click=${this._openRemoveGuests}>
                     <ha-icon icon="mdi:account-minus-outline"></ha-icon>
                     <div class="delete-option-text">
-                      <div class="delete-option-label">Remove from organizer's calendar only</div>
-                      <div class="delete-option-desc">Guests will keep their copy of the event</div>
+                      <div class="delete-option-label">Remove guests</div>
+                      <div class="delete-option-desc">Edit the event to add or remove participants</div>
                     </div>
                   </button>
                   <button class="pv-btn pv-btn-secondary" style="margin-top: 0.25rem;"
@@ -385,6 +385,14 @@ export class PVEventPopup extends LitElement {
   private _edit() {
     if (this.event) {
       this._pv.state.openEditDialog(this.event);
+    }
+  }
+
+  private _openRemoveGuests() {
+    if (this.event) {
+      this._confirmDelete = false;
+      this._deleteMode = null;
+      this._pv.state.openEditDialog(this.event, { removeGuests: true });
     }
   }
 
