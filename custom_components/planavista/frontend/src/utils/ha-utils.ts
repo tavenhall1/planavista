@@ -93,6 +93,27 @@ export function getPlanaVistaData(hass: HomeAssistant, entityId = 'sensor.planav
 }
 
 /**
+ * Look up the organizer of a shared event via Google Calendar API (backend WS command).
+ * Returns the organizer's calendar entity_id, or null if not determinable.
+ */
+export async function getEventOrganizer(
+  hass: HomeAssistant,
+  entityId: string,
+  uid: string,
+): Promise<string | null> {
+  try {
+    const result: { organizer_entity_id: string | null } = await (hass as any).callWS({
+      type: 'planavista/get_event_organizer',
+      entity_id: entityId,
+      uid,
+    });
+    return result?.organizer_entity_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get a person entity's avatar URL.
  */
 export function getPersonAvatar(hass: HomeAssistant, personEntityId: string): string | null {

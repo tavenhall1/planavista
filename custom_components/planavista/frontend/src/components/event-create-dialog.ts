@@ -3,7 +3,7 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
-import { createEvent, createEventWithAttendees, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
+import { createEvent, createEventWithAttendees, deleteEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -547,11 +547,15 @@ export class PVEventCreateDialog extends LitElement {
       }
       this._originalCalendars = new Set(this._selectedCalendars);
 
-      // In edit mode: for single-calendar events, lock that calendar as organizer.
-      // For shared events (multiple calendars), don't guess organizer — HA doesn't
-      // expose Google Calendar's organizer field, so show all as participants.
+      // For single-calendar events, lock that calendar as organizer.
+      // For shared events, query Google Calendar API for the real organizer.
       const isSharedEvent = shared && shared.length > 1;
-      this._organizerEntityId = isSharedEvent ? '' : (this.prefill.calendar_entity_id || '');
+      if (isSharedEvent && this.prefill.uid) {
+        this._organizerEntityId = '';
+        this._fetchOrganizer(this.prefill.calendar_entity_id || '', this.prefill.uid);
+      } else {
+        this._organizerEntityId = this.prefill.calendar_entity_id || '';
+      }
 
       if (this.prefill.start) {
         const start = new Date(this.prefill.start);
@@ -578,6 +582,13 @@ export class PVEventCreateDialog extends LitElement {
       }
     } else {
       this._setDefaults();
+    }
+  }
+
+  private async _fetchOrganizer(entityId: string, uid: string) {
+    const organizerId = await getEventOrganizer(this.hass, entityId, uid);
+    if (organizerId) {
+      this._organizerEntityId = organizerId;
     }
   }
 

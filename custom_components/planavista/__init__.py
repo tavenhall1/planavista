@@ -7,6 +7,9 @@ import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import voluptuous as vol
+
+from homeassistant.components import websocket_api
 from homeassistant.components.calendar import DOMAIN as CALENDAR_DOMAIN
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
@@ -234,6 +237,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN, "create_event_with_attendees", async_create_event_with_attendees
     )
 
+    # ── WebSocket: look up Google Calendar event organizer ──
+    websocket_api.async_register_command(hass, ws_get_event_organizer)
+
     return True
 
 
@@ -442,6 +448,85 @@ async def _create_event_via_ha(
         target={"entity_id": entity_id},
         blocking=True,
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/get_event_organizer",
+        vol.Required("entity_id"): str,
+        vol.Required("uid"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_get_event_organizer(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict,
+) -> None:
+    """Look up the organizer of a calendar event via Google Calendar API."""
+    entity_id = msg["entity_id"]
+    uid = msg["uid"]
+
+    cal_id = _get_google_calendar_id(hass, entity_id)
+    if not cal_id:
+        connection.send_result(msg["id"], {"organizer_entity_id": None})
+        return
+
+    access_token = await _ensure_google_token(hass, entity_id)
+    if not access_token:
+        connection.send_result(msg["id"], {"organizer_entity_id": None})
+        return
+
+    http_session = async_get_clientsession(hass)
+    encoded_id = urllib.parse.quote(cal_id, safe="")
+    encoded_uid = urllib.parse.quote(uid, safe="")
+    url = (
+        f"https://www.googleapis.com/calendar/v3/calendars/"
+        f"{encoded_id}/events?iCalUID={encoded_uid}&maxResults=1"
+    )
+
+    try:
+        async with http_session.get(
+            url,
+            headers={"Authorization": f"Bearer {access_token}"},
+        ) as resp:
+            if resp.status != 200:
+                _LOGGER.debug(
+                    "PlanaVista: organizer lookup failed (HTTP %s) for uid=%s",
+                    resp.status, uid,
+                )
+                connection.send_result(msg["id"], {"organizer_entity_id": None})
+                return
+
+            data = await resp.json()
+            items = data.get("items", [])
+            if not items:
+                connection.send_result(msg["id"], {"organizer_entity_id": None})
+                return
+
+            organizer_email = items[0].get("organizer", {}).get("email", "")
+            if not organizer_email:
+                connection.send_result(msg["id"], {"organizer_entity_id": None})
+                return
+
+            # Map organizer email → PlanaVista calendar entity_id
+            entries = hass.config_entries.async_entries(DOMAIN)
+            if entries:
+                calendars = entries[0].data.get(CONF_CALENDARS, [])
+                for cal_config in calendars:
+                    cal_eid = cal_config.get("entity_id", "")
+                    google_id = _get_google_calendar_id(hass, cal_eid)
+                    if google_id and google_id.lower() == organizer_email.lower():
+                        connection.send_result(msg["id"], {
+                            "organizer_entity_id": cal_eid,
+                        })
+                        return
+
+            connection.send_result(msg["id"], {"organizer_entity_id": None})
+
+    except Exception as err:
+        _LOGGER.warning("PlanaVista: organizer lookup failed: %s", err)
+        connection.send_result(msg["id"], {"organizer_entity_id": None})
 
 
 class PlanaVistaCoordinator(DataUpdateCoordinator):

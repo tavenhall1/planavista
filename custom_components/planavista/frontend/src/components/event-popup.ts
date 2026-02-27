@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
-import { deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
+import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../styles/shared';
 import { formatTime, formatDate } from '../utils/date-utils';
 import { isAllDayEvent } from '../utils/event-utils';
@@ -18,8 +18,30 @@ export class PVEventPopup extends LitElement {
   @state() private _deleteMode: 'all' | 'remove-me' | null = null;
   @state() private _deleting = false;
   @state() private _deleteError = '';
+  @state() private _organizerEntityId: string | null = null;
 
   private _pv = new PlanaVistaController(this);
+  private _lastOrganizerUid = '';
+
+  updated(changedProps: Map<string, unknown>) {
+    super.updated(changedProps);
+    if (changedProps.has('event') && this.event) {
+      const shared = (this.event as any).shared_calendars;
+      const uid = this.event.uid || '';
+      if (shared && shared.length > 1 && uid && uid !== this._lastOrganizerUid) {
+        this._lastOrganizerUid = uid;
+        this._organizerEntityId = null;
+        this._fetchOrganizer(this.event.calendar_entity_id, uid);
+      } else if (!shared || shared.length <= 1) {
+        this._organizerEntityId = null;
+        this._lastOrganizerUid = '';
+      }
+    }
+  }
+
+  private async _fetchOrganizer(entityId: string, uid: string) {
+    this._organizerEntityId = await getEventOrganizer(this.hass, entityId, uid);
+  }
 
   static styles = [
     baseStyles,
@@ -240,6 +262,9 @@ export class PVEventPopup extends LitElement {
                 ${shared!.map(p => html`
                   <span class="participant-chip" style="background: ${p.calendar_color}">
                     ${p.calendar_name}
+                    ${p.entity_id === this._organizerEntityId
+                      ? html`<span class="organizer-tag">organizer</span>`
+                      : nothing}
                   </span>
                 `)}
               </div>

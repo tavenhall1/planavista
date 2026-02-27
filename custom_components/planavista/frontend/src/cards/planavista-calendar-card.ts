@@ -1200,10 +1200,12 @@ export class PlanaVistaCalendarCard extends LitElement {
             ?disabled=${this._refreshing}>
             <ha-icon icon="mdi:autorenew"></ha-icon>
           </button>
-          <button class="pvc-settings-btn" @click=${this._openSettings}
-            title="Settings" aria-label="Open settings">
-            <ha-icon icon="mdi:cog"></ha-icon>
-          </button>
+          ${(this.hass as any).user?.is_admin ? html`
+            <button class="pvc-settings-btn" @click=${this._openSettings}
+              title="Settings" aria-label="Open settings">
+              <ha-icon icon="mdi:cog"></ha-icon>
+            </button>
+          ` : nothing}
         </div>
       </div>
     `;
