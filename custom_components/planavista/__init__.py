@@ -310,10 +310,22 @@ def _normalize_color(color_value) -> str:
 # ═══════════════════════════════════════════════════════════════════
 
 def _get_google_calendar_id(hass: HomeAssistant, entity_id: str) -> str | None:
-    """Get Google Calendar ID (email) for an entity, or None if not Google."""
+    """Get Google Calendar ID (email) for an entity, or None if not Google.
+
+    HA's Google Calendar integration stores entity unique_id as
+    "{account_email}-{calendar_id}".  For primary calendars both parts are
+    the same email, e.g. "alice@gmail.com-alice@gmail.com".  We need to
+    strip the account prefix so the Google API gets just the calendar ID.
+    """
     registry = er.async_get(hass)
     entry = registry.async_get(entity_id)
-    if entry and entry.platform == "google":
+    if entry and entry.platform == "google" and entry.config_entry_id:
+        config_entry = hass.config_entries.async_get_entry(entry.config_entry_id)
+        if config_entry and config_entry.unique_id:
+            prefix = config_entry.unique_id + "-"
+            if entry.unique_id and entry.unique_id.startswith(prefix):
+                return entry.unique_id[len(prefix):]
+        # Fallback: return raw unique_id
         return entry.unique_id
     return None
 
