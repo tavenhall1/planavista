@@ -1240,11 +1240,17 @@ export class PVEventCreateDialog extends LitElement {
             summary: baseData.summary,
             start: baseData.start_date_time || baseData.start_date,
           });
-          await createEventWithAttendees(this.hass, {
-            ...baseData,
-            entity_id: primaryId,
-            attendee_entity_ids: attendeeIds,
-          } as CreateEventData & { attendee_entity_ids: string[] });
+          try {
+            await createEventWithAttendees(this.hass, {
+              ...baseData,
+              entity_id: primaryId,
+              attendee_entity_ids: attendeeIds,
+            } as CreateEventData & { attendee_entity_ids: string[] });
+            console.warn('[PlanaVista] createEventWithAttendees SUCCEEDED');
+          } catch (svcErr: any) {
+            console.error('[PlanaVista] createEventWithAttendees FAILED:', svcErr);
+            throw svcErr;
+          }
           await refreshPlanaVista(this.hass);
           this._pv.state.closeDialog();
         } else {
