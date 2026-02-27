@@ -129,7 +129,7 @@ export class PvColorSwatchPicker extends LitElement {
 
       .swatch-grid {
         display: grid;
-        grid-template-columns: repeat(10, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
         gap: 4px;
       }
 

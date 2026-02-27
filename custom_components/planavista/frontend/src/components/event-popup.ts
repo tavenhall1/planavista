@@ -237,10 +237,9 @@ export class PVEventPopup extends LitElement {
             <h3 class="popup-title">${event.summary}</h3>
             ${isShared ? html`
               <div class="participants-row">
-                ${shared!.map((p, i) => html`
+                ${shared!.map(p => html`
                   <span class="participant-chip" style="background: ${p.calendar_color}">
                     ${p.calendar_name}
-                    ${i === 0 ? html`<span class="organizer-tag">organizer</span>` : nothing}
                   </span>
                 `)}
               </div>

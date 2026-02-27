@@ -494,7 +494,7 @@ export class PVEventCreateDialog extends LitElement {
         .pv-dialog-body { padding: 1rem; }
         .pv-dialog-footer { padding: 0.75rem 1rem; }
 
-        .form-row { flex-direction: column; gap: 0.5rem; }
+        .form-row { flex-direction: column; gap: 0.5rem; align-items: stretch; }
 
         .cal-option { padding: 0.25rem 0.5rem; font-size: 0.75rem; min-height: 36px; }
       }
@@ -547,8 +547,11 @@ export class PVEventCreateDialog extends LitElement {
       }
       this._originalCalendars = new Set(this._selectedCalendars);
 
-      // In edit mode, the event's primary calendar is the locked organizer
-      this._organizerEntityId = this.prefill.calendar_entity_id || '';
+      // In edit mode: for single-calendar events, lock that calendar as organizer.
+      // For shared events (multiple calendars), don't guess organizer — HA doesn't
+      // expose Google Calendar's organizer field, so show all as participants.
+      const isSharedEvent = shared && shared.length > 1;
+      this._organizerEntityId = isSharedEvent ? '' : (this.prefill.calendar_entity_id || '');
 
       if (this.prefill.start) {
         const start = new Date(this.prefill.start);
