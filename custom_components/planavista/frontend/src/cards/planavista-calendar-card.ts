@@ -958,6 +958,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           @touchend=${this._onTouchEnd}
           @event-click=${this._onEventClick}
           @day-click=${this._onDayClick}
+          @create-event=${this._onCreateEvent}
         >
           ${this._renderView(currentView, visibleEvents, calendars, display)}
         </div>
@@ -1261,6 +1262,19 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _onEventClick(e: CustomEvent) {
     this._pv.state.selectEvent(e.detail.event);
+  }
+
+  private _onCreateEvent(e: CustomEvent) {
+    const date = e.detail?.date as Date | undefined;
+    const prefill: Partial<any> = {};
+    if (date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      prefill.start = `${y}-${m}-${d}T09:00:00`;
+      prefill.end = `${y}-${m}-${d}T10:00:00`;
+    }
+    this._pv.state.openCreateDialog(prefill);
   }
 
   private _onDayClick(e: CustomEvent) {

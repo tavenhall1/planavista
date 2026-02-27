@@ -61,6 +61,11 @@ export class PVViewAgenda extends LitElement {
         height: 100%;
         overflow-y: auto;
         scroll-behavior: smooth;
+        scrollbar-width: none;
+      }
+
+      .agenda-container::-webkit-scrollbar {
+        display: none;
       }
 
       .day-card {
