@@ -1251,8 +1251,25 @@ export class PVEventCreateDialog extends LitElement {
             console.error('[PlanaVista] createEventWithAttendees FAILED:', svcErr);
             throw svcErr;
           }
-          await refreshPlanaVista(this.hass);
+
+          // Close dialog immediately for snappy UX
           this._pv.state.closeDialog();
+
+          // Delayed refresh: give Google ~3s to propagate, then force
+          // HA to re-fetch calendar entities before refreshing PlanaVista
+          const calEntities = [...selected];
+          const hass = this.hass;
+          setTimeout(async () => {
+            try {
+              for (const eid of calEntities) {
+                await hass.callService('homeassistant', 'update_entity', { entity_id: eid });
+              }
+              await refreshPlanaVista(hass);
+              console.warn('[PlanaVista] Delayed refresh complete');
+            } catch (e) {
+              console.warn('[PlanaVista] Delayed refresh failed:', e);
+            }
+          }, 3000);
         } else {
           // Single calendar — use normal create
           const data: CreateEventData = { ...baseData, entity_id: entityIds[0] } as CreateEventData;
