@@ -1314,11 +1314,19 @@ export class PlanaVistaCalendarCard extends LitElement {
         (ev: any) => ev.uid === clicked.uid && ev.uid !== '',
       );
 
-      if (siblings.length > 1) {
-        // Build enriched event from the clicked copy, listing all participants
+      // Deduplicate by calendar — recurring events share the same UID across
+      // all instances, so without this we'd get N chips per participant.
+      const seen = new Set<string>();
+      const uniqueParticipants = siblings.filter((s: any) => {
+        if (seen.has(s.calendar_entity_id)) return false;
+        seen.add(s.calendar_entity_id);
+        return true;
+      });
+
+      if (uniqueParticipants.length > 1) {
         const enriched: CalendarEvent = {
           ...clicked,
-          shared_calendars: siblings.map((s: any) => ({
+          shared_calendars: uniqueParticipants.map((s: any) => ({
             entity_id: s.calendar_entity_id,
             calendar_name: s.calendar_name,
             calendar_color: s.calendar_color,
