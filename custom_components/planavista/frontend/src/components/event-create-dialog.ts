@@ -1234,23 +1234,11 @@ export class PVEventCreateDialog extends LitElement {
           // Multiple calendars — use attendees service (Google API when available)
           const primaryId = this._organizerEntityId || entityIds[0];
           const attendeeIds = entityIds.filter(id => id !== primaryId);
-          console.warn('[PlanaVista] Calling createEventWithAttendees:', {
+          await createEventWithAttendees(this.hass, {
+            ...baseData,
             entity_id: primaryId,
             attendee_entity_ids: attendeeIds,
-            summary: baseData.summary,
-            start: baseData.start_date_time || baseData.start_date,
-          });
-          try {
-            await createEventWithAttendees(this.hass, {
-              ...baseData,
-              entity_id: primaryId,
-              attendee_entity_ids: attendeeIds,
-            } as CreateEventData & { attendee_entity_ids: string[] });
-            console.warn('[PlanaVista] createEventWithAttendees SUCCEEDED');
-          } catch (svcErr: any) {
-            console.error('[PlanaVista] createEventWithAttendees FAILED:', svcErr);
-            throw svcErr;
-          }
+          } as CreateEventData & { attendee_entity_ids: string[] });
 
           // Close dialog immediately for snappy UX
           this._pv.state.closeDialog();
@@ -1265,9 +1253,8 @@ export class PVEventCreateDialog extends LitElement {
                 await hass.callService('homeassistant', 'update_entity', { entity_id: eid });
               }
               await refreshPlanaVista(hass);
-              console.warn('[PlanaVista] Delayed refresh complete');
-            } catch (e) {
-              console.warn('[PlanaVista] Delayed refresh failed:', e);
+            } catch {
+              // Refresh is best-effort
             }
           }, 3000);
         } else {

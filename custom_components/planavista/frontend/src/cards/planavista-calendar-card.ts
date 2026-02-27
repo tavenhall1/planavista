@@ -871,8 +871,8 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
       // Then refresh the PlanaVista coordinator
       await this.hass.callService('homeassistant', 'update_entity', { entity_id: 'sensor.planavista_config' });
-    } catch (e) {
-      console.warn('[PlanaVista] Manual refresh failed:', e);
+    } catch {
+      // Refresh is best-effort
     }
     // Keep spinner for at least 800ms so the animation completes
     setTimeout(() => { this._refreshing = false; }, 800);

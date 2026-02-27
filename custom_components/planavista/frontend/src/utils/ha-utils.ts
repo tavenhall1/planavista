@@ -77,22 +77,6 @@ export function getPlanaVistaData(hass: HomeAssistant, entityId = 'sensor.planav
   const attrs = entity.attributes as any;
   const events = attrs.events || [];
 
-  // Diagnostic: log uid presence on first load for debugging edit/delete
-  if (events.length > 0 && !(getPlanaVistaData as any)._uidLogged) {
-    (getPlanaVistaData as any)._uidLogged = true;
-    const withUid = events.filter((e: any) => e.uid);
-    const withoutUid = events.filter((e: any) => !e.uid);
-    console.log(
-      `[PlanaVista] Event UID check: ${withUid.length} with uid, ${withoutUid.length} without uid (total ${events.length})`,
-    );
-    if (withoutUid.length > 0) {
-      console.log('[PlanaVista] Events missing uid:', withoutUid.slice(0, 3).map((e: any) => ({
-        summary: e.summary,
-        keys: Object.keys(e),
-      })));
-    }
-  }
-
   return {
     calendars: attrs.calendars || [],
     events,
