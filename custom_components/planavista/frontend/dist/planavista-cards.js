@@ -3091,7 +3091,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       .day-cell.today .day-number {
         background: var(--pv-accent);
         color: var(--pv-accent-text);
-        border-radius: 50%;
+        border-radius: var(--pv-radius-sm, 50%);
         width: 24px;
         height: 24px;
         display: inline-flex;
