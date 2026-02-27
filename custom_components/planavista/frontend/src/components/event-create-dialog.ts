@@ -19,6 +19,7 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _title = '';
   @state() private _selectedCalendars: Set<string> = new Set();
   @state() private _originalCalendars: Set<string> = new Set();
+  @state() private _organizerEntityId = '';
   @state() private _date = '';
   @state() private _startTime = '';
   @state() private _endTime = '';
@@ -124,6 +125,33 @@ export class PVEventCreateDialog extends LitElement {
 
       .cal-option:hover:not(.selected) {
         border-color: var(--pv-text-muted);
+      }
+
+      .cal-option-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .organizer-badge {
+        font-size: 0.5625rem;
+        font-weight: 700;
+        color: var(--pv-accent);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        line-height: 1;
+      }
+
+      .cal-option.locked {
+        cursor: default;
+        opacity: 0.9;
+      }
+
+      .cal-option .lock-icon {
+        --mdc-icon-size: 12px;
+        margin-left: 2px;
+        opacity: 0.7;
       }
 
       .cal-dot {
@@ -438,6 +466,9 @@ export class PVEventCreateDialog extends LitElement {
       }
       this._originalCalendars = new Set(this._selectedCalendars);
 
+      // In edit mode, the event's primary calendar is the locked organizer
+      this._organizerEntityId = this.prefill.calendar_entity_id || '';
+
       if (this.prefill.start) {
         const start = new Date(this.prefill.start);
         this._date = this._toDateStr(start);
@@ -468,8 +499,9 @@ export class PVEventCreateDialog extends LitElement {
 
   private _setDefaults() {
     this._title = '';
-    this._selectedCalendars = new Set([this.calendars[0]?.entity_id].filter(Boolean));
+    this._selectedCalendars = new Set();
     this._originalCalendars = new Set();
+    this._organizerEntityId = '';
     const now = new Date();
     this._date = this._toDateStr(now);
     this._pickerYear = now.getFullYear();
@@ -542,17 +574,27 @@ export class PVEventCreateDialog extends LitElement {
                 <div class="calendar-select">
                   ${visibleCalendars.map(cal => {
                     const selected = this._selectedCalendars.has(cal.entity_id);
+                    const isOrganizer = cal.entity_id === this._organizerEntityId;
+                    const isLockedOrganizer = isEdit && isOrganizer;
                     return html`
-                      <button
-                        class="cal-option ${selected ? 'selected' : ''}"
-                        style="${selected
-                          ? `background: ${cal.color}; --cal-bg: ${cal.color}`
-                          : `--cal-bg: ${cal.color}`}"
-                        @click=${() => this._toggleCalendar(cal.entity_id)}
-                      >
-                        <span class="cal-dot" style="background: ${cal.color}"></span>
-                        ${cal.display_name}
-                      </button>
+                      <div class="cal-option-wrap">
+                        ${isOrganizer && selected
+                          ? html`<span class="organizer-badge">Organizer</span>`
+                          : nothing}
+                        <button
+                          class="cal-option ${selected ? 'selected' : ''} ${isLockedOrganizer ? 'locked' : ''}"
+                          style="${selected
+                            ? `background: ${cal.color}; --cal-bg: ${cal.color}`
+                            : `--cal-bg: ${cal.color}`}"
+                          @click=${() => this._toggleCalendar(cal.entity_id)}
+                        >
+                          <span class="cal-dot" style="background: ${cal.color}"></span>
+                          ${cal.display_name}
+                          ${isLockedOrganizer
+                            ? html`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`
+                            : nothing}
+                        </button>
+                      </div>
                     `;
                   })}
                 </div>
@@ -887,13 +929,31 @@ export class PVEventCreateDialog extends LitElement {
   // ==================================================================
 
   private _toggleCalendar(entityId: string) {
+    const isEdit = this.mode === 'edit';
+
+    // In edit mode, the organizer cannot be deselected
+    if (isEdit && entityId === this._organizerEntityId) return;
+
     const next = new Set(this._selectedCalendars);
+
     if (next.has(entityId)) {
-      // Don't allow deselecting the last one
-      if (next.size > 1) next.delete(entityId);
+      // Deselecting
+      next.delete(entityId);
+
+      // If the organizer was deselected, promote the next selected calendar
+      if (entityId === this._organizerEntityId) {
+        this._organizerEntityId = next.size > 0 ? [...next][0] : '';
+      }
     } else {
+      // Selecting
       next.add(entityId);
+
+      // First selection becomes the organizer
+      if (!this._organizerEntityId) {
+        this._organizerEntityId = entityId;
+      }
     }
+
     this._selectedCalendars = next;
   }
 
@@ -1009,8 +1069,8 @@ export class PVEventCreateDialog extends LitElement {
 
         if (entityIds.length > 1) {
           // Multiple calendars — use attendees service (Google API when available)
-          const primaryId = entityIds[0];
-          const attendeeIds = entityIds.slice(1);
+          const primaryId = this._organizerEntityId || entityIds[0];
+          const attendeeIds = entityIds.filter(id => id !== primaryId);
           await createEventWithAttendees(this.hass, {
             ...baseData,
             entity_id: primaryId,
