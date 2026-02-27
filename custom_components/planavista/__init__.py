@@ -128,8 +128,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def async_create_event_with_attendees(call) -> None:
         """Create a calendar event with attendees via Google Calendar API.
 
-        For Google Calendar entities, calls the API directly so attendees
-        receive proper invitations and the event is linked across calendars.
+        Always creates the event on the authenticated user's PRIMARY Google
+        Calendar (using the special "primary" calendar ID). All selected
+        calendars are added as attendees — Google sends them proper invitations
+        so the event appears linked across everyone's calendar.
         Falls back to creating separate events for non-Google calendars.
         """
         entity_id = call.data.get("entity_id")
@@ -148,40 +150,49 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "end_date": call.data.get("end_date"),
         }
 
-        # Check if primary calendar is Google
-        primary_cal_id = _get_google_calendar_id(hass, entity_id)
+        # Collect ALL entity IDs (selected organizer + attendees)
+        all_entity_ids = [entity_id] + list(attendee_entity_ids)
 
-        if primary_cal_id:
-            access_token = await _ensure_google_token(hass, entity_id)
+        # Find any Google Calendar entity to get the OAuth token
+        google_token_source = None
+        for eid in all_entity_ids:
+            if _get_google_calendar_id(hass, eid):
+                google_token_source = eid
+                break
+
+        if google_token_source:
+            access_token = await _ensure_google_token(hass, google_token_source)
 
             if access_token:
-                # Map attendee entity IDs to Google Calendar IDs (emails)
+                # Map ALL selected entities to Google Calendar IDs (emails)
                 attendee_emails = []
                 non_google_attendees = []
 
-                # Include organizer's own email so they appear as attendee
-                attendee_emails.append(primary_cal_id)
-
-                for att_id in attendee_entity_ids:
-                    cal_id = _get_google_calendar_id(hass, att_id)
+                for eid in all_entity_ids:
+                    cal_id = _get_google_calendar_id(hass, eid)
                     if cal_id:
                         attendee_emails.append(cal_id)
                     else:
-                        non_google_attendees.append(att_id)
+                        non_google_attendees.append(eid)
 
                 try:
-                    await _google_api_create_event(
+                    # Always create on the authenticated user's PRIMARY calendar.
+                    # Google Calendar API treats "primary" as the authenticated
+                    # user's main calendar. All selected calendars become attendees
+                    # and Google sends them invitations automatically.
+                    result = await _google_api_create_event(
                         hass,
                         access_token,
-                        primary_cal_id,
+                        "primary",
                         event_data,
                         attendee_emails,
                     )
                     _LOGGER.info(
-                        "PlanaVista: created event '%s' on %s with %d attendees via Google API",
+                        "PlanaVista: created event '%s' on primary calendar "
+                        "with %d attendees via Google API (id=%s)",
                         event_data.get("summary"),
-                        entity_id,
-                        len(attendee_emails) - 1,  # exclude organizer
+                        len(attendee_emails),
+                        result.get("id", "?"),
                     )
 
                     # For non-Google attendees, fall back to separate events

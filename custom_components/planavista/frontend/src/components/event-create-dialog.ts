@@ -15,6 +15,7 @@ export class PVEventCreateDialog extends LitElement {
   @property({ type: Boolean }) open = false;
   @property({ type: String }) mode: 'create' | 'edit' = 'create';
   @property({ type: Object }) prefill: Partial<CalendarEvent> | null = null;
+  @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
 
   @state() private _title = '';
   @state() private _selectedCalendars: Set<string> = new Set();
@@ -35,6 +36,9 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _pickerMonth = 0;
   @state() private _pickerYear = 0;
 
+  // Time picker state
+  @state() private _activeTimePicker: 'start' | 'end' | null = null;
+
   // Location autocomplete state
   @state() private _locationSuggestions: Array<{ display_name: string }> = [];
   @state() private _locationLoading = false;
@@ -46,6 +50,8 @@ export class PVEventCreateDialog extends LitElement {
   @query('#title-input') private _titleInput?: HTMLInputElement;
   @query('.location-input') private _locationInput?: HTMLInputElement;
   @query('.date-display') private _dateDisplay?: HTMLElement;
+  @query('.start-time-display') private _startTimeEl?: HTMLElement;
+  @query('.end-time-display') private _endTimeEl?: HTMLElement;
 
   static styles = [
     baseStyles,
@@ -95,6 +101,7 @@ export class PVEventCreateDialog extends LitElement {
         display: flex;
         flex-wrap: wrap;
         gap: 0.375rem;
+        padding-top: 12px;
       }
 
       .cal-option {
@@ -128,19 +135,23 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       .cal-option-wrap {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
+        position: relative;
+        display: inline-flex;
       }
 
       .organizer-badge {
-        font-size: 0.5625rem;
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.5rem;
         font-weight: 700;
         color: var(--pv-accent);
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.3px;
         line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
       }
 
       .cal-option.locked {
@@ -330,6 +341,76 @@ export class PVEventCreateDialog extends LitElement {
 
       .picker-day.selected:hover {
         filter: brightness(1.1);
+      }
+
+      /* ============================================
+         CUSTOM TIME PICKER
+         ============================================ */
+      .time-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--pv-border);
+        border-radius: var(--pv-radius-sm, 8px);
+        background: var(--pv-card-bg);
+        color: var(--pv-text);
+        font-size: 0.9375rem;
+        font-family: inherit;
+        cursor: pointer;
+        min-height: 48px;
+        box-sizing: border-box;
+        transition: border-color 200ms ease;
+      }
+
+      .time-display:hover {
+        border-color: var(--pv-text-muted);
+      }
+
+      .time-display ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--pv-text-muted);
+      }
+
+      .time-picker-dropdown {
+        position: fixed;
+        z-index: 9999;
+        background: var(--pv-card-bg, #fff);
+        border: 1px solid var(--pv-border);
+        border-radius: var(--pv-radius-md, 12px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+        max-height: 280px;
+        overflow-y: auto;
+        animation: pv-fadeIn 150ms ease;
+        scrollbar-width: thin;
+      }
+
+      .time-picker-dropdown::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .time-picker-dropdown::-webkit-scrollbar-thumb {
+        background: var(--pv-border);
+        border-radius: 4px;
+      }
+
+      .time-slot {
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 0.9375rem;
+        color: var(--pv-text);
+        transition: background 120ms ease;
+      }
+
+      .time-slot:hover {
+        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
+      }
+
+      .time-slot.selected {
+        background: var(--pv-accent);
+        color: var(--pv-accent-text, #fff);
+        font-weight: 600;
       }
 
       /* ============================================
@@ -621,21 +702,17 @@ export class PVEventCreateDialog extends LitElement {
                 <div class="form-row">
                   <div class="form-field">
                     <label class="pv-label">Start Time</label>
-                    <input
-                      class="pv-input"
-                      type="time"
-                      .value=${this._startTime}
-                      @input=${(e: Event) => this._startTime = (e.target as HTMLInputElement).value}
-                    />
+                    <div class="time-display start-time-display" @click=${() => this._openTimePicker('start')}>
+                      <ha-icon icon="mdi:clock-outline"></ha-icon>
+                      ${this._formatTimeForDisplay(this._startTime)}
+                    </div>
                   </div>
                   <div class="form-field">
                     <label class="pv-label">End Time</label>
-                    <input
-                      class="pv-input"
-                      type="time"
-                      .value=${this._endTime}
-                      @input=${(e: Event) => this._endTime = (e.target as HTMLInputElement).value}
-                    />
+                    <div class="time-display end-time-display" @click=${() => this._openTimePicker('end')}>
+                      <ha-icon icon="mdi:clock-outline"></ha-icon>
+                      ${this._formatTimeForDisplay(this._endTime)}
+                    </div>
                   </div>
                 </div>
               ` : nothing}
@@ -681,6 +758,7 @@ export class PVEventCreateDialog extends LitElement {
 
       ${this._renderLocationDropdown()}
       ${this._renderDatePickerDropdown()}
+      ${this._renderTimePickerDropdown()}
     `;
   }
 
@@ -751,6 +829,7 @@ export class PVEventCreateDialog extends LitElement {
   }
 
   private _toggleDatePicker() {
+    this._activeTimePicker = null;
     this._datePickerOpen = !this._datePickerOpen;
     if (this._datePickerOpen && this._date) {
       const [y, m] = this._date.split('-').map(Number);
@@ -793,6 +872,89 @@ export class PVEventCreateDialog extends LitElement {
   private _selectPickerDay(day: Date) {
     this._date = this._toDateStr(day);
     this._datePickerOpen = false;
+  }
+
+  // ==================================================================
+  // CUSTOM TIME PICKER
+  // ==================================================================
+
+  private _formatTimeForDisplay(time24: string): string {
+    if (!time24) return 'Select time';
+    const [h, m] = time24.split(':').map(Number);
+    if (this.timeFormat === '24h') {
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  }
+
+  private _getTimeSlots(): string[] {
+    const slots: string[] = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+      }
+    }
+    return slots;
+  }
+
+  private _openTimePicker(which: 'start' | 'end') {
+    this._datePickerOpen = false;
+    this._activeTimePicker = this._activeTimePicker === which ? null : which;
+    if (this._activeTimePicker) {
+      this.updateComplete.then(() => {
+        const dropdown = this.renderRoot.querySelector('.time-picker-dropdown');
+        const selected = dropdown?.querySelector('.time-slot.selected') as HTMLElement | null;
+        if (selected && dropdown) {
+          dropdown.scrollTop = selected.offsetTop - dropdown.clientHeight / 2 + selected.clientHeight / 2;
+        }
+      });
+    }
+  }
+
+  private _selectTime(time: string) {
+    if (this._activeTimePicker === 'start') {
+      this._startTime = time;
+      // Auto-advance end time to 1 hour later if end is at or before start
+      if (this._endTime <= time) {
+        const [h, m] = time.split(':').map(Number);
+        const endH = (h + 1) % 24;
+        this._endTime = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+    } else {
+      this._endTime = time;
+    }
+    this._activeTimePicker = null;
+  }
+
+  private _renderTimePickerDropdown() {
+    if (!this._activeTimePicker) return nothing;
+
+    const el = this._activeTimePicker === 'start' ? this._startTimeEl : this._endTimeEl;
+    if (!el) return nothing;
+    const rect = el.getBoundingClientRect();
+    const currentTime = this._activeTimePicker === 'start' ? this._startTime : this._endTime;
+    const slots = this._getTimeSlots();
+
+    const dropdownHeight = 280;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+    const top = placeAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4;
+
+    return html`
+      <div
+        class="time-picker-dropdown"
+        style="top: ${top}px; left: ${rect.left}px; width: ${rect.width}px;"
+      >
+        ${slots.map(slot => html`
+          <div
+            class="time-slot ${slot === currentTime ? 'selected' : ''}"
+            @click=${() => this._selectTime(slot)}
+          >${this._formatTimeForDisplay(slot)}</div>
+        `)}
+      </div>
+    `;
   }
 
   // ==================================================================
@@ -963,6 +1125,7 @@ export class PVEventCreateDialog extends LitElement {
 
   private _close() {
     this._datePickerOpen = false;
+    this._activeTimePicker = null;
     this._locationSuggestions = [];
     this._pv.state.closeDialog();
   }
