@@ -128,10 +128,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def async_create_event_with_attendees(call) -> None:
         """Create a calendar event with attendees via Google Calendar API.
 
-        Always creates the event on the authenticated user's PRIMARY Google
-        Calendar (using the special "primary" calendar ID). All selected
-        calendars are added as attendees — Google sends them proper invitations
-        so the event appears linked across everyone's calendar.
+        For Google Calendar entities, calls the API directly so attendees
+        receive proper invitations and the event is linked across calendars.
         Falls back to creating separate events for non-Google calendars.
         """
         entity_id = call.data.get("entity_id")
@@ -139,6 +137,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         if not entity_id:
             raise Exception("entity_id is required")
+
+        _LOGGER.info(
+            "PlanaVista: create_event_with_attendees called — "
+            "organizer=%s, attendees=%s",
+            entity_id, attendee_entity_ids,
+        )
 
         event_data = {
             "summary": call.data.get("summary", ""),
@@ -150,49 +154,58 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "end_date": call.data.get("end_date"),
         }
 
-        # Collect ALL entity IDs (selected organizer + attendees)
-        all_entity_ids = [entity_id] + list(attendee_entity_ids)
+        # Check if organizer's calendar is Google
+        primary_cal_id = _get_google_calendar_id(hass, entity_id)
+        _LOGGER.info(
+            "PlanaVista: organizer entity %s → Google Calendar ID: %s",
+            entity_id, primary_cal_id,
+        )
 
-        # Find any Google Calendar entity to get the OAuth token
-        google_token_source = None
-        for eid in all_entity_ids:
-            if _get_google_calendar_id(hass, eid):
-                google_token_source = eid
-                break
-
-        if google_token_source:
-            access_token = await _ensure_google_token(hass, google_token_source)
+        if primary_cal_id:
+            access_token = await _ensure_google_token(hass, entity_id)
+            _LOGGER.info(
+                "PlanaVista: OAuth token for %s: %s",
+                entity_id, "obtained" if access_token else "FAILED",
+            )
 
             if access_token:
-                # Map ALL selected entities to Google Calendar IDs (emails)
+                # Map attendee entity IDs to Google Calendar IDs (emails)
                 attendee_emails = []
                 non_google_attendees = []
 
-                for eid in all_entity_ids:
-                    cal_id = _get_google_calendar_id(hass, eid)
+                # Include organizer's own email so they appear as attendee
+                attendee_emails.append(primary_cal_id)
+
+                for att_id in attendee_entity_ids:
+                    cal_id = _get_google_calendar_id(hass, att_id)
+                    _LOGGER.info(
+                        "PlanaVista: attendee %s → Google Calendar ID: %s",
+                        att_id, cal_id,
+                    )
                     if cal_id:
                         attendee_emails.append(cal_id)
                     else:
-                        non_google_attendees.append(eid)
+                        non_google_attendees.append(att_id)
+
+                _LOGGER.info(
+                    "PlanaVista: creating event on calendar '%s' with attendees: %s",
+                    primary_cal_id, attendee_emails,
+                )
 
                 try:
-                    # Always create on the authenticated user's PRIMARY calendar.
-                    # Google Calendar API treats "primary" as the authenticated
-                    # user's main calendar. All selected calendars become attendees
-                    # and Google sends them invitations automatically.
                     result = await _google_api_create_event(
                         hass,
                         access_token,
-                        "primary",
+                        primary_cal_id,
                         event_data,
                         attendee_emails,
                     )
                     _LOGGER.info(
-                        "PlanaVista: created event '%s' on primary calendar "
-                        "with %d attendees via Google API (id=%s)",
+                        "PlanaVista: Google API SUCCESS — event '%s' created "
+                        "(id=%s, htmlLink=%s)",
                         event_data.get("summary"),
-                        len(attendee_emails),
                         result.get("id", "?"),
+                        result.get("htmlLink", "?"),
                     )
 
                     # For non-Google attendees, fall back to separate events
@@ -201,13 +214,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
                     return
                 except Exception as err:
-                    _LOGGER.warning(
-                        "PlanaVista: Google API create failed, falling back: %s", err
+                    _LOGGER.error(
+                        "PlanaVista: Google API create FAILED for calendar '%s': %s",
+                        primary_cal_id, err,
                     )
+        else:
+            _LOGGER.warning(
+                "PlanaVista: entity %s is NOT a Google Calendar entity "
+                "(platform mismatch or not in registry)",
+                entity_id,
+            )
 
         # Fallback: create separate events via HA service
         _LOGGER.info(
-            "PlanaVista: using HA service for event creation (non-Google or API unavailable)"
+            "PlanaVista: FALLBACK — creating separate events via HA service "
+            "(no attendee linking)"
         )
         await _create_event_via_ha(hass, entity_id, event_data)
         for att_id in attendee_entity_ids:
