@@ -1295,8 +1295,40 @@ export class PVEventCreateDialog extends LitElement {
               await refreshPlanaVista(hass);
             } catch { /* best-effort */ }
           }, 3000);
+        } else if (selected.size > 1 && uid) {
+          // Was single-calendar, now adding guests — delete old + create with attendees
+          const primaryEntityId = this.prefill?.calendar_entity_id;
+          if (primaryEntityId) {
+            await deleteEvent(this.hass, {
+              entity_id: primaryEntityId,
+              uid,
+              recurrence_id: this.prefill?.recurrence_id,
+            });
+          }
+
+          const primaryId = organizerEntity || [...selected][0];
+          const attendeeIds = [...selected].filter(id => id !== primaryId);
+          await createEventWithAttendees(this.hass, {
+            ...baseData,
+            entity_id: primaryId,
+            attendee_entity_ids: attendeeIds,
+          } as CreateEventData & { attendee_entity_ids: string[] });
+
+          // Delayed refresh for Google propagation
+          const calEntities = [...selected];
+          const hass = this.hass;
+          this._pv.state.selectedEvent = null;
+          this._pv.state.closeDialog();
+          setTimeout(async () => {
+            try {
+              for (const eid of calEntities) {
+                await hass.callService('homeassistant', 'update_entity', { entity_id: eid });
+              }
+              await refreshPlanaVista(hass);
+            } catch { /* best-effort */ }
+          }, 3000);
         } else {
-          // Single-calendar event — use existing delete+recreate flow
+          // Single-calendar event staying single — simple delete+recreate
           const primaryEntityId = this.prefill?.calendar_entity_id;
           if (primaryEntityId && uid) {
             const deleteData: DeleteEventData = {
