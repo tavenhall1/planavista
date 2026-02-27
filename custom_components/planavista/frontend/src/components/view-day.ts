@@ -238,7 +238,7 @@ export class PVViewDay extends LitElement {
         left: 3px;
         right: 3px;
         padding: 6px 10px;
-        border-radius: 4px;
+        border-radius: var(--pv-radius-sm, 4px);
         border-left: 3px solid var(--event-color);
         background: var(--event-color-light, color-mix(in srgb, var(--event-color) 12%, white));
         cursor: pointer;

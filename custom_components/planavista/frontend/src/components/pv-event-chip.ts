@@ -28,7 +28,7 @@ export class PVEventChip extends LitElement {
         align-items: flex-start;
         gap: 0.5rem;
         padding: 0.5rem 0.625rem;
-        border-radius: 6px;
+        border-radius: var(--pv-radius-sm, 6px);
         border-left: 3px solid var(--chip-border-color);
         cursor: pointer;
         transition: transform 120ms ease, box-shadow 120ms ease;
@@ -142,7 +142,7 @@ export class PVEventChip extends LitElement {
       .chip--compact {
         padding: 0.25rem 0.5rem;
         border-left-width: 2px;
-        border-radius: 4px;
+        border-radius: var(--pv-radius-sm, 4px);
       }
 
       .chip--compact .chip-title {

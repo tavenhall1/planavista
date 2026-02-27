@@ -96,38 +96,49 @@ export class PvOnboardingWizard extends LitElement {
 
   private _initCalendars() {
     const presets = PvColorSwatchPicker.PRESETS;
-    const entities = Object.keys(this.hass.states)
-      .filter(k => k.startsWith('calendar.'))
-      .sort();
+    const allEntities = new Set(
+      Object.keys(this.hass.states).filter(k => k.startsWith('calendar.'))
+    );
 
-    // In settings mode, merge with existing configured calendars
+    // In settings mode, preserve saved calendar order
     const existingCals = this.mode === 'settings' && this.config?.calendars
-      ? new Map((this.config.calendars as any[]).map((c: any) => [c.entity_id, c]))
-      : new Map();
+      ? (this.config.calendars as any[])
+      : [];
 
-    this._calendarConfigs = entities.map((entity_id, idx) => {
-      const existing = existingCals.get(entity_id);
-      if (existing) {
-        return {
-          entity_id,
-          display_name: existing.display_name || entity_id,
-          color: existing.color || presets[idx % presets.length].color,
-          color_light: existing.color_light || presets[idx % presets.length].light,
-          person_entity: existing.person_entity || '',
-          include: true,
-        };
-      }
+    const result: typeof this._calendarConfigs = [];
+    const seen = new Set<string>();
+
+    // First: add saved calendars in their saved order
+    for (const existing of existingCals) {
+      seen.add(existing.entity_id);
+      const idx = result.length;
+      result.push({
+        entity_id: existing.entity_id,
+        display_name: existing.display_name || existing.entity_id,
+        color: existing.color || presets[idx % presets.length].color,
+        color_light: existing.color_light || presets[idx % presets.length].light,
+        person_entity: existing.person_entity || '',
+        include: true,
+      });
+    }
+
+    // Then: append any newly discovered calendars (not in saved config)
+    const newEntities = [...allEntities].filter(e => !seen.has(e)).sort();
+    for (const entity_id of newEntities) {
+      const idx = result.length;
       const preset = presets[idx % presets.length];
       const friendly = this.hass.states[entity_id]?.attributes?.friendly_name as string | undefined;
-      return {
+      result.push({
         entity_id,
         display_name: friendly || entity_id,
         color: preset.color,
         color_light: preset.light,
         person_entity: '',
         include: false,
-      };
-    });
+      });
+    }
+
+    this._calendarConfigs = result;
     this._calendarsInitialized = true;
   }
 

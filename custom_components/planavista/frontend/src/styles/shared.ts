@@ -158,7 +158,7 @@ export const eventStyles = css`
   .pv-event {
     position: relative;
     padding: 0.375rem 0.5rem 0.375rem 0.75rem;
-    border-radius: 4px;
+    border-radius: var(--pv-radius-sm, 4px);
     border-left: 3px solid var(--event-color, var(--pv-accent));
     background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
     cursor: pointer;
@@ -197,7 +197,7 @@ export const eventStyles = css`
     align-items: center;
     gap: 4px;
     padding: 0.125rem 0.5rem;
-    border-radius: 4px;
+    border-radius: var(--pv-radius-sm, 4px);
     border-left: 2px solid var(--event-color, var(--pv-accent));
     background: var(--event-color-light, color-mix(in srgb, var(--event-color, var(--pv-accent)) 12%, white));
     color: var(--event-text, var(--pv-text));

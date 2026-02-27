@@ -77,7 +77,7 @@ export class PVViewWeek extends LitElement {
       .day-card {
         background: var(--pv-card-bg, #fff);
         border: 1px solid var(--pv-border-subtle);
-        border-radius: var(--pv-radius-md, 12px);
+        border-radius: var(--pv-radius, 12px);
         overflow: hidden;
         display: flex;
         flex-direction: column;
