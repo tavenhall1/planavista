@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
+import { deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../styles/shared';
 import { formatTime, formatDate } from '../utils/date-utils';
 import { isAllDayEvent } from '../utils/event-utils';
@@ -14,6 +15,7 @@ export class PVEventPopup extends LitElement {
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
 
   @state() private _confirmDelete = false;
+  @state() private _deleteMode: 'all' | 'remove-me' | null = null;
   @state() private _deleting = false;
   @state() private _deleteError = '';
 
@@ -136,6 +138,82 @@ export class PVEventPopup extends LitElement {
         top: 0.75rem;
         right: 0.75rem;
       }
+
+      .participants-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        margin-top: 0.25rem;
+      }
+
+      .participant-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: white;
+      }
+
+      .participant-chip .organizer-tag {
+        font-size: 0.5625rem;
+        opacity: 0.85;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .participant-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.6;
+      }
+
+      .delete-option {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.625rem 0.75rem;
+        border: 1px solid color-mix(in srgb, #EF4444 20%, var(--pv-border));
+        border-radius: var(--pv-radius-sm, 8px);
+        background: transparent;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.8125rem;
+        color: var(--pv-text);
+        width: 100%;
+        text-align: left;
+        transition: background 150ms;
+      }
+
+      .delete-option:hover {
+        background: color-mix(in srgb, #EF4444 6%, transparent);
+      }
+
+      .delete-option ha-icon {
+        --mdc-icon-size: 20px;
+        color: #EF4444;
+        flex-shrink: 0;
+      }
+
+      .delete-option-text {
+        flex: 1;
+      }
+
+      .delete-option-label {
+        font-weight: 600;
+        color: #B91C1C;
+      }
+
+      .delete-option-desc {
+        font-size: 0.75rem;
+        color: var(--pv-text-secondary);
+        margin-top: 0.125rem;
+      }
     `,
   ];
 
@@ -145,6 +223,8 @@ export class PVEventPopup extends LitElement {
     const event = this.event;
     const allDay = isAllDayEvent(event);
     const startDate = new Date(event.start);
+    const shared = (event as any).shared_calendars as Array<{ entity_id: string; calendar_name: string; calendar_color: string }> | undefined;
+    const isShared = shared && shared.length > 1;
 
     return html`
       <div class="pv-overlay" @click=${this._close}>
@@ -155,10 +235,21 @@ export class PVEventPopup extends LitElement {
 
           <div class="popup-header">
             <h3 class="popup-title">${event.summary}</h3>
-            <div class="popup-calendar">
-              <span class="calendar-indicator" style="background: ${event.calendar_color}"></span>
-              ${event.calendar_name}
-            </div>
+            ${isShared ? html`
+              <div class="participants-row">
+                ${shared!.map((p, i) => html`
+                  <span class="participant-chip" style="background: ${p.calendar_color}">
+                    ${p.calendar_name}
+                    ${i === 0 ? html`<span class="organizer-tag">organizer</span>` : nothing}
+                  </span>
+                `)}
+              </div>
+            ` : html`
+              <div class="popup-calendar">
+                <span class="calendar-indicator" style="background: ${event.calendar_color}"></span>
+                ${event.calendar_name}
+              </div>
+            `}
           </div>
 
           <div class="popup-body">
@@ -205,20 +296,53 @@ export class PVEventPopup extends LitElement {
             </div>
           ` : html`
             <div class="delete-confirm">
-              <div class="delete-confirm-text">
-                Delete "${event.summary}"?
-              </div>
               ${this._deleteError ? html`
-                <div style="color: #EF4444; font-size: 0.8125rem; margin-top: 0.5rem;">${this._deleteError}</div>
+                <div style="color: #EF4444; font-size: 0.8125rem; margin-bottom: 0.75rem;">${this._deleteError}</div>
               ` : nothing}
-              <div class="delete-confirm-actions">
-                <button class="pv-btn pv-btn-secondary" @click=${() => { this._confirmDelete = false; this._deleteError = ''; }}>
-                  Cancel
-                </button>
-                <button class="pv-btn btn-delete" ?disabled=${this._deleting} @click=${this._delete}>
-                  ${this._deleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
+
+              ${isShared && !this._deleteMode ? html`
+                <div class="delete-confirm-text">
+                  This event is shared across ${shared!.length} calendars.
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                  <button class="delete-option" @click=${() => { this._deleteMode = 'all'; }}>
+                    <ha-icon icon="mdi:delete-outline"></ha-icon>
+                    <div class="delete-option-text">
+                      <div class="delete-option-label">Delete for everyone</div>
+                      <div class="delete-option-desc">Removes the event from all ${shared!.length} calendars</div>
+                    </div>
+                  </button>
+                  <button class="delete-option" @click=${() => { this._deleteMode = 'remove-me'; }}>
+                    <ha-icon icon="mdi:account-minus-outline"></ha-icon>
+                    <div class="delete-option-text">
+                      <div class="delete-option-label">Remove from organizer's calendar only</div>
+                      <div class="delete-option-desc">Guests will keep their copy of the event</div>
+                    </div>
+                  </button>
+                  <button class="pv-btn pv-btn-secondary" style="margin-top: 0.25rem;"
+                    @click=${() => { this._confirmDelete = false; this._deleteError = ''; this._deleteMode = null; }}>
+                    Cancel
+                  </button>
+                </div>
+              ` : html`
+                <div class="delete-confirm-text">
+                  ${this._deleteMode === 'all' && isShared
+                    ? `Delete "${event.summary}" from all ${shared!.length} calendars?`
+                    : this._deleteMode === 'remove-me' && isShared
+                      ? `Remove "${event.summary}" from ${event.calendar_name}'s calendar only?`
+                      : `Delete "${event.summary}"?`}
+                </div>
+                <div class="delete-confirm-actions">
+                  <button class="pv-btn pv-btn-secondary" @click=${() => {
+                    this._confirmDelete = false; this._deleteError = ''; this._deleteMode = null;
+                  }}>
+                    Cancel
+                  </button>
+                  <button class="pv-btn btn-delete" ?disabled=${this._deleting} @click=${this._delete}>
+                    ${this._deleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              `}
             </div>
           `}
         </div>
@@ -228,6 +352,7 @@ export class PVEventPopup extends LitElement {
 
   private _close() {
     this._confirmDelete = false;
+    this._deleteMode = null;
     this._deleting = false;
     this._deleteError = '';
     this._pv.state.selectEvent(null);
@@ -241,20 +366,51 @@ export class PVEventPopup extends LitElement {
 
   private async _delete() {
     if (!this.event?.uid) {
-      // Keep _confirmDelete true so the error message stays visible in the confirm view
       this._deleteError = 'Cannot delete — this event has no unique ID. Delete it from your calendar app directly.';
       return;
     }
 
+    const shared = (this.event as any).shared_calendars as Array<{ entity_id: string }> | undefined;
+    const isShared = shared && shared.length > 1;
+
     this._deleting = true;
     this._deleteError = '';
+
     try {
-      const data: DeleteEventData = {
-        entity_id: this.event.calendar_entity_id,
-        uid: this.event.uid,
-        recurrence_id: this.event.recurrence_id,
-      };
-      await this._pv.state.doDeleteEvent(this.hass, data);
+      if (isShared && this._deleteMode === 'all') {
+        // Delete from ALL participant calendars
+        for (const participant of shared!) {
+          try {
+            await deleteEvent(this.hass, {
+              entity_id: participant.entity_id,
+              uid: this.event.uid!,
+              recurrence_id: this.event.recurrence_id,
+            });
+          } catch (e) {
+            console.warn(`[PlanaVista] Failed to delete from ${participant.entity_id}:`, e);
+          }
+        }
+        await refreshPlanaVista(this.hass);
+        this._pv.state.selectEvent(null);
+      } else if (isShared && this._deleteMode === 'remove-me') {
+        // Delete only from the organizer's calendar (first in shared list)
+        const organizerId = this.event.calendar_entity_id;
+        await deleteEvent(this.hass, {
+          entity_id: organizerId,
+          uid: this.event.uid!,
+          recurrence_id: this.event.recurrence_id,
+        });
+        await refreshPlanaVista(this.hass);
+        this._pv.state.selectEvent(null);
+      } else {
+        // Single-calendar event — normal delete
+        const data: DeleteEventData = {
+          entity_id: this.event.calendar_entity_id,
+          uid: this.event.uid,
+          recurrence_id: this.event.recurrence_id,
+        };
+        await this._pv.state.doDeleteEvent(this.hass, data);
+      }
     } catch (err) {
       console.error('PlanaVista: Delete failed', err);
       this._deleteError = 'Failed to delete event. Please try again.';

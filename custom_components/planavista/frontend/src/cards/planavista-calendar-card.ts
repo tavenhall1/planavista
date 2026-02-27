@@ -1302,7 +1302,46 @@ export class PlanaVistaCalendarCard extends LitElement {
   // ====================================================================
 
   private _onEventClick(e: CustomEvent) {
-    this._pv.state.selectEvent(e.detail.event);
+    const clicked: CalendarEvent = e.detail.event;
+
+    // For shared events (same UID on multiple calendars), enrich with
+    // all participants and open from the organizer's perspective.
+    if (clicked.uid) {
+      const pvData = getPlanaVistaData(this.hass);
+      const allEvents = pvData?.events || [];
+      const siblings = allEvents.filter(
+        (ev: any) => ev.uid === clicked.uid && ev.uid !== '',
+      );
+
+      if (siblings.length > 1) {
+        // Determine organizer: first calendar in config order that has this event
+        const configOrder = (pvData?.calendars || []).map((c: any) => c.entity_id);
+        const participantIds = siblings.map((s: any) => s.calendar_entity_id);
+        participantIds.sort((a: string, b: string) => {
+          const ai = configOrder.indexOf(a);
+          const bi = configOrder.indexOf(b);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+
+        const organizerId = participantIds[0];
+        const organizerEvent = siblings.find((s: any) => s.calendar_entity_id === organizerId) || clicked;
+
+        // Build enriched event from organizer's copy
+        const enriched: CalendarEvent = {
+          ...organizerEvent,
+          shared_calendars: siblings.map((s: any) => ({
+            entity_id: s.calendar_entity_id,
+            calendar_name: s.calendar_name,
+            calendar_color: s.calendar_color,
+          })),
+        } as any;
+
+        this._pv.state.selectEvent(enriched);
+        return;
+      }
+    }
+
+    this._pv.state.selectEvent(clicked);
   }
 
   private _onCreateEvent(e: CustomEvent) {
