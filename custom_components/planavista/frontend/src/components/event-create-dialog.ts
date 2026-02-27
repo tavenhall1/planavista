@@ -3,6 +3,7 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
+import { createEvent, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -16,7 +17,8 @@ export class PVEventCreateDialog extends LitElement {
   @property({ type: Object }) prefill: Partial<CalendarEvent> | null = null;
 
   @state() private _title = '';
-  @state() private _calendarEntityId = '';
+  @state() private _selectedCalendars: Set<string> = new Set();
+  @state() private _originalCalendars: Set<string> = new Set();
   @state() private _date = '';
   @state() private _startTime = '';
   @state() private _endTime = '';
@@ -422,9 +424,19 @@ export class PVEventCreateDialog extends LitElement {
 
     if (this.prefill) {
       this._title = this.prefill.summary || '';
-      this._calendarEntityId = this.prefill.calendar_entity_id || this.calendars[0]?.entity_id || '';
       this._description = this.prefill.description || '';
       this._location = this.prefill.location || '';
+
+      // Populate selected calendars from shared_calendars (edit mode) or single calendar
+      const shared = (this.prefill as any).shared_calendars as Array<{ entity_id: string }> | undefined;
+      if (shared && shared.length > 0) {
+        this._selectedCalendars = new Set(shared.map(sc => sc.entity_id));
+      } else if (this.prefill.calendar_entity_id) {
+        this._selectedCalendars = new Set([this.prefill.calendar_entity_id]);
+      } else {
+        this._selectedCalendars = new Set([this.calendars[0]?.entity_id].filter(Boolean));
+      }
+      this._originalCalendars = new Set(this._selectedCalendars);
 
       if (this.prefill.start) {
         const start = new Date(this.prefill.start);
@@ -456,7 +468,8 @@ export class PVEventCreateDialog extends LitElement {
 
   private _setDefaults() {
     this._title = '';
-    this._calendarEntityId = this.calendars[0]?.entity_id || '';
+    this._selectedCalendars = new Set([this.calendars[0]?.entity_id].filter(Boolean));
+    this._originalCalendars = new Set();
     const now = new Date();
     this._date = this._toDateStr(now);
     this._pickerYear = now.getFullYear();
@@ -525,20 +538,23 @@ export class PVEventCreateDialog extends LitElement {
               </div>
 
               <div class="form-field">
-                <label class="pv-label">Calendar</label>
+                <label class="pv-label">${isEdit ? 'Participants' : 'Calendars'}</label>
                 <div class="calendar-select">
-                  ${visibleCalendars.map(cal => html`
-                    <button
-                      class="cal-option ${this._calendarEntityId === cal.entity_id ? 'selected' : ''}"
-                      style="${this._calendarEntityId === cal.entity_id
-                        ? `background: ${cal.color}; --cal-bg: ${cal.color}`
-                        : `--cal-bg: ${cal.color}`}"
-                      @click=${() => this._calendarEntityId = cal.entity_id}
-                    >
-                      <span class="cal-dot" style="background: ${cal.color}"></span>
-                      ${cal.display_name}
-                    </button>
-                  `)}
+                  ${visibleCalendars.map(cal => {
+                    const selected = this._selectedCalendars.has(cal.entity_id);
+                    return html`
+                      <button
+                        class="cal-option ${selected ? 'selected' : ''}"
+                        style="${selected
+                          ? `background: ${cal.color}; --cal-bg: ${cal.color}`
+                          : `--cal-bg: ${cal.color}`}"
+                        @click=${() => this._toggleCalendar(cal.entity_id)}
+                      >
+                        <span class="cal-dot" style="background: ${cal.color}"></span>
+                        ${cal.display_name}
+                      </button>
+                    `;
+                  })}
                 </div>
               </div>
 
@@ -870,6 +886,17 @@ export class PVEventCreateDialog extends LitElement {
   // DIALOG ACTIONS
   // ==================================================================
 
+  private _toggleCalendar(entityId: string) {
+    const next = new Set(this._selectedCalendars);
+    if (next.has(entityId)) {
+      // Don't allow deselecting the last one
+      if (next.size > 1) next.delete(entityId);
+    } else {
+      next.add(entityId);
+    }
+    this._selectedCalendars = next;
+  }
+
   private _onOverlayClick() {
     this._close();
   }
@@ -885,8 +912,8 @@ export class PVEventCreateDialog extends LitElement {
       this._error = 'Please enter an event title';
       return;
     }
-    if (!this._calendarEntityId) {
-      this._error = 'Please select a calendar';
+    if (this._selectedCalendars.size === 0) {
+      this._error = 'Please select at least one calendar';
       return;
     }
 
@@ -899,39 +926,95 @@ export class PVEventCreateDialog extends LitElement {
     this._saving = true;
 
     try {
-      const data: CreateEventData = {
-        entity_id: this._calendarEntityId,
+      // Build the base event data (without entity_id — we'll set per-calendar)
+      const baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string } = {
         summary: this._title.trim(),
       };
 
       if (this._allDay) {
-        data.start_date = this._date;
+        baseData.start_date = this._date;
         const end = new Date(this._date);
         end.setDate(end.getDate() + 1);
-        data.end_date = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+        baseData.end_date = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
       } else {
-        data.start_date_time = `${this._date}T${this._startTime}:00`;
-        data.end_date_time = `${this._date}T${this._endTime}:00`;
+        baseData.start_date_time = `${this._date}T${this._startTime}:00`;
+        baseData.end_date_time = `${this._date}T${this._endTime}:00`;
       }
 
-      if (this._description.trim()) data.description = this._description.trim();
-      if (this._location.trim()) data.location = this._location.trim();
+      if (this._description.trim()) baseData.description = this._description.trim();
+      if (this._location.trim()) baseData.location = this._location.trim();
+
+      const selected = this._selectedCalendars;
+      const original = this._originalCalendars;
 
       if (this.mode === 'edit') {
-        if (!this.prefill?.uid) {
-          this._error = 'Cannot edit — this event has no unique ID. Try deleting it from your calendar app and re-creating it here.';
-          this._saving = false;
-          return;
+        // Compute participant diff
+        const added = [...selected].filter(id => !original.has(id));
+        const removed = [...original].filter(id => !selected.has(id));
+        const kept = [...selected].filter(id => original.has(id));
+
+        // Edit the primary calendar (the one we have the uid for)
+        const primaryEntityId = this.prefill?.calendar_entity_id;
+        if (primaryEntityId && kept.includes(primaryEntityId) && this.prefill?.uid) {
+          const deleteData: DeleteEventData = {
+            entity_id: primaryEntityId,
+            uid: this.prefill.uid,
+            recurrence_id: this.prefill.recurrence_id,
+          };
+          const createData: CreateEventData = { ...baseData, entity_id: primaryEntityId } as CreateEventData;
+          await this._pv.state.doEditEvent(this.hass, deleteData, createData);
+        } else if (primaryEntityId && removed.includes(primaryEntityId) && this.prefill?.uid) {
+          // Primary calendar was removed — just delete from it
+          await deleteEvent(this.hass, {
+            entity_id: primaryEntityId,
+            uid: this.prefill.uid,
+            recurrence_id: this.prefill.recurrence_id,
+          });
         }
-        // Edit = delete old event + create replacement
-        const deleteData: DeleteEventData = {
-          entity_id: this.prefill.calendar_entity_id!,
-          uid: this.prefill.uid,
-          recurrence_id: this.prefill.recurrence_id,
-        };
-        await this._pv.state.doEditEvent(this.hass, deleteData, data);
+
+        // Edit other kept calendars (they also have the event — delete old + create new)
+        const uid = this.prefill?.uid;
+        const recurrenceId = this.prefill?.recurrence_id;
+        for (const entityId of kept) {
+          if (entityId === primaryEntityId) continue; // already handled above
+          if (uid) {
+            try {
+              await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+            } catch { /* may not exist with same uid on this calendar */ }
+          }
+          await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
+        }
+
+        // Create on newly added calendars
+        for (const entityId of added) {
+          await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
+        }
+
+        // Delete from removed calendars
+        for (const entityId of removed) {
+          if (entityId === primaryEntityId) continue; // already handled above
+          if (uid) {
+            try {
+              await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+            } catch { /* may not exist with same uid on this calendar */ }
+          }
+        }
+
+        await refreshPlanaVista(this.hass);
+        this._pv.state.selectedEvent = null;
+        this._pv.state.closeDialog();
       } else {
-        await this._pv.state.doCreateEvent(this.hass, data);
+        // Create mode — create on all selected calendars
+        const entityIds = [...selected];
+        for (let i = 0; i < entityIds.length; i++) {
+          const data: CreateEventData = { ...baseData, entity_id: entityIds[i] } as CreateEventData;
+          if (i === entityIds.length - 1) {
+            // Last one — use the state manager so it handles dialog close + refresh
+            await this._pv.state.doCreateEvent(this.hass, data);
+          } else {
+            await createEvent(this.hass, data);
+          }
+        }
       }
     } catch (err: any) {
       this._error = `Failed to save event: ${err?.message || 'Unknown error'}`;
