@@ -25,6 +25,7 @@ export class PVViewMonth extends LitElement {
   @property({ attribute: false }) firstDay: 'monday' | 'sunday' = 'sunday';
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) showStripes: boolean = true;
+  @property({ type: Number }) tick = 0;
 
   static styles = [
     baseStyles,
@@ -231,6 +232,7 @@ export class PVViewMonth extends LitElement {
               .timeFormat=${this.timeFormat}
               .compact=${true}
               .showStripes=${this.showStripes}
+              .tick=${this.tick}
               @event-click=${(ev: CustomEvent) => { ev.stopPropagation(); this._onEventClick(ev.detail.event); }}
             ></pv-event-chip>
           `)}

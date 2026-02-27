@@ -55,6 +55,13 @@ export function deduplicateSharedEvents(
 }
 
 /**
+ * Check if an event has already ended.
+ */
+export function isEventPast(event: CalendarEvent): boolean {
+  return new Date(event.end) < new Date();
+}
+
+/**
  * Check if an event is all-day.
  */
 export function isAllDayEvent(event: CalendarEvent): boolean {

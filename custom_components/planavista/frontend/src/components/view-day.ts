@@ -6,6 +6,7 @@ import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '..
 import { formatTime } from '../utils/date-utils';
 import {
   isAllDayEvent,
+  isEventPast,
   groupEventsByPerson,
   getEventsForDateRange,
   getEventPosition,
@@ -30,6 +31,7 @@ export class PVViewDay extends LitElement {
   @property({ type: Boolean }) hideColumnHeaders = false;
   @property({ attribute: false }) avatarBorderMode: string = 'primary';
   @property({ attribute: false }) sharedEventMap: Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>> = new Map();
+  @property({ type: Number }) tick = 0;
 
   static styles = [
     baseStyles,
@@ -92,6 +94,8 @@ export class PVViewDay extends LitElement {
         white-space: nowrap;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
       }
+
+      .all-day-chip.past { opacity: 0.45; }
 
       .all-day-chip:hover {
         transform: scale(1.03);
@@ -243,6 +247,8 @@ export class PVViewDay extends LitElement {
         z-index: 1;
         min-height: 26px;
       }
+
+      .positioned-event.past { opacity: 0.45; }
 
       .positioned-event:hover {
         z-index: 5;
@@ -537,7 +543,7 @@ export class PVViewDay extends LitElement {
             <div class="all-day-events">
               ${allDayEvents.map(e => html`
                 <div
-                  class="all-day-chip"
+                  class="all-day-chip${isEventPast(e) ? ' past' : ''}"
                   style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
                   @click=${() => this._onEventClick(e)}
                 >${e.summary}</div>
@@ -693,7 +699,7 @@ export class PVViewDay extends LitElement {
 
           return html`
             <div
-              class="positioned-event"
+              class="positioned-event${isEventPast(event) ? ' past' : ''}"
               style="
                 top: ${pos.top}%;
                 height: ${pos.height}%;

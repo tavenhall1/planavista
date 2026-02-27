@@ -1271,6 +1271,7 @@ export class PlanaVistaCalendarCard extends LitElement {
             });
           }
         }
+        const tick = Math.floor(this._currentTime.getTime() / 60000);
         return html`<pv-view-day
           .hass=${this.hass}
           .events=${events}
@@ -1281,9 +1282,11 @@ export class PlanaVistaCalendarCard extends LitElement {
           .hideColumnHeaders=${false}
           .avatarBorderMode=${avatarBorder}
           .sharedEventMap=${sharedEventMap}
+          .tick=${tick}
         ></pv-view-day>`;
       }
-      case 'week':
+      case 'week': {
+        const tick = Math.floor(this._currentTime.getTime() / 60000);
         return html`<pv-view-week
           .hass=${this.hass}
           .events=${events}
@@ -1294,8 +1297,11 @@ export class PlanaVistaCalendarCard extends LitElement {
           .firstDay=${firstDay}
           .weatherEntity=${display?.weather_entity || ''}
           .showStripes=${showStripes}
+          .tick=${tick}
         ></pv-view-week>`;
-      case 'month':
+      }
+      case 'month': {
+        const tick = Math.floor(this._currentTime.getTime() / 60000);
         return html`<pv-view-month
           .hass=${this.hass}
           .events=${events}
@@ -1305,8 +1311,11 @@ export class PlanaVistaCalendarCard extends LitElement {
           .firstDay=${firstDay}
           .timeFormat=${timeFormat}
           .showStripes=${showStripes}
+          .tick=${tick}
         ></pv-view-month>`;
-      case 'agenda':
+      }
+      case 'agenda': {
+        const tick = Math.floor(this._currentTime.getTime() / 60000);
         return html`<pv-view-agenda
           .hass=${this.hass}
           .events=${events}
@@ -1316,7 +1325,9 @@ export class PlanaVistaCalendarCard extends LitElement {
           .timeFormat=${timeFormat}
           .weatherEntity=${display?.weather_entity || ''}
           .showStripes=${showStripes}
+          .tick=${tick}
         ></pv-view-agenda>`;
+      }
       default:
         return nothing;
     }

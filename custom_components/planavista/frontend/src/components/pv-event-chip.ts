@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig } from '../types';
-import { SharedEvent, buildStripeGradient, getOrganizerCalendar } from '../utils/event-utils';
+import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isEventPast } from '../utils/event-utils';
 import { contrastText } from '../styles/themes';
 import { formatTime } from '../utils/date-utils';
 import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
@@ -16,6 +16,7 @@ export class PVEventChip extends LitElement {
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) compact = false;
   @property({ type: Boolean }) showStripes = true;
+  @property({ type: Number }) tick = 0;
 
   static styles = [
     baseStyles,
@@ -34,6 +35,8 @@ export class PVEventChip extends LitElement {
         min-height: 0;
         overflow: hidden;
       }
+
+      .chip.past { opacity: 0.45; }
 
       .chip:hover {
         transform: translateY(-1px);
@@ -203,7 +206,8 @@ export class PVEventChip extends LitElement {
       : '#FFFFFF';
     const textColor = this.showStripes ? contrastText(textBg) : 'var(--pv-text)';
 
-    const chipClass = this.compact ? 'chip chip--compact' : 'chip';
+    const past = isEventPast(event) ? ' past' : '';
+    const chipClass = (this.compact ? 'chip chip--compact' : 'chip') + past;
     const titleClass = this.compact ? 'chip-title chip-title--wrap' : 'chip-title chip-title--nowrap';
 
     // Time display
