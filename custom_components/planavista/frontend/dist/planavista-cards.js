@@ -4706,7 +4706,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         align-items: center;
         gap: 6px;
         padding: 8px 16px;
-        border-radius: 9999px;
+        border-radius: var(--pv-radius, 12px);
         border: 1px solid var(--pv-border);
         background: transparent;
         color: var(--pv-text-secondary);
@@ -4841,7 +4841,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         align-items: center;
         gap: 5px;
         padding: 9px 18px;
-        border-radius: 9999px;
+        border-radius: var(--pv-radius, 12px);
         background: var(--pv-accent);
         color: var(--pv-accent-text);
         border: none;
@@ -4896,7 +4896,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       .pvc-today-btn {
         padding: 6px 16px;
         border: 1px solid var(--pv-border);
-        border-radius: 9999px;
+        border-radius: var(--pv-radius, 12px);
         background: transparent;
         color: var(--pv-text-secondary);
         font-size: 0.875rem;

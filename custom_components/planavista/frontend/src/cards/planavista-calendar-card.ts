@@ -166,7 +166,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         align-items: center;
         gap: 6px;
         padding: 8px 16px;
-        border-radius: 9999px;
+        border-radius: var(--pv-radius, 12px);
         border: 1px solid var(--pv-border);
         background: transparent;
         color: var(--pv-text-secondary);
@@ -301,7 +301,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         align-items: center;
         gap: 5px;
         padding: 9px 18px;
-        border-radius: 9999px;
+        border-radius: var(--pv-radius, 12px);
         background: var(--pv-accent);
         color: var(--pv-accent-text);
         border: none;
@@ -356,7 +356,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       .pvc-today-btn {
         padding: 6px 16px;
         border: 1px solid var(--pv-border);
-        border-radius: 9999px;
+        border-radius: var(--pv-radius, 12px);
         background: transparent;
         color: var(--pv-text-secondary);
         font-size: 0.875rem;
