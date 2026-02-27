@@ -36,6 +36,11 @@ async def async_setup_entry(
 class PlanaVistaConfigSensor(CoordinatorEntity, SensorEntity):
     """Sensor that exposes the PlanaVista configuration."""
 
+    # Exclude large attributes from the recorder database (events/calendars
+    # easily exceed the 16KB state_attributes limit).  The frontend reads
+    # these from the live state object, so recording them is unnecessary.
+    _unrecorded_attributes = frozenset({"events", "calendars"})
+
     def __init__(self, coordinator: PlanaVistaCoordinator, entry: ConfigEntry) -> None:
         """Initialize the config sensor."""
         super().__init__(coordinator)

@@ -138,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not entity_id:
             raise Exception("entity_id is required")
 
-        _LOGGER.info(
+        _LOGGER.warning(
             "PlanaVista: create_event_with_attendees called — "
             "organizer=%s, attendees=%s",
             entity_id, attendee_entity_ids,
@@ -156,14 +156,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Check if organizer's calendar is Google
         primary_cal_id = _get_google_calendar_id(hass, entity_id)
-        _LOGGER.info(
+        _LOGGER.warning(
             "PlanaVista: organizer entity %s → Google Calendar ID: %s",
             entity_id, primary_cal_id,
         )
 
         if primary_cal_id:
             access_token = await _ensure_google_token(hass, entity_id)
-            _LOGGER.info(
+            _LOGGER.warning(
                 "PlanaVista: OAuth token for %s: %s",
                 entity_id, "obtained" if access_token else "FAILED",
             )
@@ -178,7 +178,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
                 for att_id in attendee_entity_ids:
                     cal_id = _get_google_calendar_id(hass, att_id)
-                    _LOGGER.info(
+                    _LOGGER.warning(
                         "PlanaVista: attendee %s → Google Calendar ID: %s",
                         att_id, cal_id,
                     )
@@ -187,7 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     else:
                         non_google_attendees.append(att_id)
 
-                _LOGGER.info(
+                _LOGGER.warning(
                     "PlanaVista: creating event on calendar '%s' with attendees: %s",
                     primary_cal_id, attendee_emails,
                 )
@@ -200,7 +200,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         event_data,
                         attendee_emails,
                     )
-                    _LOGGER.info(
+                    _LOGGER.warning(
                         "PlanaVista: Google API SUCCESS — event '%s' created "
                         "(id=%s, htmlLink=%s)",
                         event_data.get("summary"),
@@ -226,7 +226,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
 
         # Fallback: create separate events via HA service
-        _LOGGER.info(
+        _LOGGER.warning(
             "PlanaVista: FALLBACK — creating separate events via HA service "
             "(no attendee linking)"
         )

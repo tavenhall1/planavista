@@ -1234,6 +1234,12 @@ export class PVEventCreateDialog extends LitElement {
           // Multiple calendars — use attendees service (Google API when available)
           const primaryId = this._organizerEntityId || entityIds[0];
           const attendeeIds = entityIds.filter(id => id !== primaryId);
+          console.warn('[PlanaVista] Calling createEventWithAttendees:', {
+            entity_id: primaryId,
+            attendee_entity_ids: attendeeIds,
+            summary: baseData.summary,
+            start: baseData.start_date_time || baseData.start_date,
+          });
           await createEventWithAttendees(this.hass, {
             ...baseData,
             entity_id: primaryId,
