@@ -31,6 +31,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
   @state() private _settingsOpen = false;
+  @state() private _refreshing = false;
   @state() private _previewOverrides: ThemeOverrides | null = null;
 
   private _pv = new PlanaVistaController(this);
@@ -474,7 +475,8 @@ export class PlanaVistaCalendarCard extends LitElement {
         font-size: 0.875rem;
       }
 
-      /* Gear (settings) button */
+      /* Refresh + Gear buttons */
+      .pvc-refresh-btn,
       .pvc-settings-btn {
         display: flex;
         align-items: center;
@@ -492,9 +494,19 @@ export class PlanaVistaCalendarCard extends LitElement {
         --mdc-icon-size: 22px;
       }
 
+      .pvc-refresh-btn:hover,
       .pvc-settings-btn:hover {
         background: var(--pv-event-hover);
         color: var(--pv-text);
+      }
+
+      .pvc-refresh-btn.spinning ha-icon {
+        animation: pvc-spin 0.8s ease;
+      }
+
+      @keyframes pvc-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
 
       /* Settings overlay */
@@ -844,6 +856,28 @@ export class PlanaVistaCalendarCard extends LitElement {
     clearThemeCache(this);
   }
 
+  private async _refreshCalendars() {
+    if (this._refreshing) return;
+    this._refreshing = true;
+    try {
+      // Force HA to re-fetch each configured calendar entity
+      const pvData = getPlanaVistaData(this.hass);
+      if (pvData?.calendars) {
+        for (const cal of pvData.calendars) {
+          if (cal.entity_id) {
+            await this.hass.callService('homeassistant', 'update_entity', { entity_id: cal.entity_id });
+          }
+        }
+      }
+      // Then refresh the PlanaVista coordinator
+      await this.hass.callService('homeassistant', 'update_entity', { entity_id: 'sensor.planavista_config' });
+    } catch (e) {
+      console.warn('[PlanaVista] Manual refresh failed:', e);
+    }
+    // Keep spinner for at least 800ms so the animation completes
+    setTimeout(() => { this._refreshing = false; }, 800);
+  }
+
   private _openSettings() {
     this._settingsOpen = true;
   }
@@ -1160,6 +1194,12 @@ export class PlanaVistaCalendarCard extends LitElement {
             `)}
           </div>
 
+          <button class="pvc-refresh-btn ${this._refreshing ? 'spinning' : ''}"
+            @click=${this._refreshCalendars}
+            title="Refresh calendars" aria-label="Refresh calendars"
+            ?disabled=${this._refreshing}>
+            <ha-icon icon="mdi:autorenew"></ha-icon>
+          </button>
           <button class="pvc-settings-btn" @click=${this._openSettings}
             title="Settings" aria-label="Open settings">
             <ha-icon icon="mdi:cog"></ha-icon>
