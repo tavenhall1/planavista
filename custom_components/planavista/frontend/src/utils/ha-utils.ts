@@ -20,6 +20,33 @@ export async function createEvent(hass: HomeAssistant, data: CreateEventData): P
 }
 
 /**
+ * Create a calendar event with attendees via PlanaVista backend service.
+ * For Google Calendar, calls the API directly so attendees get proper invitations.
+ * Falls back to creating separate events for non-Google calendars.
+ */
+export async function createEventWithAttendees(
+  hass: HomeAssistant,
+  data: CreateEventData & { attendee_entity_ids?: string[] },
+): Promise<void> {
+  const serviceData: Record<string, any> = {
+    entity_id: data.entity_id,
+    summary: data.summary,
+  };
+
+  if (data.start_date_time) serviceData.start_date_time = data.start_date_time;
+  if (data.end_date_time) serviceData.end_date_time = data.end_date_time;
+  if (data.start_date) serviceData.start_date = data.start_date;
+  if (data.end_date) serviceData.end_date = data.end_date;
+  if (data.description) serviceData.description = data.description;
+  if (data.location) serviceData.location = data.location;
+  if (data.attendee_entity_ids?.length) {
+    serviceData.attendee_entity_ids = data.attendee_entity_ids;
+  }
+
+  await hass.callService('planavista', 'create_event_with_attendees', serviceData);
+}
+
+/**
  * Delete a calendar event via PlanaVista backend service.
  * Uses direct entity access (bypasses calendar.delete_event which may not exist).
  */

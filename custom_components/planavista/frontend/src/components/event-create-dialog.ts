@@ -3,7 +3,7 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
-import { createEvent, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
+import { createEvent, createEventWithAttendees, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -1004,16 +1004,24 @@ export class PVEventCreateDialog extends LitElement {
         this._pv.state.selectedEvent = null;
         this._pv.state.closeDialog();
       } else {
-        // Create mode — create on all selected calendars
+        // Create mode
         const entityIds = [...selected];
-        for (let i = 0; i < entityIds.length; i++) {
-          const data: CreateEventData = { ...baseData, entity_id: entityIds[i] } as CreateEventData;
-          if (i === entityIds.length - 1) {
-            // Last one — use the state manager so it handles dialog close + refresh
-            await this._pv.state.doCreateEvent(this.hass, data);
-          } else {
-            await createEvent(this.hass, data);
-          }
+
+        if (entityIds.length > 1) {
+          // Multiple calendars — use attendees service (Google API when available)
+          const primaryId = entityIds[0];
+          const attendeeIds = entityIds.slice(1);
+          await createEventWithAttendees(this.hass, {
+            ...baseData,
+            entity_id: primaryId,
+            attendee_entity_ids: attendeeIds,
+          } as CreateEventData & { attendee_entity_ids: string[] });
+          await refreshPlanaVista(this.hass);
+          this._pv.state.closeDialog();
+        } else {
+          // Single calendar — use normal create
+          const data: CreateEventData = { ...baseData, entity_id: entityIds[0] } as CreateEventData;
+          await this._pv.state.doCreateEvent(this.hass, data);
         }
       }
     } catch (err: any) {

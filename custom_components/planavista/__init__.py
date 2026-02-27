@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+import time
+import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -11,6 +13,8 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -120,6 +124,88 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.services.async_register(DOMAIN, "delete_event", async_delete_event)
 
+    # ── Create event with attendees (uses Google Calendar API when available) ──
+    async def async_create_event_with_attendees(call) -> None:
+        """Create a calendar event with attendees via Google Calendar API.
+
+        For Google Calendar entities, calls the API directly so attendees
+        receive proper invitations and the event is linked across calendars.
+        Falls back to creating separate events for non-Google calendars.
+        """
+        entity_id = call.data.get("entity_id")
+        attendee_entity_ids = call.data.get("attendee_entity_ids", [])
+
+        if not entity_id:
+            raise Exception("entity_id is required")
+
+        event_data = {
+            "summary": call.data.get("summary", ""),
+            "description": call.data.get("description", ""),
+            "location": call.data.get("location", ""),
+            "start_date_time": call.data.get("start_date_time"),
+            "end_date_time": call.data.get("end_date_time"),
+            "start_date": call.data.get("start_date"),
+            "end_date": call.data.get("end_date"),
+        }
+
+        # Check if primary calendar is Google
+        primary_cal_id = _get_google_calendar_id(hass, entity_id)
+
+        if primary_cal_id:
+            access_token = await _ensure_google_token(hass, entity_id)
+
+            if access_token:
+                # Map attendee entity IDs to Google Calendar IDs (emails)
+                attendee_emails = []
+                non_google_attendees = []
+
+                # Include organizer's own email so they appear as attendee
+                attendee_emails.append(primary_cal_id)
+
+                for att_id in attendee_entity_ids:
+                    cal_id = _get_google_calendar_id(hass, att_id)
+                    if cal_id:
+                        attendee_emails.append(cal_id)
+                    else:
+                        non_google_attendees.append(att_id)
+
+                try:
+                    await _google_api_create_event(
+                        hass,
+                        access_token,
+                        primary_cal_id,
+                        event_data,
+                        attendee_emails,
+                    )
+                    _LOGGER.info(
+                        "PlanaVista: created event '%s' on %s with %d attendees via Google API",
+                        event_data.get("summary"),
+                        entity_id,
+                        len(attendee_emails) - 1,  # exclude organizer
+                    )
+
+                    # For non-Google attendees, fall back to separate events
+                    for att_id in non_google_attendees:
+                        await _create_event_via_ha(hass, att_id, event_data)
+
+                    return
+                except Exception as err:
+                    _LOGGER.warning(
+                        "PlanaVista: Google API create failed, falling back: %s", err
+                    )
+
+        # Fallback: create separate events via HA service
+        _LOGGER.info(
+            "PlanaVista: using HA service for event creation (non-Google or API unavailable)"
+        )
+        await _create_event_via_ha(hass, entity_id, event_data)
+        for att_id in attendee_entity_ids:
+            await _create_event_via_ha(hass, att_id, event_data)
+
+    hass.services.async_register(
+        DOMAIN, "create_event_with_attendees", async_create_event_with_attendees
+    )
+
     return True
 
 
@@ -185,6 +271,137 @@ def _normalize_color(color_value) -> str:
         r, g, b = color_value[:3]
         return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
     return "#4A90E2"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Google Calendar API helpers — direct API calls with attendee support
+# ═══════════════════════════════════════════════════════════════════
+
+def _get_google_calendar_id(hass: HomeAssistant, entity_id: str) -> str | None:
+    """Get Google Calendar ID (email) for an entity, or None if not Google."""
+    registry = er.async_get(hass)
+    entry = registry.async_get(entity_id)
+    if entry and entry.platform == "google":
+        return entry.unique_id
+    return None
+
+
+async def _ensure_google_token(hass: HomeAssistant, entity_id: str) -> str | None:
+    """Get a valid Google OAuth access token for the account owning entity_id."""
+    registry = er.async_get(hass)
+    entity_entry = registry.async_get(entity_id)
+    if not entity_entry or not entity_entry.config_entry_id:
+        return None
+
+    google_entry = hass.config_entries.async_get_entry(entity_entry.config_entry_id)
+    if not google_entry or google_entry.domain != "google":
+        return None
+
+    token_data = google_entry.data.get("token", {})
+
+    # Refresh token if expired (with 60s buffer)
+    expires_at = token_data.get("expires_at", 0)
+    if time.time() >= expires_at - 60:
+        try:
+            from homeassistant.helpers.config_entry_oauth2_flow import (
+                async_get_config_entry_implementation,
+                OAuth2Session,
+            )
+            implementation = await async_get_config_entry_implementation(
+                hass, google_entry
+            )
+            session = OAuth2Session(hass, google_entry, implementation)
+            await session.async_ensure_token_valid()
+            # Re-read token after refresh
+            token_data = google_entry.data.get("token", {})
+        except Exception as err:
+            _LOGGER.warning("PlanaVista: failed to refresh Google token: %s", err)
+            # Try with existing token anyway
+
+    return token_data.get("access_token")
+
+
+async def _google_api_create_event(
+    hass: HomeAssistant,
+    access_token: str,
+    calendar_id: str,
+    event_data: dict,
+    attendee_emails: list[str],
+) -> dict:
+    """Create event via Google Calendar API with attendees."""
+    http_session = async_get_clientsession(hass)
+
+    body: dict = {
+        "summary": event_data.get("summary", ""),
+    }
+    if event_data.get("description"):
+        body["description"] = event_data["description"]
+    if event_data.get("location"):
+        body["location"] = event_data["location"]
+
+    tz = str(hass.config.time_zone) if hass.config.time_zone else "UTC"
+
+    if event_data.get("start_date"):
+        body["start"] = {"date": event_data["start_date"]}
+        body["end"] = {"date": event_data["end_date"]}
+    else:
+        body["start"] = {
+            "dateTime": event_data["start_date_time"],
+            "timeZone": tz,
+        }
+        body["end"] = {
+            "dateTime": event_data["end_date_time"],
+            "timeZone": tz,
+        }
+
+    if attendee_emails:
+        body["attendees"] = [{"email": email} for email in attendee_emails]
+
+    encoded_id = urllib.parse.quote(calendar_id, safe="")
+    url = (
+        f"https://www.googleapis.com/calendar/v3/calendars/"
+        f"{encoded_id}/events?sendUpdates=all"
+    )
+
+    async with http_session.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        },
+        json=body,
+    ) as resp:
+        if resp.status not in (200, 201):
+            text = await resp.text()
+            raise Exception(f"Google Calendar API error {resp.status}: {text}")
+        return await resp.json()
+
+
+async def _create_event_via_ha(
+    hass: HomeAssistant, entity_id: str, event_data: dict
+) -> None:
+    """Fallback: create event using HA's calendar.create_event service."""
+    service_data: dict = {"summary": event_data.get("summary", "")}
+    if event_data.get("start_date_time"):
+        service_data["start_date_time"] = event_data["start_date_time"]
+    if event_data.get("end_date_time"):
+        service_data["end_date_time"] = event_data["end_date_time"]
+    if event_data.get("start_date"):
+        service_data["start_date"] = event_data["start_date"]
+    if event_data.get("end_date"):
+        service_data["end_date"] = event_data["end_date"]
+    if event_data.get("description"):
+        service_data["description"] = event_data["description"]
+    if event_data.get("location"):
+        service_data["location"] = event_data["location"]
+
+    await hass.services.async_call(
+        CALENDAR_DOMAIN,
+        "create_event",
+        service_data,
+        target={"entity_id": entity_id},
+        blocking=True,
+    )
 
 
 class PlanaVistaCoordinator(DataUpdateCoordinator):

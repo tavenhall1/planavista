@@ -67,6 +67,95 @@ refresh_calendars:
   name: Refresh Calendars
   description: Force refresh all calendar data
 
+delete_event:
+  name: Delete Event
+  description: Delete a calendar event by UID via direct entity access.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The calendar entity ID
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    uid:
+      name: Event UID
+      description: The unique ID of the event to delete
+      required: true
+      selector:
+        text:
+    recurrence_id:
+      name: Recurrence ID
+      description: Recurrence ID for recurring events
+      required: false
+      selector:
+        text:
+
+create_event_with_attendees:
+  name: Create Event with Attendees
+  description: >
+    Create a calendar event with attendees. For Google Calendar entities,
+    calls the Google Calendar API directly so attendees receive proper
+    invitations and the event is linked across calendars. Falls back to
+    creating separate events for non-Google calendars.
+  fields:
+    entity_id:
+      name: Primary Calendar
+      description: The organizer's calendar entity ID
+      required: true
+      selector:
+        entity:
+          domain: calendar
+    attendee_entity_ids:
+      name: Attendee Calendars
+      description: List of calendar entity IDs to add as attendees
+      required: false
+      selector:
+        object:
+    summary:
+      name: Summary
+      description: Event title
+      required: true
+      selector:
+        text:
+    start_date_time:
+      name: Start Date/Time
+      description: Start time (ISO 8601, e.g. 2024-01-15T10:00:00)
+      required: false
+      selector:
+        text:
+    end_date_time:
+      name: End Date/Time
+      description: End time (ISO 8601)
+      required: false
+      selector:
+        text:
+    start_date:
+      name: Start Date
+      description: Start date for all-day events (YYYY-MM-DD)
+      required: false
+      selector:
+        text:
+    end_date:
+      name: End Date
+      description: End date for all-day events (YYYY-MM-DD)
+      required: false
+      selector:
+        text:
+    description:
+      name: Description
+      description: Event description
+      required: false
+      selector:
+        text:
+          multiline: true
+    location:
+      name: Location
+      description: Event location
+      required: false
+      selector:
+        text:
+
 save_config:
   name: Save Config
   description: Save configuration from the in-card onboarding wizard. Updates calendars, display settings, and onboarding state.
