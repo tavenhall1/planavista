@@ -287,7 +287,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
     width: 44px;
     height: 24px;
     background: var(--pv-border);
-    border-radius: 12px;
+    border-radius: var(--pv-radius, 12px);
     cursor: pointer;
     transition: background var(--pv-transition, 200ms ease);
   }
@@ -4750,7 +4750,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         min-width: 240px;
         background: var(--pv-card-bg, #fff);
         border: 1px solid var(--pv-border);
-        border-radius: var(--pv-radius-md, 12px);
+        border-radius: var(--pv-radius, 12px);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
         z-index: 100;
         padding: 6px 0;
@@ -4779,7 +4779,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       .pvc-filter-check {
         width: 22px;
         height: 22px;
-        border-radius: 6px;
+        border-radius: var(--pv-radius-sm, 6px);
         border: 2px solid var(--pv-border);
         display: flex;
         align-items: center;
@@ -4918,14 +4918,14 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       .pvc-view-tabs {
         display: flex;
         background: var(--pv-border-subtle);
-        border-radius: 8px;
+        border-radius: var(--pv-radius-sm, 8px);
         padding: 2px;
       }
 
       .pvc-view-tab {
         padding: 6px 14px;
         border: none;
-        border-radius: 6px;
+        border-radius: var(--pv-radius-sm, 6px);
         background: transparent;
         color: var(--pv-text-secondary);
         font-size: 0.8125rem;

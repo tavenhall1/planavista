@@ -317,7 +317,7 @@ export const formStyles = css`
     width: 44px;
     height: 24px;
     background: var(--pv-border);
-    border-radius: 12px;
+    border-radius: var(--pv-radius, 12px);
     cursor: pointer;
     transition: background var(--pv-transition, 200ms ease);
   }
