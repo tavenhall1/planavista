@@ -106,6 +106,8 @@ export interface DisplayConfig {
   default_view: 'day' | 'week' | 'month' | 'agenda';
   theme: string;
   theme_overrides?: ThemeOverrides;
+  /** Address suggestions in the event dialog (sends typed text to Photon). Off when absent. */
+  location_autocomplete?: boolean;
 }
 
 export interface PlanaVistaData {

@@ -42,6 +42,7 @@ export class PvOnboardingWizard extends LitElement {
   @state() private _firstDay: 'sunday' | 'monday' = 'sunday';
   @state() private _weatherEntity = '';
   @state() private _defaultView: 'day' | 'week' | 'month' | 'agenda' = 'week';
+  @state() private _locationAutocomplete = false;
 
   // Page 1 — Calendars
   @state() private _calendarConfigs: CalendarEntry[] = [];
@@ -89,6 +90,7 @@ export class PvOnboardingWizard extends LitElement {
     this._firstDay = display.first_day || 'sunday';
     this._weatherEntity = display.weather_entity || '';
     this._defaultView = display.default_view || 'week';
+    this._locationAutocomplete = display.location_autocomplete === true;
     this._theme = display.theme || 'light';
     this._themeOverrides = display.theme_overrides ? { ...display.theme_overrides } : {};
     this._customizeOpen = Object.keys(this._themeOverrides).length > 0;
@@ -197,6 +199,7 @@ export class PvOnboardingWizard extends LitElement {
           weather_entity: this._weatherEntity,
           first_day: this._firstDay,
           default_view: this._defaultView,
+          location_autocomplete: this._locationAutocomplete,
           theme: this._theme,
           theme_overrides: Object.keys(this._themeOverrides).length > 0 ? this._themeOverrides : undefined,
         },
@@ -218,6 +221,10 @@ export class PvOnboardingWizard extends LitElement {
     } finally {
       this._saving = false;
     }
+  }
+
+  private _toggleLocationAutocomplete() {
+    this._locationAutocomplete = !this._locationAutocomplete;
   }
 
   private _cancel() {
@@ -363,6 +370,36 @@ export class PvOnboardingWizard extends LitElement {
               </button>
             `)}
           </div>
+        </div>
+
+        <!-- Address suggestions (location autocomplete) -->
+        <div class="field-group">
+          <div class="toggle-row">
+            <span class="pv-label" id="address-suggestions-label">Address suggestions</span>
+            <div
+              class="pv-toggle ${this._locationAutocomplete ? 'active' : ''}"
+              role="switch"
+              tabindex="0"
+              aria-checked="${this._locationAutocomplete}"
+              aria-labelledby="address-suggestions-label"
+              @click=${this._toggleLocationAutocomplete}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  this._toggleLocationAutocomplete();
+                }
+              }}
+            ></div>
+          </div>
+          <p class="field-hint">
+            <strong>Off (recommended):</strong> PlanaVista stays 100% local. Locations are plain
+            text and nothing leaves your home network.
+          </p>
+          <p class="field-hint">
+            <strong>On:</strong> as you type a location, the text you've typed is sent to Photon
+            (photon.komoot.io), a free OpenStreetMap-based service, to suggest addresses. Nothing
+            else is sent &mdash; not your home location or any calendar details.
+          </p>
         </div>
       </div>
     `;
@@ -1096,6 +1133,35 @@ export class PvOnboardingWizard extends LitElement {
 
       .field-group {
         margin-bottom: 1.5rem;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .toggle-row .pv-label {
+        margin-bottom: 0;
+      }
+
+      .toggle-row .pv-toggle {
+        flex-shrink: 0;
+      }
+
+      .field-hint {
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--pv-text-secondary, #6B7280);
+        margin: 0 0 0.375rem;
+        max-width: 60ch;
+      }
+
+      .field-hint strong {
+        color: var(--pv-text, #1A1B1E);
+        font-weight: 600;
       }
 
       /* ── Pill group (time format / first day) ───────────────── */
