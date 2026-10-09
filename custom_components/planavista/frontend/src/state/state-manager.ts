@@ -63,12 +63,15 @@ class PlanaVistaStateManager {
   // UI Actions
   // =========================================================================
 
+  /** Replaces the Set (never mutates it) so memoized views see a new identity. */
   toggleCalendar(entityId: string): void {
-    if (this.hiddenCalendars.has(entityId)) {
-      this.hiddenCalendars.delete(entityId);
+    const next = new Set(this.hiddenCalendars);
+    if (next.has(entityId)) {
+      next.delete(entityId);
     } else {
-      this.hiddenCalendars.add(entityId);
+      next.add(entityId);
     }
+    this.hiddenCalendars = next;
     this._notify();
   }
 

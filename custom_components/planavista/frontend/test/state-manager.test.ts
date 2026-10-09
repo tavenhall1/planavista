@@ -78,3 +78,19 @@ describe('date rollover', () => {
     expect(state.currentDate.getDate()).toBe(14);
   });
 });
+
+describe('hiddenCalendars', () => {
+  it('is replaced, not mutated, on toggle', () => {
+    const before = state.hiddenCalendars;
+    state.toggleCalendar('calendar.test_alex');
+    const hidden = state.hiddenCalendars;
+    expect(hidden).not.toBe(before);
+    expect(before.has('calendar.test_alex')).toBe(false);
+    expect(hidden.has('calendar.test_alex')).toBe(true);
+
+    state.toggleCalendar('calendar.test_alex');
+    expect(state.hiddenCalendars).not.toBe(hidden);
+    expect(hidden.has('calendar.test_alex')).toBe(true);
+    expect(state.hiddenCalendars.has('calendar.test_alex')).toBe(false);
+  });
+});
