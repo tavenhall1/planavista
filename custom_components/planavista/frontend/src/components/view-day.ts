@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../types';
 import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../styles/shared';
@@ -20,7 +21,6 @@ const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;
 const HOUR_HEIGHT = 80; // px per hour
 
-@customElement('pv-view-day')
 export class PVViewDay extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) events: CalendarEvent[] = [];
@@ -745,3 +745,5 @@ export class PVViewDay extends LitElement {
     }));
   }
 }
+
+defineElement('pv-view-day', PVViewDay);

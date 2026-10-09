@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig } from '../types';
 import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isAllDayEvent, isEventPast } from '../utils/event-utils';
@@ -8,7 +9,6 @@ import { formatTime } from '../utils/date-utils';
 import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
 import { baseStyles } from '../styles/shared';
 
-@customElement('pv-event-chip')
 export class PVEventChip extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) event!: SharedEvent;
@@ -262,3 +262,5 @@ export class PVEventChip extends LitElement {
     }));
   }
 }
+
+defineElement('pv-event-chip', PVEventChip);

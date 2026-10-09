@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../types';
 import { baseStyles } from '../styles/shared';
@@ -15,7 +16,6 @@ const MAX_VISIBLE_EVENTS = 3;
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-@customElement('pv-view-month')
 export class PVViewMonth extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) events: CalendarEvent[] = [];
@@ -262,3 +262,5 @@ export class PVViewMonth extends LitElement {
     }));
   }
 }
+
+defineElement('pv-view-month', PVViewMonth);

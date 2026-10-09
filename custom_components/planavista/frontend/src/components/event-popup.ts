@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
@@ -8,7 +9,6 @@ import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../styl
 import { formatTime, formatDate, parseEventDate } from '../utils/date-utils';
 import { isAllDayEvent } from '../utils/event-utils';
 
-@customElement('pv-event-popup')
 export class PVEventPopup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Object }) event: CalendarEvent | null = null;
@@ -450,3 +450,5 @@ export class PVEventPopup extends LitElement {
     }
   }
 }
+
+defineElement('pv-event-popup', PVEventPopup);

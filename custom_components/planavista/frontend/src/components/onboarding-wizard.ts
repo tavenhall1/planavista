@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { baseStyles, buttonStyles, formStyles, animationStyles, scrollbarStyles } from '../styles/shared';
 import { ThemeOverrides } from '../types';
@@ -28,7 +29,6 @@ interface CalendarEntry {
  * @fires settings-save - fired when settings are saved successfully
  * @fires settings-close - fired when the user cancels settings
  */
-@customElement('pv-onboarding-wizard')
 export class PvOnboardingWizard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: String }) mode: 'onboarding' | 'settings' = 'onboarding';
@@ -1722,6 +1722,8 @@ export class PvOnboardingWizard extends LitElement {
     `,
   ];
 }
+
+defineElement('pv-onboarding-wizard', PvOnboardingWizard);
 
 declare global {
   interface HTMLElementTagNameMap {

@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 
 /**
@@ -9,7 +10,6 @@ import { HomeAssistant } from 'custom-card-helpers';
  * card picker instead of the raw YAML panel. The actual setup wizard lives
  * inside the card on the dashboard.
  */
-@customElement('planavista-calendar-card-editor')
 export class PlanaVistaCalendarCardEditor extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
@@ -72,6 +72,8 @@ export class PlanaVistaCalendarCardEditor extends LitElement {
     }
   `;
 }
+
+defineElement('planavista-calendar-card-editor', PlanaVistaCalendarCardEditor);
 
 declare global {
   interface HTMLElementTagNameMap {

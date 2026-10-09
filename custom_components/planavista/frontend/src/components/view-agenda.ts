@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, WeatherCondition } from '../types';
 import { baseStyles, animationStyles } from '../styles/shared';
@@ -27,7 +28,6 @@ interface DayForecast {
   tempLow: number;
 }
 
-@customElement('pv-view-agenda')
 export class PVViewAgenda extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) events: CalendarEvent[] = [];
@@ -407,3 +407,5 @@ export class PVViewAgenda extends LitElement {
     }));
   }
 }
+
+defineElement('pv-view-agenda', PVViewAgenda);

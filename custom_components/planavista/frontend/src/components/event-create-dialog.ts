@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
+import { property, state, query } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
@@ -22,7 +23,6 @@ import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } f
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-@customElement('pv-event-create-dialog')
 export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) calendars: CalendarConfig[] = [];
@@ -1392,3 +1392,5 @@ export class PVEventCreateDialog extends LitElement {
     }
   }
 }
+
+defineElement('pv-event-create-dialog', PVEventCreateDialog);

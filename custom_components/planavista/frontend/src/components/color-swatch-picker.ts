@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
+import { property, state, query } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { baseStyles } from '../styles/shared';
 
 /**
@@ -38,7 +39,6 @@ interface Preset {
  *
  * @fires color-change - { color: string, colorLight: string }
  */
-@customElement('pv-color-swatch-picker')
 export class PvColorSwatchPicker extends LitElement {
   static readonly PRESETS: Preset[] = [
     // Palette 1: Earth & Ocean tones
@@ -333,6 +333,8 @@ export class PvColorSwatchPicker extends LitElement {
     `;
   }
 }
+
+defineElement('pv-color-swatch-picker', PvColorSwatchPicker);
 
 declare global {
   interface HTMLElementTagNameMap {

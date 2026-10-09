@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
+import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig, ThemeOverrides } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
@@ -22,7 +23,6 @@ import '../components/event-popup';
 import '../components/event-create-dialog';
 import '../components/onboarding-wizard';
 
-@customElement('planavista-calendar-card')
 export class PlanaVistaCalendarCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config: any;
@@ -1424,3 +1424,5 @@ export class PlanaVistaCalendarCard extends LitElement {
     return 10;
   }
 }
+
+defineElement('planavista-calendar-card', PlanaVistaCalendarCard);

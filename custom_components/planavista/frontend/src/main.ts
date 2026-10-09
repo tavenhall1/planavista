@@ -8,16 +8,16 @@ import './components/pv-event-chip';
 
 import './cards/planavista-calendar-card';
 
-// Register card with the HA card picker
+// Register card with the HA card picker (once, even if another copy of the bundle ran first)
 window.customCards = window.customCards || [];
-window.customCards.push(
-  {
+if (!window.customCards.some(card => card.type === 'planavista-calendar-card')) {
+  window.customCards.push({
     type: 'planavista-calendar-card',
     name: 'PlanaVista',
     description: 'All-in-one calendar with clock, weather, toggles, and views',
     preview: true,
-  },
-);
+  });
+}
 
 console.info(
   '%c PLANAVISTA %c v1.0.0 ',
