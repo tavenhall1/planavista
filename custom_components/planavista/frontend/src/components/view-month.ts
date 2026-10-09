@@ -234,6 +234,7 @@ export class PVViewMonth extends LitElement {
               .showStripes=${this.showStripes}
               .tick=${this.tick}
               @event-click=${(ev: CustomEvent) => { ev.stopPropagation(); this._onEventClick(ev.detail.event); }}
+              @click=${(ev: Event) => ev.stopPropagation()}
             ></pv-event-chip>
           `)}
           ${remaining > 0 ? html`

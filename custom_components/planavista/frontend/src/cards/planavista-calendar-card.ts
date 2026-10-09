@@ -10,6 +10,7 @@ import { formatDate } from '../utils/date-utils';
 import { getPlanaVistaData, getPersonAvatar, getPersonName } from '../utils/ha-utils';
 import { filterVisibleEvents } from '../utils/event-utils';
 import { weatherIcon } from '../utils/weather-icons';
+import { swipeDirection } from '../utils/gestures';
 
 // Import card editor (visual editor instead of YAML panel)
 import './planavista-calendar-card-editor';
@@ -36,7 +37,8 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _pv = new PlanaVistaController(this);
   private _clockTimer: ReturnType<typeof setInterval> | null = null;
-  private _touchStartX = 0;
+  /** Where the current one-finger touch began; null when there's no swipe in progress. */
+  private _touchStart: { x: number; y: number } | null = null;
   private _filterCloseHandler = (e: MouseEvent) => this._onFilterClickOutside(e);
 
   static styles = [
@@ -990,6 +992,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         <div class="pvc-body"
           @touchstart=${this._onTouchStart}
           @touchend=${this._onTouchEnd}
+          @touchcancel=${this._onTouchCancel}
           @event-click=${this._onEventClick}
           @day-click=${this._onDayClick}
           @create-event=${this._onCreateEvent}
@@ -1396,14 +1399,23 @@ export class PlanaVistaCalendarCard extends LitElement {
   }
 
   private _onTouchStart(e: TouchEvent) {
-    this._touchStartX = e.touches[0].clientX;
+    // Only a single finger can swipe; a second finger (pinch, two-finger scroll) cancels.
+    this._touchStart = e.touches.length === 1
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      : null;
   }
 
   private _onTouchEnd(e: TouchEvent) {
-    const diff = e.changedTouches[0].clientX - this._touchStartX;
-    if (Math.abs(diff) > 50) {
-      this._pv.state.navigateDate(diff > 0 ? 'prev' : 'next');
-    }
+    const start = this._touchStart;
+    this._touchStart = null;
+    if (!start || e.touches.length > 0 || e.changedTouches.length !== 1) return;
+    const end = e.changedTouches[0];
+    const direction = swipeDirection(end.clientX - start.x, end.clientY - start.y);
+    if (direction) this._pv.state.navigateDate(direction);
+  }
+
+  private _onTouchCancel() {
+    this._touchStart = null;
   }
 
   // ====================================================================
