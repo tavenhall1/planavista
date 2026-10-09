@@ -4,7 +4,20 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
 import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
-import { EditRestoreError, buildDeleteData, buildRestoreData, planEdit, runEditWithRestore } from '../utils/event-form';
+import {
+  EditRestoreError,
+  EventFormDates,
+  buildDeleteData,
+  buildEventBase,
+  buildRestoreData,
+  defaultFormDates,
+  formDatesFromEvent,
+  formEndDate,
+  planEdit,
+  runEditWithRestore,
+  validateFormDates,
+  withStartTime,
+} from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -26,6 +39,10 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _startTime = '';
   @state() private _endTime = '';
   @state() private _allDay = false;
+  /** All-day length in days; kept from the edited event so it isn't collapsed to one day. */
+  @state() private _spanDays = 1;
+  /** Timed events: days from the start date to the end date (1 for an overnight event). */
+  @state() private _endDayOffset = 0;
   @state() private _description = '';
   @state() private _location = '';
   @state() private _showMore = false;
@@ -186,6 +203,12 @@ export class PVEventCreateDialog extends LitElement {
 
       .show-more-btn:hover {
         color: var(--pv-accent);
+      }
+
+      .ends-hint {
+        font-size: 0.8125rem;
+        color: var(--pv-text-secondary);
+        padding-top: 0.25rem;
       }
 
       .error-msg {
@@ -561,21 +584,7 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       if (this.prefill.start) {
-        const start = new Date(this.prefill.start);
-        this._date = this._toDateStr(start);
-        this._pickerYear = start.getFullYear();
-        this._pickerMonth = start.getMonth();
-        if (!this.prefill.start.includes('T') || (start.getHours() === 0 && start.getMinutes() === 0)) {
-          this._allDay = true;
-          this._startTime = '';
-          this._endTime = '';
-        } else {
-          this._allDay = false;
-          this._startTime = this._toTimeStr(start);
-          if (this.prefill.end) {
-            this._endTime = this._toTimeStr(new Date(this.prefill.end));
-          }
-        }
+        this._applyDates(formDatesFromEvent(this.prefill.start, this.prefill.end));
       } else {
         this._setDefaults();
       }
@@ -600,27 +609,47 @@ export class PVEventCreateDialog extends LitElement {
     this._selectedCalendars = new Set();
     this._originalCalendars = new Set();
     this._organizerEntityId = '';
-    const now = new Date();
-    this._date = this._toDateStr(now);
-    this._pickerYear = now.getFullYear();
-    this._pickerMonth = now.getMonth();
-    const minutes = Math.ceil(now.getMinutes() / 15) * 15;
-    now.setMinutes(minutes, 0, 0);
-    this._startTime = this._toTimeStr(now);
-    const end = new Date(now);
-    end.setHours(end.getHours() + 1);
-    this._endTime = this._toTimeStr(end);
-    this._allDay = false;
+    this._applyDates(defaultFormDates(new Date()));
     this._description = '';
     this._location = '';
+  }
+
+  /** The form's date/time state as plain values for utils/event-form. */
+  private get _formDates(): EventFormDates {
+    return {
+      date: this._date,
+      allDay: this._allDay,
+      startTime: this._startTime,
+      endTime: this._endTime,
+      spanDays: this._spanDays,
+      endDayOffset: this._endDayOffset,
+    };
+  }
+
+  private _applyDates(f: EventFormDates) {
+    this._date = f.date;
+    this._allDay = f.allDay;
+    this._startTime = f.startTime;
+    this._endTime = f.endTime;
+    this._spanDays = f.spanDays;
+    this._endDayOffset = f.endDayOffset;
+    const [y, m] = f.date.split('-').map(Number);
+    this._pickerYear = y;
+    this._pickerMonth = m - 1;
   }
 
   private _toDateStr(d: Date): string {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  private _toTimeStr(d: Date): string {
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  /** "Through Mon, Oct 12 (3 days)" / "Ends Sat, Oct 10" for events that run past the start date. */
+  private _renderEndsHint() {
+    const f = this._formDates;
+    const multiDay = f.allDay ? f.spanDays > 1 : f.endDayOffset > 0;
+    if (!multiDay) return nothing;
+    const [y, m, d] = formEndDate(f).split('-').map(Number);
+    const label = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return html`<div class="ends-hint">${f.allDay ? `Through ${label} (${f.spanDays} days)` : `Ends ${label}`}</div>`;
   }
 
   private _formatDateDisplay(): string {
@@ -714,6 +743,7 @@ export class PVEventCreateDialog extends LitElement {
               <div class="form-field">
                 <label class="pv-label">Date</label>
                 ${this._renderDatePicker()}
+                ${this._renderEndsHint()}
               </div>
 
               <div class="all-day-row">
@@ -945,13 +975,11 @@ export class PVEventCreateDialog extends LitElement {
 
   private _selectTime(time: string) {
     if (this._activeTimePicker === 'start') {
-      this._startTime = time;
-      // Auto-advance end time to 1 hour later if end is at or before start
-      if (this._endTime <= time) {
-        const [h, m] = time.split(':').map(Number);
-        const endH = (h + 1) % 24;
-        this._endTime = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      }
+      // Moves a same-day end to an hour after the new start when needed
+      const next = withStartTime(this._formDates, time);
+      this._startTime = next.startTime;
+      this._endTime = next.endTime;
+      this._endDayOffset = next.endDayOffset;
     } else {
       this._endTime = time;
     }
@@ -1219,8 +1247,9 @@ export class PVEventCreateDialog extends LitElement {
       return;
     }
 
-    if (!this._allDay && this._endTime <= this._startTime) {
-      this._error = 'End time must be after start time';
+    const dateError = validateFormDates(this._formDates);
+    if (dateError) {
+      this._error = dateError;
       return;
     }
 
@@ -1228,23 +1257,13 @@ export class PVEventCreateDialog extends LitElement {
     this._saving = true;
 
     try {
-      // Build the base event data (without entity_id — we'll set per-calendar)
-      const baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string } = {
-        summary: this._title.trim(),
-      };
-
-      if (this._allDay) {
-        baseData.start_date = this._date;
-        const end = new Date(this._date);
-        end.setDate(end.getDate() + 1);
-        baseData.end_date = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
-      } else {
-        baseData.start_date_time = `${this._date}T${this._startTime}:00`;
-        baseData.end_date_time = `${this._date}T${this._endTime}:00`;
-      }
-
-      if (this._description.trim()) baseData.description = this._description.trim();
-      if (this._location.trim()) baseData.location = this._location.trim();
+      // Base event data (without entity_id — set per calendar). All-day ends
+      // are exclusive; an edited event keeps its original length.
+      const baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string } = buildEventBase(this._formDates, {
+        summary: this._title,
+        description: this._description,
+        location: this._location,
+      });
 
       const selected = this._selectedCalendars;
       const original = this._originalCalendars;
