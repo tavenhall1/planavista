@@ -1278,15 +1278,21 @@ export class PVEventCreateDialog extends LitElement {
           const primaryEntityId = original.calendar_entity_id;
           const primaryId = organizerEntity || [...selected][0];
           const attendeeIds = [...selected].filter(id => id !== primaryId);
-          await runEditWithRestore({
-            remove: () => deleteEvent(this.hass, buildDeleteData(original, primaryEntityId)),
-            create: () => createEventWithAttendees(this.hass, {
-              ...baseData,
-              entity_id: primaryId,
-              attendee_entity_ids: attendeeIds,
-            } as CreateEventData & { attendee_entity_ids: string[] }),
-            restore: () => createEvent(this.hass, buildRestoreData(original, primaryEntityId)),
-          });
+          try {
+            await runEditWithRestore({
+              remove: () => deleteEvent(this.hass, buildDeleteData(original, primaryEntityId)),
+              create: () => createEventWithAttendees(this.hass, {
+                ...baseData,
+                entity_id: primaryId,
+                attendee_entity_ids: attendeeIds,
+              } as CreateEventData & { attendee_entity_ids: string[] }),
+              restore: () => createEvent(this.hass, buildRestoreData(original, primaryEntityId)),
+            });
+          } catch (editErr) {
+            // The delete may have gone through even though the edit failed, so show the calendar as it is now
+            await refreshPlanaVista(this.hass).catch(() => {});
+            throw editErr;
+          }
 
           // Delayed refresh for Google propagation
           const calEntities = [...selected];
