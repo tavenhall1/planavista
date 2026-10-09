@@ -17,6 +17,7 @@ import {
   planEdit,
   runEditWithRestore,
   validateFormDates,
+  withEndTime,
   withStartTime,
 } from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
@@ -995,7 +996,10 @@ export class PVEventCreateDialog extends LitElement {
       this._endTime = next.endTime;
       this._endDayOffset = next.endDayOffset;
     } else {
-      this._endTime = time;
+      // Ends on the start day when the picked time is after the start
+      const next = withEndTime(this._formDates, time);
+      this._endTime = next.endTime;
+      this._endDayOffset = next.endDayOffset;
     }
     this._activeTimePicker = null;
   }

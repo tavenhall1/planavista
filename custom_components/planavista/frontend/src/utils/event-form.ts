@@ -154,7 +154,22 @@ export function withStartTime(f: EventFormDates, startTime: string): EventFormDa
     const [h, m] = startTime.split(':').map(Number);
     next.endTime = `${pad((h + 1) % 24)}:${pad(m)}`;
     next.endDayOffset = h + 1 >= 24 ? 1 : 0;
+  } else if (next.endDayOffset === 1 && next.endTime > startTime) {
+    // The end is already later than the new start on the same clock day, so a
+    // leftover next-day offset (e.g. from an earlier 23:xx start) is not needed.
+    next.endDayOffset = 0;
   }
+  return next;
+}
+
+/**
+ * Apply a new end time. An end one day out that lands after the start time
+ * means the event now finishes on the start day, so the offset drops to 0.
+ * Same-day offsets and genuine multi-day offsets (2+) are left alone.
+ */
+export function withEndTime(f: EventFormDates, endTime: string): EventFormDates {
+  const next: EventFormDates = { ...f, endTime };
+  if (f.endDayOffset === 1 && endTime > f.startTime) next.endDayOffset = 0;
   return next;
 }
 

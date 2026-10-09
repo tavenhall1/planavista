@@ -8,6 +8,7 @@ import {
   formEndDate,
   toLocalIsoString,
   validateFormDates,
+  withEndTime,
   withStartTime,
   type EventFormDates,
 } from '../src/utils/event-form';
@@ -156,6 +157,56 @@ describe('withStartTime', () => {
   it('leaves an overnight end alone', () => {
     const f = formDatesFromEvent('2026-10-09T22:00:00-05:00', '2026-10-10T06:00:00-05:00');
     expect(withStartTime(f, '21:00')).toMatchObject({ startTime: '21:00', endTime: '06:00', endDayOffset: 1 });
+  });
+});
+
+describe('withStartTime offset reset', () => {
+  it('drops a next-day offset when the end is already after the new start', () => {
+    const f = formDatesFromEvent('2026-10-09T23:15:00-05:00', '2026-10-10T23:45:00-05:00');
+    expect(withStartTime(f, '19:00')).toMatchObject({ startTime: '19:00', endTime: '23:45', endDayOffset: 0 });
+  });
+});
+
+describe('withEndTime', () => {
+  it('drops a late-start day bump once the start moves earlier and an end is picked (new event)', () => {
+    const f0 = defaultFormDates(new Date(2026, 9, 9, 10, 0));
+    const late = withStartTime(f0, '23:15');
+    expect(late).toMatchObject({ endTime: '00:15', endDayOffset: 1 });
+    const f = withEndTime(withStartTime(late, '19:00'), '20:00');
+    expect(f.endDayOffset).toBe(0);
+    expect(validateFormDates(f)).toBeNull();
+    expect(buildDatePayload(f)).toEqual({
+      start_date_time: '2026-10-09T19:00:00-05:00',
+      end_date_time: '2026-10-09T20:00:00-05:00',
+    });
+  });
+
+  it('lets an overnight event be shortened to end the same day (edit)', () => {
+    const f = formDatesFromEvent('2026-10-09T18:00:00-05:00', '2026-10-10T10:00:00-05:00');
+    expect(f.endDayOffset).toBe(1);
+    const g = withEndTime(f, '21:00');
+    expect(g.endDayOffset).toBe(0);
+    expect(buildDatePayload(g)).toEqual({
+      start_date_time: '2026-10-09T18:00:00-05:00',
+      end_date_time: '2026-10-09T21:00:00-05:00',
+    });
+  });
+
+  it('keeps a genuine overnight event overnight', () => {
+    const f = formDatesFromEvent('2026-10-09T22:00:00-05:00', '2026-10-10T06:00:00-05:00');
+    const g = withEndTime(f, '07:00');
+    expect(g).toMatchObject({ endTime: '07:00', endDayOffset: 1 });
+    expect(buildDatePayload(g)).toEqual({
+      start_date_time: '2026-10-09T22:00:00-05:00',
+      end_date_time: '2026-10-10T07:00:00-05:00',
+    });
+  });
+
+  it('leaves same-day and multi-day offsets alone', () => {
+    const same = formDatesFromEvent('2026-10-09T10:00:00-05:00', '2026-10-09T11:00:00-05:00');
+    expect(withEndTime(same, '09:00')).toMatchObject({ endTime: '09:00', endDayOffset: 0 });
+    const multi = formDatesFromEvent('2026-10-09T10:00:00-05:00', '2026-10-11T09:00:00-05:00');
+    expect(withEndTime(multi, '12:00')).toMatchObject({ endTime: '12:00', endDayOffset: 2 });
   });
 });
 
