@@ -165,6 +165,16 @@ export function getDateKey(date: Date): string {
 }
 
 /**
+ * Whole calendar days from a to b (by local date, so DST days count as one).
+ */
+export function calendarDaysBetween(a: Date, b: Date): number {
+  const dayA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const dayB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((dayB - dayA) / 86400000);
+}
+
+
+/**
  * Navigate a date by offset based on view type.
  */
 export function navigateDate(date: Date, view: ViewType, direction: 'prev' | 'next'): Date {
