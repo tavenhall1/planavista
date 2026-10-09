@@ -83,9 +83,9 @@ UPDATE_INTERVAL_SECONDS: Final = 60
 SENSOR_PREFIX: Final = "planavista"
 
 # Services
-SERVICE_ADD_EVENT: Final = "add_event"
-SERVICE_SET_CALENDAR_VISIBILITY: Final = "set_calendar_visibility"
-SERVICE_REFRESH_CALENDARS: Final = "refresh_calendars"
+SERVICE_SAVE_CONFIG: Final = "save_config"
+SERVICE_DELETE_EVENT: Final = "delete_event"
+SERVICE_CREATE_EVENT_WITH_ATTENDEES: Final = "create_event_with_attendees"
 
 # Default configuration
 DEFAULT_TIME_FORMAT: Final = TIME_FORMAT_12H
