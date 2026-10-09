@@ -1,9 +1,10 @@
 {
   "domain": "planavista",
   "name": "PlanaVista",
+  "after_dependencies": ["calendar", "google"],
   "codeowners": ["@tavenhall1"],
   "config_flow": true,
-  "dependencies": ["frontend", "http", "lovelace"],
+  "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/tavenhall1/planavista",
   "integration_type": "hub",
   "iot_class": "calculated",

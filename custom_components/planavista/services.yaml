@@ -1,181 +1,126 @@
 # Services for PlanaVista
 
-add_event:
-  name: Add Event
-  description: Add a new event to a calendar
-  fields:
-    calendar:
-      name: Calendar
-      description: The calendar to add the event to
-      required: true
-      example: "Alice"
-      selector:
-        text:
-    title:
-      name: Title
-      description: Event title
-      required: true
-      example: "Team Meeting"
-      selector:
-        text:
-    start_date_time:
-      name: Start Date/Time
-      description: When the event starts
-      required: true
-      selector:
-        datetime:
-    end_date_time:
-      name: End Date/Time
-      description: When the event ends
-      required: false
-      selector:
-        datetime:
-    all_day:
-      name: All Day Event
-      description: Whether this is an all-day event
-      required: false
-      default: false
-      selector:
-        boolean:
-    description:
-      name: Description
-      description: Event description (optional)
-      required: false
-      selector:
-        text:
-          multiline: true
-
-set_calendar_visibility:
-  name: Set Calendar Visibility
-  description: Show or hide a calendar
-  fields:
-    calendar:
-      name: Calendar
-      description: The calendar to show/hide
-      required: true
-      example: "Alice"
-      selector:
-        text:
-    visible:
-      name: Visible
-      description: Whether to show or hide the calendar
-      required: true
-      selector:
-        boolean:
-
-refresh_calendars:
-  name: Refresh Calendars
-  description: Force refresh all calendar data
-
 delete_event:
-  name: Delete Event
-  description: Delete a calendar event by UID via direct entity access.
+  name: Delete event
+  description: Delete an event from a calendar that PlanaVista shows.
   fields:
     entity_id:
-      name: Entity ID
-      description: The calendar entity ID
+      name: Calendar
+      description: Calendar that holds the event. It must be configured in PlanaVista.
       required: true
       selector:
         entity:
           domain: calendar
     uid:
       name: Event UID
-      description: The unique ID of the event to delete
+      description: Unique ID of the event to delete.
       required: true
       selector:
         text:
     recurrence_id:
       name: Recurrence ID
-      description: Recurrence ID for recurring events
+      description: Which occurrence to delete when the event repeats.
       required: false
       selector:
         text:
 
 create_event_with_attendees:
-  name: Create Event with Attendees
+  name: Create event with attendees
   description: >
-    Create a calendar event with attendees. For Google Calendar entities,
-    calls the Google Calendar API directly so attendees receive proper
-    invitations and the event is linked across calendars. Falls back to
-    creating separate events for non-Google calendars.
+    Create an event on a PlanaVista calendar and add other PlanaVista calendars
+    as attendees. When the organizer is a Google calendar, the event is created
+    once through the Google Calendar API so attendees receive invitations.
+    Otherwise each calendar gets its own copy of the event.
   fields:
     entity_id:
-      name: Primary Calendar
-      description: The organizer's calendar entity ID
+      name: Organizer calendar
+      description: Calendar that owns the event. It must be configured in PlanaVista.
       required: true
       selector:
         entity:
           domain: calendar
     attendee_entity_ids:
-      name: Attendee Calendars
-      description: List of calendar entity IDs to add as attendees
+      name: Attendee calendars
+      description: Other PlanaVista calendars to add to the event.
       required: false
       selector:
-        object:
+        entity:
+          domain: calendar
+          multiple: true
     summary:
-      name: Summary
-      description: Event title
+      name: Title
+      description: Event title.
       required: true
       selector:
         text:
     start_date_time:
-      name: Start Date/Time
-      description: Start time (ISO 8601, e.g. 2024-01-15T10:00:00)
+      name: Start time
+      description: Start of a timed event (ISO 8601). Use with End time.
       required: false
+      example: "2026-10-20T15:00:00"
       selector:
         text:
     end_date_time:
-      name: End Date/Time
-      description: End time (ISO 8601)
+      name: End time
+      description: End of a timed event (ISO 8601).
       required: false
+      example: "2026-10-20T16:00:00"
       selector:
         text:
     start_date:
-      name: Start Date
-      description: Start date for all-day events (YYYY-MM-DD)
+      name: Start date
+      description: First day of an all-day event (YYYY-MM-DD). Use with End date.
       required: false
+      example: "2026-10-20"
       selector:
         text:
     end_date:
-      name: End Date
-      description: End date for all-day events (YYYY-MM-DD)
+      name: End date
+      description: Day after the last day of an all-day event (YYYY-MM-DD, exclusive).
       required: false
+      example: "2026-10-21"
       selector:
         text:
     description:
       name: Description
-      description: Event description
+      description: Event notes.
       required: false
       selector:
         text:
           multiline: true
     location:
       name: Location
-      description: Event location
+      description: Event location.
       required: false
       selector:
         text:
 
 save_config:
-  name: Save Config
-  description: Save configuration from the in-card onboarding wizard. Updates calendars, display settings, and onboarding state.
+  name: Save settings
+  description: >
+    Save the settings chosen in the card's setup wizard. Only administrators
+    can call this service.
   fields:
     calendars:
       name: Calendars
-      description: List of calendar configurations
+      description: >
+        Calendars to show, replacing the current list. Each item needs an
+        entity_id (calendar.*) and may set display_name, color, color_light,
+        icon, person_entity, and visible.
       required: false
       selector:
         object:
     display:
-      name: Display Settings
-      description: Display preferences (time_format, weather_entity, first_day, default_view, theme)
+      name: Display settings
+      description: >
+        Display settings, replacing the current ones: time_format, weather_entity,
+        first_day, default_view, theme, theme_overrides, and location_autocomplete.
       required: false
       selector:
         object:
     onboarding_complete:
-      name: Onboarding Complete
-      description: Mark onboarding as complete
+      name: Setup complete
+      description: Whether the card's setup wizard has finished.
       required: false
-      default: true
       selector:
         boolean:

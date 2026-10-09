@@ -24,7 +24,7 @@
       },
       "manage_calendars": {
         "title": "Manage Calendars",
-        "description": "Check calendars to include in PlanaVista, uncheck to remove them.",
+        "description": "Check calendars to include in PlanaVista, uncheck to remove them. Note: Removing a calendar only removes it from PlanaVista display - it does not delete events.",
         "data": {
           "calendars": "Calendars to display"
         }
