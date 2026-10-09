@@ -1,7 +1,7 @@
 {
   "domain": "planavista",
   "name": "PlanaVista",
-  "codeowners": ["@planavista"],
+  "codeowners": ["@tavenhall1"],
   "config_flow": true,
   "dependencies": ["frontend", "http", "lovelace"],
   "documentation": "https://github.com/tavenhall1/planavista",

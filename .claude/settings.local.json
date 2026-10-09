@@ -8,8 +8,7 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(git --version:*)",
       "Bash(git config:*)",
-      "Bash(git clone:*)",
-      "Bash(git -C \"D:\\\\AI\\\\CoderIDE\\\\PlanaVista\\\\planavista\" ls-remote --exit-code origin)"
+      "Bash(git clone:*)"
     ]
   }
 }

@@ -43,3 +43,8 @@ env/
 CLAUDE.md
 BRAND.md
 .serena/
+
+# Household planning data (personal: names, ages, schedules; repo is public)
+docs/plans/CHORES_HANDOFF.md
+docs/plans/household-plan.json
+docs/plans/household-hours-reference.html
