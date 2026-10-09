@@ -1,5 +1,5 @@
 import { CalendarEvent, CalendarConfig } from '../types';
-import { getDateKey } from './date-utils';
+import { getDateKey, isDateOnly, parseEventDate } from './date-utils';
 
 export interface SharedEvent extends CalendarEvent {
   shared_calendars: Array<{
@@ -58,66 +58,70 @@ export function deduplicateSharedEvents(
  * Check if an event has already ended.
  */
 export function isEventPast(event: CalendarEvent): boolean {
-  return new Date(event.end) < new Date();
+  return parseEventDate(event.end) < new Date();
 }
 
 /**
- * Check if an event is all-day.
+ * Check if an event is all-day: a date-only start (how Home Assistant sends
+ * all-day events), or a timed event running from one local midnight to a
+ * later one.
  */
 export function isAllDayEvent(event: CalendarEvent): boolean {
-  // All-day events typically have date-only strings (no 'T') or midnight-to-midnight
-  const start = event.start;
-  const end = event.end;
-  if (!start.includes('T') && !end.includes('T')) return true;
-  const s = new Date(start);
-  const e = new Date(end);
-  return s.getHours() === 0 && s.getMinutes() === 0 && e.getHours() === 0 && e.getMinutes() === 0 && e.getTime() - s.getTime() >= 86400000;
+  if (isDateOnly(event.start)) return true;
+  const s = parseEventDate(event.start);
+  const e = parseEventDate(event.end);
+  return s.getHours() === 0 && s.getMinutes() === 0 &&
+    e.getHours() === 0 && e.getMinutes() === 0 &&
+    getDateKey(s) !== getDateKey(e);
+}
+
+/**
+ * The last moment an event covers. Ends are exclusive: an all-day end is the
+ * next day's date and a timed event ending at 00:00 doesn't touch that day.
+ */
+function lastMoment(event: CalendarEvent, start: Date): Date {
+  return new Date(Math.max(parseEventDate(event.end).getTime() - 1, start.getTime()));
 }
 
 /**
  * Check if an event spans multiple days.
  */
 export function isMultiDayEvent(event: CalendarEvent): boolean {
-  const s = new Date(event.start);
-  const e = new Date(event.end);
-  return s.toDateString() !== e.toDateString();
+  const start = parseEventDate(event.start);
+  return getDateKey(start) !== getDateKey(lastMoment(event, start));
 }
 
 /**
- * Group events by date key.
+ * Display order: all-day events first, then by actual start instant
+ * (start strings can carry different UTC offsets, so never compare them as text).
+ */
+export function compareEventsForDisplay(a: CalendarEvent, b: CalendarEvent): number {
+  const aAllDay = isAllDayEvent(a);
+  const bAllDay = isAllDayEvent(b);
+  if (aAllDay !== bAllDay) return aAllDay ? -1 : 1;
+  return parseEventDate(a.start).getTime() - parseEventDate(b.start).getTime();
+}
+
+/**
+ * Group events by local date key, adding multi-day events to every day they cover.
  */
 export function groupEventsByDate(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
   const groups = new Map<string, CalendarEvent[]>();
   for (const event of events) {
-    const start = new Date(event.start);
-    const end = new Date(event.end);
-    // For multi-day events, add to each day
-    const current = new Date(start);
-    current.setHours(0, 0, 0, 0);
-    const endDay = new Date(end);
-    endDay.setHours(0, 0, 0, 0);
-
-    // All-day events use exclusive end dates (CalDAV/iCal spec):
-    // A single all-day event on Feb 24 has end = Feb 25.
-    // Use < instead of <= for all-day to avoid double-counting.
-    const allDay = isAllDayEvent(event);
-
-    while (allDay ? current < endDay : current <= endDay) {
+    const start = parseEventDate(event.start);
+    const lastKey = getDateKey(lastMoment(event, start));
+    const current = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    // Bounded so malformed data can never spin forever.
+    for (let i = 0; i < 1000; i++) {
       const key = getDateKey(current);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(event);
+      if (key === lastKey) break;
       current.setDate(current.getDate() + 1);
     }
   }
-  // Sort events within each group
   for (const [, groupEvents] of groups) {
-    groupEvents.sort((a, b) => {
-      const aAllDay = isAllDayEvent(a);
-      const bAllDay = isAllDayEvent(b);
-      if (aAllDay && !bAllDay) return -1;
-      if (!aAllDay && bAllDay) return 1;
-      return new Date(a.start).getTime() - new Date(b.start).getTime();
-    });
+    groupEvents.sort(compareEventsForDisplay);
   }
   return groups;
 }
@@ -153,14 +157,14 @@ export function groupEventsByPerson(
 /**
  * Filter events in a date range.
  */
-export function getEventsForDateRange(
-  events: CalendarEvent[],
+export function getEventsForDateRange<T extends CalendarEvent>(
+  events: T[],
   start: Date,
   end: Date
-): CalendarEvent[] {
+): T[] {
   return events.filter(event => {
-    const eventStart = new Date(event.start);
-    const eventEnd = new Date(event.end);
+    const eventStart = parseEventDate(event.start);
+    const eventEnd = parseEventDate(event.end);
     return eventStart < end && eventEnd > start;
   });
 }
@@ -176,8 +180,8 @@ export function getEventPosition(
   dayEndHour: number = 24,
   viewDate?: Date
 ): { top: number; height: number } {
-  const start = new Date(event.start);
-  const end = new Date(event.end);
+  const start = parseEventDate(event.start);
+  const end = parseEventDate(event.end);
   const totalMinutes = (dayEndHour - dayStartHour) * 60;
 
   // Clamp start/end to the visible day boundaries for overnight/multi-day events
@@ -221,7 +225,7 @@ export function getEventPosition(
  */
 export function detectOverlaps(events: CalendarEvent[]): Array<CalendarEvent & { column: number; totalColumns: number }> {
   const timed = events.filter(e => !isAllDayEvent(e)).sort(
-    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+    (a, b) => parseEventDate(a.start).getTime() - parseEventDate(b.start).getTime()
   );
 
   if (timed.length === 0) return [];
@@ -230,8 +234,8 @@ export function detectOverlaps(events: CalendarEvent[]): Array<CalendarEvent & {
   type EventInfo = { event: CalendarEvent; start: number; end: number; column: number; cluster: number };
   const infos: EventInfo[] = timed.map(e => ({
     event: e,
-    start: new Date(e.start).getTime(),
-    end: new Date(e.end).getTime(),
+    start: parseEventDate(e.start).getTime(),
+    end: parseEventDate(e.end).getTime(),
     column: 0,
     cluster: 0,
   }));
