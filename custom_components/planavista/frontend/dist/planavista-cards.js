@@ -1,4 +1,4 @@
-function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPropertyDescriptor(t,i):r;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(e,t,i,r);else for(var o=e.length-1;o>=0;o--)(a=e[o])&&(n=(s<3?a(n):s>3?a(t,i,n):a(t,i))||n);return s>3&&n&&Object.defineProperty(t,i,n),n}"function"==typeof SuppressedError&&SuppressedError;const t=globalThis,i=t.ShadowRoot&&(void 0===t.ShadyCSS||t.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,r=Symbol(),a=new WeakMap;let s=class{constructor(e,t,i){if(this._$cssResult$=!0,i!==r)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const t=this.t;if(i&&void 0===e){const i=void 0!==t&&1===t.length;i&&(e=a.get(t)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),i&&a.set(t,e))}return e}toString(){return this.cssText}};const n=(e,...t)=>{const i=1===e.length?e[0]:t.reduce((t,i,r)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[r+1],e[0]);return new s(i,e,r)},o=i?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return(e=>new s("string"==typeof e?e:e+"",void 0,r))(t)})(e):e,{is:l,defineProperty:d,getOwnPropertyDescriptor:c,getOwnPropertyNames:p,getOwnPropertySymbols:h,getPrototypeOf:v}=Object,m=globalThis,g=m.trustedTypes,u=g?g.emptyScript:"",y=m.reactiveElementPolyfillSupport,f=(e,t)=>e,b={toAttribute(e,t){switch(t){case Boolean:e=e?u:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},x=(e,t)=>!l(e,t),_={attribute:!0,type:String,converter:b,reflect:!1,useDefault:!1,hasChanged:x};Symbol.metadata??=Symbol("metadata"),m.litPropertyMetadata??=new WeakMap;let w=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=_){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),r=this.getPropertyDescriptor(e,i,t);void 0!==r&&d(this.prototype,e,r)}}static getPropertyDescriptor(e,t,i){const{get:r,set:a}=c(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:r,set(t){const s=r?.call(this);a?.call(this,t),this.requestUpdate(e,s,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??_}static _$Ei(){if(this.hasOwnProperty(f("elementProperties")))return;const e=v(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(f("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(f("properties"))){const e=this.properties,t=[...p(e),...h(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(o(e))}else void 0!==e&&t.push(o(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const e=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((e,r)=>{if(i)e.adoptedStyleSheets=r.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const i of r){const r=document.createElement("style"),a=t.litNonce;void 0!==a&&r.setAttribute("nonce",a),r.textContent=i.cssText,e.appendChild(r)}})(e,this.constructor.elementStyles),e}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),r=this.constructor._$Eu(e,i);if(void 0!==r&&!0===i.reflect){const a=(void 0!==i.converter?.toAttribute?i.converter:b).toAttribute(t,i.type);this._$Em=e,null==a?this.removeAttribute(r):this.setAttribute(r,a),this._$Em=null}}_$AK(e,t){const i=this.constructor,r=i._$Eh.get(e);if(void 0!==r&&this._$Em!==r){const e=i.getPropertyOptions(r),a="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:b;this._$Em=r;const s=a.fromAttribute(t,e.type);this[r]=s??this._$Ej?.get(r)??s,this._$Em=null}}requestUpdate(e,t,i,r=!1,a){if(void 0!==e){const s=this.constructor;if(!1===r&&(a=this[e]),i??=s.getPropertyOptions(e),!((i.hasChanged??x)(a,t)||i.useDefault&&i.reflect&&a===this._$Ej?.get(e)&&!this.hasAttribute(s._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:r,wrapped:a},s){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,s??t??this[e]),!0!==a||void 0!==s)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===r&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,r=this[t];!0!==e||this._$AL.has(t)||void 0===r||this.C(t,void 0,i,r)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};w.elementStyles=[],w.shadowRootOptions={mode:"open"},w[f("elementProperties")]=new Map,w[f("finalized")]=new Map,y?.({ReactiveElement:w}),(m.reactiveElementVersions??=[]).push("2.1.2");const $=globalThis,k=e=>e,F=$.trustedTypes,C=F?F.createPolicy("lit-html",{createHTML:e=>e}):void 0,E="$lit$",z=`lit$${Math.random().toFixed(9).slice(2)}$`,D="?"+z,S=`<${D}>`,A=document,T=()=>A.createComment(""),M=e=>null===e||"object"!=typeof e&&"function"!=typeof e,B=Array.isArray,O="[ \t\n\f\r]",P=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,H=/-->/g,L=/>/g,I=RegExp(`>|${O}(?:([^\\s"'>=/]+)(${O}*=${O}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),U=/'/g,j=/"/g,V=/^(?:script|style|textarea|title)$/i,N=(e,...t)=>({_$litType$:1,strings:e,values:t}),R=Symbol.for("lit-noChange"),W=Symbol.for("lit-nothing"),Y=new WeakMap,q=A.createTreeWalker(A,129);function X(e,t){if(!B(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==C?C.createHTML(t):t}const G=(e,t)=>{const i=e.length-1,r=[];let a,s=2===t?"<svg>":3===t?"<math>":"",n=P;for(let t=0;t<i;t++){const i=e[t];let o,l,d=-1,c=0;for(;c<i.length&&(n.lastIndex=c,l=n.exec(i),null!==l);)c=n.lastIndex,n===P?"!--"===l[1]?n=H:void 0!==l[1]?n=L:void 0!==l[2]?(V.test(l[2])&&(a=RegExp("</"+l[2],"g")),n=I):void 0!==l[3]&&(n=I):n===I?">"===l[0]?(n=a??P,d=-1):void 0===l[1]?d=-2:(d=n.lastIndex-l[2].length,o=l[1],n=void 0===l[3]?I:'"'===l[3]?j:U):n===j||n===U?n=I:n===H||n===L?n=P:(n=I,a=void 0);const p=n===I&&e[t+1].startsWith("/>")?" ":"";s+=n===P?i+S:d>=0?(r.push(o),i.slice(0,d)+E+i.slice(d)+z+p):i+z+(-2===d?t:p)}return[X(e,s+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),r]};class Q{constructor({strings:e,_$litType$:t},i){let r;this.parts=[];let a=0,s=0;const n=e.length-1,o=this.parts,[l,d]=G(e,t);if(this.el=Q.createElement(l,i),q.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(r=q.nextNode())&&o.length<n;){if(1===r.nodeType){if(r.hasAttributes())for(const e of r.getAttributeNames())if(e.endsWith(E)){const t=d[s++],i=r.getAttribute(e).split(z),n=/([.?@])?(.*)/.exec(t);o.push({type:1,index:a,name:n[2],strings:i,ctor:"."===n[1]?te:"?"===n[1]?ie:"@"===n[1]?re:ee}),r.removeAttribute(e)}else e.startsWith(z)&&(o.push({type:6,index:a}),r.removeAttribute(e));if(V.test(r.tagName)){const e=r.textContent.split(z),t=e.length-1;if(t>0){r.textContent=F?F.emptyScript:"";for(let i=0;i<t;i++)r.append(e[i],T()),q.nextNode(),o.push({type:2,index:++a});r.append(e[t],T())}}}else if(8===r.nodeType)if(r.data===D)o.push({type:2,index:a});else{let e=-1;for(;-1!==(e=r.data.indexOf(z,e+1));)o.push({type:7,index:a}),e+=z.length-1}a++}}static createElement(e,t){const i=A.createElement("template");return i.innerHTML=e,i}}function Z(e,t,i=e,r){if(t===R)return t;let a=void 0!==r?i._$Co?.[r]:i._$Cl;const s=M(t)?void 0:t._$litDirective$;return a?.constructor!==s&&(a?._$AO?.(!1),void 0===s?a=void 0:(a=new s(e),a._$AT(e,i,r)),void 0!==r?(i._$Co??=[])[r]=a:i._$Cl=a),void 0!==a&&(t=Z(e,a._$AS(e,t.values),a,r)),t}class K{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,r=(e?.creationScope??A).importNode(t,!0);q.currentNode=r;let a=q.nextNode(),s=0,n=0,o=i[0];for(;void 0!==o;){if(s===o.index){let t;2===o.type?t=new J(a,a.nextSibling,this,e):1===o.type?t=new o.ctor(a,o.name,o.strings,this,e):6===o.type&&(t=new ae(a,this,e)),this._$AV.push(t),o=i[++n]}s!==o?.index&&(a=q.nextNode(),s++)}return q.currentNode=A,r}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class J{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,r){this.type=2,this._$AH=W,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=Z(this,e,t),M(e)?e===W||null==e||""===e?(this._$AH!==W&&this._$AR(),this._$AH=W):e!==this._$AH&&e!==R&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>B(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==W&&M(this._$AH)?this._$AA.nextSibling.data=e:this.T(A.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,r="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=Q.createElement(X(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===r)this._$AH.p(t);else{const e=new K(r,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=Y.get(e.strings);return void 0===t&&Y.set(e.strings,t=new Q(e)),t}k(e){B(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,r=0;for(const a of e)r===t.length?t.push(i=new J(this.O(T()),this.O(T()),this,this.options)):i=t[r],i._$AI(a),r++;r<t.length&&(this._$AR(i&&i._$AB.nextSibling,r),t.length=r)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=k(e).nextSibling;k(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ee{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,r,a){this.type=1,this._$AH=W,this._$AN=void 0,this.element=e,this.name=t,this._$AM=r,this.options=a,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=W}_$AI(e,t=this,i,r){const a=this.strings;let s=!1;if(void 0===a)e=Z(this,e,t,0),s=!M(e)||e!==this._$AH&&e!==R,s&&(this._$AH=e);else{const r=e;let n,o;for(e=a[0],n=0;n<a.length-1;n++)o=Z(this,r[i+n],t,n),o===R&&(o=this._$AH[n]),s||=!M(o)||o!==this._$AH[n],o===W?e=W:e!==W&&(e+=(o??"")+a[n+1]),this._$AH[n]=o}s&&!r&&this.j(e)}j(e){e===W?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class te extends ee{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===W?void 0:e}}class ie extends ee{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==W)}}class re extends ee{constructor(e,t,i,r,a){super(e,t,i,r,a),this.type=5}_$AI(e,t=this){if((e=Z(this,e,t,0)??W)===R)return;const i=this._$AH,r=e===W&&i!==W||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,a=e!==W&&(i===W||r);r&&this.element.removeEventListener(this.name,this,i),a&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class ae{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){Z(this,e)}}const se=$.litHtmlPolyfillSupport;se?.(Q,J),($.litHtmlVersions??=[]).push("3.3.2");const ne=globalThis;class oe extends w{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const r=i?.renderBefore??t;let a=r._$litPart$;if(void 0===a){const e=i?.renderBefore??null;r._$litPart$=a=new J(t.insertBefore(T(),e),e,void 0,i??{})}return a._$AI(e),a})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return R}}oe._$litElement$=!0,oe.finalized=!0,ne.litElementHydrateSupport?.({LitElement:oe});const le=ne.litElementPolyfillSupport;le?.({LitElement:oe}),(ne.litElementVersions??=[]).push("4.2.2");const de=e=>(t,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(e,t)}):customElements.define(e,t)},ce={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},pe=(e=ce,t,i)=>{const{kind:r,metadata:a}=i;let s=globalThis.litPropertyMetadata.get(a);if(void 0===s&&globalThis.litPropertyMetadata.set(a,s=new Map),"setter"===r&&((e=Object.create(e)).wrapped=!0),s.set(i.name,e),"accessor"===r){const{name:r}=i;return{set(i){const a=t.get.call(this);t.set.call(this,i),this.requestUpdate(r,a,e,!0,i)},init(t){return void 0!==t&&this.C(r,void 0,e,t),t}}}if("setter"===r){const{name:r}=i;return function(i){const a=this[r];t.call(this,i),this.requestUpdate(r,a,e,!0,i)}}throw Error("Unsupported decorator location: "+r)};function he(e){return(t,i)=>"object"==typeof i?pe(e,t,i):((e,t,i)=>{const r=t.hasOwnProperty(i);return t.constructor.createProperty(i,e),r?Object.getOwnPropertyDescriptor(t,i):void 0})(e,t,i)}function ve(e){return he({...e,state:!0,attribute:!1})}function me(e,t){return(t,i,r)=>((e,t,i)=>(i.configurable=!0,i.enumerable=!0,Reflect.decorate&&"object"!=typeof t&&Object.defineProperty(e,t,i),i))(t,i,{get(){return(t=>t.renderRoot?.querySelector(e)??null)(this)}})}const ge=n`
+function e(e,t,i,a){var r,n=arguments.length,s=n<3?t:null===a?a=Object.getOwnPropertyDescriptor(t,i):a;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)s=Reflect.decorate(e,t,i,a);else for(var o=e.length-1;o>=0;o--)(r=e[o])&&(s=(n<3?r(s):n>3?r(t,i,s):r(t,i))||s);return n>3&&s&&Object.defineProperty(t,i,s),s}"function"==typeof SuppressedError&&SuppressedError;const t=globalThis,i=t.ShadowRoot&&(void 0===t.ShadyCSS||t.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,a=Symbol(),r=new WeakMap;let n=class{constructor(e,t,i){if(this._$cssResult$=!0,i!==a)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const t=this.t;if(i&&void 0===e){const i=void 0!==t&&1===t.length;i&&(e=r.get(t)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),i&&r.set(t,e))}return e}toString(){return this.cssText}};const s=(e,...t)=>{const i=1===e.length?e[0]:t.reduce((t,i,a)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[a+1],e[0]);return new n(i,e,a)},o=i?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return(e=>new n("string"==typeof e?e:e+"",void 0,a))(t)})(e):e,{is:l,defineProperty:d,getOwnPropertyDescriptor:c,getOwnPropertyNames:p,getOwnPropertySymbols:h,getPrototypeOf:v}=Object,m=globalThis,g=m.trustedTypes,u=g?g.emptyScript:"",f=m.reactiveElementPolyfillSupport,y=(e,t)=>e,b={toAttribute(e,t){switch(t){case Boolean:e=e?u:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},x=(e,t)=>!l(e,t),_={attribute:!0,type:String,converter:b,reflect:!1,useDefault:!1,hasChanged:x};Symbol.metadata??=Symbol("metadata"),m.litPropertyMetadata??=new WeakMap;let w=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=_){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),a=this.getPropertyDescriptor(e,i,t);void 0!==a&&d(this.prototype,e,a)}}static getPropertyDescriptor(e,t,i){const{get:a,set:r}=c(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:a,set(t){const n=a?.call(this);r?.call(this,t),this.requestUpdate(e,n,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??_}static _$Ei(){if(this.hasOwnProperty(y("elementProperties")))return;const e=v(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(y("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(y("properties"))){const e=this.properties,t=[...p(e),...h(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(o(e))}else void 0!==e&&t.push(o(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const e=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((e,a)=>{if(i)e.adoptedStyleSheets=a.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const i of a){const a=document.createElement("style"),r=t.litNonce;void 0!==r&&a.setAttribute("nonce",r),a.textContent=i.cssText,e.appendChild(a)}})(e,this.constructor.elementStyles),e}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),a=this.constructor._$Eu(e,i);if(void 0!==a&&!0===i.reflect){const r=(void 0!==i.converter?.toAttribute?i.converter:b).toAttribute(t,i.type);this._$Em=e,null==r?this.removeAttribute(a):this.setAttribute(a,r),this._$Em=null}}_$AK(e,t){const i=this.constructor,a=i._$Eh.get(e);if(void 0!==a&&this._$Em!==a){const e=i.getPropertyOptions(a),r="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:b;this._$Em=a;const n=r.fromAttribute(t,e.type);this[a]=n??this._$Ej?.get(a)??n,this._$Em=null}}requestUpdate(e,t,i,a=!1,r){if(void 0!==e){const n=this.constructor;if(!1===a&&(r=this[e]),i??=n.getPropertyOptions(e),!((i.hasChanged??x)(r,t)||i.useDefault&&i.reflect&&r===this._$Ej?.get(e)&&!this.hasAttribute(n._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:a,wrapped:r},n){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,n??t??this[e]),!0!==r||void 0!==n)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===a&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,a=this[t];!0!==e||this._$AL.has(t)||void 0===a||this.C(t,void 0,i,a)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};w.elementStyles=[],w.shadowRootOptions={mode:"open"},w[y("elementProperties")]=new Map,w[y("finalized")]=new Map,f?.({ReactiveElement:w}),(m.reactiveElementVersions??=[]).push("2.1.2");const k=globalThis,$=e=>e,F=k.trustedTypes,C=F?F.createPolicy("lit-html",{createHTML:e=>e}):void 0,E="$lit$",D=`lit$${Math.random().toFixed(9).slice(2)}$`,z="?"+D,S=`<${z}>`,A=document,T=()=>A.createComment(""),M=e=>null===e||"object"!=typeof e&&"function"!=typeof e,B=Array.isArray,O="[ \t\n\f\r]",P=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,L=/-->/g,H=/>/g,I=RegExp(`>|${O}(?:([^\\s"'>=/]+)(${O}*=${O}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),j=/'/g,U=/"/g,N=/^(?:script|style|textarea|title)$/i,V=(e,...t)=>({_$litType$:1,strings:e,values:t}),R=Symbol.for("lit-noChange"),W=Symbol.for("lit-nothing"),Y=new WeakMap,q=A.createTreeWalker(A,129);function G(e,t){if(!B(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==C?C.createHTML(t):t}const X=(e,t)=>{const i=e.length-1,a=[];let r,n=2===t?"<svg>":3===t?"<math>":"",s=P;for(let t=0;t<i;t++){const i=e[t];let o,l,d=-1,c=0;for(;c<i.length&&(s.lastIndex=c,l=s.exec(i),null!==l);)c=s.lastIndex,s===P?"!--"===l[1]?s=L:void 0!==l[1]?s=H:void 0!==l[2]?(N.test(l[2])&&(r=RegExp("</"+l[2],"g")),s=I):void 0!==l[3]&&(s=I):s===I?">"===l[0]?(s=r??P,d=-1):void 0===l[1]?d=-2:(d=s.lastIndex-l[2].length,o=l[1],s=void 0===l[3]?I:'"'===l[3]?U:j):s===U||s===j?s=I:s===L||s===H?s=P:(s=I,r=void 0);const p=s===I&&e[t+1].startsWith("/>")?" ":"";n+=s===P?i+S:d>=0?(a.push(o),i.slice(0,d)+E+i.slice(d)+D+p):i+D+(-2===d?t:p)}return[G(e,n+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),a]};class Q{constructor({strings:e,_$litType$:t},i){let a;this.parts=[];let r=0,n=0;const s=e.length-1,o=this.parts,[l,d]=X(e,t);if(this.el=Q.createElement(l,i),q.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(a=q.nextNode())&&o.length<s;){if(1===a.nodeType){if(a.hasAttributes())for(const e of a.getAttributeNames())if(e.endsWith(E)){const t=d[n++],i=a.getAttribute(e).split(D),s=/([.?@])?(.*)/.exec(t);o.push({type:1,index:r,name:s[2],strings:i,ctor:"."===s[1]?te:"?"===s[1]?ie:"@"===s[1]?ae:ee}),a.removeAttribute(e)}else e.startsWith(D)&&(o.push({type:6,index:r}),a.removeAttribute(e));if(N.test(a.tagName)){const e=a.textContent.split(D),t=e.length-1;if(t>0){a.textContent=F?F.emptyScript:"";for(let i=0;i<t;i++)a.append(e[i],T()),q.nextNode(),o.push({type:2,index:++r});a.append(e[t],T())}}}else if(8===a.nodeType)if(a.data===z)o.push({type:2,index:r});else{let e=-1;for(;-1!==(e=a.data.indexOf(D,e+1));)o.push({type:7,index:r}),e+=D.length-1}r++}}static createElement(e,t){const i=A.createElement("template");return i.innerHTML=e,i}}function Z(e,t,i=e,a){if(t===R)return t;let r=void 0!==a?i._$Co?.[a]:i._$Cl;const n=M(t)?void 0:t._$litDirective$;return r?.constructor!==n&&(r?._$AO?.(!1),void 0===n?r=void 0:(r=new n(e),r._$AT(e,i,a)),void 0!==a?(i._$Co??=[])[a]=r:i._$Cl=r),void 0!==r&&(t=Z(e,r._$AS(e,t.values),r,a)),t}class K{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,a=(e?.creationScope??A).importNode(t,!0);q.currentNode=a;let r=q.nextNode(),n=0,s=0,o=i[0];for(;void 0!==o;){if(n===o.index){let t;2===o.type?t=new J(r,r.nextSibling,this,e):1===o.type?t=new o.ctor(r,o.name,o.strings,this,e):6===o.type&&(t=new re(r,this,e)),this._$AV.push(t),o=i[++s]}n!==o?.index&&(r=q.nextNode(),n++)}return q.currentNode=A,a}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class J{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,a){this.type=2,this._$AH=W,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=a,this._$Cv=a?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=Z(this,e,t),M(e)?e===W||null==e||""===e?(this._$AH!==W&&this._$AR(),this._$AH=W):e!==this._$AH&&e!==R&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>B(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==W&&M(this._$AH)?this._$AA.nextSibling.data=e:this.T(A.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,a="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=Q.createElement(G(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===a)this._$AH.p(t);else{const e=new K(a,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=Y.get(e.strings);return void 0===t&&Y.set(e.strings,t=new Q(e)),t}k(e){B(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,a=0;for(const r of e)a===t.length?t.push(i=new J(this.O(T()),this.O(T()),this,this.options)):i=t[a],i._$AI(r),a++;a<t.length&&(this._$AR(i&&i._$AB.nextSibling,a),t.length=a)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=$(e).nextSibling;$(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ee{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,a,r){this.type=1,this._$AH=W,this._$AN=void 0,this.element=e,this.name=t,this._$AM=a,this.options=r,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=W}_$AI(e,t=this,i,a){const r=this.strings;let n=!1;if(void 0===r)e=Z(this,e,t,0),n=!M(e)||e!==this._$AH&&e!==R,n&&(this._$AH=e);else{const a=e;let s,o;for(e=r[0],s=0;s<r.length-1;s++)o=Z(this,a[i+s],t,s),o===R&&(o=this._$AH[s]),n||=!M(o)||o!==this._$AH[s],o===W?e=W:e!==W&&(e+=(o??"")+r[s+1]),this._$AH[s]=o}n&&!a&&this.j(e)}j(e){e===W?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class te extends ee{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===W?void 0:e}}class ie extends ee{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==W)}}class ae extends ee{constructor(e,t,i,a,r){super(e,t,i,a,r),this.type=5}_$AI(e,t=this){if((e=Z(this,e,t,0)??W)===R)return;const i=this._$AH,a=e===W&&i!==W||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,r=e!==W&&(i===W||a);a&&this.element.removeEventListener(this.name,this,i),r&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class re{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){Z(this,e)}}const ne=k.litHtmlPolyfillSupport;ne?.(Q,J),(k.litHtmlVersions??=[]).push("3.3.2");const se=globalThis;class oe extends w{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const a=i?.renderBefore??t;let r=a._$litPart$;if(void 0===r){const e=i?.renderBefore??null;a._$litPart$=r=new J(t.insertBefore(T(),e),e,void 0,i??{})}return r._$AI(e),r})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return R}}oe._$litElement$=!0,oe.finalized=!0,se.litElementHydrateSupport?.({LitElement:oe});const le=se.litElementPolyfillSupport;le?.({LitElement:oe}),(se.litElementVersions??=[]).push("4.2.2");const de={attribute:!0,type:String,converter:b,reflect:!1,hasChanged:x},ce=(e=de,t,i)=>{const{kind:a,metadata:r}=i;let n=globalThis.litPropertyMetadata.get(r);if(void 0===n&&globalThis.litPropertyMetadata.set(r,n=new Map),"setter"===a&&((e=Object.create(e)).wrapped=!0),n.set(i.name,e),"accessor"===a){const{name:a}=i;return{set(i){const r=t.get.call(this);t.set.call(this,i),this.requestUpdate(a,r,e,!0,i)},init(t){return void 0!==t&&this.C(a,void 0,e,t),t}}}if("setter"===a){const{name:a}=i;return function(i){const r=this[a];t.call(this,i),this.requestUpdate(a,r,e,!0,i)}}throw Error("Unsupported decorator location: "+a)};function pe(e){return(t,i)=>"object"==typeof i?ce(e,t,i):((e,t,i)=>{const a=t.hasOwnProperty(i);return t.constructor.createProperty(i,e),a?Object.getOwnPropertyDescriptor(t,i):void 0})(e,t,i)}function he(e){return pe({...e,state:!0,attribute:!1})}function ve(e,t){return(t,i,a)=>((e,t,i)=>(i.configurable=!0,i.enumerable=!0,Reflect.decorate&&"object"!=typeof t&&Object.defineProperty(e,t,i),i))(t,i,{get(){return(t=>t.renderRoot?.querySelector(e)??null)(this)}})}function me(e,t){return!customElements.get(e)&&(customElements.define(e,t),!0)}const ge=s`
   :host {
     display: block;
     font-family: var(--pv-font-family, Inter, -apple-system, system-ui, sans-serif);
@@ -19,7 +19,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
   ha-card:hover {
     box-shadow: var(--pv-shadow-lg);
   }
-`,ue=n`
+`,ue=s`
   .pv-display {
     font-size: 3.5rem;
     font-weight: 300;
@@ -60,7 +60,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
     text-transform: uppercase;
     color: var(--pv-text-muted);
   }
-`,ye=n`
+`,fe=s`
   .pv-btn {
     display: inline-flex;
     align-items: center;
@@ -134,7 +134,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
     border-radius: 9999px;
     padding: 0.5rem 1rem;
   }
-`,fe=n`
+`,ye=s`
   .pv-event {
     position: relative;
     padding: 0.375rem 0.5rem 0.375rem 0.75rem;
@@ -188,7 +188,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
     text-overflow: ellipsis;
     max-width: 100%;
   }
-`,be=n`
+`,be=s`
   .pv-overlay {
     position: fixed;
     inset: 0;
@@ -241,7 +241,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
     width: calc(100% - 2rem);
     animation: pv-scaleIn var(--pv-transition, 200ms ease) forwards;
   }
-`,xe=n`
+`,xe=s`
   .pv-input {
     width: 100%;
     padding: 0.75rem 1rem;
@@ -312,7 +312,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
   .pv-toggle.active::after {
     transform: translateX(20px);
   }
-`,_e=n`
+`,_e=s`
   .pv-now-line {
     position: absolute;
     left: 0;
@@ -342,7 +342,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
   .pv-now-line {
     animation: pv-nowPulse 3s ease-in-out infinite;
   }
-`,we=n`
+`,we=s`
   @keyframes pv-fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -377,7 +377,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
     from { transform: translateX(-24px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
   }
-`,$e=n`
+`,ke=s`
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -395,9 +395,9 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
   ::-webkit-scrollbar-thumb:hover {
     background: var(--pv-text-muted);
   }
-`;var ke;let Fe=ke=class extends oe{constructor(){super(...arguments),this.value="",this.valueLight="",this._isCustom=!1}updated(e){if(super.updated(e),e.has("value")&&this.value){const e=ke.PRESETS.some(e=>e.color.toLowerCase()===this.value.toLowerCase());this._isCustom=!e}}_selectPreset(e){this._isCustom=!1,this._emit(e.color,e.light)}_openCustomPicker(){this._colorInput?.click()}_onCustomColorChange(e){const t=e.target.value,i=function(e){let t=e.replace("#","");if(3===t.length&&(t=t.split("").map(e=>e+e).join("")),6!==t.length)return e;const i=parseInt(t.substring(0,2),16),r=parseInt(t.substring(2,4),16),a=parseInt(t.substring(4,6),16);if(isNaN(i)||isNaN(r)||isNaN(a))return e;const s=Math.round(i+.65*(255-i)),n=Math.round(r+.65*(255-r)),o=Math.round(a+.65*(255-a)),l=e=>e.toString(16).padStart(2,"0");return`#${l(s)}${l(n)}${l(o)}`}(t);this._isCustom=!0,this._emit(t,i)}_emit(e,t){this.value=e,this.valueLight=t,this.dispatchEvent(new CustomEvent("color-change",{detail:{color:e,colorLight:t},bubbles:!0,composed:!0}))}_isSelected(e){return this.value.toLowerCase()===e.toLowerCase()}render(){const e=ke.PRESETS,t=this._isCustom?this.value:"",i=this._isCustom&&!!this.value;return N`
+`;class $e extends oe{constructor(){super(...arguments),this.value="",this.valueLight="",this._isCustom=!1}updated(e){if(super.updated(e),e.has("value")&&this.value){const e=$e.PRESETS.some(e=>e.color.toLowerCase()===this.value.toLowerCase());this._isCustom=!e}}_selectPreset(e){this._isCustom=!1,this._emit(e.color,e.light)}_openCustomPicker(){this._colorInput?.click()}_onCustomColorChange(e){const t=e.target.value,i=function(e){let t=e.replace("#","");if(3===t.length&&(t=t.split("").map(e=>e+e).join("")),6!==t.length)return e;const i=parseInt(t.substring(0,2),16),a=parseInt(t.substring(2,4),16),r=parseInt(t.substring(4,6),16);if(isNaN(i)||isNaN(a)||isNaN(r))return e;const n=Math.round(i+.65*(255-i)),s=Math.round(a+.65*(255-a)),o=Math.round(r+.65*(255-r)),l=e=>e.toString(16).padStart(2,"0");return`#${l(n)}${l(s)}${l(o)}`}(t);this._isCustom=!0,this._emit(t,i)}_emit(e,t){this.value=e,this.valueLight=t,this.dispatchEvent(new CustomEvent("color-change",{detail:{color:e,colorLight:t},bubbles:!0,composed:!0}))}_isSelected(e){return this.value.toLowerCase()===e.toLowerCase()}render(){const e=$e.PRESETS,t=this._isCustom?this.value:"",i=this._isCustom&&!!this.value;return V`
       <div class="swatch-grid" role="group" aria-label="Color presets">
-        ${e.map(e=>{const t=this._isSelected(e.color);return N`
+        ${e.map(e=>{const t=this._isSelected(e.color);return V`
             <button
               class="swatch-btn"
               type="button"
@@ -428,7 +428,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             class="custom-circle ${t?"has-color":""}"
             style="${t?`background-color: ${t}`:""}"
           >
-            ${t?"":N`<span aria-hidden="true">+</span>`}
+            ${t?"":V`<span aria-hidden="true">+</span>`}
           </div>
         </button>
 
@@ -443,7 +443,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           @input=${this._onCustomColorChange}
         />
       </div>
-    `}};Fe.PRESETS=[{name:"Ink Black",color:"#001219",light:"#A6ACAF"},{name:"Dark Teal",color:"#005F73",light:"#A6C7CE"},{name:"Dark Cyan",color:"#0A9396",light:"#A9D9DA"},{name:"Pearl Aqua",color:"#94D2BD",light:"#DAEFE8"},{name:"Wheat",color:"#E9D8A6",light:"#F7F1E0"},{name:"Golden Orange",color:"#EE9B00",light:"#F9DCA6"},{name:"Burnt Caramel",color:"#CA6702",light:"#ECCAA6"},{name:"Rusty Spice",color:"#BB3E03",light:"#E7BBA7"},{name:"Oxidized Iron",color:"#AE2012",light:"#E3B1AC"},{name:"Brown Red",color:"#9B2226",light:"#DCB2B3"},{name:"Strawberry Red",color:"#F94144",light:"#FDBDBE"},{name:"Pumpkin Spice",color:"#F3722C",light:"#FBCEB5"},{name:"Carrot Orange",color:"#F8961E",light:"#FDDAB0"},{name:"Atomic Tangerine",color:"#F9844A",light:"#FDD4C0"},{name:"Tuscan Sun",color:"#F9C74F",light:"#FDEBC1"},{name:"Willow Green",color:"#90BE6D",light:"#D8E8CC"},{name:"Seaweed",color:"#43AA8B",light:"#BDE1D6"},{name:"Ocean Cyan",color:"#4D908E",light:"#C1D8D7"},{name:"Blue Slate",color:"#577590",light:"#C4CFD8"},{name:"Cerulean",color:"#277DA1",light:"#B3D2DE"}],Fe.styles=[ge,n`
+    `}}$e.PRESETS=[{name:"Ink Black",color:"#001219",light:"#A6ACAF"},{name:"Dark Teal",color:"#005F73",light:"#A6C7CE"},{name:"Dark Cyan",color:"#0A9396",light:"#A9D9DA"},{name:"Pearl Aqua",color:"#94D2BD",light:"#DAEFE8"},{name:"Wheat",color:"#E9D8A6",light:"#F7F1E0"},{name:"Golden Orange",color:"#EE9B00",light:"#F9DCA6"},{name:"Burnt Caramel",color:"#CA6702",light:"#ECCAA6"},{name:"Rusty Spice",color:"#BB3E03",light:"#E7BBA7"},{name:"Oxidized Iron",color:"#AE2012",light:"#E3B1AC"},{name:"Brown Red",color:"#9B2226",light:"#DCB2B3"},{name:"Strawberry Red",color:"#F94144",light:"#FDBDBE"},{name:"Pumpkin Spice",color:"#F3722C",light:"#FBCEB5"},{name:"Carrot Orange",color:"#F8961E",light:"#FDDAB0"},{name:"Atomic Tangerine",color:"#F9844A",light:"#FDD4C0"},{name:"Tuscan Sun",color:"#F9C74F",light:"#FDEBC1"},{name:"Willow Green",color:"#90BE6D",light:"#D8E8CC"},{name:"Seaweed",color:"#43AA8B",light:"#BDE1D6"},{name:"Ocean Cyan",color:"#4D908E",light:"#C1D8D7"},{name:"Blue Slate",color:"#577590",light:"#C4CFD8"},{name:"Cerulean",color:"#277DA1",light:"#B3D2DE"}],$e.styles=[ge,s`
       :host {
         display: block;
       }
@@ -590,16 +590,16 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         border: none;
         padding: 0;
       }
-    `],e([he({type:String})],Fe.prototype,"value",void 0),e([he({type:String})],Fe.prototype,"valueLight",void 0),e([ve()],Fe.prototype,"_isCustom",void 0),e([me("#custom-color-input")],Fe.prototype,"_colorInput",void 0),Fe=ke=e([de("pv-color-swatch-picker")],Fe);let Ce=class extends oe{constructor(){super(...arguments),this.mode="onboarding",this._page=0,this._timeFormat="12h",this._firstDay="sunday",this._weatherEntity="",this._defaultView="week",this._calendarConfigs=[],this._calendarsInitialized=!1,this._dragIdx=null,this._dragOverIdx=null,this._theme="light",this._themeOverrides={},this._customizeOpen=!1,this._saving=!1,this._saveError="",this._settingsInitialized=!1}firstUpdated(){const e=this.renderRoot.querySelector('button, [href], input, select, [tabindex]:not([tabindex="-1"])');e?.focus()}updated(e){super.updated(e),e.has("hass")&&this.hass&&!this._calendarsInitialized&&this._initCalendars(),"settings"===this.mode&&this.config&&!this._settingsInitialized&&(this._initFromConfig(),this._settingsInitialized=!0)}_initFromConfig(){const e=this.config?.display||{};this._timeFormat=e.time_format||"12h",this._firstDay=e.first_day||"sunday",this._weatherEntity=e.weather_entity||"",this._defaultView=e.default_view||"week",this._theme=e.theme||"light",this._themeOverrides=e.theme_overrides?{...e.theme_overrides}:{},this._customizeOpen=Object.keys(this._themeOverrides).length>0}_initCalendars(){const e=Fe.PRESETS,t=new Set(Object.keys(this.hass.states).filter(e=>e.startsWith("calendar."))),i="settings"===this.mode&&this.config?.calendars?this.config.calendars:[],r=[],a=new Set;for(const t of i){a.add(t.entity_id);const i=r.length;r.push({entity_id:t.entity_id,display_name:t.display_name||t.entity_id,color:t.color||e[i%e.length].color,color_light:t.color_light||e[i%e.length].light,person_entity:t.person_entity||"",include:!0})}const s=[...t].filter(e=>!a.has(e)).sort();for(const t of s){const i=e[r.length%e.length],a=this.hass.states[t]?.attributes?.friendly_name;r.push({entity_id:t,display_name:a||t,color:i.color,color_light:i.light,person_entity:"",include:!1})}this._calendarConfigs=r,this._calendarsInitialized=!0}get _weatherEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("weather.")).sort():[]}get _personEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("person.")).sort():[]}_entityLabel(e){return this.hass?.states[e]?.attributes?.friendly_name||e}_personLabel(e){return this._entityLabel(e)}_goBack(){this._page>0&&(this._page-=1)}async _goNext(){this._page<2?this._page+=1:await this._finish()}async _finish(){this._saving=!0,this._saveError="";try{const e={calendars:this._calendarConfigs.filter(e=>e.include).map(e=>({entity_id:e.entity_id,display_name:e.display_name,color:e.color,color_light:e.color_light,icon:"mdi:calendar",person_entity:e.person_entity,visible:!0})),display:{time_format:this._timeFormat,weather_entity:this._weatherEntity,first_day:this._firstDay,default_view:this._defaultView,theme:this._theme,theme_overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:void 0}};"onboarding"===this.mode&&(e.onboarding_complete=!0),await this.hass.callService("planavista","save_config",e);const t="settings"===this.mode?"settings-save":"onboarding-complete";this.dispatchEvent(new CustomEvent(t,{bubbles:!0,composed:!0}))}catch(e){console.error("[pv-onboarding-wizard] save_config failed:",e),this._saveError="settings"===this.mode?"Save failed — please try again.":"Setup failed — please try again."}finally{this._saving=!1}}_cancel(){this.dispatchEvent(new CustomEvent("settings-close",{bubbles:!0,composed:!0}))}_updateCalendar(e,t){const i=[...this._calendarConfigs];i[e]={...i[e],...t},this._calendarConfigs=i}_onCalendarColorChange(e,t){t.stopPropagation(),this._updateCalendar(e,{color:t.detail.color,color_light:t.detail.colorLight})}_dispatchThemePreview(){this.dispatchEvent(new CustomEvent("theme-preview",{detail:{theme:this._theme,overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:null},bubbles:!0,composed:!0}))}_setOverride(e,t){if(void 0===t||""===t){const{[e]:t,...i}=this._themeOverrides;this._themeOverrides=i}else this._themeOverrides={...this._themeOverrides,[e]:t};this._dispatchThemePreview()}_resetOverrides(){this._themeOverrides={},this._dispatchThemePreview()}_renderProgressDots(){return N`
+    `],e([pe({type:String})],$e.prototype,"value",void 0),e([pe({type:String})],$e.prototype,"valueLight",void 0),e([he()],$e.prototype,"_isCustom",void 0),e([ve("#custom-color-input")],$e.prototype,"_colorInput",void 0),me("pv-color-swatch-picker",$e);class Fe extends oe{constructor(){super(...arguments),this.mode="onboarding",this._page=0,this._timeFormat="12h",this._firstDay="sunday",this._weatherEntity="",this._defaultView="week",this._locationAutocomplete=!1,this._calendarConfigs=[],this._calendarsInitialized=!1,this._dragIdx=null,this._dragOverIdx=null,this._theme="light",this._themeOverrides={},this._customizeOpen=!1,this._saving=!1,this._saveError="",this._settingsInitialized=!1}firstUpdated(){const e=this.renderRoot.querySelector('button, [href], input, select, [tabindex]:not([tabindex="-1"])');e?.focus()}updated(e){super.updated(e),e.has("hass")&&this.hass&&!this._calendarsInitialized&&this._initCalendars(),"settings"===this.mode&&this.config&&!this._settingsInitialized&&(this._initFromConfig(),this._settingsInitialized=!0)}_initFromConfig(){const e=this.config?.display||{};this._timeFormat=e.time_format||"12h",this._firstDay=e.first_day||"sunday",this._weatherEntity=e.weather_entity||"",this._defaultView=e.default_view||"week",this._locationAutocomplete=!0===e.location_autocomplete,this._theme=e.theme||"light",this._themeOverrides=e.theme_overrides?{...e.theme_overrides}:{},this._customizeOpen=Object.keys(this._themeOverrides).length>0}_initCalendars(){const e=$e.PRESETS,t=new Set(Object.keys(this.hass.states).filter(e=>e.startsWith("calendar."))),i="settings"===this.mode&&this.config?.calendars?this.config.calendars:[],a=[],r=new Set;for(const t of i){r.add(t.entity_id);const i=a.length;a.push({entity_id:t.entity_id,display_name:t.display_name||t.entity_id,color:t.color||e[i%e.length].color,color_light:t.color_light||e[i%e.length].light,person_entity:t.person_entity||"",include:!0})}const n=[...t].filter(e=>!r.has(e)).sort();for(const t of n){const i=e[a.length%e.length],r=this.hass.states[t]?.attributes?.friendly_name;a.push({entity_id:t,display_name:r||t,color:i.color,color_light:i.light,person_entity:"",include:!1})}this._calendarConfigs=a,this._calendarsInitialized=!0}get _weatherEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("weather.")).sort():[]}get _personEntities(){return this.hass?Object.keys(this.hass.states).filter(e=>e.startsWith("person.")).sort():[]}_entityLabel(e){return this.hass?.states[e]?.attributes?.friendly_name||e}_personLabel(e){return this._entityLabel(e)}_goBack(){this._page>0&&(this._page-=1)}async _goNext(){this._page<2?this._page+=1:await this._finish()}async _finish(){this._saving=!0,this._saveError="";try{const e={calendars:this._calendarConfigs.filter(e=>e.include).map(e=>({entity_id:e.entity_id,display_name:e.display_name,color:e.color,color_light:e.color_light,icon:"mdi:calendar",person_entity:e.person_entity,visible:!0})),display:{time_format:this._timeFormat,weather_entity:this._weatherEntity,first_day:this._firstDay,default_view:this._defaultView,location_autocomplete:this._locationAutocomplete,theme:this._theme,theme_overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:void 0}};"onboarding"===this.mode&&(e.onboarding_complete=!0),await this.hass.callService("planavista","save_config",e);const t="settings"===this.mode?"settings-save":"onboarding-complete";this.dispatchEvent(new CustomEvent(t,{bubbles:!0,composed:!0}))}catch(e){console.error("[pv-onboarding-wizard] save_config failed:",e),this._saveError="settings"===this.mode?"Save failed — please try again.":"Setup failed — please try again."}finally{this._saving=!1}}_toggleLocationAutocomplete(){this._locationAutocomplete=!this._locationAutocomplete}_cancel(){this.dispatchEvent(new CustomEvent("settings-close",{bubbles:!0,composed:!0}))}_updateCalendar(e,t){const i=[...this._calendarConfigs];i[e]={...i[e],...t},this._calendarConfigs=i}_onCalendarColorChange(e,t){t.stopPropagation(),this._updateCalendar(e,{color:t.detail.color,color_light:t.detail.colorLight})}_dispatchThemePreview(){this.dispatchEvent(new CustomEvent("theme-preview",{detail:{theme:this._theme,overrides:Object.keys(this._themeOverrides).length>0?this._themeOverrides:null},bubbles:!0,composed:!0}))}_setOverride(e,t){if(void 0===t||""===t){const{[e]:t,...i}=this._themeOverrides;this._themeOverrides=i}else this._themeOverrides={...this._themeOverrides,[e]:t};this._dispatchThemePreview()}_resetOverrides(){this._themeOverrides={},this._dispatchThemePreview()}_renderProgressDots(){return V`
       <div class="progress-dots" aria-label="Step ${this._page+1} of 3">
-        ${[0,1,2].map(e=>N`
+        ${[0,1,2].map(e=>V`
           <div
             class="dot ${e===this._page?"dot--active":""}"
             aria-current="${e===this._page?"step":"false"}"
           ></div>
         `)}
       </div>
-    `}_renderPage0(){return N`
+    `}_renderPage0(){return V`
       <div class="page-content">
         <h2 class="page-title">Preferences</h2>
         <p class="page-subtitle">Customize how PlanaVista looks and behaves.</p>
@@ -648,7 +648,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             @change=${e=>{this._weatherEntity=e.target.value}}
           >
             <option value="">(None)</option>
-            ${this._weatherEntities.map(e=>N`
+            ${this._weatherEntities.map(e=>V`
               <option value="${e}" ?selected=${this._weatherEntity===e}>${this._entityLabel(e)}</option>
             `)}
           </select>
@@ -658,7 +658,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <div class="field-group">
           <label class="pv-label">Default View</label>
           <div class="view-grid" role="group" aria-label="Default calendar view">
-            ${[{key:"day",label:"Day",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-7c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"},{key:"week",label:"Week",icon:"M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"},{key:"month",label:"Month",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"},{key:"agenda",label:"Agenda",icon:"M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"}].map(e=>N`
+            ${[{key:"day",label:"Day",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-7c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"},{key:"week",label:"Week",icon:"M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"},{key:"month",label:"Month",icon:"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"},{key:"agenda",label:"Agenda",icon:"M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"}].map(e=>V`
               <button
                 class="view-card ${this._defaultView===e.key?"view-card--active":""}"
                 type="button"
@@ -673,14 +673,39 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             `)}
           </div>
         </div>
+
+        <!-- Address suggestions (location autocomplete) -->
+        <div class="field-group">
+          <div class="toggle-row">
+            <span class="pv-label" id="address-suggestions-label">Address suggestions</span>
+            <div
+              class="pv-toggle ${this._locationAutocomplete?"active":""}"
+              role="switch"
+              tabindex="0"
+              aria-checked="${this._locationAutocomplete}"
+              aria-labelledby="address-suggestions-label"
+              @click=${this._toggleLocationAutocomplete}
+              @keydown=${e=>{"Enter"!==e.key&&" "!==e.key||(e.preventDefault(),this._toggleLocationAutocomplete())}}
+            ></div>
+          </div>
+          <p class="field-hint">
+            <strong>Off (recommended):</strong> PlanaVista stays 100% local. Locations are plain
+            text and nothing leaves your home network.
+          </p>
+          <p class="field-hint">
+            <strong>On:</strong> as you type a location, the text you've typed is sent to Photon
+            (photon.komoot.io), a free OpenStreetMap-based service, to suggest addresses. Nothing
+            else is sent &mdash; not your home location or any calendar details.
+          </p>
+        </div>
       </div>
-    `}_renderPage1(){return 0===this._calendarConfigs.length?N`
+    `}_renderPage1(){return 0===this._calendarConfigs.length?V`
         <div class="page-content">
           <h2 class="page-title">Calendars</h2>
           <p class="page-subtitle">No calendar entities found in Home Assistant.</p>
           <p class="empty-hint">Add calendar integrations (Google Calendar, CalDAV, etc.) and re-run setup.</p>
         </div>
-      `:N`
+      `:V`
       <div class="page-content">
         <h2 class="page-title">Calendars</h2>
         <p class="page-subtitle">Check the calendars you want to display, then personalise each one.</p>
@@ -689,8 +714,8 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           ${this._calendarConfigs.map((e,t)=>this._renderCalendarRow(e,t))}
         </div>
       </div>
-    `}_onDragStart(e,t){this._dragIdx=e,t.dataTransfer&&(t.dataTransfer.effectAllowed="move",t.dataTransfer.setData("text/plain",String(e)))}_onDragOver(e,t){t.preventDefault(),t.dataTransfer&&(t.dataTransfer.dropEffect="move"),this._dragOverIdx=e}_onDragLeave(){this._dragOverIdx=null}_onDrop(e,t){if(t.preventDefault(),null!==this._dragIdx&&this._dragIdx!==e){const t=[...this._calendarConfigs],[i]=t.splice(this._dragIdx,1);t.splice(e,0,i),this._calendarConfigs=t}this._dragIdx=null,this._dragOverIdx=null}_onDragEnd(){this._dragIdx=null,this._dragOverIdx=null}_renderCalendarRow(e,t){const i=this._dragIdx===t,r=this._dragOverIdx===t&&this._dragIdx!==t;return N`
-      <div class="cal-row ${i?"cal-row--dragging":""} ${r?"cal-row--dragover":""}"
+    `}_onDragStart(e,t){this._dragIdx=e,t.dataTransfer&&(t.dataTransfer.effectAllowed="move",t.dataTransfer.setData("text/plain",String(e)))}_onDragOver(e,t){t.preventDefault(),t.dataTransfer&&(t.dataTransfer.dropEffect="move"),this._dragOverIdx=e}_onDragLeave(){this._dragOverIdx=null}_onDrop(e,t){if(t.preventDefault(),null!==this._dragIdx&&this._dragIdx!==e){const t=[...this._calendarConfigs],[i]=t.splice(this._dragIdx,1);t.splice(e,0,i),this._calendarConfigs=t}this._dragIdx=null,this._dragOverIdx=null}_onDragEnd(){this._dragIdx=null,this._dragOverIdx=null}_renderCalendarRow(e,t){const i=this._dragIdx===t,a=this._dragOverIdx===t&&this._dragIdx!==t;return V`
+      <div class="cal-row ${i?"cal-row--dragging":""} ${a?"cal-row--dragover":""}"
         draggable="true"
         @dragstart=${e=>this._onDragStart(t,e)}
         @dragover=${e=>this._onDragOver(t,e)}
@@ -713,7 +738,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               @change=${e=>this._updateCalendar(t,{include:e.target.checked})}
             />
             <span class="cal-checkbox-visual" aria-hidden="true">
-              ${e.include?N`
+              ${e.include?V`
                 <svg viewBox="0 0 24 24" width="14" height="14">
                   <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
                 </svg>
@@ -727,7 +752,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         </div>
 
         <!-- Expandable details — only shown when included -->
-        ${e.include?N`
+        ${e.include?V`
           <div class="cal-details">
             <!-- Display name input -->
             <div class="cal-field">
@@ -762,7 +787,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 @change=${e=>this._updateCalendar(t,{person_entity:e.target.value})}
               >
                 <option value="">(None)</option>
-                ${this._personEntities.map(t=>N`
+                ${this._personEntities.map(t=>V`
                   <option value="${t}" ?selected=${e.person_entity===t}>${this._personLabel(t)}</option>
                 `)}
               </select>
@@ -770,7 +795,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
         `:""}
       </div>
-    `}_renderCustomize(){const e=this._themeOverrides,t=Object.keys(e).length>0;return N`
+    `}_renderCustomize(){const e=this._themeOverrides,t=Object.keys(e).length>0;return V`
       <!-- Customize toggle -->
       <button
         class="customize-toggle"
@@ -783,7 +808,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         </svg>
       </button>
 
-      ${this._customizeOpen?N`
+      ${this._customizeOpen?V`
         <div class="customize-section">
 
           <!-- Accent Color -->
@@ -807,7 +832,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                   .value=${e.background||"#FFFFFF"}
                   @input=${e=>this._setOverride("background",e.target.value)}
                 />
-                ${e.background?N`
+                ${e.background?V`
                   <span class="bg-color-hex">${e.background}</span>
                 `:""}
               </div>
@@ -818,7 +843,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Header Style</label>
             <div class="header-style-grid">
-              ${[{key:"gradient_purple",label:"Purple",gradient:"linear-gradient(135deg, #667eea, #764ba2)"},{key:"gradient_teal",label:"Teal",gradient:"linear-gradient(135deg, #0D9488, #2563EB)"},{key:"gradient_sunset",label:"Sunset",gradient:"linear-gradient(135deg, #F59E0B, #EF4444)"},{key:"solid_accent",label:"Accent",gradient:e.accent||"#6366F1"},{key:"solid_dark",label:"Dark",gradient:"#1A1B1E"}].map(t=>N`
+              ${[{key:"gradient_purple",label:"Purple",gradient:"linear-gradient(135deg, #667eea, #764ba2)"},{key:"gradient_teal",label:"Teal",gradient:"linear-gradient(135deg, #0D9488, #2563EB)"},{key:"gradient_sunset",label:"Sunset",gradient:"linear-gradient(135deg, #F59E0B, #EF4444)"},{key:"solid_accent",label:"Accent",gradient:e.accent||"#6366F1"},{key:"solid_dark",label:"Dark",gradient:"#1A1B1E"}].map(t=>V`
                 <button
                   class="header-style-btn ${e.header_style===t.key?"header-style-btn--active":""}"
                   type="button"
@@ -837,7 +862,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 <span class="header-style-label">Custom</span>
               </button>
             </div>
-            ${"custom"===e.header_style?N`
+            ${"custom"===e.header_style?V`
               <div class="header-custom-row">
                 <input type="color" class="bg-color-input"
                   .value=${e.header_custom||"#333333"}
@@ -852,7 +877,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Corners</label>
             <div class="pill-group">
-              ${["sharp","rounded","pill"].map(t=>N`
+              ${["sharp","rounded","pill"].map(t=>V`
                 <button
                   class="pill-btn ${(e.corner_style||"rounded")===t?"pill-btn--active":""}"
                   type="button"
@@ -866,7 +891,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Shadows</label>
             <div class="pill-group">
-              ${["none","subtle","bold"].map(t=>N`
+              ${["none","subtle","bold"].map(t=>V`
                 <button
                   class="pill-btn ${(e.shadow_depth||"subtle")===t?"pill-btn--active":""}"
                   type="button"
@@ -880,7 +905,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Avatar Border</label>
             <div class="pill-group">
-              ${["primary","light"].map(t=>N`
+              ${["primary","light"].map(t=>V`
                 <button
                   class="pill-btn ${(e.avatar_border||"primary")===t?"pill-btn--active":""}"
                   type="button"
@@ -894,7 +919,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 .value=${e.avatar_border&&"primary"!==e.avatar_border&&"light"!==e.avatar_border?e.avatar_border:"#6366F1"}
                 @input=${e=>this._setOverride("avatar_border",e.target.value)}
               />
-              ${e.avatar_border&&"primary"!==e.avatar_border&&"light"!==e.avatar_border?N`
+              ${e.avatar_border&&"primary"!==e.avatar_border&&"light"!==e.avatar_border?V`
                 <span class="bg-color-hex">${e.avatar_border}</span>
               `:""}
             </div>
@@ -912,7 +937,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                   .value=${e.now_color||"#EF4444"}
                   @input=${e=>this._setOverride("now_color",e.target.value)}
                 />
-                ${e.now_color?N`
+                ${e.now_color?V`
                   <span class="bg-color-hex">${e.now_color}</span>
                 `:""}
               </div>
@@ -923,7 +948,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           <div class="customize-group">
             <label class="pv-label">Event Style</label>
             <div class="pill-group">
-              ${["stripes","solid"].map(t=>N`
+              ${["stripes","solid"].map(t=>V`
                 <button
                   class="pill-btn ${(e.event_style||"stripes")===t?"pill-btn--active":""}"
                   type="button"
@@ -934,7 +959,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
 
           <!-- Reset -->
-          ${t?N`
+          ${t?V`
             <button class="reset-btn" type="button" @click=${this._resetOverrides}>
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
@@ -945,13 +970,13 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
         </div>
       `:""}
-    `}_renderPage2(){return N`
+    `}_renderPage2(){return V`
       <div class="page-content">
         <h2 class="page-title">Theme</h2>
         <p class="page-subtitle">Pick a visual style for your calendar.</p>
 
         <div class="theme-grid">
-          ${[{key:"light",name:"Clean Light",description:"White background, subtle shadows",previewBg:"#FFFFFF",previewAccent:"#6366F1",previewText:"#1A1B1E"},{key:"dark",name:"Deep Dark",description:"Dark gray background, glowing accents",previewBg:"#1E1E2E",previewAccent:"#818CF8",previewText:"#E5E7EB"},{key:"minimal",name:"Minimal",description:"Barely-there UI, content first",previewBg:"#FAFAF9",previewAccent:"#374151",previewText:"#374151"},{key:"vibrant",name:"Vibrant",description:"Rich colors, bold personality",previewBg:"#4F46E5",previewAccent:"#F59E0B",previewText:"#FFFFFF"}].map(e=>N`
+          ${[{key:"light",name:"Clean Light",description:"White background, subtle shadows",previewBg:"#FFFFFF",previewAccent:"#6366F1",previewText:"#1A1B1E"},{key:"dark",name:"Deep Dark",description:"Dark gray background, glowing accents",previewBg:"#1E1E2E",previewAccent:"#818CF8",previewText:"#E5E7EB"},{key:"minimal",name:"Minimal",description:"Barely-there UI, content first",previewBg:"#FAFAF9",previewAccent:"#374151",previewText:"#374151"},{key:"vibrant",name:"Vibrant",description:"Rich colors, bold personality",previewBg:"#4F46E5",previewAccent:"#F59E0B",previewText:"#FFFFFF"}].map(e=>V`
             <button
               class="theme-card ${this._theme===e.key?"theme-card--active":""}"
               type="button"
@@ -984,7 +1009,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               </div>
 
               <!-- Selected checkmark -->
-              ${this._theme===e.key?N`
+              ${this._theme===e.key?V`
                 <div class="theme-check" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="16" height="16">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
@@ -997,7 +1022,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
         ${this._renderCustomize()}
       </div>
-    `}render(){const e="settings"===this.mode,t=["Preferences","Calendars","Theme"],i=2===this._page;let r;r=e?this._saving?"Saving…":"Save":i?this._saving?"Saving…":"Finish":"Next";const a=e||i,s=!e&&!i;return N`
+    `}render(){const e="settings"===this.mode,t=["Preferences","Calendars","Theme"],i=2===this._page;let a;a=e?this._saving?"Saving…":"Save":i?this._saving?"Saving…":"Finish":"Next";const r=e||i,n=!e&&!i;return V`
       <div class="wizard-container" role="dialog" aria-modal="true"
         aria-label="${e?"PlanaVista Settings":"PlanaVista Setup"} — ${t[this._page]}">
 
@@ -1005,7 +1030,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
           <!-- Left: Close (settings) or Back (onboarding) -->
           <div class="wizard-nav-left">
-            ${e?N`
+            ${e?V`
               <button class="pv-btn pv-btn-secondary back-btn" type="button"
                 @click=${this._cancel}>
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -1013,7 +1038,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 </svg>
                 Close
               </button>
-            `:N`
+            `:V`
               <button
                 class="pv-btn pv-btn-secondary back-btn ${0===this._page?"back-btn--hidden":""}"
                 type="button"
@@ -1031,9 +1056,9 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
           <!-- Center: Tabs (settings) or Brand+Dots (onboarding) -->
           <div class="wizard-header-center">
-            ${e?N`
+            ${e?V`
               <div class="settings-tabs" role="tablist">
-                ${t.map((e,t)=>N`
+                ${t.map((e,t)=>V`
                   <button
                     class="settings-tab ${this._page===t?"settings-tab--active":""}"
                     role="tab"
@@ -1043,7 +1068,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                   >${e}</button>
                 `)}
               </div>
-            `:N`
+            `:V`
               <div class="wizard-brand">
                 <span class="wizard-logo" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="18" height="18">
@@ -1064,17 +1089,17 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               ?disabled=${this._saving}
               @click=${e?()=>this._finish():()=>this._goNext()}
             >
-              ${a?N`
-                ${this._saving?N`
+              ${r?V`
+                ${this._saving?V`
                   <span class="spinner" aria-hidden="true"></span>
-                `:N`
+                `:V`
                   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
                   </svg>
                 `}
               `:""}
-              ${r}
-              ${s?N`
+              ${a}
+              ${n?V`
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                   <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
                 </svg>
@@ -1083,7 +1108,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
         </div>
 
-        ${this._saveError?N`<p class="save-error-banner" role="alert">${this._saveError}</p>`:W}
+        ${this._saveError?V`<p class="save-error-banner" role="alert">${this._saveError}</p>`:W}
 
         <div class="wizard-content">
           ${0===this._page?this._renderPage0():""}
@@ -1092,7 +1117,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         </div>
 
       </div>
-    `}};function Ee(e,t="12h"){const i=new Date(e);return"24h"===t?i.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:!1}):i.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:!0})}function ze(e,t="medium"){switch(t){case"long":return e.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});case"medium":return e.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});case"short":return e.toLocaleDateString("en-US",{month:"numeric",day:"numeric"});case"weekday":return e.toLocaleDateString("en-US",{weekday:"long"})}}function De(e){const t=new Date;return e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}function Se(e,t="sunday"){const i=new Date(e),r=i.getDay(),a="monday"===t?0===r?-6:1-r:-r;return i.setDate(i.getDate()+a),i.setHours(0,0,0,0),i}function Ae(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}function Te(e,t){const i=new Map(t.map(e=>[e.entity_id,e])),r=new Map;for(const t of e){const e=`${t.summary}|${t.start}|${t.end}`;if(r.has(e)){const a=r.get(e),s=i.get(t.calendar_entity_id);s&&a.shared_calendars.push({entity_id:s.entity_id,color:s.color,color_light:s.color_light,person_entity:s.person_entity,display_name:s.display_name})}else{const a=i.get(t.calendar_entity_id);r.set(e,{...t,shared_calendars:a?[{entity_id:a.entity_id,color:a.color,color_light:a.color_light,person_entity:a.person_entity,display_name:a.display_name}]:[]})}}return Array.from(r.values())}function Me(e){return new Date(e.end)<new Date}function Be(e){const t=e.start,i=e.end;if(!t.includes("T")&&!i.includes("T"))return!0;const r=new Date(t),a=new Date(i);return 0===r.getHours()&&0===r.getMinutes()&&0===a.getHours()&&0===a.getMinutes()&&a.getTime()-r.getTime()>=864e5}function Oe(e){const t=new Map;for(const i of e){const e=new Date(i.start),r=new Date(i.end),a=new Date(e);a.setHours(0,0,0,0);const s=new Date(r);s.setHours(0,0,0,0);const n=Be(i);for(;n?a<s:a<=s;){const e=Ae(a);t.has(e)||t.set(e,[]),t.get(e).push(i),a.setDate(a.getDate()+1)}}for(const[,e]of t)e.sort((e,t)=>{const i=Be(e),r=Be(t);return i&&!r?-1:!i&&r?1:new Date(e.start).getTime()-new Date(t.start).getTime()});return t}function Pe(e,t,i){return e.filter(e=>{const r=new Date(e.start),a=new Date(e.end);return r<i&&a>t})}function He(e,t){return e.filter(e=>!t.has(e.calendar_entity_id))}function Le(e){const t=parseInt(e.slice(1,3),16)/255,i=parseInt(e.slice(3,5),16)/255,r=parseInt(e.slice(5,7),16)/255,a=e=>e<=.03928?e/12.92:Math.pow((e+.055)/1.055,2.4);return.2126*a(t)+.7152*a(i)+.0722*a(r)}function Ie(e){return Le(e)>.4?"#1A1B1E":"#FFFFFF"}Ce.styles=[ge,ye,xe,we,$e,n`
+    `}}Fe.styles=[ge,fe,xe,we,ke,s`
       :host {
         display: flex;
         flex-direction: column;
@@ -1261,6 +1286,35 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
       .field-group {
         margin-bottom: 1.5rem;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .toggle-row .pv-label {
+        margin-bottom: 0;
+      }
+
+      .toggle-row .pv-toggle {
+        flex-shrink: 0;
+      }
+
+      .field-hint {
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--pv-text-secondary, #6B7280);
+        margin: 0 0 0.375rem;
+        max-width: 60ch;
+      }
+
+      .field-hint strong {
+        color: var(--pv-text, #1A1B1E);
+        font-weight: 600;
       }
 
       /* ── Pill group (time format / first day) ───────────────── */
@@ -1884,28 +1938,28 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .wizard-content { padding: 1.25rem; }
         .page-title { font-size: 1.25rem; }
       }
-    `],e([he({attribute:!1})],Ce.prototype,"hass",void 0),e([he({type:String})],Ce.prototype,"mode",void 0),e([he({attribute:!1})],Ce.prototype,"config",void 0),e([ve()],Ce.prototype,"_page",void 0),e([ve()],Ce.prototype,"_timeFormat",void 0),e([ve()],Ce.prototype,"_firstDay",void 0),e([ve()],Ce.prototype,"_weatherEntity",void 0),e([ve()],Ce.prototype,"_defaultView",void 0),e([ve()],Ce.prototype,"_calendarConfigs",void 0),e([ve()],Ce.prototype,"_calendarsInitialized",void 0),e([ve()],Ce.prototype,"_dragIdx",void 0),e([ve()],Ce.prototype,"_dragOverIdx",void 0),e([ve()],Ce.prototype,"_theme",void 0),e([ve()],Ce.prototype,"_themeOverrides",void 0),e([ve()],Ce.prototype,"_customizeOpen",void 0),e([ve()],Ce.prototype,"_saving",void 0),e([ve()],Ce.prototype,"_saveError",void 0),Ce=e([de("pv-onboarding-wizard")],Ce);const Ue={sharp:{radius:"4px",radiusLg:"6px",radiusSm:"2px"},rounded:{radius:"12px",radiusLg:"16px",radiusSm:"8px"},pill:{radius:"20px",radiusLg:"24px",radiusSm:"14px"}},je={none:{shadow:"none",shadowLg:"none",shadowXl:"none"},subtle:{shadow:"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)",shadowLg:"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)",shadowXl:"0 20px 40px rgba(0, 0, 0, 0.12)"},bold:{shadow:"0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1)",shadowLg:"0 12px 32px rgba(0, 0, 0, 0.18), 0 6px 14px rgba(0, 0, 0, 0.1)",shadowXl:"0 24px 48px rgba(0, 0, 0, 0.24)"}},Ve={gradient_purple:{gradient:"linear-gradient(135deg, #667eea 0%, #764ba2 100%)",text:"#FFFFFF"},gradient_teal:{gradient:"linear-gradient(135deg, #0D9488 0%, #2563EB 100%)",text:"#FFFFFF"},gradient_sunset:{gradient:"linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",text:"#FFFFFF"},solid_accent:{gradient:"",text:"#FFFFFF"},solid_dark:{gradient:"#1A1B1E",text:"#FFFFFF"}},Ne={light:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#6366F1","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(99, 102, 241, 0.06)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.12)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #667eea 0%, #764ba2 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.3)"},dark:{"--pv-bg":"#1A1B1E","--pv-card-bg":"#25262B","--pv-card-bg-elevated":"#2C2E33","--pv-text":"#E4E5E7","--pv-text-secondary":"#909296","--pv-text-muted":"#5C5F66","--pv-border":"#373A40","--pv-border-subtle":"#2C2E33","--pv-accent":"#818CF8","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(129, 140, 248, 0.08)","--pv-now-color":"#F87171","--pv-event-hover":"rgba(255, 255, 255, 0.04)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.4)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #3730A3 0%, #581C87 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.6)"},minimal:{"--pv-bg":"#FFFFFF","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#111827","--pv-text-secondary":"#6B7280","--pv-text-muted":"#D1D5DB","--pv-border":"#F3F4F6","--pv-border-subtle":"#F9FAFB","--pv-accent":"#111827","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(17, 24, 39, 0.03)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.02)","--pv-shadow":"0 0 0 1px rgba(0, 0, 0, 0.05)","--pv-shadow-lg":"0 4px 12px rgba(0, 0, 0, 0.05)","--pv-shadow-xl":"0 8px 24px rgba(0, 0, 0, 0.08)","--pv-radius":"8px","--pv-radius-lg":"12px","--pv-radius-sm":"6px","--pv-transition":"150ms ease","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"#111827","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.2)"},vibrant:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#7C3AED","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(124, 58, 237, 0.06)","--pv-now-color":"#F43F5E","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(124, 58, 237, 0.1), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(124, 58, 237, 0.15), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(124, 58, 237, 0.2)","--pv-radius":"14px","--pv-radius-lg":"20px","--pv-radius-sm":"10px","--pv-transition":"250ms cubic-bezier(0.34, 1.56, 0.64, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(124, 58, 237, 0.2)"}},Re=new WeakMap;function We(e,t,i){const r=`${t}:${JSON.stringify(i||{})}`;if(Re.get(e)===r)return;const a={...Ne[t]||Ne.light};if(i){if(i.accent&&(a["--pv-accent"]=i.accent,a["--pv-accent-text"]=Ie(i.accent),a["--pv-today-bg"]=(s=i.accent,`rgba(${parseInt(s.slice(1,3),16)}, ${parseInt(s.slice(3,5),16)}, ${parseInt(s.slice(5,7),16)}, 0.06)`)),i.background){if(a["--pv-bg"]=i.background,Le(i.background)>.5)a["--pv-card-bg"]="#FFFFFF",a["--pv-card-bg-elevated"]="#FFFFFF";else{const e=parseInt(i.background.slice(1,3),16),t=parseInt(i.background.slice(3,5),16),r=parseInt(i.background.slice(5,7),16),s=(e,t)=>Math.min(255,e+t);a["--pv-card-bg"]=`#${s(e,12).toString(16).padStart(2,"0")}${s(t,12).toString(16).padStart(2,"0")}${s(r,12).toString(16).padStart(2,"0")}`,a["--pv-card-bg-elevated"]=`#${s(e,20).toString(16).padStart(2,"0")}${s(t,20).toString(16).padStart(2,"0")}${s(r,20).toString(16).padStart(2,"0")}`}a["--pv-text"]=Ie(i.background);const e=Le(a["--pv-text"])>.5?{secondary:"#909296",muted:"#5C5F66"}:{secondary:"#6B7280",muted:"#9CA3AF"};a["--pv-text-secondary"]=e.secondary,a["--pv-text-muted"]=e.muted;const t=Le(i.background)>.5?{border:"#E5E7EB",borderSubtle:"#F3F4F6"}:{border:"#373A40",borderSubtle:"#2C2E33"};a["--pv-border"]=t.border,a["--pv-border-subtle"]=t.borderSubtle,a["--pv-event-hover"]=Le(i.background)>.5?"rgba(0, 0, 0, 0.03)":"rgba(255, 255, 255, 0.04)",a["--pv-backdrop"]=Le(i.background)>.5?"rgba(0, 0, 0, 0.3)":"rgba(0, 0, 0, 0.6)"}if(i.header_style)if("custom"===i.header_style&&i.header_custom)a["--pv-header-gradient"]=i.header_custom,a["--pv-header-text"]=Ie(i.header_custom);else if("solid_accent"===i.header_style){const e=i.accent||a["--pv-accent"];a["--pv-header-gradient"]=e,a["--pv-header-text"]=Ie(e)}else{const e=Ve[i.header_style];e&&(a["--pv-header-gradient"]=e.gradient,a["--pv-header-text"]=e.text)}if(i.corner_style&&Ue[i.corner_style]){const e=Ue[i.corner_style];a["--pv-radius"]=e.radius,a["--pv-radius-lg"]=e.radiusLg,a["--pv-radius-sm"]=e.radiusSm}if(i.shadow_depth&&je[i.shadow_depth]){const e=je[i.shadow_depth];a["--pv-shadow"]=e.shadow,a["--pv-shadow-lg"]=e.shadowLg,a["--pv-shadow-xl"]=e.shadowXl}i.avatar_border&&"primary"!==i.avatar_border&&"light"!==i.avatar_border&&(a["--pv-avatar-border"]=i.avatar_border),i.now_color&&(a["--pv-now-color"]=i.now_color)}var s;for(const[t,i]of Object.entries(a))e.style.setProperty(t,i);Re.set(e,r)}function Ye(e){Re.delete(e)}function qe(e,t){const i=e||t||"light";return"planavista"===i?"light":"modern"===i?"vibrant":i in Ne?i:"light"}async function Xe(e,t){const i={summary:t.summary};t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.description&&(i.description=t.description),t.location&&(i.location=t.location),await e.callService("calendar","create_event",i,{entity_id:t.entity_id})}async function Ge(e,t){const i={entity_id:t.entity_id,summary:t.summary};t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.description&&(i.description=t.description),t.location&&(i.location=t.location),t.attendee_entity_ids?.length&&(i.attendee_entity_ids=t.attendee_entity_ids),await e.callService("planavista","create_event_with_attendees",i)}async function Qe(e,t){const i={entity_id:t.entity_id,uid:t.uid};t.recurrence_id&&(i.recurrence_id=t.recurrence_id),await e.callService("planavista","delete_event",i)}async function Ze(e,t="sensor.planavista_config"){await e.callService("homeassistant","update_entity",{entity_id:t})}function Ke(e,t="sensor.planavista_config"){const i=e.states[t];if(!i)return null;const r=i.attributes,a=r.events||[];return{calendars:r.calendars||[],events:a,display:r.display||{time_format:"12h",weather_entity:"",first_day:"sunday",default_view:"day",theme:"light"},onboarding_complete:r.onboarding_complete,version:r.version}}async function Je(e,t,i){try{const r=await e.callWS({type:"planavista/get_event_organizer",entity_id:t,uid:i});return r?.organizer_entity_id??null}catch{return null}}function et(e,t){if(!t)return null;const i=e.states[t];return i?.attributes?.entity_picture||null}function tt(e,t){if(!t)return"";const i=e.states[t];return i?.attributes?.friendly_name||t.replace("person.","")}let it=class extends oe{constructor(){super(...arguments),this.calendars=[],this.timeFormat="12h",this.compact=!1,this.showStripes=!0,this.tick=0}render(){const e=this.event;if(!e)return W;const t=e.shared_calendars||[],i=t.length>1,r=function(e,t){if(e.organizer){const t=e.shared_calendars.find(t=>t.display_name?.toLowerCase()===e.organizer?.toLowerCase()||t.entity_id===e.organizer);if(t)return t}for(const i of t){const t=e.shared_calendars.find(e=>e.entity_id===i.entity_id);if(t)return t}return e.shared_calendars[0]}(e,this.calendars),a=r?.color||e.calendar_color||"var(--pv-accent)";let s;s=this.showStripes&&i?`background: ${function(e){const t=e.length;if(t<=1)return"";const i=2===t?60:Math.min(50,Math.round(100/t*1.5)),r=(100-i)/(t-1),a=[];let s=0;return e.forEach((e,t)=>{const n=e.color_light||e.color,o=0===t?i:r;a.push(`${n} ${s}%`),s+=o,a.push(`${n} ${s}%`)}),`linear-gradient(135deg, ${a.join(", ")})`}(t)}`:this.showStripes?`background: ${t[0]?.color_light||e.calendar_color_light||e.calendar_color}`:"background: var(--pv-card-bg, #FFFFFF)";const n=this.showStripes?t[0]?.color_light||e.calendar_color_light||e.calendar_color:"#FFFFFF",o=this.showStripes?Ie(n):"var(--pv-text)",l=Me(e)?" past":"",d=(this.compact?"chip chip--compact":"chip")+l,c=this.compact?"chip-title chip-title--wrap":"chip-title chip-title--nowrap",p=!e.start.includes("T")||new Date(e.end).getTime()-new Date(e.start).getTime()>=864e5&&e.start.includes("T00:00")&&e.end.includes("T00:00");return N`
+    `],e([pe({attribute:!1})],Fe.prototype,"hass",void 0),e([pe({type:String})],Fe.prototype,"mode",void 0),e([pe({attribute:!1})],Fe.prototype,"config",void 0),e([he()],Fe.prototype,"_page",void 0),e([he()],Fe.prototype,"_timeFormat",void 0),e([he()],Fe.prototype,"_firstDay",void 0),e([he()],Fe.prototype,"_weatherEntity",void 0),e([he()],Fe.prototype,"_defaultView",void 0),e([he()],Fe.prototype,"_locationAutocomplete",void 0),e([he()],Fe.prototype,"_calendarConfigs",void 0),e([he()],Fe.prototype,"_calendarsInitialized",void 0),e([he()],Fe.prototype,"_dragIdx",void 0),e([he()],Fe.prototype,"_dragOverIdx",void 0),e([he()],Fe.prototype,"_theme",void 0),e([he()],Fe.prototype,"_themeOverrides",void 0),e([he()],Fe.prototype,"_customizeOpen",void 0),e([he()],Fe.prototype,"_saving",void 0),e([he()],Fe.prototype,"_saveError",void 0),me("pv-onboarding-wizard",Fe);const Ce=/^\d{4}-\d{2}-\d{2}$/;function Ee(e){return Ce.test(e)}function De(e){if(Ee(e)){const[t,i,a]=e.split("-").map(Number);return new Date(t,i-1,a)}return new Date(e)}function ze(e,t="12h"){const i=De(e);return"24h"===t?i.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:!1}):i.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:!0})}function Se(e,t="medium"){switch(t){case"long":return e.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});case"medium":return e.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});case"short":return e.toLocaleDateString("en-US",{month:"numeric",day:"numeric"});case"weekday":return e.toLocaleDateString("en-US",{weekday:"long"})}}function Ae(e){const t=new Date;return e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}function Te(e,t="sunday"){const i=new Date(e),a=i.getDay(),r="monday"===t?0===a?-6:1-a:-a;return i.setDate(i.getDate()+r),i.setHours(0,0,0,0),i}function Me(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}function Be(e,t){const i=Date.UTC(e.getFullYear(),e.getMonth(),e.getDate()),a=Date.UTC(t.getFullYear(),t.getMonth(),t.getDate());return Math.round((a-i)/864e5)}function Oe(e,t){const i=new Map(t.map(e=>[e.entity_id,e])),a=new Map;for(const t of e){const e=`${t.summary}|${t.start}|${t.end}`;if(a.has(e)){const r=a.get(e),n=i.get(t.calendar_entity_id);n&&r.shared_calendars.push({entity_id:n.entity_id,color:n.color,color_light:n.color_light,person_entity:n.person_entity,display_name:n.display_name})}else{const r=i.get(t.calendar_entity_id);a.set(e,{...t,shared_calendars:r?[{entity_id:r.entity_id,color:r.color,color_light:r.color_light,person_entity:r.person_entity,display_name:r.display_name}]:[]})}}return Array.from(a.values())}function Pe(e){return De(e.end)<new Date}function Le(e){if(Ee(e.start))return!0;const t=De(e.start),i=De(e.end);return 0===t.getHours()&&0===t.getMinutes()&&0===i.getHours()&&0===i.getMinutes()&&Me(t)!==Me(i)}function He(e,t){return new Date(Math.max(De(e.end).getTime()-1,t.getTime()))}function Ie(e,t){const i=Le(e);return i!==Le(t)?i?-1:1:De(e.start).getTime()-De(t.start).getTime()}function je(e){const t=new Map;for(const i of e){const e=De(i.start),a=Me(He(i,e)),r=new Date(e.getFullYear(),e.getMonth(),e.getDate());for(let e=0;e<1e3;e++){const e=Me(r);if(t.has(e)||t.set(e,[]),t.get(e).push(i),e===a)break;r.setDate(r.getDate()+1)}}for(const[,e]of t)e.sort(Ie);return t}function Ue(e,t,i){return e.filter(e=>{const a=De(e.start),r=De(e.end);return a<i&&r>t})}function Ne(e,t){return e.filter(e=>!t.has(e.calendar_entity_id))}function Ve(e){const t=parseInt(e.slice(1,3),16)/255,i=parseInt(e.slice(3,5),16)/255,a=parseInt(e.slice(5,7),16)/255,r=e=>e<=.03928?e/12.92:Math.pow((e+.055)/1.055,2.4);return.2126*r(t)+.7152*r(i)+.0722*r(a)}function Re(e){return Ve(e)>.4?"#1A1B1E":"#FFFFFF"}const We={sharp:{radius:"4px",radiusLg:"6px",radiusSm:"2px"},rounded:{radius:"12px",radiusLg:"16px",radiusSm:"8px"},pill:{radius:"20px",radiusLg:"24px",radiusSm:"14px"}},Ye={none:{shadow:"none",shadowLg:"none",shadowXl:"none"},subtle:{shadow:"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)",shadowLg:"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)",shadowXl:"0 20px 40px rgba(0, 0, 0, 0.12)"},bold:{shadow:"0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1)",shadowLg:"0 12px 32px rgba(0, 0, 0, 0.18), 0 6px 14px rgba(0, 0, 0, 0.1)",shadowXl:"0 24px 48px rgba(0, 0, 0, 0.24)"}},qe={gradient_purple:{gradient:"linear-gradient(135deg, #667eea 0%, #764ba2 100%)",text:"#FFFFFF"},gradient_teal:{gradient:"linear-gradient(135deg, #0D9488 0%, #2563EB 100%)",text:"#FFFFFF"},gradient_sunset:{gradient:"linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",text:"#FFFFFF"},solid_accent:{gradient:"",text:"#FFFFFF"},solid_dark:{gradient:"#1A1B1E",text:"#FFFFFF"}},Ge={light:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#6366F1","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(99, 102, 241, 0.06)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.12)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #667eea 0%, #764ba2 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.3)"},dark:{"--pv-bg":"#1A1B1E","--pv-card-bg":"#25262B","--pv-card-bg-elevated":"#2C2E33","--pv-text":"#E4E5E7","--pv-text-secondary":"#909296","--pv-text-muted":"#5C5F66","--pv-border":"#373A40","--pv-border-subtle":"#2C2E33","--pv-accent":"#818CF8","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(129, 140, 248, 0.08)","--pv-now-color":"#F87171","--pv-event-hover":"rgba(255, 255, 255, 0.04)","--pv-shadow":"0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)","--pv-shadow-lg":"0 10px 25px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.2)","--pv-shadow-xl":"0 20px 40px rgba(0, 0, 0, 0.4)","--pv-radius":"12px","--pv-radius-lg":"16px","--pv-radius-sm":"8px","--pv-transition":"200ms cubic-bezier(0.4, 0, 0.2, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #3730A3 0%, #581C87 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.6)"},minimal:{"--pv-bg":"#FFFFFF","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#111827","--pv-text-secondary":"#6B7280","--pv-text-muted":"#D1D5DB","--pv-border":"#F3F4F6","--pv-border-subtle":"#F9FAFB","--pv-accent":"#111827","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(17, 24, 39, 0.03)","--pv-now-color":"#EF4444","--pv-event-hover":"rgba(0, 0, 0, 0.02)","--pv-shadow":"0 0 0 1px rgba(0, 0, 0, 0.05)","--pv-shadow-lg":"0 4px 12px rgba(0, 0, 0, 0.05)","--pv-shadow-xl":"0 8px 24px rgba(0, 0, 0, 0.08)","--pv-radius":"8px","--pv-radius-lg":"12px","--pv-radius-sm":"6px","--pv-transition":"150ms ease","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"#111827","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(0, 0, 0, 0.2)"},vibrant:{"--pv-bg":"#FAFAF8","--pv-card-bg":"#FFFFFF","--pv-card-bg-elevated":"#FFFFFF","--pv-text":"#1A1B1E","--pv-text-secondary":"#6B7280","--pv-text-muted":"#9CA3AF","--pv-border":"#E5E7EB","--pv-border-subtle":"#F3F4F6","--pv-accent":"#7C3AED","--pv-accent-text":"#FFFFFF","--pv-today-bg":"rgba(124, 58, 237, 0.06)","--pv-now-color":"#F43F5E","--pv-event-hover":"rgba(0, 0, 0, 0.03)","--pv-shadow":"0 1px 3px rgba(124, 58, 237, 0.1), 0 1px 2px rgba(0, 0, 0, 0.04)","--pv-shadow-lg":"0 10px 25px rgba(124, 58, 237, 0.15), 0 4px 10px rgba(0, 0, 0, 0.04)","--pv-shadow-xl":"0 20px 40px rgba(124, 58, 237, 0.2)","--pv-radius":"14px","--pv-radius-lg":"20px","--pv-radius-sm":"10px","--pv-transition":"250ms cubic-bezier(0.34, 1.56, 0.64, 1)","--pv-font-family":"Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif","--pv-header-gradient":"linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)","--pv-header-text":"#FFFFFF","--pv-backdrop":"rgba(124, 58, 237, 0.2)"}},Xe=new WeakMap;function Qe(e,t,i){const a=`${t}:${JSON.stringify(i||{})}`;if(Xe.get(e)===a)return;const r={...Ge[t]||Ge.light};if(i){if(i.accent&&(r["--pv-accent"]=i.accent,r["--pv-accent-text"]=Re(i.accent),r["--pv-today-bg"]=(n=i.accent,`rgba(${parseInt(n.slice(1,3),16)}, ${parseInt(n.slice(3,5),16)}, ${parseInt(n.slice(5,7),16)}, 0.06)`)),i.background){if(r["--pv-bg"]=i.background,Ve(i.background)>.5)r["--pv-card-bg"]="#FFFFFF",r["--pv-card-bg-elevated"]="#FFFFFF";else{const e=parseInt(i.background.slice(1,3),16),t=parseInt(i.background.slice(3,5),16),a=parseInt(i.background.slice(5,7),16),n=(e,t)=>Math.min(255,e+t);r["--pv-card-bg"]=`#${n(e,12).toString(16).padStart(2,"0")}${n(t,12).toString(16).padStart(2,"0")}${n(a,12).toString(16).padStart(2,"0")}`,r["--pv-card-bg-elevated"]=`#${n(e,20).toString(16).padStart(2,"0")}${n(t,20).toString(16).padStart(2,"0")}${n(a,20).toString(16).padStart(2,"0")}`}r["--pv-text"]=Re(i.background);const e=Ve(r["--pv-text"])>.5?{secondary:"#909296",muted:"#5C5F66"}:{secondary:"#6B7280",muted:"#9CA3AF"};r["--pv-text-secondary"]=e.secondary,r["--pv-text-muted"]=e.muted;const t=Ve(i.background)>.5?{border:"#E5E7EB",borderSubtle:"#F3F4F6"}:{border:"#373A40",borderSubtle:"#2C2E33"};r["--pv-border"]=t.border,r["--pv-border-subtle"]=t.borderSubtle,r["--pv-event-hover"]=Ve(i.background)>.5?"rgba(0, 0, 0, 0.03)":"rgba(255, 255, 255, 0.04)",r["--pv-backdrop"]=Ve(i.background)>.5?"rgba(0, 0, 0, 0.3)":"rgba(0, 0, 0, 0.6)"}if(i.header_style)if("custom"===i.header_style&&i.header_custom)r["--pv-header-gradient"]=i.header_custom,r["--pv-header-text"]=Re(i.header_custom);else if("solid_accent"===i.header_style){const e=i.accent||r["--pv-accent"];r["--pv-header-gradient"]=e,r["--pv-header-text"]=Re(e)}else{const e=qe[i.header_style];e&&(r["--pv-header-gradient"]=e.gradient,r["--pv-header-text"]=e.text)}if(i.corner_style&&We[i.corner_style]){const e=We[i.corner_style];r["--pv-radius"]=e.radius,r["--pv-radius-lg"]=e.radiusLg,r["--pv-radius-sm"]=e.radiusSm}if(i.shadow_depth&&Ye[i.shadow_depth]){const e=Ye[i.shadow_depth];r["--pv-shadow"]=e.shadow,r["--pv-shadow-lg"]=e.shadowLg,r["--pv-shadow-xl"]=e.shadowXl}i.avatar_border&&"primary"!==i.avatar_border&&"light"!==i.avatar_border&&(r["--pv-avatar-border"]=i.avatar_border),i.now_color&&(r["--pv-now-color"]=i.now_color)}var n;for(const[t,i]of Object.entries(r))e.style.setProperty(t,i);Xe.set(e,a)}function Ze(e){Xe.delete(e)}function Ke(e,t){const i=e||t||"light";return"planavista"===i?"light":"modern"===i?"vibrant":i in Ge?i:"light"}async function Je(e,t){const i={summary:t.summary};t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.description&&(i.description=t.description),t.location&&(i.location=t.location),await e.callService("calendar","create_event",i,{entity_id:t.entity_id})}async function et(e,t){const i={entity_id:t.entity_id,summary:t.summary};t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.description&&(i.description=t.description),t.location&&(i.location=t.location),t.attendee_entity_ids?.length&&(i.attendee_entity_ids=t.attendee_entity_ids),await e.callService("planavista","create_event_with_attendees",i)}async function tt(e,t){const i={entity_id:t.entity_id,uid:t.uid};t.recurrence_id&&(i.recurrence_id=t.recurrence_id),await e.callService("planavista","delete_event",i)}async function it(e,t="sensor.planavista_config"){await e.callService("homeassistant","update_entity",{entity_id:t})}function at(e,t="sensor.planavista_config"){const i=e.states[t];if(!i)return null;const a=i.attributes,r=a.events||[];return{calendars:a.calendars||[],events:r,display:a.display||{time_format:"12h",weather_entity:"",first_day:"sunday",default_view:"day",theme:"light"},onboarding_complete:a.onboarding_complete,version:a.version}}async function rt(e,t,i){try{const a=await e.callWS({type:"planavista/get_event_organizer",entity_id:t,uid:i});return a?.organizer_entity_id??null}catch{return null}}function nt(e,t){if(!t)return null;const i=e.states[t];return i?.attributes?.entity_picture||null}function st(e,t){if(!t)return"";const i=e.states[t];return i?.attributes?.friendly_name||t.replace("person.","")}class ot extends oe{constructor(){super(...arguments),this.calendars=[],this.timeFormat="12h",this.compact=!1,this.showStripes=!0,this.tick=0}render(){const e=this.event;if(!e)return W;const t=e.shared_calendars||[],i=t.length>1,a=function(e,t){if(e.organizer){const t=e.shared_calendars.find(t=>t.display_name?.toLowerCase()===e.organizer?.toLowerCase()||t.entity_id===e.organizer);if(t)return t}for(const i of t){const t=e.shared_calendars.find(e=>e.entity_id===i.entity_id);if(t)return t}return e.shared_calendars[0]}(e,this.calendars),r=a?.color||e.calendar_color||"var(--pv-accent)";let n;n=this.showStripes&&i?`background: ${function(e){const t=e.length;if(t<=1)return"";const i=2===t?60:Math.min(50,Math.round(100/t*1.5)),a=(100-i)/(t-1),r=[];let n=0;return e.forEach((e,t)=>{const s=e.color_light||e.color,o=0===t?i:a;r.push(`${s} ${n}%`),n+=o,r.push(`${s} ${n}%`)}),`linear-gradient(135deg, ${r.join(", ")})`}(t)}`:this.showStripes?`background: ${t[0]?.color_light||e.calendar_color_light||e.calendar_color}`:"background: var(--pv-card-bg, #FFFFFF)";const s=this.showStripes?t[0]?.color_light||e.calendar_color_light||e.calendar_color:"#FFFFFF",o=this.showStripes?Re(s):"var(--pv-text)",l=Pe(e)?" past":"",d=(this.compact?"chip chip--compact":"chip")+l,c=this.compact?"chip-title chip-title--wrap":"chip-title chip-title--nowrap",p=Le(e);return V`
       <div
         class="${d}"
-        style="${s}; --chip-border-color: ${a}; --chip-text: ${o}"
+        style="${n}; --chip-border-color: ${r}; --chip-text: ${o}"
         @click=${this._onClick}
       >
         <div class="chip-body">
           <div class="${c}">${e.summary}</div>
-          ${this.compact?W:N`
+          ${this.compact?W:V`
             <div class="chip-time">
-              ${p?"All day":`${Ee(e.start,this.timeFormat)} – ${Ee(e.end,this.timeFormat)}`}
+              ${p?"All day":`${ze(e.start,this.timeFormat)} – ${ze(e.end,this.timeFormat)}`}
             </div>
           `}
         </div>
         ${!this.compact&&t.length>0?this._renderAvatars(t):W}
       </div>
-    `}_renderAvatars(e){const t=e.slice(0,4),i=e.length-4;return N`
+    `}_renderAvatars(e){const t=e.slice(0,4),i=e.length-4;return V`
       <div class="chip-avatars">
-        ${t.map(e=>{const t=e.person_entity?et(this.hass,e.person_entity):null,i=e.person_entity?tt(this.hass,e.person_entity):e.display_name||"?";return t?N`<img class="chip-avatar" src="${t}" alt="${i}" />`:N`<div class="chip-initial" style="background: ${e.color}">${i[0]?.toUpperCase()||"?"}</div>`})}
-        ${i>0?N`<div class="chip-overflow">+${i}</div>`:W}
+        ${t.map(e=>{const t=e.person_entity?nt(this.hass,e.person_entity):null,i=e.person_entity?st(this.hass,e.person_entity):e.display_name||"?";return t?V`<img class="chip-avatar" src="${t}" alt="${i}" />`:V`<div class="chip-initial" style="background: ${e.color}">${i[0]?.toUpperCase()||"?"}</div>`})}
+        ${i>0?V`<div class="chip-overflow">+${i}</div>`:W}
       </div>
-    `}_onClick(){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:this.event},bubbles:!0,composed:!0}))}};it.styles=[ge,n`
+    `}_onClick(){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:this.event},bubbles:!0,composed:!0}))}}ot.styles=[ge,s`
       :host { display: block; }
 
       .chip {
@@ -2060,7 +2114,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .chip--compact { padding: 0.375rem 0.75rem; border-left-width: 3px; }
         .chip--compact .chip-title { font-size: 1rem; }
       }
-    `],e([he({attribute:!1})],it.prototype,"hass",void 0),e([he({attribute:!1})],it.prototype,"event",void 0),e([he({attribute:!1})],it.prototype,"calendars",void 0),e([he({attribute:!1})],it.prototype,"timeFormat",void 0),e([he({type:Boolean})],it.prototype,"compact",void 0),e([he({type:Boolean})],it.prototype,"showStripes",void 0),e([he({type:Number})],it.prototype,"tick",void 0),it=e([de("pv-event-chip")],it);class rt{constructor(){this.hiddenCalendars=new Set,this.currentView="day",this.currentDate=new Date,this.selectedEvent=null,this.dialogOpen=null,this.createPrefill=null,this.isLoading=!1,this._hosts=new Set,this._autoAdvanceTimer=null,this.startAutoAdvance()}static getInstance(){return rt._instance||(rt._instance=new rt),rt._instance}subscribe(e){this._hosts.add(e)}unsubscribe(e){this._hosts.delete(e)}_notify(){for(const e of this._hosts)e.requestUpdate()}toggleCalendar(e){this.hiddenCalendars.has(e)?this.hiddenCalendars.delete(e):this.hiddenCalendars.add(e),this._notify()}setView(e){this.currentView!==e&&(this.currentView=e,this._notify())}navigateDate(e){this.currentDate="today"===e?new Date:function(e,t,i){const r=new Date(e),a="next"===i?1:-1;switch(t){case"day":r.setDate(r.getDate()+a);break;case"week":case"agenda":r.setDate(r.getDate()+7*a);break;case"month":r.setMonth(r.getMonth()+a)}return r}(this.currentDate,this.currentView,e),this._notify()}setDate(e){this.currentDate=new Date(e),this._notify()}selectEvent(e){this.selectedEvent=e,this._notify()}openCreateDialog(e){this.dialogOpen="create",this.createPrefill=e||null,this._notify()}openEditDialog(e,t){this.dialogOpen="edit",this.selectedEvent=e;const i={...e};t?.removeGuests&&(i._removeGuestsHint=!0),this.createPrefill=i,this._notify()}closeDialog(){this.dialogOpen=null,this.createPrefill=null,this._notify()}async doCreateEvent(e,t){this.isLoading=!0,this._notify();try{await Xe(e,t),await Ze(e),this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to create event",e),e}finally{this.isLoading=!1,this._notify()}}async doDeleteEvent(e,t){this.isLoading=!0,this._notify();try{await Qe(e,t),await Ze(e),this.selectedEvent=null,this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to delete event",e),e}finally{this.isLoading=!1,this._notify()}}async doEditEvent(e,t,i){this.isLoading=!0,this._notify();let r=!1;try{await Qe(e,t),r=!0,await Xe(e,i),await Ze(e),this.selectedEvent=null,this.closeDialog()}catch(e){if(console.error("PlanaVista: Failed to edit event",e),r)throw new Error("The original event was deleted but the replacement could not be created. Please create the event manually. Error: "+(e instanceof Error?e.message:String(e)));throw e}finally{this.isLoading=!1,this._notify()}}startAutoAdvance(){this._autoAdvanceTimer||(this._autoAdvanceTimer=setInterval(()=>{const e=new Date;e.getDate()===this.currentDate.getDate()&&e.getMonth()===this.currentDate.getMonth()&&e.getFullYear()===this.currentDate.getFullYear()||this.currentDate.toDateString()===new Date(Date.now()-6e4).toDateString()&&(this.currentDate=e,this._notify())},6e4))}stopAutoAdvance(){this._autoAdvanceTimer&&(clearInterval(this._autoAdvanceTimer),this._autoAdvanceTimer=null)}}class at{constructor(e){this.host=e,this._state=rt.getInstance(),e.addController(this)}hostConnected(){this._state.subscribe(this.host)}hostDisconnected(){this._state.unsubscribe(this.host)}get state(){return this._state}}function st(e,t=48){return(nt[e]||nt.cloudy)(t)}const nt={sunny:e=>N`
+    `],e([pe({attribute:!1})],ot.prototype,"hass",void 0),e([pe({attribute:!1})],ot.prototype,"event",void 0),e([pe({attribute:!1})],ot.prototype,"calendars",void 0),e([pe({attribute:!1})],ot.prototype,"timeFormat",void 0),e([pe({type:Boolean})],ot.prototype,"compact",void 0),e([pe({type:Boolean})],ot.prototype,"showStripes",void 0),e([pe({type:Number})],ot.prototype,"tick",void 0),me("pv-event-chip",ot);const lt=/^\d{2}:\d{2}$/;function dt(e){return String(e).padStart(2,"0")}function ct(e){return`${dt(e.getHours())}:${dt(e.getMinutes())}`}function pt(e){const t=-e.getTimezoneOffset(),i=t>=0?"+":"-",a=Math.abs(t);return`${Me(e)}T${dt(e.getHours())}:${dt(e.getMinutes())}:${dt(e.getSeconds())}${i}${dt(Math.floor(a/60))}:${dt(a%60)}`}function ht(e,t){const[i,a,r]=e.split("-").map(Number);return Me(new Date(i,a-1,r+t))}function vt(e,t){const[i,a,r]=e.split("-").map(Number),[n,s]=t.split(":").map(Number);return new Date(i,a-1,r,n,s,0,0)}function mt(e){return e.allDay?{start_date:e.date,end_date:ht(e.date,Math.max(1,Math.round(e.spanDays)))}:{start_date_time:pt(vt(e.date,e.startTime)),end_date_time:pt(vt(ht(e.date,e.endDayOffset),e.endTime))}}function gt(e,t=e.calendar_entity_id){if(!e.uid)throw new Error("This event has no unique ID, so it can only be changed in its calendar app.");const i={entity_id:t,uid:e.uid};return e.recurrence_id&&(i.recurrence_id=e.recurrence_id),i}function ut(e,t=e.calendar_entity_id){const i=Ee(e.start)?{entity_id:t,summary:e.summary,start_date:e.start,end_date:e.end}:{entity_id:t,summary:e.summary,start_date_time:e.start,end_date_time:e.end};return e.description&&(i.description=e.description),e.location&&(i.location=e.location),i}function ft(e,t,i){return{deleteData:gt(e,t),createData:{...i,entity_id:t},restoreData:ut(e,t)}}class yt extends Error{constructor(e,t){super(e),this.restored=t,this.name="EditRestoreError"}}function bt(e){return e instanceof Error?e.message:String(e&&"object"==typeof e&&"message"in e?e.message:e)}async function xt(e){await e.remove();try{await e.create()}catch(t){const i=bt(t);try{await e.restore()}catch(e){throw new yt(`Your changes couldn't be saved (${i}), and the original event couldn't be put back (${bt(e)}). Please re-create it in your calendar app.`,!1)}throw new yt(`Your changes couldn't be saved (${i}). The original event was restored.`,!0)}}class _t{constructor(){this.hiddenCalendars=new Set,this.currentView="day",this.currentDate=new Date,this.selectedEvent=null,this.dialogOpen=null,this.createPrefill=null,this.isLoading=!1,this._hosts=new Set,this._autoAdvanceTimer=null,this._todayKey=Me(new Date),this._onVisibilityChange=()=>{"visible"===document.visibilityState&&this.checkRollover()},this.startAutoAdvance()}static getInstance(){return _t._instance||(_t._instance=new _t),_t._instance}subscribe(e){this._hosts.add(e)}unsubscribe(e){this._hosts.delete(e)}_notify(){for(const e of this._hosts)e.requestUpdate()}toggleCalendar(e){const t=new Set(this.hiddenCalendars);t.has(e)?t.delete(e):t.add(e),this.hiddenCalendars=t,this._notify()}setView(e){this.currentView!==e&&(this.currentView=e,this._notify())}navigateDate(e){this.currentDate="today"===e?new Date:function(e,t,i){const a=new Date(e),r="next"===i?1:-1;switch(t){case"day":a.setDate(a.getDate()+r);break;case"week":case"agenda":a.setDate(a.getDate()+7*r);break;case"month":a.setMonth(a.getMonth()+r)}return a}(this.currentDate,this.currentView,e),this._notify()}setDate(e){this.currentDate=new Date(e),this._notify()}selectEvent(e){this.selectedEvent=e,this._notify()}openCreateDialog(e){this.dialogOpen="create",this.createPrefill=e||null,this._notify()}openEditDialog(e,t){this.dialogOpen="edit",this.selectedEvent=e;const i={...e};t?.removeGuests&&(i._removeGuestsHint=!0),this.createPrefill=i,this._notify()}closeDialog(){this.dialogOpen=null,this.createPrefill=null,this._notify()}async doCreateEvent(e,t){this.isLoading=!0,this._notify();try{await Je(e,t),await it(e),this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to create event",e),e}finally{this.isLoading=!1,this._notify()}}async doDeleteEvent(e,t){this.isLoading=!0,this._notify();try{await tt(e,t),await it(e),this.selectedEvent=null,this.closeDialog()}catch(e){throw console.error("PlanaVista: Failed to delete event",e),e}finally{this.isLoading=!1,this._notify()}}async doEditEvent(e,t,i,a){this.isLoading=!0,this._notify();try{await xt({remove:()=>tt(e,t),create:()=>Je(e,i),restore:()=>Je(e,a)}),await it(e),this.selectedEvent=null,this.closeDialog()}catch(t){throw console.error("PlanaVista: Failed to edit event",t),await it(e).catch(()=>{}),t}finally{this.isLoading=!1,this._notify()}}checkRollover(e=new Date){const t=function(e,t,i){return Me(i)===t?null:Me(e)===t?new Date(i):null}(this.currentDate,this._todayKey,e);this._todayKey=Me(e),t&&(this.currentDate=t,this._notify())}startAutoAdvance(){this._autoAdvanceTimer||(this._todayKey=Me(new Date),this._autoAdvanceTimer=setInterval(()=>this.checkRollover(),6e4),"undefined"!=typeof document&&document.addEventListener("visibilitychange",this._onVisibilityChange))}stopAutoAdvance(){this._autoAdvanceTimer&&(clearInterval(this._autoAdvanceTimer),this._autoAdvanceTimer=null),"undefined"!=typeof document&&document.removeEventListener("visibilitychange",this._onVisibilityChange)}}class wt{constructor(e){this.host=e,this._state=_t.getInstance(),e.addController(this)}hostConnected(){this._state.subscribe(this.host)}hostDisconnected(){this._state.unsubscribe(this.host)}get state(){return this._state}}function kt(e,t=48){return($t[e]||$t.cloudy)(t)}const $t={sunny:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="12" fill="#FBBF24" />
       <g stroke="#FBBF24" stroke-width="3" stroke-linecap="round">
@@ -2073,17 +2127,17 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <line x1="13.6" y1="50.4" x2="19.3" y2="44.7" class="pv-sun-ray" />
         <line x1="44.7" y1="19.3" x2="50.4" y2="13.6" class="pv-sun-ray" />
       </g>
-    </svg>`,"clear-night":e=>N`
+    </svg>`,"clear-night":e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M38 14C30 14 23 20 21 28C20 31 20 35 21 38C23 44 28 49 35 50C38 51 41 51 44 50C36 52 27 48 23 40C19 32 21 22 28 16C31 14 34 13 38 14Z" fill="#94A3B8" />
       <circle cx="44" cy="16" r="1.5" fill="#94A3B8" opacity="0.6" />
       <circle cx="50" cy="24" r="1" fill="#94A3B8" opacity="0.4" />
       <circle cx="46" cy="32" r="1.2" fill="#94A3B8" opacity="0.5" />
-    </svg>`,cloudy:e=>N`
+    </svg>`,cloudy:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2C52 32.2 52 32.2 52 32.3" fill="#CBD5E1" />
       <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2V40C52 40 50 40 48 40Z" fill="#94A3B8" />
-    </svg>`,partlycloudy:e=>N`
+    </svg>`,partlycloudy:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="26" cy="22" r="10" fill="#FBBF24" />
       <g stroke="#FBBF24" stroke-width="2.5" stroke-linecap="round">
@@ -2097,7 +2151,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <line x1="34.5" y1="13.5" x2="37.3" y2="10.7" />
       </g>
       <path d="M50 46H22C17.6 46 14 42.4 14 38C14 33.6 17.6 30 22 30C22.3 30 22.5 30 22.8 30C24.3 25.4 28.8 22 34 22C40.3 22 45.5 26.5 46.2 32.5C46.8 32.3 47.4 32.2 48 32.2C51 32.2 53.5 34.7 53.5 37.7V46H50Z" fill="#CBD5E1" />
-    </svg>`,rainy:e=>N`
+    </svg>`,rainy:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 34H18C13.6 34 10 30.4 10 26C10 21.6 13.6 18 18 18C18.2 18 18.5 18 18.7 18C20.2 12.6 25.2 9 31 9C37.9 9 43.5 13.9 44.2 20.5C44.8 20.3 45.4 20.2 46 20.2C49.3 20.2 52 22.9 52 26.2V34H48Z" fill="#94A3B8" />
       <g stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round">
@@ -2107,7 +2161,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <line x1="27" y1="48" x2="25" y2="56" class="pv-rain-drop" style="animation-delay: 0.15s" />
         <line x1="37" y1="48" x2="35" y2="56" class="pv-rain-drop" style="animation-delay: 0.45s" />
       </g>
-    </svg>`,pouring:e=>N`
+    </svg>`,pouring:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#64748B" />
       <g stroke="#3B82F6" stroke-width="3" stroke-linecap="round">
@@ -2121,7 +2175,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <line x1="38" y1="48" x2="35" y2="58" class="pv-rain-drop" style="animation-delay: 0.45s" />
         <line x1="46" y1="48" x2="43" y2="58" class="pv-rain-drop" style="animation-delay: 0.6s" />
       </g>
-    </svg>`,snowy:e=>N`
+    </svg>`,snowy:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="#94A3B8" />
       <circle cx="20" cy="42" r="2.5" fill="#BFDBFE" class="pv-snow-flake" />
@@ -2129,7 +2183,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       <circle cx="44" cy="43" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.6s" />
       <circle cx="25" cy="52" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.15s" />
       <circle cx="38" cy="51" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.45s" />
-    </svg>`,"snowy-rainy":e=>N`
+    </svg>`,"snowy-rainy":e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="#94A3B8" />
       <g stroke="#60A5FA" stroke-width="2" stroke-linecap="round">
@@ -2139,7 +2193,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       <circle cx="32" cy="42" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.15s" />
       <circle cx="27" cy="52" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.45s" />
       <circle cx="37" cy="50" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.6s" />
-    </svg>`,fog:e=>N`
+    </svg>`,fog:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
         <line x1="12" y1="24" x2="52" y2="24" opacity="0.4" />
@@ -2147,7 +2201,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <line x1="12" y1="40" x2="52" y2="40" opacity="0.8" />
         <line x1="18" y1="48" x2="46" y2="48" opacity="0.5" />
       </g>
-    </svg>`,hail:e=>N`
+    </svg>`,hail:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#94A3B8" />
       <circle cx="20" cy="40" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
@@ -2155,11 +2209,11 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       <circle cx="44" cy="38" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
       <circle cx="26" cy="52" r="2.5" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
       <circle cx="38" cy="54" r="2.5" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
-    </svg>`,lightning:e=>N`
+    </svg>`,lightning:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#64748B" />
       <path d="M34 30L28 42H34L30 56L42 40H36L40 30H34Z" fill="#FBBF24" stroke="#F59E0B" stroke-width="0.5" />
-    </svg>`,"lightning-rainy":e=>N`
+    </svg>`,"lightning-rainy":e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 28H18C13.6 28 10 24.4 10 20C10 15.6 13.6 12 18 12C18.2 12 18.5 12 18.7 12C20.2 6.6 25.2 3 31 3C37.9 3 43.5 7.9 44.2 14.5C44.8 14.3 45.4 14.2 46 14.2C49.3 14.2 52 16.9 52 20.2V28H48Z" fill="#64748B" />
       <path d="M34 28L28 40H34L30 52L42 38H36L40 28H34Z" fill="#FBBF24" />
@@ -2169,26 +2223,26 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         <line x1="22" y1="48" x2="20" y2="56" class="pv-rain-drop" style="animation-delay: 0.1s" />
         <line x1="44" y1="46" x2="42" y2="54" class="pv-rain-drop" style="animation-delay: 0.4s" />
       </g>
-    </svg>`,windy:e=>N`
+    </svg>`,windy:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
         <path d="M10 24 Q30 24 38 20 Q46 16 48 20 Q50 24 46 24" fill="none" />
         <path d="M8 34 Q28 34 40 30 Q48 28 50 32 Q52 36 48 36" fill="none" />
         <path d="M14 44 Q30 44 36 40 Q42 36 44 40 Q46 44 42 44" fill="none" />
       </g>
-    </svg>`,"windy-variant":e=>N`
+    </svg>`,"windy-variant":e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M48 28H22C17.6 28 14 24.4 14 20C14 15.6 17.6 12 22 12C22.2 12 22.5 12 22.7 12C24.2 7 28.8 4 34 4C40.3 4 45.5 8.5 46.2 14.5C46.8 14.3 47.4 14.2 48 14.2C51 14.2 53.5 16.7 53.5 19.7V28H48Z" fill="#CBD5E1" />
       <g stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round">
         <path d="M8 36 Q28 36 36 33 Q44 30 46 34 Q48 38 44 38" fill="none" />
         <path d="M12 46 Q28 46 34 43 Q40 40 42 44 Q44 48 40 48" fill="none" />
       </g>
-    </svg>`,exceptional:e=>N`
+    </svg>`,exceptional:e=>V`
     <svg width="${e}" height="${e}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="20" stroke="#F59E0B" stroke-width="3" fill="none" />
       <line x1="32" y1="18" x2="32" y2="34" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" />
       <circle cx="32" cy="42" r="2" fill="#F59E0B" />
-    </svg>`};let ot=class extends oe{constructor(){super(...arguments),this._config={}}setConfig(e){this._config=e}render(){return N`
+    </svg>`};class Ft extends oe{constructor(){super(...arguments),this._config={}}setConfig(e){this._config=e}render(){return V`
       <div class="editor-wrap">
         <div class="editor-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
@@ -2202,7 +2256,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           through choosing your calendars, colors, and theme.
         </p>
       </div>
-    `}};ot.styles=n`
+    `}}Ft.styles=s`
     :host {
       display: block;
     }
@@ -2235,21 +2289,21 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       max-width: 320px;
       margin: 0;
     }
-  `,e([he({attribute:!1})],ot.prototype,"hass",void 0),ot=e([de("planavista-calendar-card-editor")],ot);let lt=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.hideColumnHeaders=!1,this.avatarBorderMode="primary",this.sharedEventMap=new Map,this.tick=0}firstUpdated(){this._scrollToNow()}updated(e){super.updated(e),e.has("currentDate")&&this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const e=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!e)return;this._scrollContainer=e;const t=new Date,i=60*(t.getHours()-0)+t.getMinutes();if(i>0&&i<1440){const t=i/1440*e.scrollHeight-e.clientHeight/3;e.scrollTo({top:Math.max(0,t),behavior:"smooth"})}})}render(){const e=He(this.events,this.hiddenCalendars),t=new Date(this.currentDate);t.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setHours(23,59,59,999);const r=Pe(e,t,i),a=r.filter(e=>Be(e)),s=r.filter(e=>!Be(e)),n=this.calendars.filter(e=>!1!==e.visible&&!this.hiddenCalendars.has(e.entity_id)),o=function(e,t){const i=new Map,r=new Map(t.map(e=>[e.entity_id,e]));for(const e of t)if(!1!==e.visible){const t=e.person_entity||e.entity_id;i.has(t)||i.set(t,[])}for(const t of e){const e=r.get(t.calendar_entity_id),a=e?.person_entity||t.calendar_entity_id;i.has(a)||i.set(a,[]),i.get(a).push(t)}return i}(s,n),l=Array.from(o.keys()),d=new Date,c=d.toDateString()===this.currentDate.toDateString(),p=60*(d.getHours()-0)+d.getMinutes(),h=c?p/1440*100:-1;return 0===n.length?N`
+  `,e([pe({attribute:!1})],Ft.prototype,"hass",void 0),me("planavista-calendar-card-editor",Ft);class Ct extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.hideColumnHeaders=!1,this.avatarBorderMode="primary",this.sharedEventMap=new Map,this.tick=0}firstUpdated(){this._scrollToNow()}updated(e){super.updated(e),e.has("currentDate")&&this._scrollToNow()}_scrollToNow(){requestAnimationFrame(()=>{const e=this.shadowRoot?.querySelector(".time-grid-wrapper");if(!e)return;this._scrollContainer=e;const t=new Date,i=60*(t.getHours()-0)+t.getMinutes();if(i>0&&i<1440){const t=i/1440*e.scrollHeight-e.clientHeight/3;e.scrollTo({top:Math.max(0,t),behavior:"smooth"})}})}render(){const e=Ne(this.events,this.hiddenCalendars),t=new Date(this.currentDate);t.setHours(0,0,0,0);const i=new Date(this.currentDate);i.setHours(23,59,59,999);const a=Ue(e,t,i),r=a.filter(e=>Le(e)),n=a.filter(e=>!Le(e)),s=this.calendars.filter(e=>!1!==e.visible&&!this.hiddenCalendars.has(e.entity_id)),o=function(e,t){const i=new Map,a=new Map(t.map(e=>[e.entity_id,e]));for(const e of t)if(!1!==e.visible){const t=e.person_entity||e.entity_id;i.has(t)||i.set(t,[])}for(const t of e){const e=a.get(t.calendar_entity_id),r=e?.person_entity||t.calendar_entity_id;i.has(r)||i.set(r,[]),i.get(r).push(t)}return i}(n,s),l=Array.from(o.keys()),d=new Date,c=d.toDateString()===this.currentDate.toDateString(),p=60*(d.getHours()-0)+d.getMinutes(),h=c?p/1440*100:-1;return 0===s.length?V`
         <div class="empty-state">
           <ha-icon icon="mdi:calendar-blank"></ha-icon>
           <p>No calendars visible</p>
         </div>
-      `:N`
+      `:V`
       <div class="day-container">
-        ${a.length>0?N`
+        ${r.length>0?V`
           <div class="all-day-section">
             <div class="all-day-gutter">All Day</div>
             <div class="all-day-events">
-              ${a.map(e=>N`
+              ${r.map(e=>V`
                 <div
-                  class="all-day-chip${Me(e)?" past":""}"
-                  style="background: ${e.calendar_color}; color: ${Ie(e.calendar_color)}"
+                  class="all-day-chip${Pe(e)?" past":""}"
+                  style="background: ${e.calendar_color}; color: ${Re(e.calendar_color)}"
                   @click=${()=>this._onEventClick(e)}
                 >${e.summary}</div>
               `)}
@@ -2257,20 +2311,20 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
         `:W}
 
-        ${this.hideColumnHeaders?W:N`
+        ${this.hideColumnHeaders?W:V`
           <div class="column-headers">
             <div class="header-gutter"></div>
-            ${l.map(e=>{const t=n.find(t=>(t.person_entity||t.entity_id)===e),i=t?.person_entity?et(this.hass,t.person_entity):null,r=t?.person_entity?tt(this.hass,t.person_entity):t?.display_name||e,a=t?.color||"#6366F1",s=t?.color_light||a,o="light"===this.avatarBorderMode?s:"primary"===this.avatarBorderMode?a:this.avatarBorderMode;return N`
+            ${l.map(e=>{const t=s.find(t=>(t.person_entity||t.entity_id)===e),i=t?.person_entity?nt(this.hass,t.person_entity):null,a=t?.person_entity?st(this.hass,t.person_entity):t?.display_name||e,r=t?.color||"#6366F1",n=t?.color_light||r,o="light"===this.avatarBorderMode?n:"primary"===this.avatarBorderMode?r:this.avatarBorderMode;return V`
                 <div class="person-header">
-                  ${i?N`<img class="person-avatar" src="${i}" alt="${r}"
-                        style="${o?`--pv-avatar-border: ${o}`:""}" />`:N`<div class="person-initial" style="background: ${a}">${r[0]?.toUpperCase()||"?"}</div>`}
-                  <span class="person-name">${r}</span>
+                  ${i?V`<img class="person-avatar" src="${i}" alt="${a}"
+                        style="${o?`--pv-avatar-border: ${o}`:""}" />`:V`<div class="person-initial" style="background: ${r}">${a[0]?.toUpperCase()||"?"}</div>`}
+                  <span class="person-name">${a}</span>
                 </div>
               `})}
           </div>
         `}
 
-        ${c?W:N`
+        ${c?W:V`
           <div class="date-banner">
             <ha-icon icon="mdi:calendar-today"></ha-icon>
             ${this.currentDate.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
@@ -2284,7 +2338,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             </div>
             <div class="columns-area">
               ${this._renderHourLines()}
-              ${h>=0&&h<=100?N`
+              ${h>=0&&h<=100?V`
                 <div class="pv-now-line" style="top: ${h}%"></div>
               `:W}
               ${l.map(e=>this._renderColumn(e,o.get(e)||[]))}
@@ -2293,38 +2347,38 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           ${this._renderNextDayFooter()}
         </div>
       </div>
-    `}_renderTimeLabels(){const e=[];for(let t=0;t<=24;t++){const i=(t-0)/24*100;let r;if("24h"===this.timeFormat)r=`${String(t%24).padStart(2,"0")}:00`;else{const e=t%24;r=`${e%12||12} ${e>=12?"PM":"AM"}`}e.push(N`
-        <div class="time-label" style="top: ${i}%">${r}</div>
-      `)}return e}_renderHourLines(){const e=[],t=1/24*100;for(let i=0;i<24;i++){const r=(i-0)/24*100;i%2==1&&e.push(N`
-          <div class="hour-band-odd" style="top: ${r}%; height: ${t}%"></div>
-        `)}return e}_renderNextDayFooter(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1);const t=e.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return N`
+    `}_renderTimeLabels(){const e=[];for(let t=0;t<=24;t++){const i=(t-0)/24*100;let a;if("24h"===this.timeFormat)a=`${String(t%24).padStart(2,"0")}:00`;else{const e=t%24;a=`${e%12||12} ${e>=12?"PM":"AM"}`}e.push(V`
+        <div class="time-label" style="top: ${i}%">${a}</div>
+      `)}return e}_renderHourLines(){const e=[],t=1/24*100;for(let i=0;i<24;i++){const a=(i-0)/24*100;i%2==1&&e.push(V`
+          <div class="hour-band-odd" style="top: ${a}%; height: ${t}%"></div>
+        `)}return e}_renderNextDayFooter(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1);const t=e.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return V`
       <div class="next-day-footer" @click=${this._goToNextDay}>
         ${t}
         <ha-icon icon="mdi:arrow-down"></ha-icon>
       </div>
-    `}_goToToday(){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:new Date},bubbles:!0,composed:!0}))}_goToNextDay(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_renderColumn(e,t){const i=function(e){const t=e.filter(e=>!Be(e)).sort((e,t)=>new Date(e.start).getTime()-new Date(t.start).getTime());if(0===t.length)return[];const i=t.map(e=>({event:e,start:new Date(e.start).getTime(),end:new Date(e.end).getTime(),column:0,cluster:0}));let r=0,a=0;for(let e=0;e<i.length;e++){let t=!1;for(let r=a;r<e;r++)if(i[e].start<i[r].end){t=!0;break}if(!t&&e>a){const t=e;let s=0;for(let e=a;e<t;e++)s=Math.max(s,i[e].column+1);for(let e=a;e<t;e++)i[e].cluster=r;r++,a=e}const s=new Set;for(let t=a;t<e;t++)i[e].start<i[t].end&&s.add(i[t].column);let n=0;for(;s.has(n);)n++;i[e].column=n}i.forEach((e,t)=>{t>=a&&(e.cluster=r)});const s=new Map;for(const e of i){const t=s.get(e.cluster)||0;s.set(e.cluster,Math.max(t,e.column+1))}return i.map(e=>({...e.event,column:e.column,totalColumns:s.get(e.cluster)||1}))}(t);return N`
+    `}_goToToday(){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:new Date},bubbles:!0,composed:!0}))}_goToNextDay(){const e=new Date(this.currentDate);e.setDate(e.getDate()+1),this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_renderColumn(e,t){const i=function(e){const t=e.filter(e=>!Le(e)).sort((e,t)=>De(e.start).getTime()-De(t.start).getTime());if(0===t.length)return[];const i=t.map(e=>({event:e,start:De(e.start).getTime(),end:De(e.end).getTime(),column:0,cluster:0}));let a=0,r=0;for(let e=0;e<i.length;e++){let t=!1;for(let a=r;a<e;a++)if(i[e].start<i[a].end){t=!0;break}if(!t&&e>r){const t=e;let n=0;for(let e=r;e<t;e++)n=Math.max(n,i[e].column+1);for(let e=r;e<t;e++)i[e].cluster=a;a++,r=e}const n=new Set;for(let t=r;t<e;t++)i[e].start<i[t].end&&n.add(i[t].column);let s=0;for(;n.has(s);)s++;i[e].column=s}i.forEach((e,t)=>{t>=r&&(e.cluster=a)});const n=new Map;for(const e of i){const t=n.get(e.cluster)||0;n.set(e.cluster,Math.max(t,e.column+1))}return i.map(e=>({...e.event,column:e.column,totalColumns:n.get(e.cluster)||1}))}(t);return V`
       <div class="person-column">
-        ${i.map(e=>{const t=function(e,t=0,i=24){const r=new Date(e.start),a=new Date(e.end),s=60*(i-t);let n,o;return n=Math.max(0,60*(r.getHours()-t)+r.getMinutes()),o=Math.min(s,60*(a.getHours()-t)+a.getMinutes()),a.toDateString()!==r.toDateString()&&o<=0&&(o=s),n=Math.max(0,Math.min(n,s)),o=Math.max(0,Math.min(o,s)),{top:n/s*100,height:Math.max(o-n,15)/s*100}}(e,0,24),i=e.totalColumns>1?`calc(${100/e.totalColumns}% - 6px)`:"calc(100% - 6px)",r=e.totalColumns>1?`calc(${e.column/e.totalColumns*100}% + 3px)`:"3px",a=e.uid?this.sharedEventMap.get(e.uid):void 0,s=a&&a.length>1;return N`
+        ${i.map(e=>{const t=function(e,t=0,i=24,a){const r=De(e.start),n=De(e.end),s=60*(i-t),o=a??r,l=new Date(o.getFullYear(),o.getMonth(),o.getDate(),t),d=new Date(o.getFullYear(),o.getMonth(),o.getDate(),i),c=e=>e<=l?0:e>=d?s:60*(e.getHours()-t)+e.getMinutes(),p=c(r),h=c(n),v=Math.max(h-p,15);return{top:p/s*100,height:v/s*100}}(e,0,24,this.currentDate),i=e.totalColumns>1?`calc(${100/e.totalColumns}% - 6px)`:"calc(100% - 6px)",a=e.totalColumns>1?`calc(${e.column/e.totalColumns*100}% + 3px)`:"3px",r=e.uid?this.sharedEventMap.get(e.uid):void 0,n=r&&r.length>1;return V`
             <div
-              class="positioned-event${Me(e)?" past":""}"
+              class="positioned-event${Pe(e)?" past":""}"
               style="
                 top: ${t.top}%;
                 height: ${t.height}%;
                 width: ${i};
-                left: ${r};
+                left: ${a};
                 --event-color: ${e.calendar_color};
                 --event-color-light: ${e.calendar_color_light||""};
-                --event-text: ${Ie(e.calendar_color_light||e.calendar_color)};
+                --event-text: ${Re(e.calendar_color_light||e.calendar_color)};
               "
               @click=${()=>this._onEventClick(e)}
             >
               <div class="event-title">${e.summary}</div>
-              <div class="event-time">${Ee(e.start,this.timeFormat)}</div>
-              ${s?N`
+              <div class="event-time">${ze(e.start,this.timeFormat)}</div>
+              ${n?V`
                 <div class="event-participants">
-                  ${a.map(e=>{const t=e.person_entity?et(this.hass,e.person_entity):null,i=e.person_entity?tt(this.hass,e.person_entity):e.calendar_name;return t?N`<img class="event-participant-avatar"
+                  ${r.map(e=>{const t=e.person_entity?nt(this.hass,e.person_entity):null,i=e.person_entity?st(this.hass,e.person_entity):e.calendar_name;return t?V`<img class="event-participant-avatar"
                           src="${t}" alt="${i}"
-                          style="--participant-color: ${e.calendar_color}" />`:N`<div class="event-participant-initial"
+                          style="--participant-color: ${e.calendar_color}" />`:V`<div class="event-participant-initial"
                           style="background: ${e.calendar_color}; --participant-color: ${e.calendar_color}"
                         >${i[0]?.toUpperCase()||"?"}</div>`})}
                 </div>
@@ -2332,7 +2386,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             </div>
           `})}
       </div>
-    `}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};lt.styles=[ge,fe,_e,we,n`
+    `}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}}function Et(e){try{const t=e();t&&"function"==typeof t.catch&&t.catch(()=>{})}catch{}}Ct.styles=[ge,ye,_e,we,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .day-container {
@@ -2765,15 +2819,15 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .person-name { font-size: 1.125rem; }
         .next-day-footer { font-size: 1.1875rem; padding: 18px; }
       }
-    `],e([he({attribute:!1})],lt.prototype,"hass",void 0),e([he({type:Array})],lt.prototype,"events",void 0),e([he({type:Array})],lt.prototype,"calendars",void 0),e([he({type:Object})],lt.prototype,"currentDate",void 0),e([he({type:Object})],lt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],lt.prototype,"timeFormat",void 0),e([he({type:Boolean})],lt.prototype,"hideColumnHeaders",void 0),e([he({attribute:!1})],lt.prototype,"avatarBorderMode",void 0),e([he({attribute:!1})],lt.prototype,"sharedEventMap",void 0),e([he({type:Number})],lt.prototype,"tick",void 0),lt=e([de("pv-view-day")],lt);const dt=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let ct=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.firstDay="sunday",this.weatherEntity="",this.showStripes=!0,this.tick=0,this._forecast=[],this._subscribedEntity=""}_getWeekDays(){const e=Se(this.currentDate,this.firstDay);return Array.from({length:7},(t,i)=>{const r=new Date(e);return r.setDate(r.getDate()+i),r})}_getWeekLabel(e){const t=e[0],i=e[6],r={month:"long",day:"numeric"};return t.getMonth()===i.getMonth()?`${t.toLocaleDateString("en-US",{month:"long"})} ${t.getDate()} – ${i.getDate()}`:`${t.toLocaleDateString("en-US",r)} – ${i.toLocaleDateString("en-US",r)}`}updated(e){super.updated(e),(e.has("weatherEntity")||e.has("hass"))&&this._subscribeWeather()}disconnectedCallback(){super.disconnectedCallback(),this._unsubWeather()}_unsubWeather(){this._weatherUnsub&&(this._weatherUnsub(),this._weatherUnsub=void 0),this._subscribedEntity=""}async _subscribeWeather(){if(!this.weatherEntity||!this.hass?.connection)return this._unsubWeather(),void(this._forecast=[]);if(this._subscribedEntity!==this.weatherEntity||!this._weatherUnsub){this._unsubWeather(),this._subscribedEntity=this.weatherEntity;try{this._weatherUnsub=await this.hass.connection.subscribeMessage(e=>{this._forecast=e.forecast||[]},{type:"weather/subscribe_forecast",forecast_type:"daily",entity_id:this.weatherEntity})}catch{const e=this.hass.states[this.weatherEntity];e?.attributes?.forecast&&(this._forecast=e.attributes.forecast)}}}_getForecastMap(){const e=new Map;for(const t of this._forecast){if(!t.datetime)continue;const i=Ae(new Date(t.datetime));e.set(i,{condition:t.condition||"",tempHigh:t.temperature??0,tempLow:t.templow??t.temperature??0})}return e}render(){const e=He(this.events,this.hiddenCalendars),t=this._getWeekDays(),i=new Date(t[0]);i.setHours(0,0,0,0);const r=new Date(t[6]);r.setHours(23,59,59,999);const a=Te(Pe(e,i,r),this.calendars),s=this._getForecastMap();return N`
+    `],e([pe({attribute:!1})],Ct.prototype,"hass",void 0),e([pe({type:Array})],Ct.prototype,"events",void 0),e([pe({type:Array})],Ct.prototype,"calendars",void 0),e([pe({type:Object})],Ct.prototype,"currentDate",void 0),e([pe({type:Object})],Ct.prototype,"hiddenCalendars",void 0),e([pe({attribute:!1})],Ct.prototype,"timeFormat",void 0),e([pe({type:Boolean})],Ct.prototype,"hideColumnHeaders",void 0),e([pe({attribute:!1})],Ct.prototype,"avatarBorderMode",void 0),e([pe({attribute:!1})],Ct.prototype,"sharedEventMap",void 0),e([pe({type:Number})],Ct.prototype,"tick",void 0),me("pv-view-day",Ct);class Dt{constructor(e){this._onForecast=e,this._entityId="",this._unsub=null,this._generation=0}update(e,t,i){if(!t||!e){const e=""!==this._entityId;return this.stop(),void(e&&this._onForecast([]))}if(t===this._entityId)return;this.stop(),this._entityId=t;const a=this._generation;e.subscribeMessage(e=>{a===this._generation&&this._onForecast(e?.forecast||[])},{type:"weather/subscribe_forecast",forecast_type:"daily",entity_id:t}).then(e=>{a===this._generation?this._unsub=e:Et(e)}).catch(()=>{a===this._generation&&this._onForecast(i||[])})}stop(){if(this._generation++,this._entityId="",this._unsub){const e=this._unsub;this._unsub=null,Et(e)}}}function zt(e){const t=new Map;for(const i of e)i.datetime&&t.set(Me(De(i.datetime)),{condition:i.condition||"",tempHigh:i.temperature??0,tempLow:i.templow??i.temperature??0});return t}const St=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];class At extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.firstDay="sunday",this.weatherEntity="",this.showStripes=!0,this.tick=0,this._forecast=[],this._forecastSub=new Dt(e=>{this._forecast=e})}_getWeekDays(){const e=Te(this.currentDate,this.firstDay);return Array.from({length:7},(t,i)=>{const a=new Date(e);return a.setDate(a.getDate()+i),a})}_getWeekLabel(e){const t=e[0],i=e[6],a={month:"long",day:"numeric"};return t.getMonth()===i.getMonth()?`${t.toLocaleDateString("en-US",{month:"long"})} ${t.getDate()} – ${i.getDate()}`:`${t.toLocaleDateString("en-US",a)} – ${i.toLocaleDateString("en-US",a)}`}connectedCallback(){super.connectedCallback(),this.hasUpdated&&this._syncForecast()}updated(e){super.updated(e),(e.has("weatherEntity")||e.has("hass"))&&this._syncForecast()}disconnectedCallback(){super.disconnectedCallback(),this._forecastSub.stop()}_syncForecast(){this._forecastSub.update(this.hass?.connection,this.weatherEntity,this.hass?.states?.[this.weatherEntity]?.attributes?.forecast)}render(){const e=Ne(this.events,this.hiddenCalendars),t=this._getWeekDays(),i=new Date(t[0]);i.setHours(0,0,0,0);const a=new Date(t[6]);a.setHours(23,59,59,999);const r=Oe(Ue(e,i,a),this.calendars),n=zt(this._forecast);return V`
       <div class="week-container">
         <div class="week-label">${this._getWeekLabel(t)}</div>
         <div class="day-grid">
-          ${t.map(e=>this._renderDayCard(e,a,s))}
+          ${t.map(e=>this._renderDayCard(e,r,n))}
         </div>
       </div>
-    `}_renderDayCard(e,t,i){const r=De(e),a=Ae(e),s=new Date(e);s.setHours(0,0,0,0);const n=new Date(e);n.setHours(23,59,59,999);const o=t.filter(e=>{const t=new Date(e.start),i=new Date(e.end);return t<n&&i>s}).sort((e,t)=>{const i=Be(e),r=Be(t);return i&&!r?-1:!i&&r?1:new Date(e.start).getTime()-new Date(t.start).getTime()}),l=i.get(a),d=`${dt[e.getDay()]} ${e.getDate()}`,c=o.length;return N`
-      <div class="day-card ${r?"day-card--today":""}">
+    `}_renderDayCard(e,t,i){const a=Ae(e),r=Me(e),n=new Date(e);n.setHours(0,0,0,0);const s=new Date(e);s.setHours(23,59,59,999);const o=Ue(t,n,s).sort(Ie),l=i.get(r),d=`${St[e.getDay()]} ${e.getDate()}`,c=o.length;return V`
+      <div class="day-card ${a?"day-card--today":""}">
         <div class="day-card-header">
           <div class="day-card-header-left">
             <div class="day-name">${d}</div>
@@ -2782,16 +2836,16 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               <button class="add-event-link" @click=${()=>this._addEvent(e)}>+ Add</button>
             </div>
           </div>
-          ${l?N`
+          ${l?V`
             <div class="day-weather">
-              ${st(l.condition)}
+              ${kt(l.condition)}
               <span class="day-weather-temp">${Math.round(l.tempHigh)}°/${Math.round(l.tempLow)}°</span>
             </div>
           `:W}
         </div>
-        ${o.length>0?N`
+        ${o.length>0?V`
           <div class="day-card-events">
-            ${o.map(e=>N`
+            ${o.map(e=>V`
               <pv-event-chip
                 .hass=${this.hass}
                 .event=${e}
@@ -2803,11 +2857,11 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               ></pv-event-chip>
             `)}
           </div>
-        `:N`
+        `:V`
           <div class="day-card-empty">No events</div>
         `}
       </div>
-    `}_addEvent(e){this.dispatchEvent(new CustomEvent("create-event",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};ct.styles=[ge,we,n`
+    `}_addEvent(e){this.dispatchEvent(new CustomEvent("create-event",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}}At.styles=[ge,we,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .week-container {
@@ -2974,24 +3028,24 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .day-card-header { padding: 1rem 1.25rem 0.625rem; }
         .day-card-events { padding: 0.75rem; gap: 0.5rem; }
       }
-    `],e([he({attribute:!1})],ct.prototype,"hass",void 0),e([he({type:Array})],ct.prototype,"events",void 0),e([he({type:Array})],ct.prototype,"calendars",void 0),e([he({type:Object})],ct.prototype,"currentDate",void 0),e([he({type:Object})],ct.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],ct.prototype,"timeFormat",void 0),e([he({attribute:!1})],ct.prototype,"firstDay",void 0),e([he({attribute:!1})],ct.prototype,"weatherEntity",void 0),e([he({type:Boolean})],ct.prototype,"showStripes",void 0),e([he({type:Number})],ct.prototype,"tick",void 0),e([ve()],ct.prototype,"_forecast",void 0),ct=e([de("pv-view-week")],ct);const pt=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],ht=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];let vt=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.firstDay="sunday",this.timeFormat="12h",this.showStripes=!0,this.tick=0}render(){const e=Te(He(this.events,this.hiddenCalendars),this.calendars),t=function(e,t="sunday"){const i=Se(new Date(e.getFullYear(),e.getMonth(),1),t),r=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(i.getDate()+e),r.push(t)}return r}(this.currentDate,this.firstDay),i=Oe(e),r=this.currentDate.getMonth(),a="monday"===this.firstDay?ht:pt,s=this.currentDate.toLocaleDateString("en-US",{month:"long",year:"numeric"});return N`
+    `],e([pe({attribute:!1})],At.prototype,"hass",void 0),e([pe({type:Array})],At.prototype,"events",void 0),e([pe({type:Array})],At.prototype,"calendars",void 0),e([pe({type:Object})],At.prototype,"currentDate",void 0),e([pe({type:Object})],At.prototype,"hiddenCalendars",void 0),e([pe({attribute:!1})],At.prototype,"timeFormat",void 0),e([pe({attribute:!1})],At.prototype,"firstDay",void 0),e([pe({attribute:!1})],At.prototype,"weatherEntity",void 0),e([pe({type:Boolean})],At.prototype,"showStripes",void 0),e([pe({type:Number})],At.prototype,"tick",void 0),e([he()],At.prototype,"_forecast",void 0),me("pv-view-week",At);const Tt=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],Mt=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];class Bt extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.firstDay="sunday",this.timeFormat="12h",this.showStripes=!0,this.tick=0}render(){const e=Oe(Ne(this.events,this.hiddenCalendars),this.calendars),t=function(e,t="sunday"){const i=Te(new Date(e.getFullYear(),e.getMonth(),1),t),a=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(i.getDate()+e),a.push(t)}return a}(this.currentDate,this.firstDay),i=je(e),a=this.currentDate.getMonth(),r="monday"===this.firstDay?Mt:Tt,n=this.currentDate.toLocaleDateString("en-US",{month:"long",year:"numeric"});return V`
       <div class="month-container">
-        <div class="month-name">${s}</div>
+        <div class="month-name">${n}</div>
         <div class="weekday-header">
-          ${a.map(e=>N`<div class="weekday-name">${e}</div>`)}
+          ${r.map(e=>V`<div class="weekday-name">${e}</div>`)}
         </div>
         <div class="month-grid">
-          ${t.map(e=>this._renderDayCell(e,r,i))}
+          ${t.map(e=>this._renderDayCell(e,a,i))}
         </div>
       </div>
-    `}_renderDayCell(e,t,i){const r=Ae(e),a=i.get(r)||[],s=e.getMonth()!==t,n=De(e),o=a.slice(0,3),l=a.length-3;return N`
+    `}_renderDayCell(e,t,i){const a=Me(e),r=i.get(a)||[],n=e.getMonth()!==t,s=Ae(e),o=r.slice(0,3),l=r.length-3;return V`
       <div
-        class="day-cell ${s?"other-month":""} ${n?"today":""}"
+        class="day-cell ${n?"other-month":""} ${s?"today":""}"
         @click=${()=>this._onDayClick(e)}
       >
         <div class="day-number">${e.getDate()}</div>
         <div class="day-events">
-          ${o.map(e=>N`
+          ${o.map(e=>V`
             <pv-event-chip
               .hass=${this.hass}
               .event=${e}
@@ -3001,16 +3055,17 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               .showStripes=${this.showStripes}
               .tick=${this.tick}
               @event-click=${e=>{e.stopPropagation(),this._onEventClick(e.detail.event)}}
+              @click=${e=>e.stopPropagation()}
             ></pv-event-chip>
           `)}
-          ${l>0?N`
+          ${l>0?V`
             <div class="more-events" @click=${t=>{t.stopPropagation(),this._onDayClick(e)}}>
               +${l} more
             </div>
           `:W}
         </div>
       </div>
-    `}_onDayClick(e){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};vt.styles=[ge,n`
+    `}_onDayClick(e){this.dispatchEvent(new CustomEvent("day-click",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}}Bt.styles=[ge,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .month-container {
@@ -3161,26 +3216,26 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .day-events { gap: 2px; }
         .more-events { font-size: 0.875rem; }
       }
-    `],e([he({attribute:!1})],vt.prototype,"hass",void 0),e([he({type:Array})],vt.prototype,"events",void 0),e([he({type:Array})],vt.prototype,"calendars",void 0),e([he({type:Object})],vt.prototype,"currentDate",void 0),e([he({type:Object})],vt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],vt.prototype,"firstDay",void 0),e([he({attribute:!1})],vt.prototype,"timeFormat",void 0),e([he({type:Boolean})],vt.prototype,"showStripes",void 0),e([he({type:Number})],vt.prototype,"tick",void 0),vt=e([de("pv-view-month")],vt);const mt=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];let gt=class extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.weatherEntity="",this.showStripes=!0,this.tick=0,this._daysLoaded=14,this._forecast=[],this._subscribedEntity=""}render(){const e=new Date;e.setHours(0,0,0,0);const t=[];for(let i=0;i<this._daysLoaded;i++){const r=new Date(e);r.setDate(r.getDate()+i),t.push(r)}const i=Oe(Te(He(this.events,this.hiddenCalendars),this.calendars)),r=this._getForecastMap();return N`
+    `],e([pe({attribute:!1})],Bt.prototype,"hass",void 0),e([pe({type:Array})],Bt.prototype,"events",void 0),e([pe({type:Array})],Bt.prototype,"calendars",void 0),e([pe({type:Object})],Bt.prototype,"currentDate",void 0),e([pe({type:Object})],Bt.prototype,"hiddenCalendars",void 0),e([pe({attribute:!1})],Bt.prototype,"firstDay",void 0),e([pe({attribute:!1})],Bt.prototype,"timeFormat",void 0),e([pe({type:Boolean})],Bt.prototype,"showStripes",void 0),e([pe({type:Number})],Bt.prototype,"tick",void 0),me("pv-view-month",Bt);const Ot=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];class Pt extends oe{constructor(){super(...arguments),this.events=[],this.calendars=[],this.currentDate=new Date,this.hiddenCalendars=new Set,this.timeFormat="12h",this.weatherEntity="",this.showStripes=!0,this.tick=0,this._daysLoaded=14,this._forecast=[],this._forecastSub=new Dt(e=>{this._forecast=e})}render(){const e=new Date;e.setHours(0,0,0,0);const t=[];for(let i=0;i<this._daysLoaded;i++){const a=new Date(e);a.setDate(a.getDate()+i),t.push(a)}const i=je(Oe(Ne(this.events,this.hiddenCalendars),this.calendars)),a=zt(this._forecast);return V`
       <div class="agenda-container">
-        ${t.map(e=>this._renderDayCard(e,i,r))}
+        ${t.map(e=>this._renderDayCard(e,i,a))}
         <div class="load-more" @click=${this._loadMore}>
           Load more days
         </div>
       </div>
-    `}_renderDayCard(e,t,i){const r=Ae(e),a=t.get(r)||[],s=De(e),n=i.get(r),o=function(e){if(De(e))return"Today";if(function(e){const t=new Date;return t.setDate(t.getDate()+1),e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}(e))return"Tomorrow";const t=new Date,i=Math.floor((e.getTime()-t.getTime())/864e5);return i<7&&i>=0?e.toLocaleDateString("en-US",{weekday:"long"}):ze(e,"medium")}(e),l=ze(e,"long"),d=[...a].sort((e,t)=>{const i=Be(e),r=Be(t);return i&&!r?-1:!i&&r?1:e.start.localeCompare(t.start)});return N`
-      <div class="day-card ${s?"day-card--today":""}">
+    `}_renderDayCard(e,t,i){const a=Me(e),r=t.get(a)||[],n=Ae(e),s=i.get(a),o=function(e){if(Ae(e))return"Today";if(function(e){const t=new Date;return t.setDate(t.getDate()+1),e.getFullYear()===t.getFullYear()&&e.getMonth()===t.getMonth()&&e.getDate()===t.getDate()}(e))return"Tomorrow";const t=new Date,i=Math.floor((e.getTime()-t.getTime())/864e5);return i<7&&i>=0?e.toLocaleDateString("en-US",{weekday:"long"}):Se(e,"medium")}(e),l=Se(e,"long"),d=[...r].sort(Ie);return V`
+      <div class="day-card ${n?"day-card--today":""}">
         <div class="day-card-header">
           <div class="day-card-header-left">
-            <span class="day-name ${s?"day-name--today":""}">
-              ${mt[e.getDay()]} ${e.getDate()}
+            <span class="day-name ${n?"day-name--today":""}">
+              ${Ot[e.getDay()]} ${e.getDate()}
             </span>
-            ${o?N`<span class="day-relative">${o}</span>`:N`<span class="day-relative">${l}</span>`}
+            ${o?V`<span class="day-relative">${o}</span>`:V`<span class="day-relative">${l}</span>`}
           </div>
-          ${n?N`
+          ${s?V`
             <div class="day-weather">
-              ${st(n.condition,20)}
-              <span class="day-weather-temps">${Math.round(n.tempHigh)}°/${Math.round(n.tempLow)}°</span>
+              ${kt(s.condition,20)}
+              <span class="day-weather-temps">${Math.round(s.tempHigh)}°/${Math.round(s.tempLow)}°</span>
             </div>
           `:W}
         </div>
@@ -3189,7 +3244,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           <button class="add-event-link" @click=${()=>this._addEvent(e)}>+ Add event</button>
         </div>
         <div class="day-events">
-          ${d.length>0?d.map(e=>N`
+          ${d.length>0?d.map(e=>V`
                 <pv-event-chip
                   .hass=${this.hass}
                   .event=${e}
@@ -3199,10 +3254,10 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                   .tick=${this.tick}
                   @event-click=${e=>this._onEventClick(e.detail.event)}
                 ></pv-event-chip>
-              `):N`<div class="empty-day">No events</div>`}
+              `):V`<div class="empty-day">No events</div>`}
         </div>
       </div>
-    `}updated(e){super.updated(e),(e.has("weatherEntity")||e.has("hass"))&&this._subscribeWeather()}disconnectedCallback(){super.disconnectedCallback(),this._unsubWeather()}_unsubWeather(){this._weatherUnsub&&(this._weatherUnsub(),this._weatherUnsub=void 0),this._subscribedEntity=""}async _subscribeWeather(){if(!this.weatherEntity||!this.hass?.connection)return this._unsubWeather(),void(this._forecast=[]);if(this._subscribedEntity!==this.weatherEntity||!this._weatherUnsub){this._unsubWeather(),this._subscribedEntity=this.weatherEntity;try{this._weatherUnsub=await this.hass.connection.subscribeMessage(e=>{this._forecast=e.forecast||[]},{type:"weather/subscribe_forecast",forecast_type:"daily",entity_id:this.weatherEntity})}catch{const e=this.hass.states[this.weatherEntity];e?.attributes?.forecast&&(this._forecast=e.attributes.forecast)}}}_getForecastMap(){const e=new Map;for(const t of this._forecast){if(!t.datetime)continue;const i=Ae(new Date(t.datetime));e.set(i,{condition:t.condition||"",tempHigh:t.temperature??0,tempLow:t.templow??t.temperature??0})}return e}_loadMore(){this._daysLoaded+=14}_addEvent(e){this.dispatchEvent(new CustomEvent("create-event",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}};gt.styles=[ge,we,n`
+    `}connectedCallback(){super.connectedCallback(),this.hasUpdated&&this._syncForecast()}updated(e){super.updated(e),(e.has("weatherEntity")||e.has("hass"))&&this._syncForecast()}disconnectedCallback(){super.disconnectedCallback(),this._forecastSub.stop()}_syncForecast(){this._forecastSub.update(this.hass?.connection,this.weatherEntity,this.hass?.states?.[this.weatherEntity]?.attributes?.forecast)}_loadMore(){this._daysLoaded+=14}_addEvent(e){this.dispatchEvent(new CustomEvent("create-event",{detail:{date:e},bubbles:!0,composed:!0}))}_onEventClick(e){this.dispatchEvent(new CustomEvent("event-click",{detail:{event:e},bubbles:!0,composed:!0}))}}Pt.styles=[ge,we,s`
       :host { display: block; height: 100%; overflow: hidden; }
 
       .agenda-container {
@@ -3381,7 +3436,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .day-events { padding: 0.75rem 1rem 1rem; gap: 0.625rem; }
         .load-more { font-size: 1.125rem; padding: 1.25rem; }
       }
-    `],e([he({attribute:!1})],gt.prototype,"hass",void 0),e([he({type:Array})],gt.prototype,"events",void 0),e([he({type:Array})],gt.prototype,"calendars",void 0),e([he({type:Object})],gt.prototype,"currentDate",void 0),e([he({type:Object})],gt.prototype,"hiddenCalendars",void 0),e([he({attribute:!1})],gt.prototype,"timeFormat",void 0),e([he({attribute:!1})],gt.prototype,"weatherEntity",void 0),e([he({type:Boolean})],gt.prototype,"showStripes",void 0),e([he({type:Number})],gt.prototype,"tick",void 0),e([ve()],gt.prototype,"_daysLoaded",void 0),e([ve()],gt.prototype,"_forecast",void 0),gt=e([de("pv-view-agenda")],gt);let ut=class extends oe{constructor(){super(...arguments),this.event=null,this.timeFormat="12h",this._confirmDelete=!1,this._deleteMode=null,this._deleting=!1,this._deleteError="",this._organizerEntityId=null,this._pv=new at(this),this._lastOrganizerUid=""}updated(e){if(super.updated(e),e.has("event")&&this.event){const e=this.event.shared_calendars,t=this.event.uid||"";e&&e.length>1&&t&&t!==this._lastOrganizerUid?(this._lastOrganizerUid=t,this._organizerEntityId=null,this._fetchOrganizer(this.event.calendar_entity_id,t)):(!e||e.length<=1)&&(this._organizerEntityId=null,this._lastOrganizerUid="")}}async _fetchOrganizer(e,t){this._organizerEntityId=await Je(this.hass,e,t)}render(){if(!this.event)return W;const e=this.event,t=Be(e),i=new Date(e.start),r=e.shared_calendars,a=r&&r.length>1;return N`
+    `],e([pe({attribute:!1})],Pt.prototype,"hass",void 0),e([pe({type:Array})],Pt.prototype,"events",void 0),e([pe({type:Array})],Pt.prototype,"calendars",void 0),e([pe({type:Object})],Pt.prototype,"currentDate",void 0),e([pe({type:Object})],Pt.prototype,"hiddenCalendars",void 0),e([pe({attribute:!1})],Pt.prototype,"timeFormat",void 0),e([pe({attribute:!1})],Pt.prototype,"weatherEntity",void 0),e([pe({type:Boolean})],Pt.prototype,"showStripes",void 0),e([pe({type:Number})],Pt.prototype,"tick",void 0),e([he()],Pt.prototype,"_daysLoaded",void 0),e([he()],Pt.prototype,"_forecast",void 0),me("pv-view-agenda",Pt);class Lt extends oe{constructor(){super(...arguments),this.event=null,this.timeFormat="12h",this._confirmDelete=!1,this._deleteMode=null,this._deleting=!1,this._deleteError="",this._organizerEntityId=null,this._pv=new wt(this),this._lastOrganizerUid=""}updated(e){if(super.updated(e),e.has("event")&&this.event){const e=this.event.shared_calendars,t=this.event.uid||"";e&&e.length>1&&t&&t!==this._lastOrganizerUid?(this._lastOrganizerUid=t,this._organizerEntityId=null,this._fetchOrganizer(this.event.calendar_entity_id,t)):(!e||e.length<=1)&&(this._organizerEntityId=null,this._lastOrganizerUid="")}}async _fetchOrganizer(e,t){this._organizerEntityId=await rt(this.hass,e,t)}render(){if(!this.event)return W;const e=this.event,t=Le(e),i=De(e.start),a=e.shared_calendars,r=a&&a.length>1;return V`
       <div class="pv-overlay" @click=${this._close}>
         <div class="pv-popup" @click=${e=>e.stopPropagation()} style="position: relative;">
           <button class="pv-btn-icon close-btn" @click=${this._close}>
@@ -3390,16 +3445,16 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
           <div class="popup-header">
             <h3 class="popup-title">${e.summary}</h3>
-            ${a?N`
+            ${r?V`
               <div class="participants-row">
-                ${r.map(e=>N`
+                ${a.map(e=>V`
                   <span class="participant-chip" style="background: ${e.calendar_color}">
                     ${e.calendar_name}
-                    ${e.entity_id===this._organizerEntityId?N`<span class="organizer-tag">organizer</span>`:W}
+                    ${e.entity_id===this._organizerEntityId?V`<span class="organizer-tag">organizer</span>`:W}
                   </span>
                 `)}
               </div>
-            `:N`
+            `:V`
               <div class="popup-calendar">
                 <span class="calendar-indicator" style="background: ${e.calendar_color}"></span>
                 ${e.calendar_name}
@@ -3411,25 +3466,25 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             <div class="detail-row">
               <ha-icon icon="mdi:clock-outline"></ha-icon>
               <div class="detail-text">
-                <div>${ze(i,"long")}</div>
-                ${t?N`
+                <div>${Se(i,"long")}</div>
+                ${t?V`
                   <div style="color: var(--pv-text-secondary); font-size: 0.875rem">All Day</div>
-                `:N`
+                `:V`
                   <div style="color: var(--pv-text-secondary); font-size: 0.875rem">
-                    ${Ee(e.start,this.timeFormat)} – ${Ee(e.end,this.timeFormat)}
+                    ${ze(e.start,this.timeFormat)} – ${ze(e.end,this.timeFormat)}
                   </div>
                 `}
               </div>
             </div>
 
-            ${e.location?N`
+            ${e.location?V`
               <div class="detail-row">
                 <ha-icon icon="mdi:map-marker-outline"></ha-icon>
                 <div class="detail-text">${e.location}</div>
               </div>
             `:W}
 
-            ${e.description?N`
+            ${e.description?V`
               <div class="detail-row">
                 <ha-icon icon="mdi:text"></ha-icon>
                 <div class="detail-text" style="white-space: pre-wrap;">${e.description}</div>
@@ -3437,22 +3492,22 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             `:W}
           </div>
 
-          ${this._confirmDelete?N`
+          ${this._confirmDelete?V`
             <div class="delete-confirm">
-              ${this._deleteError?N`
+              ${this._deleteError?V`
                 <div style="color: #EF4444; font-size: 0.8125rem; margin-bottom: 0.75rem;">${this._deleteError}</div>
               `:W}
 
-              ${a&&!this._deleteMode?N`
+              ${r&&!this._deleteMode?V`
                 <div class="delete-confirm-text">
-                  This event is shared across ${r.length} calendars.
+                  This event is shared across ${a.length} calendars.
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                   <button class="delete-option" @click=${()=>{this._deleteMode="all"}}>
                     <ha-icon icon="mdi:delete-outline"></ha-icon>
                     <div class="delete-option-text">
                       <div class="delete-option-label">Delete for everyone</div>
-                      <div class="delete-option-desc">Removes the event from all ${r.length} calendars</div>
+                      <div class="delete-option-desc">Removes the event from all ${a.length} calendars</div>
                     </div>
                   </button>
                   <button class="delete-option" @click=${this._openRemoveGuests}>
@@ -3467,9 +3522,9 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                     Cancel
                   </button>
                 </div>
-              `:N`
+              `:V`
                 <div class="delete-confirm-text">
-                  ${"all"===this._deleteMode&&a?`Delete "${e.summary}" from all ${r.length} calendars?`:"remove-me"===this._deleteMode&&a?`Remove "${e.summary}" from ${e.calendar_name}'s calendar only?`:`Delete "${e.summary}"?`}
+                  ${"all"===this._deleteMode&&r?`Delete "${e.summary}" from all ${a.length} calendars?`:"remove-me"===this._deleteMode&&r?`Remove "${e.summary}" from ${e.calendar_name}'s calendar only?`:`Delete "${e.summary}"?`}
                 </div>
                 <div class="delete-confirm-actions">
                   <button class="pv-btn pv-btn-secondary" @click=${()=>{this._confirmDelete=!1,this._deleteError="",this._deleteMode=null}}>
@@ -3481,7 +3536,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 </div>
               `}
             </div>
-          `:N`
+          `:V`
             <div class="popup-actions">
               <button class="pv-btn pv-btn-secondary" @click=${this._edit}>
                 <ha-icon icon="mdi:pencil-outline"></ha-icon>
@@ -3496,7 +3551,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           `}
         </div>
       </div>
-    `}_close(){this._confirmDelete=!1,this._deleteMode=null,this._deleting=!1,this._deleteError="",this._pv.state.selectEvent(null)}_edit(){this.event&&this._pv.state.openEditDialog(this.event)}_openRemoveGuests(){this.event&&(this._confirmDelete=!1,this._deleteMode=null,this._pv.state.openEditDialog(this.event,{removeGuests:!0}))}async _delete(){if(!this.event?.uid)return void(this._deleteError="Cannot delete — this event has no unique ID. Delete it from your calendar app directly.");const e=this.event.shared_calendars,t=e&&e.length>1;this._deleting=!0,this._deleteError="";try{if(t&&"all"===this._deleteMode){for(const t of e)try{await Qe(this.hass,{entity_id:t.entity_id,uid:this.event.uid,recurrence_id:this.event.recurrence_id})}catch(e){console.warn(`[PlanaVista] Failed to delete from ${t.entity_id}:`,e)}await Ze(this.hass),this._pv.state.selectEvent(null)}else if(t&&"remove-me"===this._deleteMode){const e=this.event.calendar_entity_id;await Qe(this.hass,{entity_id:e,uid:this.event.uid,recurrence_id:this.event.recurrence_id}),await Ze(this.hass),this._pv.state.selectEvent(null)}else{const e={entity_id:this.event.calendar_entity_id,uid:this.event.uid,recurrence_id:this.event.recurrence_id};await this._pv.state.doDeleteEvent(this.hass,e)}}catch(e){console.error("PlanaVista: Delete failed",e),this._deleteError="Failed to delete event. Please try again.",this._deleting=!1}}};ut.styles=[ge,ye,be,we,n`
+    `}_close(){this._confirmDelete=!1,this._deleteMode=null,this._deleting=!1,this._deleteError="",this._pv.state.selectEvent(null)}_edit(){this.event&&this._pv.state.openEditDialog(this.event)}_openRemoveGuests(){this.event&&(this._confirmDelete=!1,this._deleteMode=null,this._pv.state.openEditDialog(this.event,{removeGuests:!0}))}async _delete(){if(!this.event?.uid)return void(this._deleteError="Cannot delete — this event has no unique ID. Delete it from your calendar app directly.");const e=this.event.shared_calendars,t=e&&e.length>1;this._deleting=!0,this._deleteError="";try{if(t&&"all"===this._deleteMode){for(const t of e)try{await tt(this.hass,{entity_id:t.entity_id,uid:this.event.uid,recurrence_id:this.event.recurrence_id})}catch(e){console.warn(`[PlanaVista] Failed to delete from ${t.entity_id}:`,e)}await it(this.hass),this._pv.state.selectEvent(null)}else if(t&&"remove-me"===this._deleteMode){const e=this.event.calendar_entity_id;await tt(this.hass,{entity_id:e,uid:this.event.uid,recurrence_id:this.event.recurrence_id}),await it(this.hass),this._pv.state.selectEvent(null)}else{const e={entity_id:this.event.calendar_entity_id,uid:this.event.uid,recurrence_id:this.event.recurrence_id};await this._pv.state.doDeleteEvent(this.hass,e)}}catch(e){console.error("PlanaVista: Delete failed",e),this._deleteError="Failed to delete event. Please try again.",this._deleting=!1}}}function Ht(e){const t=[e.housenumber,e.street].filter(Boolean).join(" "),i=[];for(const a of[e.name,t,e.city,e.state,e.postcode,e.country]){const e=(a||"").trim();e&&!i.some(t=>t.toLowerCase()===e.toLowerCase())&&i.push(e)}return i.join(", ")}Lt.styles=[ge,fe,be,we,s`
       :host { display: block; }
 
       .popup-header {
@@ -3684,7 +3739,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         color: var(--pv-text-secondary);
         margin-top: 0.125rem;
       }
-    `],e([he({attribute:!1})],ut.prototype,"hass",void 0),e([he({type:Object})],ut.prototype,"event",void 0),e([he({attribute:!1})],ut.prototype,"timeFormat",void 0),e([ve()],ut.prototype,"_confirmDelete",void 0),e([ve()],ut.prototype,"_deleteMode",void 0),e([ve()],ut.prototype,"_deleting",void 0),e([ve()],ut.prototype,"_deleteError",void 0),e([ve()],ut.prototype,"_organizerEntityId",void 0),ut=e([de("pv-event-popup")],ut);const yt=["Su","Mo","Tu","We","Th","Fr","Sa"];let ft=class extends oe{constructor(){super(...arguments),this.calendars=[],this.open=!1,this.mode="create",this.prefill=null,this.timeFormat="12h",this._title="",this._selectedCalendars=new Set,this._originalCalendars=new Set,this._organizerEntityId="",this._date="",this._startTime="",this._endTime="",this._allDay=!1,this._description="",this._location="",this._showMore=!1,this._saving=!1,this._error="",this._removeGuestsHint=!1,this._datePickerOpen=!1,this._pickerMonth=0,this._pickerYear=0,this._activeTimePicker=null,this._locationSuggestions=[],this._locationLoading=!1,this._locationFocused=!1,this._locationDebounceTimer=null,this._pv=new at(this)}updated(e){super.updated(e),e.has("open")&&this.open&&(this._initForm(),this._datePickerOpen=!1,requestAnimationFrame(()=>{this._titleInput?.focus()}))}_initForm(){if(this._error="",this._saving=!1,this._showMore=!1,this._locationSuggestions=[],this._locationFocused=!1,this._removeGuestsHint=!!this.prefill?._removeGuestsHint,this.prefill){this._title=this.prefill.summary||"",this._description=this.prefill.description||"",this._location=this.prefill.location||"";const e=this.prefill.shared_calendars;if(e&&e.length>0?this._selectedCalendars=new Set(e.map(e=>e.entity_id)):this.prefill.calendar_entity_id?this._selectedCalendars=new Set([this.prefill.calendar_entity_id]):this._selectedCalendars=new Set([this.calendars[0]?.entity_id].filter(Boolean)),this._originalCalendars=new Set(this._selectedCalendars),e&&e.length>1&&this.prefill.uid?(this._organizerEntityId="",this._fetchOrganizer(this.prefill.calendar_entity_id||"",this.prefill.uid)):this._organizerEntityId=this.prefill.calendar_entity_id||"",this.prefill.start){const e=new Date(this.prefill.start);this._date=this._toDateStr(e),this._pickerYear=e.getFullYear(),this._pickerMonth=e.getMonth(),!this.prefill.start.includes("T")||0===e.getHours()&&0===e.getMinutes()?(this._allDay=!0,this._startTime="",this._endTime=""):(this._allDay=!1,this._startTime=this._toTimeStr(e),this.prefill.end&&(this._endTime=this._toTimeStr(new Date(this.prefill.end))))}else this._setDefaults();(this._description||this._location)&&(this._showMore=!0)}else this._setDefaults()}async _fetchOrganizer(e,t){const i=await Je(this.hass,e,t);i&&(this._organizerEntityId=i)}_setDefaults(){this._title="",this._selectedCalendars=new Set,this._originalCalendars=new Set,this._organizerEntityId="";const e=new Date;this._date=this._toDateStr(e),this._pickerYear=e.getFullYear(),this._pickerMonth=e.getMonth();const t=15*Math.ceil(e.getMinutes()/15);e.setMinutes(t,0,0),this._startTime=this._toTimeStr(e);const i=new Date(e);i.setHours(i.getHours()+1),this._endTime=this._toTimeStr(i),this._allDay=!1,this._description="",this._location=""}_toDateStr(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}_toTimeStr(e){return`${String(e.getHours()).padStart(2,"0")}:${String(e.getMinutes()).padStart(2,"0")}`}_formatDateDisplay(){if(!this._date)return"Select a date";const[e,t,i]=this._date.split("-").map(Number);return new Date(e,t-1,i).toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric",year:"numeric"})}render(){if(!this.open)return W;const e=this.calendars.filter(e=>!1!==e.visible),t="edit"===this.mode,i=t?"Edit Event":"New Event";return N`
+    `],e([pe({attribute:!1})],Lt.prototype,"hass",void 0),e([pe({type:Object})],Lt.prototype,"event",void 0),e([pe({attribute:!1})],Lt.prototype,"timeFormat",void 0),e([he()],Lt.prototype,"_confirmDelete",void 0),e([he()],Lt.prototype,"_deleteMode",void 0),e([he()],Lt.prototype,"_deleting",void 0),e([he()],Lt.prototype,"_deleteError",void 0),e([he()],Lt.prototype,"_organizerEntityId",void 0),me("pv-event-popup",Lt);class It{constructor(e){this._opts=e,this._timer=null,this._abort=null,this._seq=0,this._fetch=e.fetchFn??((e,t)=>fetch(e,t))}input(e,t){this.cancel();const i=e.trim();if(!t||i.length<3)return this._opts.onResults([]),void this._opts.onLoading(!1);this._opts.onLoading(!0);const a=this._seq;this._timer=setTimeout(()=>{this._timer=null,this._run(i,a)},350)}cancel(){this._seq++,this._timer&&(clearTimeout(this._timer),this._timer=null),this._abort&&(this._abort.abort(),this._abort=null)}async _run(e,t){const i=new AbortController;this._abort=i;try{const r=await this._fetch((a=e,`https://photon.komoot.io/api/?q=${encodeURIComponent(a)}&limit=5&lang=en`),{signal:i.signal,credentials:"omit",referrerPolicy:"no-referrer"});if(!r.ok)throw new Error(`Photon HTTP ${r.status}`);const n=await r.json();t===this._seq&&this._opts.onResults(function(e){const t=e?.features;if(!Array.isArray(t))return[];const i=[];for(const e of t){const t=Ht(e?.properties||{});if(t&&!i.includes(t)&&i.push(t),5===i.length)break}return i}(n))}catch{t===this._seq&&this._opts.onResults([])}finally{t===this._seq&&(this._abort=null,this._opts.onLoading(!1))}var a}}const jt=["Su","Mo","Tu","We","Th","Fr","Sa"];class Ut extends oe{constructor(){super(...arguments),this.calendars=[],this.open=!1,this.mode="create",this.prefill=null,this.timeFormat="12h",this.locationAutocomplete=!1,this._title="",this._selectedCalendars=new Set,this._originalCalendars=new Set,this._organizerEntityId="",this._date="",this._startTime="",this._endTime="",this._allDay=!1,this._spanDays=1,this._endDayOffset=0,this._description="",this._location="",this._showMore=!1,this._saving=!1,this._error="",this._removeGuestsHint=!1,this._datePickerOpen=!1,this._pickerMonth=0,this._pickerYear=0,this._activeTimePicker=null,this._locationSuggestions=[],this._locationLoading=!1,this._locationFocused=!1,this._locationSearch=new It({onResults:e=>{this._locationSuggestions=e},onLoading:e=>{this._locationLoading=e}}),this._pv=new wt(this)}disconnectedCallback(){super.disconnectedCallback(),this._locationSearch.cancel()}updated(e){super.updated(e),e.has("locationAutocomplete")&&!this.locationAutocomplete&&this._resetLocationSearch(),e.has("open")&&this.open&&(this._initForm(),this._datePickerOpen=!1,requestAnimationFrame(()=>{this._titleInput?.focus()}))}_initForm(){if(this._error="",this._saving=!1,this._showMore=!1,this._resetLocationSearch(),this._locationFocused=!1,this._removeGuestsHint=!!this.prefill?._removeGuestsHint,this.prefill){this._title=this.prefill.summary||"",this._description=this.prefill.description||"",this._location=this.prefill.location||"";const e=this.prefill.shared_calendars;e&&e.length>0?this._selectedCalendars=new Set(e.map(e=>e.entity_id)):this.prefill.calendar_entity_id?this._selectedCalendars=new Set([this.prefill.calendar_entity_id]):this._selectedCalendars=new Set([this.calendars[0]?.entity_id].filter(Boolean)),this._originalCalendars=new Set(this._selectedCalendars),e&&e.length>1&&this.prefill.uid?(this._organizerEntityId="",this._fetchOrganizer(this.prefill.calendar_entity_id||"",this.prefill.uid)):this._organizerEntityId=this.prefill.calendar_entity_id||"",this.prefill.start?this._applyDates(function(e,t){const i=De(e);if(Ee(e)){const e=t?De(t):i;return{date:Me(i),allDay:!0,startTime:"09:00",endTime:"10:00",spanDays:Math.max(1,Be(i,e)),endDayOffset:0}}const a=t?De(t):new Date(i.getTime()+36e5);return{date:Me(i),allDay:!1,startTime:ct(i),endTime:ct(a),spanDays:1,endDayOffset:Math.max(0,Be(i,a))}}(this.prefill.start,this.prefill.end)):this._setDefaults(),(this._description||this._location)&&(this._showMore=!0)}else this._setDefaults()}async _fetchOrganizer(e,t){const i=await rt(this.hass,e,t);i&&(this._organizerEntityId=i)}_setDefaults(){this._title="",this._selectedCalendars=new Set,this._originalCalendars=new Set,this._organizerEntityId="",this._applyDates(function(e){const t=new Date(e);t.setMinutes(15*Math.ceil(t.getMinutes()/15),0,0);const i=new Date(t.getTime()+36e5);return{date:Me(t),allDay:!1,startTime:ct(t),endTime:ct(i),spanDays:1,endDayOffset:Be(t,i)}}(new Date)),this._description="",this._location=""}get _formDates(){return{date:this._date,allDay:this._allDay,startTime:this._startTime,endTime:this._endTime,spanDays:this._spanDays,endDayOffset:this._endDayOffset}}_applyDates(e){this._date=e.date,this._allDay=e.allDay,this._startTime=e.startTime,this._endTime=e.endTime,this._spanDays=e.spanDays,this._endDayOffset=e.endDayOffset;const[t,i]=e.date.split("-").map(Number);this._pickerYear=t,this._pickerMonth=i-1}_toDateStr(e){return`${e.getFullYear()}-${String(e.getMonth()+1).padStart(2,"0")}-${String(e.getDate()).padStart(2,"0")}`}_renderEndsHint(){const e=this._formDates;if(!(e.allDay?e.spanDays>1:e.endDayOffset>0))return W;const[t,i,a]=function(e){return e.allDay?ht(e.date,Math.max(1,e.spanDays)-1):ht(e.date,e.endDayOffset)}(e).split("-").map(Number),r=new Date(t,i-1,a).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});return V`<div class="ends-hint">${e.allDay?`Through ${r} (${e.spanDays} days)`:`Ends ${r}`}</div>`}_formatDateDisplay(){if(!this._date)return"Select a date";const[e,t,i]=this._date.split("-").map(Number);return new Date(e,t-1,i).toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric",year:"numeric"})}render(){if(!this.open)return W;const e=this.calendars.filter(e=>!1!==e.visible),t="edit"===this.mode,i=t?"Edit Event":"New Event";return V`
       <div class="pv-overlay" @click=${this._onOverlayClick}>
         <div class="pv-dialog" @click=${e=>e.stopPropagation()}>
           <div class="pv-dialog-header">
@@ -3696,7 +3751,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
           <div class="pv-dialog-body">
             <div class="form-grid">
-              ${this._error?N`<div class="error-msg">${this._error}</div>`:W}
+              ${this._error?V`<div class="error-msg">${this._error}</div>`:W}
 
               <div class="form-field">
                 <input
@@ -3711,7 +3766,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
               <div class="form-field">
                 <label class="pv-label">${t?"Participants":"Calendars"}</label>
-                ${this._removeGuestsHint?N`
+                ${this._removeGuestsHint?V`
                   <div style="
                     display: flex; align-items: center; gap: 0.5rem;
                     padding: 0.5rem 0.75rem; margin-bottom: 0.5rem;
@@ -3725,17 +3780,17 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                   </div>
                 `:W}
                 <div class="calendar-select">
-                  ${e.map(e=>{const i=this._selectedCalendars.has(e.entity_id),r=e.entity_id===this._organizerEntityId,a=t&&r;return N`
+                  ${e.map(e=>{const i=this._selectedCalendars.has(e.entity_id),a=e.entity_id===this._organizerEntityId,r=t&&a;return V`
                       <div class="cal-option-wrap">
-                        ${r&&i?N`<span class="organizer-badge">Organizer</span>`:W}
+                        ${a&&i?V`<span class="organizer-badge">Organizer</span>`:W}
                         <button
-                          class="cal-option ${i?"selected":""} ${a?"locked":""}"
+                          class="cal-option ${i?"selected":""} ${r?"locked":""}"
                           style="${i?`background: ${e.color}; --cal-bg: ${e.color}`:`--cal-bg: ${e.color}`}"
                           @click=${()=>this._toggleCalendar(e.entity_id)}
                         >
                           <span class="cal-dot" style="background: ${e.color}"></span>
                           ${e.display_name}
-                          ${a?N`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`:W}
+                          ${r?V`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`:W}
                         </button>
                       </div>
                     `})}
@@ -3745,6 +3800,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               <div class="form-field">
                 <label class="pv-label">Date</label>
                 ${this._renderDatePicker()}
+                ${this._renderEndsHint()}
               </div>
 
               <div class="all-day-row">
@@ -3759,7 +3815,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 ></div>
               </div>
 
-              ${this._allDay?W:N`
+              ${this._allDay?W:V`
                 <div class="form-row">
                   <div class="form-field">
                     <label class="pv-label">Start Time</label>
@@ -3778,7 +3834,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 </div>
               `}
 
-              ${this._showMore?N`
+              ${this._showMore?V`
                 <div class="form-field">
                   <label class="pv-label">Description</label>
                   <textarea
@@ -3794,7 +3850,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                   <label class="pv-label">Location</label>
                   ${this._renderLocationField()}
                 </div>
-              `:N`
+              `:V`
                 <button class="show-more-btn" @click=${()=>this._showMore=!0}>
                   + Add description, location
                 </button>
@@ -3820,14 +3876,14 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
       ${this._renderLocationDropdown()}
       ${this._renderDatePickerDropdown()}
       ${this._renderTimePickerDropdown()}
-    `}_renderDatePicker(){return N`
+    `}_renderDatePicker(){return V`
       <div class="date-picker-wrap">
         <div class="date-display" @click=${this._toggleDatePicker}>
           <ha-icon icon="mdi:calendar"></ha-icon>
           ${this._formatDateDisplay()}
         </div>
       </div>
-    `}_renderDatePickerDropdown(){if(!this._datePickerOpen)return W;const e=this._dateDisplay;if(!e)return W;const t=e.getBoundingClientRect(),i=window.innerHeight-t.bottom-8<330&&t.top>330?t.top-330-4:t.bottom+4;return N`
+    `}_renderDatePickerDropdown(){if(!this._datePickerOpen)return W;const e=this._dateDisplay;if(!e)return W;const t=e.getBoundingClientRect(),i=window.innerHeight-t.bottom-8<330&&t.top>330?t.top-330-4:t.bottom+4;return V`
       <div
         class="date-picker-dropdown"
         style="top: ${i}px; left: ${t.left}px;"
@@ -3846,60 +3902,60 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
         </div>
         <div class="picker-weekdays">
-          ${yt.map(e=>N`<span class="picker-weekday">${e}</span>`)}
+          ${jt.map(e=>V`<span class="picker-weekday">${e}</span>`)}
         </div>
         <div class="picker-days">
-          ${this._getPickerDays().map(e=>{const t=e.getMonth()!==this._pickerMonth,i=this._toDateStr(e)===this._toDateStr(new Date),r=this._toDateStr(e)===this._date;return N`
+          ${this._getPickerDays().map(e=>{const t=e.getMonth()!==this._pickerMonth,i=this._toDateStr(e)===this._toDateStr(new Date),a=this._toDateStr(e)===this._date;return V`
               <button
-                class="picker-day ${t?"other-month":""} ${i?"today":""} ${r?"selected":""}"
+                class="picker-day ${t?"other-month":""} ${i?"today":""} ${a?"selected":""}"
                 @click=${()=>this._selectPickerDay(e)}
               >${e.getDate()}</button>
             `})}
         </div>
       </div>
-    `}_toggleDatePicker(){if(this._activeTimePicker=null,this._datePickerOpen=!this._datePickerOpen,this._datePickerOpen&&this._date){const[e,t]=this._date.split("-").map(Number);this._pickerYear=e,this._pickerMonth=t-1}}_pickerPrevMonth(){this._pickerMonth--,this._pickerMonth<0&&(this._pickerMonth=11,this._pickerYear--)}_pickerNextMonth(){this._pickerMonth++,this._pickerMonth>11&&(this._pickerMonth=0,this._pickerYear++)}_getPickerDays(){const e=new Date(this._pickerYear,this._pickerMonth,1),t=e.getDay(),i=new Date(e);i.setDate(i.getDate()-t);const r=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(t.getDate()+e),r.push(t)}return r}_selectPickerDay(e){this._date=this._toDateStr(e),this._datePickerOpen=!1}_formatTimeForDisplay(e){if(!e)return"Select time";const[t,i]=e.split(":").map(Number);if("24h"===this.timeFormat)return`${String(t).padStart(2,"0")}:${String(i).padStart(2,"0")}`;const r=t>=12?"PM":"AM";return`${t%12||12}:${String(i).padStart(2,"0")} ${r}`}_getTimeSlots(){const e=[];for(let t=0;t<24;t++)for(let i=0;i<60;i+=15)e.push(`${String(t).padStart(2,"0")}:${String(i).padStart(2,"0")}`);return e}_openTimePicker(e){this._datePickerOpen=!1,this._activeTimePicker=this._activeTimePicker===e?null:e,this._activeTimePicker&&this.updateComplete.then(()=>{const e=this.renderRoot.querySelector(".time-picker-dropdown"),t=e?.querySelector(".time-slot.selected");t&&e&&(e.scrollTop=t.offsetTop-e.clientHeight/2+t.clientHeight/2)})}_selectTime(e){if("start"===this._activeTimePicker){if(this._startTime=e,this._endTime<=e){const[t,i]=e.split(":").map(Number),r=(t+1)%24;this._endTime=`${String(r).padStart(2,"0")}:${String(i).padStart(2,"0")}`}}else this._endTime=e;this._activeTimePicker=null}_renderTimePickerDropdown(){if(!this._activeTimePicker)return W;const e="start"===this._activeTimePicker?this._startTimeEl:this._endTimeEl;if(!e)return W;const t=e.getBoundingClientRect(),i="start"===this._activeTimePicker?this._startTime:this._endTime,r=this._getTimeSlots(),a=window.innerHeight-t.bottom-8<280&&t.top>280?t.top-280-4:t.bottom+4;return N`
+    `}_toggleDatePicker(){if(this._activeTimePicker=null,this._datePickerOpen=!this._datePickerOpen,this._datePickerOpen&&this._date){const[e,t]=this._date.split("-").map(Number);this._pickerYear=e,this._pickerMonth=t-1}}_pickerPrevMonth(){this._pickerMonth--,this._pickerMonth<0&&(this._pickerMonth=11,this._pickerYear--)}_pickerNextMonth(){this._pickerMonth++,this._pickerMonth>11&&(this._pickerMonth=0,this._pickerYear++)}_getPickerDays(){const e=new Date(this._pickerYear,this._pickerMonth,1),t=e.getDay(),i=new Date(e);i.setDate(i.getDate()-t);const a=[];for(let e=0;e<42;e++){const t=new Date(i);t.setDate(t.getDate()+e),a.push(t)}return a}_selectPickerDay(e){this._date=this._toDateStr(e),this._datePickerOpen=!1}_formatTimeForDisplay(e){if(!e)return"Select time";const[t,i]=e.split(":").map(Number);if("24h"===this.timeFormat)return`${String(t).padStart(2,"0")}:${String(i).padStart(2,"0")}`;const a=t>=12?"PM":"AM";return`${t%12||12}:${String(i).padStart(2,"0")} ${a}`}_getTimeSlots(){const e=[];for(let t=0;t<24;t++)for(let i=0;i<60;i+=15)e.push(`${String(t).padStart(2,"0")}:${String(i).padStart(2,"0")}`);return e}_openTimePicker(e){this._datePickerOpen=!1,this._activeTimePicker=this._activeTimePicker===e?null:e,this._activeTimePicker&&this.updateComplete.then(()=>{const e=this.renderRoot.querySelector(".time-picker-dropdown"),t=e?.querySelector(".time-slot.selected");t&&e&&(e.scrollTop=t.offsetTop-e.clientHeight/2+t.clientHeight/2)})}_selectTime(e){if("start"===this._activeTimePicker){const t=function(e,t){const i={...e,startTime:t};if(0===e.endDayOffset&&e.endTime<=t){const[e,a]=t.split(":").map(Number);i.endTime=`${dt((e+1)%24)}:${dt(a)}`,i.endDayOffset=e+1>=24?1:0}return i}(this._formDates,e);this._startTime=t.startTime,this._endTime=t.endTime,this._endDayOffset=t.endDayOffset}else this._endTime=e;this._activeTimePicker=null}_renderTimePickerDropdown(){if(!this._activeTimePicker)return W;const e="start"===this._activeTimePicker?this._startTimeEl:this._endTimeEl;if(!e)return W;const t=e.getBoundingClientRect(),i="start"===this._activeTimePicker?this._startTime:this._endTime,a=this._getTimeSlots(),r=window.innerHeight-t.bottom-8<280&&t.top>280?t.top-280-4:t.bottom+4;return V`
       <div
         class="time-picker-dropdown"
-        style="top: ${a}px; left: ${t.left}px; width: ${t.width}px;"
+        style="top: ${r}px; left: ${t.left}px; width: ${t.width}px;"
       >
-        ${r.map(e=>N`
+        ${a.map(e=>V`
           <div
             class="time-slot ${e===i?"selected":""}"
             @click=${()=>this._selectTime(e)}
           >${this._formatTimeForDisplay(e)}</div>
         `)}
       </div>
-    `}_renderLocationField(){return N`
+    `}_resetLocationSearch(){this._locationSearch.cancel(),this._locationSuggestions=[],this._locationLoading=!1}_renderLocationField(){return V`
       <div class="location-wrap">
         <input
           class="pv-input location-input"
           type="text"
-          placeholder="Search for a place or address..."
+          placeholder=${this.locationAutocomplete?"Search for a place or address...":"Add a location"}
           .value=${this._location}
           @input=${this._onLocationInput}
           @focus=${()=>this._locationFocused=!0}
           @blur=${()=>{setTimeout(()=>{this._locationFocused=!1},250)}}
         />
       </div>
-    `}_renderLocationDropdown(){if(!this._locationFocused||!this._locationSuggestions.length&&!this._locationLoading)return W;const e=this._locationInput;if(!e)return W;const t=e.getBoundingClientRect();return N`
+    `}_renderLocationDropdown(){if(!this.locationAutocomplete||!this._locationFocused||!this._locationSuggestions.length&&!this._locationLoading)return W;const e=this._locationInput;if(!e)return W;const t=e.getBoundingClientRect();return V`
       <div
         class="location-suggestions-fixed"
         style="top: ${t.bottom}px; left: ${t.left}px; width: ${t.width}px;"
       >
-        ${this._locationLoading?N`
+        ${this._locationLoading?V`
           <div class="location-loading">Searching...</div>
         `:W}
-        ${this._locationSuggestions.map(e=>N`
-          <div class="location-suggestion" @mousedown=${()=>this._selectLocation(e.display_name)}>
+        ${this._locationSuggestions.map(e=>V`
+          <div class="location-suggestion" @mousedown=${()=>this._selectLocation(e)}>
             <ha-icon icon="mdi:map-marker"></ha-icon>
-            <span>${e.display_name}</span>
+            <span>${e}</span>
           </div>
         `)}
-        ${this._locationSuggestions.length>0?N`
-          <div class="location-powered">Powered by OpenStreetMap</div>
+        ${this._locationSuggestions.length>0?V`
+          <div class="location-powered">Suggestions by Photon &middot; &copy; OpenStreetMap contributors</div>
         `:W}
       </div>
-    `}_onLocationInput(e){const t=e.target.value;if(this._location=t,this._locationDebounceTimer&&clearTimeout(this._locationDebounceTimer),t.trim().length<3)return this._locationSuggestions=[],void(this._locationLoading=!1);this._locationLoading=!0,this._locationDebounceTimer=setTimeout(()=>{this._searchLocation(t.trim())},350)}async _searchLocation(e){try{const t=this.hass?.config?.latitude,i=this.hass?.config?.longitude;let r=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(e)}&format=json&addressdetails=1&limit=20`;if(null!=t&&null!=i){const e=2;r+=`&viewbox=${i-e},${t+e},${i+e},${t-e}`,r+="&bounded=0"}const a=await fetch(r,{headers:{"Accept-Language":"en"}});if(!a.ok)throw new Error("Search failed");const s=await a.json();null!=t&&null!=i&&s.sort((e,r)=>this._haversine(t,i,parseFloat(e.lat),parseFloat(e.lon))-this._haversine(t,i,parseFloat(r.lat),parseFloat(r.lon))),this._locationSuggestions=s.slice(0,5).map(e=>({display_name:e.display_name}))}catch{this._locationSuggestions=[]}finally{this._locationLoading=!1}}_haversine(e,t,i,r){const a=(i-e)*Math.PI/180,s=(r-t)*Math.PI/180,n=Math.sin(a/2)*Math.sin(a/2)+Math.cos(e*Math.PI/180)*Math.cos(i*Math.PI/180)*Math.sin(s/2)*Math.sin(s/2);return 12742*Math.atan2(Math.sqrt(n),Math.sqrt(1-n))}_selectLocation(e){this._location=e,this._locationSuggestions=[],this._locationFocused=!1}_toggleCalendar(e){if("edit"===this.mode&&e===this._organizerEntityId)return;const t=new Set(this._selectedCalendars);t.has(e)?(t.delete(e),e===this._organizerEntityId&&(this._organizerEntityId=t.size>0?[...t][0]:"")):(t.add(e),this._organizerEntityId||(this._organizerEntityId=e)),this._selectedCalendars=t,this._removeGuestsHint=!1}_onOverlayClick(){this._close()}_close(){this._datePickerOpen=!1,this._activeTimePicker=null,this._locationSuggestions=[],this._pv.state.closeDialog()}async _editFallback(e,t,i){const r=this.prefill?.uid,a=this.prefill?.recurrence_id,s=this.prefill?.calendar_entity_id,n=[...t].filter(e=>!i.has(e)),o=[...i].filter(e=>!t.has(e)),l=[...t].filter(e=>i.has(e));if(s&&l.includes(s)&&r){const t={entity_id:s,uid:r,recurrence_id:a},i={...e,entity_id:s};await this._pv.state.doEditEvent(this.hass,t,i)}else s&&o.includes(s)&&r&&await Qe(this.hass,{entity_id:s,uid:r,recurrence_id:a});for(const t of l)if(t!==s){if(r)try{await Qe(this.hass,{entity_id:t,uid:r,recurrence_id:a})}catch{}await Xe(this.hass,{...e,entity_id:t})}for(const t of n)await Xe(this.hass,{...e,entity_id:t});for(const e of o)if(e!==s&&r)try{await Qe(this.hass,{entity_id:e,uid:r,recurrence_id:a})}catch{}await Ze(this.hass),this._pv.state.selectedEvent=null,this._pv.state.closeDialog()}async _save(){if(this._title.trim())if(0!==this._selectedCalendars.size)if(!this._allDay&&this._endTime<=this._startTime)this._error="End time must be after start time";else{this._error="",this._saving=!0;try{const e={summary:this._title.trim()};if(this._allDay){e.start_date=this._date;const t=new Date(this._date);t.setDate(t.getDate()+1),e.end_date=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`}else e.start_date_time=`${this._date}T${this._startTime}:00`,e.end_date_time=`${this._date}T${this._endTime}:00`;this._description.trim()&&(e.description=this._description.trim()),this._location.trim()&&(e.location=this._location.trim());const t=this._selectedCalendars,i=this._originalCalendars;if("edit"===this.mode){const r=this.prefill?.uid,a=i.size>1,s=this._organizerEntityId||this.prefill?.calendar_entity_id||"";if(a&&r&&s){const a=[...t];try{await async function(e,t){const i={type:"planavista/update_event",entity_id:t.entity_id,uid:t.uid};return void 0!==t.summary&&(i.summary=t.summary),void 0!==t.description&&(i.description=t.description),void 0!==t.location&&(i.location=t.location),t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.attendee_entity_ids&&(i.attendee_entity_ids=t.attendee_entity_ids),e.callWS(i)}(this.hass,{entity_id:s,uid:r,summary:e.summary,description:e.description||"",location:e.location||"",start_date_time:e.start_date_time,end_date_time:e.end_date_time,start_date:e.start_date,end_date:e.end_date,attendee_entity_ids:a})}catch(r){console.warn("[PlanaVista] update_event WS failed, falling back to delete+recreate:",r),await this._editFallback(e,t,i)}const n=[...t,...i],o=this.hass;this._pv.state.selectedEvent=null,this._pv.state.closeDialog(),setTimeout(async()=>{try{const e=[...new Set(n)];for(const t of e)await o.callService("homeassistant","update_entity",{entity_id:t});await Ze(o)}catch{}},3e3)}else if(t.size>1&&r){const i=this.prefill?.calendar_entity_id;i&&await Qe(this.hass,{entity_id:i,uid:r,recurrence_id:this.prefill?.recurrence_id});const a=s||[...t][0],n=[...t].filter(e=>e!==a);await Ge(this.hass,{...e,entity_id:a,attendee_entity_ids:n});const o=[...t],l=this.hass;this._pv.state.selectedEvent=null,this._pv.state.closeDialog(),setTimeout(async()=>{try{for(const e of o)await l.callService("homeassistant","update_entity",{entity_id:e});await Ze(l)}catch{}},3e3)}else{const t=this.prefill?.calendar_entity_id;if(t&&r){const i={entity_id:t,uid:r,recurrence_id:this.prefill?.recurrence_id},a={...e,entity_id:t};await this._pv.state.doEditEvent(this.hass,i,a)}}}else{const i=[...t];if(i.length>1){const r=this._organizerEntityId||i[0],a=i.filter(e=>e!==r);await Ge(this.hass,{...e,entity_id:r,attendee_entity_ids:a}),this._pv.state.closeDialog();const s=[...t],n=this.hass;setTimeout(async()=>{try{for(const e of s)await n.callService("homeassistant","update_entity",{entity_id:e});await Ze(n)}catch{}},3e3)}else{const t={...e,entity_id:i[0]};await this._pv.state.doCreateEvent(this.hass,t)}}}catch(e){this._error=`Failed to save event: ${e?.message||"Unknown error"}`,this._saving=!1}}else this._error="Please select at least one calendar";else this._error="Please enter an event title"}};ft.styles=[ge,ye,xe,be,we,n`
+    `}_onLocationInput(e){const t=e.target.value;this._location=t,this._locationSearch.input(t,this.locationAutocomplete)}_selectLocation(e){this._resetLocationSearch(),this._location=e,this._locationFocused=!1}_toggleCalendar(e){if("edit"===this.mode&&e===this._organizerEntityId)return;const t=new Set(this._selectedCalendars);t.has(e)?(t.delete(e),e===this._organizerEntityId&&(this._organizerEntityId=t.size>0?[...t][0]:"")):(t.add(e),this._organizerEntityId||(this._organizerEntityId=e)),this._selectedCalendars=t,this._removeGuestsHint=!1}_onOverlayClick(){this._close()}_close(){this._datePickerOpen=!1,this._activeTimePicker=null,this._resetLocationSearch(),this._pv.state.closeDialog()}async _editFallback(e,t,i){const a=this.prefill?.uid,r=this.prefill?.recurrence_id,n=this.prefill?.calendar_entity_id,s=[...t].filter(e=>!i.has(e)),o=[...i].filter(e=>!t.has(e)),l=[...t].filter(e=>i.has(e));if(n&&l.includes(n)&&a){const t=ft(this.prefill,n,e);await this._pv.state.doEditEvent(this.hass,t.deleteData,t.createData,t.restoreData)}else n&&o.includes(n)&&a&&await tt(this.hass,{entity_id:n,uid:a,recurrence_id:r});for(const t of l)if(t!==n){if(a)try{await tt(this.hass,{entity_id:t,uid:a,recurrence_id:r})}catch{}await Je(this.hass,{...e,entity_id:t})}for(const t of s)await Je(this.hass,{...e,entity_id:t});for(const e of o)if(e!==n&&a)try{await tt(this.hass,{entity_id:e,uid:a,recurrence_id:r})}catch{}await it(this.hass),this._pv.state.selectedEvent=null,this._pv.state.closeDialog()}async _save(){if(!this._title.trim())return void(this._error="Please enter an event title");if(0===this._selectedCalendars.size)return void(this._error="Please select at least one calendar");const e=function(e){if(!Ee(e.date))return"Please pick a date";if(e.allDay)return null;if(!lt.test(e.startTime)||!lt.test(e.endTime))return"Please pick a start and end time";const t=vt(e.date,e.startTime);return vt(ht(e.date,e.endDayOffset),e.endTime)>t?null:"End time must be after start time"}(this._formDates);if(e)this._error=e;else{this._error="",this._saving=!0;try{const e=function(e,t){const i={summary:t.summary.trim(),...mt(e)},a=t.description?.trim(),r=t.location?.trim();return a&&(i.description=a),r&&(i.location=r),i}(this._formDates,{summary:this._title,description:this._description,location:this._location}),t=this._selectedCalendars,i=this._originalCalendars;if("edit"===this.mode){const a=this.prefill?.uid,r=i.size>1,n=this._organizerEntityId||this.prefill?.calendar_entity_id||"";if(r&&a&&n){const r=[...t];try{await async function(e,t){const i={type:"planavista/update_event",entity_id:t.entity_id,uid:t.uid};return void 0!==t.summary&&(i.summary=t.summary),void 0!==t.description&&(i.description=t.description),void 0!==t.location&&(i.location=t.location),t.start_date_time&&(i.start_date_time=t.start_date_time),t.end_date_time&&(i.end_date_time=t.end_date_time),t.start_date&&(i.start_date=t.start_date),t.end_date&&(i.end_date=t.end_date),t.attendee_entity_ids&&(i.attendee_entity_ids=t.attendee_entity_ids),e.callWS(i)}(this.hass,{entity_id:n,uid:a,summary:e.summary,description:e.description||"",location:e.location||"",start_date_time:e.start_date_time,end_date_time:e.end_date_time,start_date:e.start_date,end_date:e.end_date,attendee_entity_ids:r})}catch(a){console.warn("[PlanaVista] update_event WS failed, falling back to delete+recreate:",a),await this._editFallback(e,t,i)}const s=[...t,...i],o=this.hass;this._pv.state.selectedEvent=null,this._pv.state.closeDialog(),setTimeout(async()=>{try{const e=[...new Set(s)];for(const t of e)await o.callService("homeassistant","update_entity",{entity_id:t});await it(o)}catch{}},3e3)}else if(t.size>1&&a){const i=this.prefill,a=i.calendar_entity_id,r=n||[...t][0],s=[...t].filter(e=>e!==r);await xt({remove:()=>tt(this.hass,gt(i,a)),create:()=>et(this.hass,{...e,entity_id:r,attendee_entity_ids:s}),restore:()=>Je(this.hass,ut(i,a))});const o=[...t],l=this.hass;this._pv.state.selectedEvent=null,this._pv.state.closeDialog(),setTimeout(async()=>{try{for(const e of o)await l.callService("homeassistant","update_entity",{entity_id:e});await it(l)}catch{}},3e3)}else{const t=this.prefill?.calendar_entity_id||"",i=ft(this.prefill,t,e);await this._pv.state.doEditEvent(this.hass,i.deleteData,i.createData,i.restoreData)}}else{const i=[...t];if(i.length>1){const a=this._organizerEntityId||i[0],r=i.filter(e=>e!==a);await et(this.hass,{...e,entity_id:a,attendee_entity_ids:r}),this._pv.state.closeDialog();const n=[...t],s=this.hass;setTimeout(async()=>{try{for(const e of n)await s.callService("homeassistant","update_entity",{entity_id:e});await it(s)}catch{}},3e3)}else{const t={...e,entity_id:i[0]};await this._pv.state.doCreateEvent(this.hass,t)}}}catch(e){this._error=e instanceof yt?e.message:`Failed to save event: ${e?.message||"Unknown error"}`,this._saving=!1}}}}Ut.styles=[ge,fe,xe,be,we,s`
       :host { display: block; }
 
       .form-grid {
@@ -4024,6 +4080,12 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
       .show-more-btn:hover {
         color: var(--pv-accent);
+      }
+
+      .ends-hint {
+        font-size: 0.8125rem;
+        color: var(--pv-text-secondary);
+        padding-top: 0.25rem;
       }
 
       .error-msg {
@@ -4350,21 +4412,26 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         from { transform: translateY(100%); }
         to { transform: translateY(0); }
       }
-    `],e([he({attribute:!1})],ft.prototype,"hass",void 0),e([he({type:Array})],ft.prototype,"calendars",void 0),e([he({type:Boolean})],ft.prototype,"open",void 0),e([he({type:String})],ft.prototype,"mode",void 0),e([he({type:Object})],ft.prototype,"prefill",void 0),e([he({attribute:!1})],ft.prototype,"timeFormat",void 0),e([ve()],ft.prototype,"_title",void 0),e([ve()],ft.prototype,"_selectedCalendars",void 0),e([ve()],ft.prototype,"_originalCalendars",void 0),e([ve()],ft.prototype,"_organizerEntityId",void 0),e([ve()],ft.prototype,"_date",void 0),e([ve()],ft.prototype,"_startTime",void 0),e([ve()],ft.prototype,"_endTime",void 0),e([ve()],ft.prototype,"_allDay",void 0),e([ve()],ft.prototype,"_description",void 0),e([ve()],ft.prototype,"_location",void 0),e([ve()],ft.prototype,"_showMore",void 0),e([ve()],ft.prototype,"_saving",void 0),e([ve()],ft.prototype,"_error",void 0),e([ve()],ft.prototype,"_removeGuestsHint",void 0),e([ve()],ft.prototype,"_datePickerOpen",void 0),e([ve()],ft.prototype,"_pickerMonth",void 0),e([ve()],ft.prototype,"_pickerYear",void 0),e([ve()],ft.prototype,"_activeTimePicker",void 0),e([ve()],ft.prototype,"_locationSuggestions",void 0),e([ve()],ft.prototype,"_locationLoading",void 0),e([ve()],ft.prototype,"_locationFocused",void 0),e([me("#title-input")],ft.prototype,"_titleInput",void 0),e([me(".location-input")],ft.prototype,"_locationInput",void 0),e([me(".date-display")],ft.prototype,"_dateDisplay",void 0),e([me(".start-time-display")],ft.prototype,"_startTimeEl",void 0),e([me(".end-time-display")],ft.prototype,"_endTimeEl",void 0),ft=e([de("pv-event-create-dialog")],ft);let bt=class extends oe{constructor(){super(...arguments),this._currentTime=new Date,this._filterOpen=!1,this._wizardOpen=!1,this._onboardingDone=!1,this._settingsOpen=!1,this._refreshing=!1,this._previewOverrides=null,this._pv=new at(this),this._clockTimer=null,this._touchStartX=0,this._filterCloseHandler=e=>this._onFilterClickOutside(e)}connectedCallback(){super.connectedCallback(),this._clockTimer=setInterval(()=>{this._currentTime=new Date},1e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockTimer&&(clearInterval(this._clockTimer),this._clockTimer=null),document.removeEventListener("click",this._filterCloseHandler)}setConfig(e){this._config={entity:"sensor.planavista_config",...e};const t=e?.view||e?.default_view;t&&this._pv.state.setView(t)}firstUpdated(){if(!this._config?.view&&!this._config?.default_view){const e=this.hass?Ke(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),!this._settingsOpen&&(e.has("hass")||e.has("_config")||e.has("_settingsOpen"))){const e=Ke(this.hass,this._config?.entity);We(this,qe(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}}_getData(){return Ke(this.hass,this._config?.entity)}_getWeatherEntity(){const e=this._getData(),t=this._config?.weather_entity||e?.display?.weather_entity;return t?this.hass?.states?.[t]:null}_getWeatherEntityId(){const e=this._getData();return this._config?.weather_entity||e?.display?.weather_entity||null}_resolveDisplay(){const e=this._getData(),t=e?.display,i=this._config;return{time_format:i?.time_format||t?.time_format||"12h",weather_entity:i?.weather_entity||t?.weather_entity||"",first_day:i?.first_day||t?.first_day||"sunday",default_view:i?.default_view||i?.view||t?.default_view||"week",theme:i?.theme||t?.theme||"light",theme_overrides:t?.theme_overrides}}_getVisibleCalendars(){const e=this._getData(),t=(e?.calendars||[]).filter(e=>!1!==e.visible),i=this._config?.calendars;return i&&Array.isArray(i)&&i.length>0?t.filter(e=>i.includes(e.entity_id)):t}_onOnboardingComplete(){this._wizardOpen=!1,this._onboardingDone=!0,Ye(this)}async _refreshCalendars(){if(!this._refreshing){this._refreshing=!0;try{const e=Ke(this.hass);if(e?.calendars)for(const t of e.calendars)t.entity_id&&await this.hass.callService("homeassistant","update_entity",{entity_id:t.entity_id});await this.hass.callService("homeassistant","update_entity",{entity_id:"sensor.planavista_config"})}catch{}setTimeout(()=>{this._refreshing=!1},800)}}_openSettings(){this._settingsOpen=!0}_onSettingsSave(){this._settingsOpen=!1,this._previewOverrides=null,Ye(this)}_onSettingsClose(){this._settingsOpen=!1,this._previewOverrides=null,Ye(this);const e=Ke(this.hass,this._config?.entity);We(this,qe(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}_onThemePreview(e){const{theme:t,overrides:i}=e.detail,r=qe(t);Ye(this),We(this,r,i),this._previewOverrides=i}_showWeatherDetails(){const e=this._getWeatherEntityId();if(e){const t=new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0});this.dispatchEvent(t)}}render(){if(!this._config||!this.hass)return W;const e=this._getData();if(!e)return N`
+    `],e([pe({attribute:!1})],Ut.prototype,"hass",void 0),e([pe({type:Array})],Ut.prototype,"calendars",void 0),e([pe({type:Boolean})],Ut.prototype,"open",void 0),e([pe({type:String})],Ut.prototype,"mode",void 0),e([pe({type:Object})],Ut.prototype,"prefill",void 0),e([pe({attribute:!1})],Ut.prototype,"timeFormat",void 0),e([pe({attribute:!1})],Ut.prototype,"locationAutocomplete",void 0),e([he()],Ut.prototype,"_title",void 0),e([he()],Ut.prototype,"_selectedCalendars",void 0),e([he()],Ut.prototype,"_originalCalendars",void 0),e([he()],Ut.prototype,"_organizerEntityId",void 0),e([he()],Ut.prototype,"_date",void 0),e([he()],Ut.prototype,"_startTime",void 0),e([he()],Ut.prototype,"_endTime",void 0),e([he()],Ut.prototype,"_allDay",void 0),e([he()],Ut.prototype,"_spanDays",void 0),e([he()],Ut.prototype,"_endDayOffset",void 0),e([he()],Ut.prototype,"_description",void 0),e([he()],Ut.prototype,"_location",void 0),e([he()],Ut.prototype,"_showMore",void 0),e([he()],Ut.prototype,"_saving",void 0),e([he()],Ut.prototype,"_error",void 0),e([he()],Ut.prototype,"_removeGuestsHint",void 0),e([he()],Ut.prototype,"_datePickerOpen",void 0),e([he()],Ut.prototype,"_pickerMonth",void 0),e([he()],Ut.prototype,"_pickerYear",void 0),e([he()],Ut.prototype,"_activeTimePicker",void 0),e([he()],Ut.prototype,"_locationSuggestions",void 0),e([he()],Ut.prototype,"_locationLoading",void 0),e([he()],Ut.prototype,"_locationFocused",void 0),e([ve("#title-input")],Ut.prototype,"_titleInput",void 0),e([ve(".location-input")],Ut.prototype,"_locationInput",void 0),e([ve(".date-display")],Ut.prototype,"_dateDisplay",void 0),e([ve(".start-time-display")],Ut.prototype,"_startTimeEl",void 0),e([ve(".end-time-display")],Ut.prototype,"_endTimeEl",void 0),me("pv-event-create-dialog",Ut);class Nt extends oe{constructor(){super(...arguments),this.timeFormat="12h",this._minute=Math.floor(Date.now()/6e4),this._timer=null}createRenderRoot(){return this}connectedCallback(){super.connectedCallback(),this._minute=Math.floor(Date.now()/6e4),this._timer=setInterval(()=>{const e=Math.floor(Date.now()/6e4);e!==this._minute&&(this._minute=e)},1e3)}disconnectedCallback(){super.disconnectedCallback(),this._timer&&(clearInterval(this._timer),this._timer=null)}render(){const{time:e,ampm:t,date:i}=function(e,t){const i=String(e.getMinutes()).padStart(2,"0"),a=e.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return"24h"===t?{time:`${e.getHours()}:${i}`,ampm:"",date:a}:{time:`${e.getHours()%12||12}:${i}`,ampm:e.getHours()>=12?"PM":"AM",date:a}}(new Date,this.timeFormat);return V`
+      <div class="pvc-header-date">${i}</div>
+      <div class="pvc-header-time">
+        <span class="pvc-time-display">${e}</span>${t?V`<span class="pvc-time-ampm">${t}</span>`:W}
+      </div>
+    `}}e([pe({attribute:!1})],Nt.prototype,"timeFormat",void 0),e([he()],Nt.prototype,"_minute",void 0),me("pv-clock",Nt);class Vt extends oe{constructor(){super(...arguments),this._tick=Math.floor(Date.now()/6e4),this._filterOpen=!1,this._wizardOpen=!1,this._onboardingDone=!1,this._settingsOpen=!1,this._refreshing=!1,this._previewOverrides=null,this._pv=new wt(this),this._tickTimer=null,this._touchStart=null,this._filterCloseHandler=e=>this._onFilterClickOutside(e),this._derive=function(e){let t,i=null;return(...a)=>(i&&i.length===a.length&&a.every((e,t)=>e===i[t])||(t=e(...a),i=a),t)}((e,t,i)=>{const a=this.hass?at(this.hass,t?.entity):null,r=a?.display,n={time_format:t?.time_format||r?.time_format||"12h",weather_entity:t?.weather_entity||r?.weather_entity||"",first_day:t?.first_day||r?.first_day||"sunday",default_view:t?.default_view||t?.view||r?.default_view||"week",theme:t?.theme||r?.theme||"light",theme_overrides:r?.theme_overrides,location_autocomplete:!0===r?.location_autocomplete},s=(a?.calendars||[]).filter(e=>!1!==e.visible),o=t?.calendars,l=Array.isArray(o)&&o.length>0?s.filter(e=>o.includes(e.entity_id)):s,d=a?.events||[],c=new Map;for(const e of d){const t=e.uid;if(!t)continue;c.has(t)||c.set(t,[]);const i=c.get(t),a=e.calendar_entity_id;if(!i.some(e=>e.entity_id===a)){const t=l.find(e=>e.entity_id===a);i.push({entity_id:a,calendar_name:e.calendar_name||t?.display_name||"",calendar_color:e.calendar_color||t?.color||"",person_entity:t?.person_entity||""})}}return{data:a,calendars:l,display:n,visibleEvents:Ne(d,i),sharedEventMap:c}})}connectedCallback(){super.connectedCallback(),this._tick=Math.floor(Date.now()/6e4),this._scheduleTick()}disconnectedCallback(){super.disconnectedCallback(),this._tickTimer&&(clearTimeout(this._tickTimer),this._tickTimer=null),document.removeEventListener("click",this._filterCloseHandler)}_scheduleTick(){this._tickTimer&&clearTimeout(this._tickTimer),this._tickTimer=setTimeout(()=>{this._tick=Math.floor(Date.now()/6e4),this._scheduleTick()},6e4-Date.now()%6e4+50)}shouldUpdate(e){return 1!==e.size||!e.has("hass")||(t=e.get("hass"),i=this.hass,a=this._watchedEntityIds(),t&&i?a.some(e=>t.states[e]!==i.states[e]):t!==i);var t,i,a}_watchedEntityIds(){const{calendars:e,display:t}=this._derived(),i=[this._config?.entity||"sensor.planavista_config"];t.weather_entity&&i.push(t.weather_entity);for(const t of e)t.person_entity&&i.push(t.person_entity);return i}setConfig(e){this._config={entity:"sensor.planavista_config",...e};const t=e?.view||e?.default_view;t&&this._pv.state.setView(t)}firstUpdated(){if(!this._config?.view&&!this._config?.default_view){const e=this.hass?at(this.hass,this._config?.entity):null;e?.display?.default_view&&this._pv.state.setView(e.display.default_view)}}updated(e){if(super.updated(e),!this._settingsOpen&&(e.has("hass")||e.has("_config")||e.has("_settingsOpen"))){const e=at(this.hass,this._config?.entity);Qe(this,Ke(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}}_derived(){const e=this._config?.entity||"sensor.planavista_config";return this._derive(this.hass?.states?.[e],this._config,this._pv.state.hiddenCalendars)}_getData(){return this._derived().data}_getWeatherEntityId(){return this._derived().display.weather_entity||null}_getWeatherEntity(){const e=this._getWeatherEntityId();return e?this.hass?.states?.[e]:null}_onOnboardingComplete(){this._wizardOpen=!1,this._onboardingDone=!0,Ze(this)}async _refreshCalendars(){if(!this._refreshing){this._refreshing=!0;try{const e=at(this.hass);if(e?.calendars)for(const t of e.calendars)t.entity_id&&await this.hass.callService("homeassistant","update_entity",{entity_id:t.entity_id});await this.hass.callService("homeassistant","update_entity",{entity_id:"sensor.planavista_config"})}catch{}setTimeout(()=>{this._refreshing=!1},800)}}_openSettings(){this._settingsOpen=!0}_onSettingsSave(){this._settingsOpen=!1,this._previewOverrides=null,Ze(this)}_onSettingsClose(){this._settingsOpen=!1,this._previewOverrides=null,Ze(this);const e=at(this.hass,this._config?.entity);Qe(this,Ke(this._config?.theme,e?.display?.theme),e?.display?.theme_overrides||null)}_onThemePreview(e){const{theme:t,overrides:i}=e.detail,a=Ke(t);Ze(this),Qe(this,a,i),this._previewOverrides=i}_showWeatherDetails(){const e=this._getWeatherEntityId();if(e){const t=new CustomEvent("hass-more-info",{detail:{entityId:e},bubbles:!0,composed:!0});this.dispatchEvent(t)}}render(){if(!this._config||!this.hass)return W;const{data:e,calendars:t,display:i,visibleEvents:a}=this._derived();if(!e)return V`
         <ha-card>
           <div class="pvc-empty">
             <p>PlanaVista entity not found</p>
             <p style="font-size: 0.8rem;">Check that the PlanaVista integration is configured.</p>
           </div>
         </ha-card>
-      `;if(!1===e.onboarding_complete&&!this._onboardingDone)return this._wizardOpen?N`
+      `;if(!1===e.onboarding_complete&&!this._onboardingDone)return this._wizardOpen?V`
           <ha-card>
             <pv-onboarding-wizard
               .hass=${this.hass}
               @onboarding-complete=${this._onOnboardingComplete}
             ></pv-onboarding-wizard>
           </ha-card>
-        `:N`
+        `:V`
         <ha-card>
           <div class="pvc-setup-pending"
             role="button"
@@ -4382,40 +4449,42 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             <p class="pvc-setup-hint">Tap to begin setup</p>
           </div>
         </ha-card>
-      `;const t=this._pv.state,i=t.currentView;t.currentDate;const r=this._getVisibleCalendars(),a=e.events||[],s=this._resolveDisplay(),n=!!this._config?.hide_header,o=He(a,t.hiddenCalendars);return N`
+      `;const r=this._pv.state,n=r.currentView;r.currentDate;const s=!!this._config?.hide_header;return V`
       <ha-card>
-        ${n?W:this._renderHeader(s)}
-        ${this._renderToolbar(r,i)}
+        ${s?W:this._renderHeader(i)}
+        ${this._renderToolbar(t,n)}
         <div class="pvc-body"
           @touchstart=${this._onTouchStart}
           @touchend=${this._onTouchEnd}
+          @touchcancel=${this._onTouchCancel}
           @event-click=${this._onEventClick}
           @day-click=${this._onDayClick}
           @create-event=${this._onCreateEvent}
         >
-          ${this._renderView(i,o,r,s)}
+          ${this._renderView(n,a,t,i)}
         </div>
 
-        ${t.selectedEvent?N`
+        ${r.selectedEvent?V`
           <pv-event-popup
             .hass=${this.hass}
-            .event=${t.selectedEvent}
-            .timeFormat=${s?.time_format||"12h"}
+            .event=${r.selectedEvent}
+            .timeFormat=${i?.time_format||"12h"}
           ></pv-event-popup>
         `:W}
 
-        ${t.dialogOpen?N`
+        ${r.dialogOpen?V`
           <pv-event-create-dialog
             .hass=${this.hass}
-            .calendars=${r}
+            .calendars=${t}
             .open=${!0}
-            .mode=${t.dialogOpen}
-            .prefill=${t.createPrefill}
-            .timeFormat=${s?.time_format||"12h"}
+            .mode=${r.dialogOpen}
+            .prefill=${r.createPrefill}
+            .timeFormat=${i?.time_format||"12h"}
+            .locationAutocomplete=${!0===i.location_autocomplete}
           ></pv-event-create-dialog>
         `:W}
 
-        ${this._settingsOpen?N`
+        ${this._settingsOpen?V`
           <div class="pvc-settings-overlay">
             <pv-onboarding-wizard
               .hass=${this.hass}
@@ -4428,13 +4497,13 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
         `:W}
       </ha-card>
-    `}_renderHeader(e){const t=this._config?.hide_weather?null:this._getWeatherEntity(),i=e?.time_format||"12h",r=this._currentTime,a=r.getHours(),s=String(r.getMinutes()).padStart(2,"0");let n;n="24h"===i?N`<span class="pvc-time-display">${a}:${s}</span>`:N`<span class="pvc-time-display">${a%12||12}:${s}</span><span class="pvc-time-ampm">${a>=12?"PM":"AM"}</span>`;const o=r.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});return N`
+    `}_renderHeader(e){const t=this._config?.hide_weather?null:this._getWeatherEntity();return V`
       <div class="pvc-header">
-        ${t?N`
+        ${t?V`
           <div class="pvc-weather" @click=${this._showWeatherDetails}
                title="Click for weather details">
             <div class="pvc-weather-icon">
-              ${st(t.state||"cloudy",48)}
+              ${kt(t.state||"cloudy",48)}
             </div>
             <div class="pvc-weather-info">
               <span class="pvc-weather-temp">
@@ -4445,13 +4514,11 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
               </span>
             </div>
           </div>
-        `:N`<div class="pvc-no-weather"></div>`}
+        `:V`<div class="pvc-no-weather"></div>`}
 
-        <div class="pvc-header-date">${o}</div>
-
-        <div class="pvc-header-time">${n}</div>
+        <pv-clock .timeFormat=${e.time_format||"12h"}></pv-clock>
       </div>
-    `}_getTempUnit(e){return(e.attributes.temperature_unit||"").includes("C")?"C":"F"}_renderToolbar(e,t){const i=e.filter(e=>this._pv.state.hiddenCalendars.has(e.entity_id)).length;return N`
+    `}_getTempUnit(e){return(e.attributes.temperature_unit||"").includes("C")?"C":"F"}_renderToolbar(e,t){const i=e.filter(e=>this._pv.state.hiddenCalendars.has(e.entity_id)).length;return V`
       <div class="pvc-toolbar">
         <div class="pvc-filter-wrap">
           <button
@@ -4460,25 +4527,25 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           >
             <ha-icon icon="mdi:filter-variant" style="--mdc-icon-size: 20px"></ha-icon>
             Calendars
-            ${i>0?N`<span class="pvc-filter-badge">${e.length-i}/${e.length}</span>`:W}
+            ${i>0?V`<span class="pvc-filter-badge">${e.length-i}/${e.length}</span>`:W}
           </button>
 
-          ${this._filterOpen?N`
+          ${this._filterOpen?V`
             <div class="pvc-filter-panel">
-              ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?et(this.hass,e.person_entity):null,r=e.display_name||(e.person_entity?tt(this.hass,e.person_entity):e.entity_id),a=(r||"?")[0].toUpperCase();return N`
+              ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?nt(this.hass,e.person_entity):null,a=e.display_name||(e.person_entity?st(this.hass,e.person_entity):e.entity_id),r=(a||"?")[0].toUpperCase();return V`
                   <div
                     class="pvc-filter-item ${t?"active":""}"
                     style="--item-color: ${e.color}"
                     @click=${()=>this._pv.state.toggleCalendar(e.entity_id)}
                   >
                     <div class="pvc-filter-check">
-                      ${t?N`<span class="pvc-filter-check-icon">✓</span>`:W}
+                      ${t?V`<span class="pvc-filter-check-icon">✓</span>`:W}
                     </div>
                     <div
                       class="pvc-filter-avatar"
                       style="${i?`background-image: url(${i}); background-color: ${e.color}`:`background: ${e.color}`}"
-                    >${i?"":a}</div>
-                    <span class="pvc-filter-name">${r}</span>
+                    >${i?"":r}</div>
+                    <span class="pvc-filter-name">${a}</span>
                   </div>
                 `})}
             </div>
@@ -4487,7 +4554,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
 
         <!-- Mobile inline calendar chips (shown on xs/sm via CSS) -->
         <div class="pvc-cal-strip">
-          ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?et(this.hass,e.person_entity):null,r=e.display_name||(e.person_entity?tt(this.hass,e.person_entity):e.entity_id),a=(r||"?")[0].toUpperCase();return N`
+          ${e.map(e=>{const t=!this._pv.state.hiddenCalendars.has(e.entity_id),i=e.person_entity?nt(this.hass,e.person_entity):null,a=e.display_name||(e.person_entity?st(this.hass,e.person_entity):e.entity_id),r=(a||"?")[0].toUpperCase();return V`
               <button
                 class="pvc-cal-chip ${t?"active":""}"
                 style="--chip-color: ${e.color}"
@@ -4496,8 +4563,8 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
                 <div
                   class="pvc-cal-chip-avatar"
                   style="${i?`background-image: url(${i}); background-color: ${e.color}`:`background: ${e.color}`}"
-                >${i?"":a}</div>
-                <span class="pvc-cal-chip-name">${r}</span>
+                >${i?"":r}</div>
+                <span class="pvc-cal-chip-name">${a}</span>
               </button>
             `})}
         </div>
@@ -4520,7 +4587,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           </div>
 
           <div class="pvc-view-tabs">
-            ${["day","week","month","agenda"].map(e=>N`
+            ${["day","week","month","agenda"].map(e=>V`
               <button
                 class="pvc-view-tab ${t===e?"active":""}"
                 @click=${()=>this._pv.state.setView(e)}
@@ -4534,7 +4601,7 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
             ?disabled=${this._refreshing}>
             <ha-icon icon="mdi:autorenew"></ha-icon>
           </button>
-          ${this.hass.user?.is_admin?N`
+          ${this.hass.user?.is_admin?V`
             <button class="pvc-settings-btn" @click=${this._openSettings}
               title="Settings" aria-label="Open settings">
               <ha-icon icon="mdi:cog"></ha-icon>
@@ -4542,55 +4609,59 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
           `:W}
         </div>
       </div>
-    `}_toggleFilterDropdown(e){e.stopPropagation(),this._filterOpen=!this._filterOpen,this._filterOpen?requestAnimationFrame(()=>{document.addEventListener("click",this._filterCloseHandler)}):document.removeEventListener("click",this._filterCloseHandler)}_onFilterClickOutside(e){const t=e.composedPath(),i=this.shadowRoot?.querySelector(".pvc-filter-panel"),r=this.shadowRoot?.querySelector(".pvc-filter-btn");i&&!t.includes(i)&&r&&!t.includes(r)&&(this._filterOpen=!1,document.removeEventListener("click",this._filterCloseHandler))}_renderView(e,t,i,r){const a=r?.time_format||"12h",s=r?.first_day||"sunday",n=this._pv.state.currentDate,o=this._pv.state.hiddenCalendars,l=this._previewOverrides||r?.theme_overrides,d=l?.avatar_border||"primary",c="stripes"===(l?.event_style||"stripes");switch(e){case"day":{const e=new Map,r=Ke(this.hass),s=r?.events||[];for(const t of s){const r=t.uid;if(!r)continue;e.has(r)||e.set(r,[]);const a=e.get(r),s=t.calendar_entity_id;if(!a.some(e=>e.entity_id===s)){const e=i.find(e=>e.entity_id===s);a.push({entity_id:s,calendar_name:t.calendar_name||e?.display_name||"",calendar_color:t.calendar_color||e?.color||"",person_entity:e?.person_entity||""})}}const l=Math.floor(this._currentTime.getTime()/6e4);return N`<pv-view-day
+    `}_toggleFilterDropdown(e){e.stopPropagation(),this._filterOpen=!this._filterOpen,this._filterOpen?requestAnimationFrame(()=>{document.addEventListener("click",this._filterCloseHandler)}):document.removeEventListener("click",this._filterCloseHandler)}_onFilterClickOutside(e){const t=e.composedPath(),i=this.shadowRoot?.querySelector(".pvc-filter-panel"),a=this.shadowRoot?.querySelector(".pvc-filter-btn");i&&!t.includes(i)&&a&&!t.includes(a)&&(this._filterOpen=!1,document.removeEventListener("click",this._filterCloseHandler))}_renderView(e,t,i,a){const r=a?.time_format||"12h",n=a?.first_day||"sunday",s=this._pv.state.currentDate,o=this._pv.state.hiddenCalendars,l=this._previewOverrides||a?.theme_overrides,d=l?.avatar_border||"primary",c="stripes"===(l?.event_style||"stripes");switch(e){case"day":{const{sharedEventMap:e}=this._derived(),a=this._tick;return V`<pv-view-day
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${n}
+          .currentDate=${s}
           .hiddenCalendars=${o}
-          .timeFormat=${a}
+          .timeFormat=${r}
           .hideColumnHeaders=${!1}
           .avatarBorderMode=${d}
           .sharedEventMap=${e}
-          .tick=${l}
-        ></pv-view-day>`}case"week":{const e=Math.floor(this._currentTime.getTime()/6e4);return N`<pv-view-week
+          .tick=${a}
+        ></pv-view-day>`}case"week":{const e=this._tick;return V`<pv-view-week
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${n}
+          .currentDate=${s}
           .hiddenCalendars=${o}
-          .timeFormat=${a}
-          .firstDay=${s}
-          .weatherEntity=${r?.weather_entity||""}
+          .timeFormat=${r}
+          .firstDay=${n}
+          .weatherEntity=${a?.weather_entity||""}
           .showStripes=${c}
           .tick=${e}
-        ></pv-view-week>`}case"month":{const e=Math.floor(this._currentTime.getTime()/6e4);return N`<pv-view-month
+        ></pv-view-week>`}case"month":{const e=this._tick;return V`<pv-view-month
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${n}
+          .currentDate=${s}
           .hiddenCalendars=${o}
-          .firstDay=${s}
-          .timeFormat=${a}
+          .firstDay=${n}
+          .timeFormat=${r}
           .showStripes=${c}
           .tick=${e}
-        ></pv-view-month>`}case"agenda":{const e=Math.floor(this._currentTime.getTime()/6e4);return N`<pv-view-agenda
+        ></pv-view-month>`}case"agenda":{const e=this._tick;return V`<pv-view-agenda
           .hass=${this.hass}
           .events=${t}
           .calendars=${i}
-          .currentDate=${n}
+          .currentDate=${s}
           .hiddenCalendars=${o}
-          .timeFormat=${a}
-          .weatherEntity=${r?.weather_entity||""}
+          .timeFormat=${r}
+          .weatherEntity=${a?.weather_entity||""}
           .showStripes=${c}
           .tick=${e}
-        ></pv-view-agenda>`}default:return W}}_onEventClick(e){const t=e.detail.event;if(t.uid){const e=Ke(this.hass),i=(e?.events||[]).filter(e=>e.uid===t.uid&&""!==e.uid),r=new Set,a=i.filter(e=>!r.has(e.calendar_entity_id)&&(r.add(e.calendar_entity_id),!0));if(a.length>1){const e={...t,shared_calendars:a.map(e=>({entity_id:e.calendar_entity_id,calendar_name:e.calendar_name,calendar_color:e.calendar_color}))};return void this._pv.state.selectEvent(e)}}this._pv.state.selectEvent(t)}_onCreateEvent(e){const t=e.detail?.date,i={};if(t){const e=t.getFullYear(),r=String(t.getMonth()+1).padStart(2,"0"),a=String(t.getDate()).padStart(2,"0");i.start=`${e}-${r}-${a}T09:00:00`,i.end=`${e}-${r}-${a}T10:00:00`}this._pv.state.openCreateDialog(i)}_onDayClick(e){this._pv.state.setDate(e.detail.date),this._pv.state.setView("day")}_onTouchStart(e){this._touchStartX=e.touches[0].clientX}_onTouchEnd(e){const t=e.changedTouches[0].clientX-this._touchStartX;Math.abs(t)>50&&this._pv.state.navigateDate(t>0?"prev":"next")}static getConfigElement(){return document.createElement("planavista-calendar-card-editor")}static getStubConfig(){return{entity:"sensor.planavista_config"}}getCardSize(){return 10}};bt.styles=[ge,ye,ue,we,n`
+        ></pv-view-agenda>`}default:return W}}_onEventClick(e){const t=e.detail.event;if(t.uid){const e=at(this.hass),i=(e?.events||[]).filter(e=>e.uid===t.uid&&""!==e.uid),a=new Set,r=i.filter(e=>!a.has(e.calendar_entity_id)&&(a.add(e.calendar_entity_id),!0));if(r.length>1){const e={...t,shared_calendars:r.map(e=>({entity_id:e.calendar_entity_id,calendar_name:e.calendar_name,calendar_color:e.calendar_color}))};return void this._pv.state.selectEvent(e)}}this._pv.state.selectEvent(t)}_onCreateEvent(e){const t=e.detail?.date,i={};if(t){const e=t.getFullYear(),a=String(t.getMonth()+1).padStart(2,"0"),r=String(t.getDate()).padStart(2,"0");i.start=`${e}-${a}-${r}T09:00:00`,i.end=`${e}-${a}-${r}T10:00:00`}this._pv.state.openCreateDialog(i)}_onDayClick(e){this._pv.state.setDate(e.detail.date),this._pv.state.setView("day")}_onTouchStart(e){this._touchStart=1===e.touches.length?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null}_onTouchEnd(e){const t=this._touchStart;if(this._touchStart=null,!t||e.touches.length>0||1!==e.changedTouches.length)return;const i=e.changedTouches[0],a=(r=i.clientX-t.x,n=i.clientY-t.y,Math.abs(r)<=50||Math.abs(r)<=2*Math.abs(n)?null:r>0?"prev":"next");var r,n;a&&this._pv.state.navigateDate(a)}_onTouchCancel(){this._touchStart=null}static getConfigElement(){return document.createElement("planavista-calendar-card-editor")}static getStubConfig(){return{entity:"sensor.planavista_config"}}getCardSize(){return 10}}Vt.styles=[ge,fe,ue,we,s`
       :host {
         display: block;
         height: calc(100vh - var(--header-height, 56px));
         overflow: hidden;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
+      }
+
+      pv-clock {
+        display: contents;
       }
 
       ha-card {
@@ -5288,4 +5359,4 @@ function e(e,t,i,r){var a,s=arguments.length,n=s<3?t:null===r?r=Object.getOwnPro
         .pvc-view-tab { padding: 10px 20px; font-size: 1.0625rem; min-height: 52px; }
         .pvc-settings-btn { width: 56px; height: 56px; --mdc-icon-size: 28px; }
       }
-    `],e([he({attribute:!1})],bt.prototype,"hass",void 0),e([ve()],bt.prototype,"_config",void 0),e([ve()],bt.prototype,"_currentTime",void 0),e([ve()],bt.prototype,"_filterOpen",void 0),e([ve()],bt.prototype,"_wizardOpen",void 0),e([ve()],bt.prototype,"_onboardingDone",void 0),e([ve()],bt.prototype,"_settingsOpen",void 0),e([ve()],bt.prototype,"_refreshing",void 0),e([ve()],bt.prototype,"_previewOverrides",void 0),bt=e([de("planavista-calendar-card")],bt),window.customCards=window.customCards||[],window.customCards.push({type:"planavista-calendar-card",name:"PlanaVista",description:"All-in-one calendar with clock, weather, toggles, and views",preview:!0}),console.info("%c PLANAVISTA %c v1.0.0 ","color: white; background: #6366F1; font-weight: bold; border-radius: 4px 0 0 4px; padding: 2px 6px;","color: #6366F1; background: #EEF2FF; font-weight: bold; border-radius: 0 4px 4px 0; padding: 2px 6px;");
+    `],e([pe({attribute:!1})],Vt.prototype,"hass",void 0),e([he()],Vt.prototype,"_config",void 0),e([he()],Vt.prototype,"_tick",void 0),e([he()],Vt.prototype,"_filterOpen",void 0),e([he()],Vt.prototype,"_wizardOpen",void 0),e([he()],Vt.prototype,"_onboardingDone",void 0),e([he()],Vt.prototype,"_settingsOpen",void 0),e([he()],Vt.prototype,"_refreshing",void 0),e([he()],Vt.prototype,"_previewOverrides",void 0),me("planavista-calendar-card",Vt),window.customCards=window.customCards||[],window.customCards.some(e=>"planavista-calendar-card"===e.type)||window.customCards.push({type:"planavista-calendar-card",name:"PlanaVista",description:"All-in-one calendar with clock, weather, toggles, and views",preview:!0}),console.info("%c PLANAVISTA %c v1.0.0 ","color: white; background: #6366F1; font-weight: bold; border-radius: 4px 0 0 4px; padding: 2px 6px;","color: #6366F1; background: #EEF2FF; font-weight: bold; border-radius: 0 4px 4px 0; padding: 2px 6px;");
