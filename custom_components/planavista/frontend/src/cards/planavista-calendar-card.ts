@@ -2,15 +2,15 @@ import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig, ThemeOverrides } from '../types';
+import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
 import { applyTheme, resolveTheme, clearThemeCache, applyThemeWithOverrides } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
-import { formatDate } from '../utils/date-utils';
 import { getPlanaVistaData, getPersonAvatar, getPersonName } from '../utils/ha-utils';
 import { filterVisibleEvents } from '../utils/event-utils';
 import { weatherIcon } from '../utils/weather-icons';
 import { swipeDirection } from '../utils/gestures';
+import { memoizeOne, statesChanged } from '../utils/render-cache';
 
 // Import card editor (visual editor instead of YAML panel)
 import './planavista-calendar-card-editor';
@@ -23,11 +23,30 @@ import '../components/view-agenda';
 import '../components/event-popup';
 import '../components/event-create-dialog';
 import '../components/onboarding-wizard';
+import '../components/pv-clock';
+
+/** A calendar that shares an event (same UID), for Day-view participant avatars. */
+interface SharedParticipant {
+  entity_id: string;
+  calendar_name: string;
+  calendar_color: string;
+  person_entity: string;
+}
+
+/** What render() derives from the config sensor (see _derive). */
+interface CardDerived {
+  data: PlanaVistaData | null;
+  calendars: CalendarConfig[];
+  display: DisplayConfig;
+  visibleEvents: CalendarEvent[];
+  sharedEventMap: Map<string, SharedParticipant[]>;
+}
 
 export class PlanaVistaCalendarCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config: any;
-  @state() private _currentTime = new Date();
+  /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
+  @state() private _tick = Math.floor(Date.now() / 60000);
   @state() private _filterOpen = false;
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
@@ -36,7 +55,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _previewOverrides: ThemeOverrides | null = null;
 
   private _pv = new PlanaVistaController(this);
-  private _clockTimer: ReturnType<typeof setInterval> | null = null;
+  private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
   private _filterCloseHandler = (e: MouseEvent) => this._onFilterClickOutside(e);
@@ -53,6 +72,10 @@ export class PlanaVistaCalendarCard extends LitElement {
         overflow: hidden;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
+      }
+
+      pv-clock {
+        display: contents;
       }
 
       ha-card {
@@ -755,18 +778,49 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this._clockTimer = setInterval(() => {
-      this._currentTime = new Date();
-    }, 1000);
+    this._tick = Math.floor(Date.now() / 60000);
+    this._scheduleTick();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._clockTimer) {
-      clearInterval(this._clockTimer);
-      this._clockTimer = null;
+    if (this._tickTimer) {
+      clearTimeout(this._tickTimer);
+      this._tickTimer = null;
     }
     document.removeEventListener('click', this._filterCloseHandler);
+  }
+
+  /** Bump `_tick` just after each minute boundary (the header clock has its own timer). */
+  private _scheduleTick() {
+    if (this._tickTimer) clearTimeout(this._tickTimer);
+    this._tickTimer = setTimeout(() => {
+      this._tick = Math.floor(Date.now() / 60000);
+      this._scheduleTick();
+    }, 60000 - (Date.now() % 60000) + 50);
+  }
+
+  /**
+   * Home Assistant sets a new `hass` on every state change in the house.
+   * Re-render for it only when an entity this card shows has changed.
+   */
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    if (changedProps.size === 1 && changedProps.has('hass')) {
+      const prev = changedProps.get('hass') as HomeAssistant | undefined;
+      return statesChanged(prev, this.hass, this._watchedEntityIds());
+    }
+    return true;
+  }
+
+  /** The config sensor, the weather entity, and the people whose avatars are shown. */
+  private _watchedEntityIds(): string[] {
+    const { calendars, display } = this._derived();
+    const ids = [this._config?.entity || 'sensor.planavista_config'];
+    if (display.weather_entity) ids.push(display.weather_entity);
+    for (const cal of calendars) {
+      if (cal.person_entity) ids.push(cal.person_entity);
+    }
+    return ids;
   }
 
   setConfig(config: any) {
@@ -804,51 +858,76 @@ export class PlanaVistaCalendarCard extends LitElement {
     }
   }
 
-  private _getData() {
-    return getPlanaVistaData(this.hass, this._config?.entity);
+  /**
+   * Everything render() derives from the config sensor. Cached until the
+   * sensor's state object, the card config, or hiddenCalendars changes, so
+   * views get the same arrays (and skip re-rendering) when nothing changed.
+   */
+  private _derive = memoizeOne((
+    _sensorState: unknown,
+    config: PlanaVistaCardConfig | undefined,
+    hidden: Set<string>,
+  ): CardDerived => {
+    const data = this.hass ? getPlanaVistaData(this.hass, config?.entity) : null;
+
+    // Card YAML wins, then the sensor's display config, then defaults.
+    const global = data?.display;
+    const display: DisplayConfig = {
+      time_format: config?.time_format || global?.time_format || '12h',
+      weather_entity: config?.weather_entity || global?.weather_entity || '',
+      first_day: config?.first_day || global?.first_day || 'sunday',
+      default_view: config?.default_view || config?.view || global?.default_view || 'week',
+      theme: config?.theme || global?.theme || 'light',
+      theme_overrides: global?.theme_overrides,
+    };
+
+    // A card-level `calendars` list (entity_ids) narrows the visible calendars.
+    const all = (data?.calendars || []).filter((c: CalendarConfig) => c.visible !== false);
+    const cardFilter = config?.calendars;
+    const calendars = Array.isArray(cardFilter) && cardFilter.length > 0
+      ? all.filter((c: CalendarConfig) => cardFilter.includes(c.entity_id))
+      : all;
+
+    // Group all events by UID to find shared events (Day-view participant avatars).
+    const events = data?.events || [];
+    const sharedEventMap = new Map<string, SharedParticipant[]>();
+    for (const ev of events) {
+      const uid = ev.uid;
+      if (!uid) continue;
+      if (!sharedEventMap.has(uid)) sharedEventMap.set(uid, []);
+      const arr = sharedEventMap.get(uid)!;
+      const eid = ev.calendar_entity_id;
+      // Deduplicate by calendar entity (recurring events share UIDs)
+      if (!arr.some(p => p.entity_id === eid)) {
+        const cal = calendars.find(c => c.entity_id === eid);
+        arr.push({
+          entity_id: eid,
+          calendar_name: ev.calendar_name || cal?.display_name || '',
+          calendar_color: ev.calendar_color || cal?.color || '',
+          person_entity: cal?.person_entity || '',
+        });
+      }
+    }
+
+    return { data, calendars, display, visibleEvents: filterVisibleEvents(events, hidden), sharedEventMap };
+  });
+
+  private _derived(): CardDerived {
+    const entity = this._config?.entity || 'sensor.planavista_config';
+    return this._derive(this.hass?.states?.[entity], this._config, this._pv.state.hiddenCalendars);
   }
 
-  private _getWeatherEntity() {
-    const data = this._getData();
-    const weatherId = this._config?.weather_entity || data?.display?.weather_entity;
-    return weatherId ? this.hass?.states?.[weatherId] : null;
+  private _getData() {
+    return this._derived().data;
   }
 
   private _getWeatherEntityId(): string | null {
-    const data = this._getData();
-    return this._config?.weather_entity || data?.display?.weather_entity || null;
+    return this._derived().display.weather_entity || null;
   }
 
-  /**
-   * Merge card-level YAML overrides over global sensor config.
-   * Card YAML wins → sensor display config → defaults.
-   */
-  private _resolveDisplay(): DisplayConfig {
-    const data = this._getData();
-    const global = data?.display;
-    const card = this._config as PlanaVistaCardConfig | undefined;
-    return {
-      time_format: card?.time_format || global?.time_format || '12h',
-      weather_entity: card?.weather_entity || global?.weather_entity || '',
-      first_day: card?.first_day || global?.first_day || 'sunday',
-      default_view: card?.default_view || card?.view || global?.default_view || 'week',
-      theme: card?.theme || global?.theme || 'light',
-      theme_overrides: global?.theme_overrides,
-    };
-  }
-
-  /**
-   * If card YAML specifies a `calendars` list (array of entity_ids),
-   * filter to only those calendars. Otherwise return all visible calendars.
-   */
-  private _getVisibleCalendars(): CalendarConfig[] {
-    const data = this._getData();
-    const all = (data?.calendars || []).filter((c: CalendarConfig) => c.visible !== false);
-    const cardFilter = (this._config as PlanaVistaCardConfig)?.calendars;
-    if (cardFilter && Array.isArray(cardFilter) && cardFilter.length > 0) {
-      return all.filter((c: CalendarConfig) => cardFilter.includes(c.entity_id));
-    }
-    return all;
+  private _getWeatherEntity() {
+    const weatherId = this._getWeatherEntityId();
+    return weatherId ? this.hass?.states?.[weatherId] : null;
   }
 
   private _onOnboardingComplete() {
@@ -931,7 +1010,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   render() {
     if (!this._config || !this.hass) return nothing;
 
-    const data = this._getData();
+    const { data, calendars, display, visibleEvents } = this._derived();
     if (!data) {
       return html`
         <ha-card>
@@ -979,11 +1058,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     const pvState = this._pv.state;
     const currentView = pvState.currentView;
     const currentDate = pvState.currentDate;
-    const calendars = this._getVisibleCalendars();
-    const events = data.events || [];
-    const display = this._resolveDisplay();
     const hideHeader = !!(this._config as PlanaVistaCardConfig)?.hide_header;
-    const visibleEvents = filterVisibleEvents(events, pvState.hiddenCalendars);
 
     return html`
       <ha-card>
@@ -1039,30 +1114,9 @@ export class PlanaVistaCalendarCard extends LitElement {
   // HEADER — weather (left), date (center), time (right)
   // ====================================================================
 
-  private _renderHeader(display?: DisplayConfig) {
+  private _renderHeader(display: DisplayConfig) {
     const hideWeather = !!(this._config as PlanaVistaCardConfig)?.hide_weather;
     const weather = hideWeather ? null : this._getWeatherEntity();
-    const timeFormat = display?.time_format || '12h';
-    const now = this._currentTime;
-
-    // Format time
-    const hours = now.getHours();
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    let timeHtml;
-    if (timeFormat === '24h') {
-      timeHtml = html`<span class="pvc-time-display">${hours}:${minutes}</span>`;
-    } else {
-      const h = hours % 12 || 12;
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      timeHtml = html`<span class="pvc-time-display">${h}:${minutes}</span><span class="pvc-time-ampm">${ampm}</span>`;
-    }
-
-    // Format date
-    const dateStr = now.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
 
     return html`
       <div class="pvc-header">
@@ -1083,9 +1137,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           </div>
         ` : html`<div class="pvc-no-weather"></div>`}
 
-        <div class="pvc-header-date">${dateStr}</div>
-
-        <div class="pvc-header-time">${timeHtml}</div>
+        <pv-clock .timeFormat=${display.time_format || '12h'}></pv-clock>
       </div>
     `;
   }
@@ -1253,28 +1305,8 @@ export class PlanaVistaCalendarCard extends LitElement {
 
     switch (view) {
       case 'day': {
-        // Precompute shared event map: group all events by UID to detect shared events
-        const sharedEventMap = new Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>>();
-        const pvData = getPlanaVistaData(this.hass);
-        const allEvents = pvData?.events || [];
-        for (const ev of allEvents) {
-          const uid = (ev as any).uid;
-          if (!uid) continue;
-          if (!sharedEventMap.has(uid)) sharedEventMap.set(uid, []);
-          const arr = sharedEventMap.get(uid)!;
-          const eid = (ev as any).calendar_entity_id;
-          // Deduplicate by calendar entity (recurring events share UIDs)
-          if (!arr.some(p => p.entity_id === eid)) {
-            const cal = calendars.find(c => c.entity_id === eid);
-            arr.push({
-              entity_id: eid,
-              calendar_name: (ev as any).calendar_name || cal?.display_name || '',
-              calendar_color: (ev as any).calendar_color || cal?.color || '',
-              person_entity: cal?.person_entity || '',
-            });
-          }
-        }
-        const tick = Math.floor(this._currentTime.getTime() / 60000);
+        const { sharedEventMap } = this._derived();
+        const tick = this._tick;
         return html`<pv-view-day
           .hass=${this.hass}
           .events=${events}
@@ -1289,7 +1321,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         ></pv-view-day>`;
       }
       case 'week': {
-        const tick = Math.floor(this._currentTime.getTime() / 60000);
+        const tick = this._tick;
         return html`<pv-view-week
           .hass=${this.hass}
           .events=${events}
@@ -1304,7 +1336,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         ></pv-view-week>`;
       }
       case 'month': {
-        const tick = Math.floor(this._currentTime.getTime() / 60000);
+        const tick = this._tick;
         return html`<pv-view-month
           .hass=${this.hass}
           .events=${events}
@@ -1318,7 +1350,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         ></pv-view-month>`;
       }
       case 'agenda': {
-        const tick = Math.floor(this._currentTime.getTime() / 60000);
+        const tick = this._tick;
         return html`<pv-view-agenda
           .hass=${this.hass}
           .events=${events}

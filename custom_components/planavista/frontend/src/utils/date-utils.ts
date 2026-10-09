@@ -36,6 +36,22 @@ export function formatTime(value: string, format: '12h' | '24h' = '12h'): string
 }
 
 /**
+ * Header clock text: the time (without AM/PM), the AM/PM marker ('' for
+ * 24-hour), and the long date.
+ */
+export function formatClockParts(
+  now: Date,
+  format: '12h' | '24h',
+): { time: string; ampm: string; date: string } {
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const date = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  if (format === '24h') {
+    return { time: `${now.getHours()}:${minutes}`, ampm: '', date };
+  }
+  return { time: `${now.getHours() % 12 || 12}:${minutes}`, ampm: now.getHours() >= 12 ? 'PM' : 'AM', date };
+}
+
+/**
  * Format a date for display.
  */
 export function formatDate(date: Date, format: 'long' | 'medium' | 'short' | 'weekday' = 'medium'): string {
