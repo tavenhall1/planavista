@@ -685,7 +685,8 @@ export class PVViewDay extends LitElement {
     return html`
       <div class="person-column">
         ${positioned.map(event => {
-          const pos = getEventPosition(event, DAY_START_HOUR, DAY_END_HOUR);
+          // Clip to the viewed day so overnight events draw their full portion
+          const pos = getEventPosition(event, DAY_START_HOUR, DAY_END_HOUR, this.currentDate);
           const width = event.totalColumns > 1
             ? `calc(${100 / event.totalColumns}% - 6px)` // 6px = 3px left accent border + 3px right gap
             : 'calc(100% - 6px)';

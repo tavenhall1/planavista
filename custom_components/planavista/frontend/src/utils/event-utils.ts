@@ -172,7 +172,11 @@ export function getEventsForDateRange<T extends CalendarEvent>(
 /**
  * Calculate event position as percentages for time-grid views.
  * Returns top (%) and height (%) relative to the day grid.
- * `viewDate` is required to correctly clamp multi-day/overnight events to the visible day.
+ *
+ * Only the part of the event inside the viewed day is drawn: an overnight
+ * event shows 22:00-24:00 on its first day and 00:00-06:00 on the next.
+ * `viewDate` is the day being shown (defaults to the event's start day).
+ * Positions are wall-clock, matching the hour labels, so DST days still line up.
  */
 export function getEventPosition(
   event: CalendarEvent,
@@ -184,32 +188,19 @@ export function getEventPosition(
   const end = parseEventDate(event.end);
   const totalMinutes = (dayEndHour - dayStartHour) * 60;
 
-  // Clamp start/end to the visible day boundaries for overnight/multi-day events
-  let startMins: number;
-  let endMins: number;
+  const day = viewDate ?? start;
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), dayStartHour);
+  // Hour 24 rolls over to 00:00 of the next day.
+  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), dayEndHour);
 
-  if (viewDate) {
-    const dayStart = new Date(viewDate);
-    dayStart.setHours(dayStartHour, 0, 0, 0);
-    const dayEnd = new Date(viewDate);
-    dayEnd.setHours(dayEndHour, 0, 0, 0);
+  const gridMinutes = (d: Date): number => {
+    if (d <= dayStart) return 0;
+    if (d >= dayEnd) return totalMinutes;
+    return (d.getHours() - dayStartHour) * 60 + d.getMinutes();
+  };
 
-    const clampedStart = start < dayStart ? dayStart : start;
-    const clampedEnd = end > dayEnd ? dayEnd : end;
-
-    startMins = (clampedStart.getHours() - dayStartHour) * 60 + clampedStart.getMinutes();
-    endMins = (clampedEnd.getHours() - dayStartHour) * 60 + clampedEnd.getMinutes();
-  } else {
-    startMins = Math.max(0, (start.getHours() - dayStartHour) * 60 + start.getMinutes());
-    endMins = Math.min(totalMinutes, (end.getHours() - dayStartHour) * 60 + end.getMinutes());
-    // Handle overnight: if end is on a different day and endMins would be small, extend to dayEnd
-    if (end.toDateString() !== start.toDateString() && endMins <= 0) {
-      endMins = totalMinutes;
-    }
-  }
-
-  startMins = Math.max(0, Math.min(startMins, totalMinutes));
-  endMins = Math.max(0, Math.min(endMins, totalMinutes));
+  const startMins = gridMinutes(start);
+  const endMins = gridMinutes(end);
   const durationMinutes = Math.max(endMins - startMins, 15); // minimum 15 min visual height
 
   return {
