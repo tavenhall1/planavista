@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig } from '../types';
-import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isEventPast } from '../utils/event-utils';
+import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isAllDayEvent, isEventPast } from '../utils/event-utils';
 import { contrastText } from '../styles/themes';
 import { formatTime } from '../utils/date-utils';
 import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
@@ -211,9 +211,7 @@ export class PVEventChip extends LitElement {
     const titleClass = this.compact ? 'chip-title chip-title--wrap' : 'chip-title chip-title--nowrap';
 
     // Time display
-    const isAllDay = !event.start.includes('T') ||
-      (new Date(event.end).getTime() - new Date(event.start).getTime() >= 86400000 &&
-       event.start.includes('T00:00') && event.end.includes('T00:00'));
+    const isAllDay = isAllDayEvent(event);
 
     return html`
       <div

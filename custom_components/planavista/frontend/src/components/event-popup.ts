@@ -5,7 +5,7 @@ import { CalendarEvent, DeleteEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
 import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
 import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../styles/shared';
-import { formatTime, formatDate } from '../utils/date-utils';
+import { formatTime, formatDate, parseEventDate } from '../utils/date-utils';
 import { isAllDayEvent } from '../utils/event-utils';
 
 @customElement('pv-event-popup')
@@ -244,7 +244,7 @@ export class PVEventPopup extends LitElement {
 
     const event = this.event;
     const allDay = isAllDayEvent(event);
-    const startDate = new Date(event.start);
+    const startDate = parseEventDate(event.start);
     const shared = (event as any).shared_calendars as Array<{ entity_id: string; calendar_name: string; calendar_color: string }> | undefined;
     const isShared = shared && shared.length > 1;
 

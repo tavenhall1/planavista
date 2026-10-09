@@ -10,7 +10,7 @@ import {
   isToday,
 } from '../utils/date-utils';
 import {
-  isAllDayEvent,
+  compareEventsForDisplay,
   groupEventsByDate,
   filterVisibleEvents,
   deduplicateSharedEvents,
@@ -278,13 +278,7 @@ export class PVViewAgenda extends LitElement {
     const fullDate = formatDate(day, 'long');
 
     // Sort: all-day first, then by start time
-    const sorted = [...events].sort((a, b) => {
-      const aAllDay = isAllDayEvent(a);
-      const bAllDay = isAllDayEvent(b);
-      if (aAllDay && !bAllDay) return -1;
-      if (!aAllDay && bAllDay) return 1;
-      return a.start.localeCompare(b.start);
-    });
+    const sorted = [...events].sort(compareEventsForDisplay);
 
     return html`
       <div class="day-card ${today ? 'day-card--today' : ''}">

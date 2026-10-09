@@ -5,7 +5,7 @@ import { CalendarEvent, CalendarConfig } from '../types';
 import { baseStyles, animationStyles } from '../styles/shared';
 import { getStartOfWeek, isToday, getDateKey } from '../utils/date-utils';
 import {
-  isAllDayEvent,
+  compareEventsForDisplay,
   getEventsForDateRange,
   filterVisibleEvents,
   deduplicateSharedEvents,
@@ -334,17 +334,7 @@ export class PVViewWeek extends LitElement {
     dayEnd.setHours(23, 59, 59, 999);
 
     // Get events for this day, sort all-day first then by start time
-    const dayEvents = allEvents.filter(e => {
-      const s = new Date(e.start);
-      const en = new Date(e.end);
-      return s < dayEnd && en > dayStart;
-    }).sort((a, b) => {
-      const aAll = isAllDayEvent(a);
-      const bAll = isAllDayEvent(b);
-      if (aAll && !bAll) return -1;
-      if (!aAll && bAll) return 1;
-      return new Date(a.start).getTime() - new Date(b.start).getTime();
-    });
+    const dayEvents = getEventsForDateRange(allEvents, dayStart, dayEnd).sort(compareEventsForDisplay);
 
     const forecast = forecasts.get(dateKey);
     const dayName = `${WEEKDAY_SHORT[day.getDay()]} ${day.getDate()}`;
