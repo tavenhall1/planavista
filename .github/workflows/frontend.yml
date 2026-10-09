@@ -1,0 +1,30 @@
+# .github/workflows/frontend.yml
+name: Frontend
+
+on:
+  push:
+    branches: [main, "fix/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: custom_components/planavista/frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: custom_components/planavista/frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npm test
+      - run: npm run build
+      - name: Committed bundle matches the build
+        run: git diff --exit-code -- dist/planavista-cards.js
