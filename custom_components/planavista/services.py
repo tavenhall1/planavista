@@ -19,7 +19,7 @@ from .const import (
     SERVICE_DELETE_EVENT,
     SERVICE_SAVE_CONFIG,
 )
-from .coordinator import PlanaVistaCoordinator
+from .coordinator import async_apply_config
 from .google_api import (
     async_get_google_token,
     async_google_create_event,
@@ -61,19 +61,7 @@ async def _async_save_config(call: ServiceCall) -> None:
     if "onboarding_complete" in call_data:
         new_data["onboarding_complete"] = bool(call_data["onboarding_complete"])
 
-    # Suppress the background reload that async_update_entry triggers
-    # (the update listener would otherwise destroy the coordinator we're about to update)
-    coord: PlanaVistaCoordinator | None = getattr(config_entry, "runtime_data", None)
-    if coord:
-        coord._suppress_reload = True
-
-    # Persist to config entry storage
-    hass.config_entries.async_update_entry(config_entry, data=new_data)
-
-    # Update coordinator in-memory and refresh data immediately
-    if coord:
-        coord.calendars = new_data.get(CONF_CALENDARS, [])
-        await coord.async_refresh()
+    await async_apply_config(hass, config_entry, new_data)
 
     _LOGGER.info(
         "PlanaVista config saved via save_config service (calendars=%d, onboarding=%s)",

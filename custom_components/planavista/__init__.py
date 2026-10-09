@@ -41,10 +41,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    # Register update listener for config changes
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
     return True
 
 
@@ -72,15 +68,3 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> None:
-    """Reload config entry when options change."""
-    # Skip reload when save_config already handled the update in-memory
-    coord = getattr(entry, "runtime_data", None)
-    if coord and getattr(coord, "_suppress_reload", False):
-        coord._suppress_reload = False
-        _LOGGER.debug("Skipping reload — save_config already applied changes")
-        return
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)

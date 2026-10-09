@@ -7,8 +7,8 @@ from typing import Any
 
 from homeassistant.components.calendar import DOMAIN as CALENDAR_DOMAIN
 from homeassistant.components.calendar.const import DATA_COMPONENT
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -209,6 +209,11 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("Error fetching events from %s: %s", entity_id, err)
             return []
 
+    @callback
+    def async_set_calendars(self, calendars: list[dict[str, Any]]) -> None:
+        """Replace the configured calendars; the next refresh uses them."""
+        self.calendars = list(calendars)
+
     @property
     def display_config(self) -> dict[str, Any]:
         """Return display configuration."""
@@ -221,3 +226,18 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
 
 type PlanaVistaConfigEntry = ConfigEntry[PlanaVistaCoordinator]
+
+
+async def async_apply_config(
+    hass: HomeAssistant, entry: PlanaVistaConfigEntry, new_data: dict[str, Any]
+) -> None:
+    """Persist new settings and apply them to the running coordinator.
+
+    The save_config service and the options flow both change settings through
+    this function. The entry is never reloaded, so the sensors stay in place.
+    """
+    hass.config_entries.async_update_entry(entry, data=new_data)
+    if entry.state is ConfigEntryState.LOADED:
+        coordinator = entry.runtime_data
+        coordinator.async_set_calendars(new_data.get(CONF_CALENDARS, []))
+        await coordinator.async_refresh()

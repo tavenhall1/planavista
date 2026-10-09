@@ -39,6 +39,7 @@ from .const import (
     DEFAULT_VIEW,
     DEFAULT_THEME,
 )
+from .coordinator import async_apply_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -188,17 +189,16 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> PlanaVistaOptionsFlow:
         """Get the options flow for this handler."""
-        return PlanaVistaOptionsFlow(config_entry)
+        return PlanaVistaOptionsFlow()
 
 
 class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for PlanaVista."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
-        self._calendars_to_add = []
-        self._calendar_to_edit = None
+        self._calendars_to_add: list[str] = []
+        self._calendar_to_edit: str | None = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -240,9 +240,7 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
             new_data = dict(self.config_entry.data)
             new_data[CONF_CALENDARS] = new_calendars
 
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data
-            )
+            await async_apply_config(self.hass, self.config_entry, new_data)
 
             return self.async_create_entry(title="", data={})
 
@@ -303,17 +301,13 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
                 # More calendars to add
                 new_data = dict(self.config_entry.data)
                 new_data[CONF_CALENDARS] = current_calendars
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=new_data
-                )
+                await async_apply_config(self.hass, self.config_entry, new_data)
                 return await self.async_step_add_calendar()
 
             # All done
             new_data = dict(self.config_entry.data)
             new_data[CONF_CALENDARS] = current_calendars
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data
-            )
+            await async_apply_config(self.hass, self.config_entry, new_data)
             return self.async_create_entry(title="", data={})
 
         # Get the next calendar to configure
@@ -430,9 +424,7 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
             new_data = dict(self.config_entry.data)
             new_data[CONF_CALENDARS] = new_calendars
 
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data
-            )
+            await async_apply_config(self.hass, self.config_entry, new_data)
 
             return self.async_create_entry(title="", data={})
 
@@ -487,9 +479,11 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
     ) -> config_entries.FlowResult:
         """Handle display options."""
         if user_input is not None:
-            # Update the config entry
+            # Keep display keys this form doesn't edit (theme_overrides,
+            # location_autocomplete, and any the card adds later).
             new_data = dict(self.config_entry.data)
             new_data["display"] = {
+                **self.config_entry.data.get("display", {}),
                 CONF_TIME_FORMAT: user_input[CONF_TIME_FORMAT],
                 CONF_WEATHER_ENTITY: user_input.get(CONF_WEATHER_ENTITY, ""),
                 CONF_FIRST_DAY: user_input[CONF_FIRST_DAY],
@@ -497,9 +491,7 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
                 CONF_THEME: user_input[CONF_THEME],
             }
 
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data
-            )
+            await async_apply_config(self.hass, self.config_entry, new_data)
             return self.async_create_entry(title="", data={})
 
         current_display = self.config_entry.data.get("display", {})
