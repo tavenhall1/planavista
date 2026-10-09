@@ -62,3 +62,19 @@ describe('doEditEvent', () => {
     expect(errorSpy).toHaveBeenCalledWith('PlanaVista: Failed to edit event', expect.anything());
   });
 });
+
+describe('date rollover', () => {
+  it('moves the viewed day to the new today, including after a long sleep', () => {
+    state.checkRollover(new Date(2026, 9, 9, 8, 0)); // sync "today" to Fri Oct 9
+    state.setDate(new Date(2026, 9, 9, 8, 0));
+    state.checkRollover(new Date(2026, 9, 10, 7, 45)); // first check after waking Saturday
+    expect(state.currentDate.getDate()).toBe(10);
+  });
+
+  it('keeps a day the user navigated to', () => {
+    state.checkRollover(new Date(2026, 9, 10, 8, 0)); // today is Sat Oct 10
+    state.setDate(new Date(2026, 9, 14));
+    state.checkRollover(new Date(2026, 9, 11, 0, 1));
+    expect(state.currentDate.getDate()).toBe(14);
+  });
+});

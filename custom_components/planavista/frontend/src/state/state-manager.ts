@@ -2,7 +2,7 @@ import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { HomeAssistant } from 'custom-card-helpers';
 import { ViewType, CalendarEvent, DialogType, CreateEventData, DeleteEventData } from '../types';
 import { createEvent, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
-import { navigateDate } from '../utils/date-utils';
+import { getDateKey, navigateDate, rolloverDate } from '../utils/date-utils';
 import { runEditWithRestore } from '../utils/event-form';
 
 /**
@@ -24,6 +24,11 @@ class PlanaVistaStateManager {
   // Subscribers
   private _hosts = new Set<ReactiveControllerHost>();
   private _autoAdvanceTimer: ReturnType<typeof setInterval> | null = null;
+  /** Local date key of "today" at the last rollover check. */
+  private _todayKey = getDateKey(new Date());
+  private _onVisibilityChange = (): void => {
+    if (document.visibilityState === 'visible') this.checkRollover();
+  };
 
   private constructor() {
     this.startAutoAdvance();
@@ -189,31 +194,36 @@ class PlanaVistaStateManager {
   // Auto-advance
   // =========================================================================
 
+  /**
+   * Follow "today" across midnight: if the local date changed since the last
+   * check and the view was on that day, move it to the new today.
+   */
+  checkRollover(now: Date = new Date()): void {
+    const next = rolloverDate(this.currentDate, this._todayKey, now);
+    this._todayKey = getDateKey(now);
+    if (next) {
+      this.currentDate = next;
+      this._notify();
+    }
+  }
+
   startAutoAdvance(): void {
     if (this._autoAdvanceTimer) return;
-    this._autoAdvanceTimer = setInterval(() => {
-      const now = new Date();
-      if (
-        now.getDate() !== this.currentDate.getDate() ||
-        now.getMonth() !== this.currentDate.getMonth() ||
-        now.getFullYear() !== this.currentDate.getFullYear()
-      ) {
-        // Date has changed — only auto-advance if we were viewing "today"
-        const wasToday =
-          this.currentDate.toDateString() ===
-          new Date(Date.now() - 60000).toDateString(); // 1 min ago
-        if (wasToday) {
-          this.currentDate = now;
-          this._notify();
-        }
-      }
-    }, 60000); // Check every 60 seconds
+    this._todayKey = getDateKey(new Date());
+    this._autoAdvanceTimer = setInterval(() => this.checkRollover(), 60000);
+    // Timers are throttled or paused while a tablet sleeps; check as soon as it wakes.
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this._onVisibilityChange);
+    }
   }
 
   stopAutoAdvance(): void {
     if (this._autoAdvanceTimer) {
       clearInterval(this._autoAdvanceTimer);
       this._autoAdvanceTimer = null;
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this._onVisibilityChange);
     }
   }
 }

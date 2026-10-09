@@ -165,6 +165,18 @@ export function getDateKey(date: Date): string {
 }
 
 /**
+ * Midnight rollover for a wall display. `lastTodayKey` is the local date key
+ * of "today" at the previous check. If the date has changed since then and
+ * the view was showing that day, return `now` so the view follows today;
+ * otherwise null. Comparing date keys (not "a minute ago") means a tablet
+ * that slept through midnight still catches up on its first check.
+ */
+export function rolloverDate(viewed: Date, lastTodayKey: string, now: Date): Date | null {
+  if (getDateKey(now) === lastTodayKey) return null;
+  return getDateKey(viewed) === lastTodayKey ? new Date(now) : null;
+}
+
+/**
  * Whole calendar days from a to b (by local date, so DST days count as one).
  */
 export function calendarDaysBetween(a: Date, b: Date): number {
