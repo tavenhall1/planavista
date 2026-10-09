@@ -8,7 +8,18 @@ from typing import Any
 from homeassistant.components.calendar import DOMAIN as CALENDAR_DOMAIN
 from homeassistant.components.calendar.const import DATA_COMPONENT
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import STATE_UNAVAILABLE
+from homeassistant.core import (
+    CALLBACK_TYPE,
+    CoreState,
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    callback,
+)
+from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -21,6 +32,10 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Calendars usually appear in a burst after a restart: refresh on the first
+# one, then at most once per second while the rest arrive.
+CALENDAR_REFRESH_COOLDOWN_SECONDS = 1.0
 
 
 def _normalize_color(color_value) -> str:
@@ -51,6 +66,66 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=UPDATE_INTERVAL_SECONDS),
         )
         self.calendars: list[dict[str, Any]] = list(entry.data.get(CONF_CALENDARS, []))
+        self._unsub_calendar_tracking: CALLBACK_TYPE | None = None
+        self._calendar_refresh = Debouncer(
+            hass,
+            _LOGGER,
+            cooldown=CALENDAR_REFRESH_COOLDOWN_SECONDS,
+            immediate=True,
+            function=self.async_refresh,
+        )
+
+    @callback
+    def async_start_tracking(self) -> None:
+        """Refresh as soon as a configured calendar appears or HA finishes starting.
+
+        After a restart, calendar entities are often added after PlanaVista
+        loads. Without this the card stays empty until the next poll.
+        """
+        self._async_track_calendars()
+        self.config_entry.async_on_unload(self._async_stop_tracking)
+        self.config_entry.async_on_unload(self._calendar_refresh.async_shutdown)
+        if self.hass.state is not CoreState.running:
+            self.config_entry.async_on_unload(
+                async_at_started(self.hass, self._async_handle_started)
+            )
+
+    @callback
+    def _async_track_calendars(self) -> None:
+        """Subscribe to state changes of the configured calendar entities."""
+        self._async_stop_tracking()
+        entity_ids = [cal["entity_id"] for cal in self.calendars if cal.get("entity_id")]
+        if entity_ids:
+            self._unsub_calendar_tracking = async_track_state_change_event(
+                self.hass, entity_ids, self._async_handle_calendar_state
+            )
+
+    @callback
+    def _async_stop_tracking(self) -> None:
+        """Drop the calendar state subscription."""
+        if self._unsub_calendar_tracking is not None:
+            self._unsub_calendar_tracking()
+            self._unsub_calendar_tracking = None
+
+    @callback
+    def _async_handle_calendar_state(self, event: Event[EventStateChangedData]) -> None:
+        """Refresh when a configured calendar appears or becomes available.
+
+        Ordinary on/off changes are ignored, and a calendar that never
+        appears produces no events, so this cannot loop.
+        """
+        new_state = event.data["new_state"]
+        old_state = event.data["old_state"]
+        if new_state is None or new_state.state == STATE_UNAVAILABLE:
+            return
+        if old_state is not None and old_state.state != STATE_UNAVAILABLE:
+            return
+        self._calendar_refresh.async_schedule_call()
+
+    @callback
+    def _async_handle_started(self, hass: HomeAssistant) -> None:
+        """Refresh once Home Assistant has finished starting."""
+        self._calendar_refresh.async_schedule_call()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from calendars."""
@@ -213,6 +288,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def async_set_calendars(self, calendars: list[dict[str, Any]]) -> None:
         """Replace the configured calendars; the next refresh uses them."""
         self.calendars = list(calendars)
+        self._async_track_calendars()
 
     @property
     def display_config(self) -> dict[str, Any]:

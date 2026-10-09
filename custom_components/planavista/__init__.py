@@ -38,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     """Set up PlanaVista from a config entry."""
     coordinator = PlanaVistaCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    coordinator.async_start_tracking()
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
