@@ -20,6 +20,7 @@ import {
   withStartTime,
 } from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
+import { LocationSearch } from '../utils/location-search';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -30,6 +31,8 @@ export class PVEventCreateDialog extends LitElement {
   @property({ type: String }) mode: 'create' | 'edit' = 'create';
   @property({ type: Object }) prefill: Partial<CalendarEvent> | null = null;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
+  /** Display setting `location_autocomplete`: when false the Location field never touches the network. */
+  @property({ attribute: false }) locationAutocomplete = false;
 
   @state() private _title = '';
   @state() private _selectedCalendars: Set<string> = new Set();
@@ -58,12 +61,15 @@ export class PVEventCreateDialog extends LitElement {
   // Time picker state
   @state() private _activeTimePicker: 'start' | 'end' | null = null;
 
-  // Location autocomplete state
-  @state() private _locationSuggestions: Array<{ display_name: string }> = [];
+  // Location autocomplete state (only used when locationAutocomplete is on)
+  @state() private _locationSuggestions: string[] = [];
   @state() private _locationLoading = false;
   @state() private _locationFocused = false;
 
-  private _locationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _locationSearch = new LocationSearch({
+    onResults: suggestions => { this._locationSuggestions = suggestions; },
+    onLoading: loading => { this._locationLoading = loading; },
+  });
   private _pv = new PlanaVistaController(this);
 
   @query('#title-input') private _titleInput?: HTMLInputElement;
@@ -538,8 +544,16 @@ export class PVEventCreateDialog extends LitElement {
     `,
   ];
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._locationSearch.cancel();
+  }
+
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    if (changedProps.has('locationAutocomplete') && !this.locationAutocomplete) {
+      this._resetLocationSearch();
+    }
     if (changedProps.has('open') && this.open) {
       this._initForm();
       this._datePickerOpen = false;
@@ -553,7 +567,7 @@ export class PVEventCreateDialog extends LitElement {
     this._error = '';
     this._saving = false;
     this._showMore = false;
-    this._locationSuggestions = [];
+    this._resetLocationSearch();
     this._locationFocused = false;
     this._removeGuestsHint = !!(this.prefill as any)?._removeGuestsHint;
 
@@ -1016,8 +1030,15 @@ export class PVEventCreateDialog extends LitElement {
   }
 
   // ==================================================================
-  // LOCATION AUTOCOMPLETE (fixed position, HA location bias)
+  // LOCATION (plain text; opt-in Photon suggestions, see utils/location-search)
   // ==================================================================
+
+  /** cancel() never reports onLoading(false), so every cancel goes through here. */
+  private _resetLocationSearch() {
+    this._locationSearch.cancel();
+    this._locationSuggestions = [];
+    this._locationLoading = false;
+  }
 
   private _renderLocationField() {
     return html`
@@ -1025,7 +1046,7 @@ export class PVEventCreateDialog extends LitElement {
         <input
           class="pv-input location-input"
           type="text"
-          placeholder="Search for a place or address..."
+          placeholder=${this.locationAutocomplete ? 'Search for a place or address...' : 'Add a location'}
           .value=${this._location}
           @input=${this._onLocationInput}
           @focus=${() => this._locationFocused = true}
@@ -1036,7 +1057,8 @@ export class PVEventCreateDialog extends LitElement {
   }
 
   private _renderLocationDropdown() {
-    if (!this._locationFocused || (!this._locationSuggestions.length && !this._locationLoading)) {
+    if (!this.locationAutocomplete || !this._locationFocused ||
+        (!this._locationSuggestions.length && !this._locationLoading)) {
       return nothing;
     }
 
@@ -1054,13 +1076,13 @@ export class PVEventCreateDialog extends LitElement {
           <div class="location-loading">Searching...</div>
         ` : nothing}
         ${this._locationSuggestions.map(s => html`
-          <div class="location-suggestion" @mousedown=${() => this._selectLocation(s.display_name)}>
+          <div class="location-suggestion" @mousedown=${() => this._selectLocation(s)}>
             <ha-icon icon="mdi:map-marker"></ha-icon>
-            <span>${s.display_name}</span>
+            <span>${s}</span>
           </div>
         `)}
         ${this._locationSuggestions.length > 0 ? html`
-          <div class="location-powered">Powered by OpenStreetMap</div>
+          <div class="location-powered">Suggestions by Photon &middot; &copy; OpenStreetMap contributors</div>
         ` : nothing}
       </div>
     `;
@@ -1069,78 +1091,13 @@ export class PVEventCreateDialog extends LitElement {
   private _onLocationInput(e: Event) {
     const value = (e.target as HTMLInputElement).value;
     this._location = value;
-
-    if (this._locationDebounceTimer) {
-      clearTimeout(this._locationDebounceTimer);
-    }
-
-    if (value.trim().length < 3) {
-      this._locationSuggestions = [];
-      this._locationLoading = false;
-      return;
-    }
-
-    this._locationLoading = true;
-    this._locationDebounceTimer = setTimeout(() => {
-      this._searchLocation(value.trim());
-    }, 350);
-  }
-
-  private async _searchLocation(query: string) {
-    try {
-      // Use HA's home coordinates for location bias and sorting
-      const homeLat = (this.hass as any)?.config?.latitude;
-      const homeLon = (this.hass as any)?.config?.longitude;
-
-      // Fetch more results so we can sort by distance and return the closest
-      let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=20`;
-
-      if (homeLat != null && homeLon != null) {
-        const delta = 2.0; // ~220km bias area
-        url += `&viewbox=${homeLon - delta},${homeLat + delta},${homeLon + delta},${homeLat - delta}`;
-        url += `&bounded=0`;
-      }
-
-      const resp = await fetch(url, {
-        headers: { 'Accept-Language': 'en' },
-      });
-      if (!resp.ok) throw new Error('Search failed');
-      const results = await resp.json();
-
-      // Sort by distance from HA home, then take top 5
-      if (homeLat != null && homeLon != null) {
-        results.sort((a: any, b: any) => {
-          const distA = this._haversine(homeLat, homeLon, parseFloat(a.lat), parseFloat(a.lon));
-          const distB = this._haversine(homeLat, homeLon, parseFloat(b.lat), parseFloat(b.lon));
-          return distA - distB;
-        });
-      }
-
-      this._locationSuggestions = results.slice(0, 5).map((r: any) => ({
-        display_name: r.display_name,
-      }));
-    } catch {
-      this._locationSuggestions = [];
-    } finally {
-      this._locationLoading = false;
-    }
-  }
-
-  /** Haversine distance in km between two lat/lon points */
-  private _haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Sends nothing unless the location_autocomplete setting is on.
+    this._locationSearch.input(value, this.locationAutocomplete);
   }
 
   private _selectLocation(name: string) {
+    this._resetLocationSearch();
     this._location = name;
-    this._locationSuggestions = [];
     this._locationFocused = false;
   }
 
@@ -1185,7 +1142,7 @@ export class PVEventCreateDialog extends LitElement {
   private _close() {
     this._datePickerOpen = false;
     this._activeTimePicker = null;
-    this._locationSuggestions = [];
+    this._resetLocationSearch();
     this._pv.state.closeDialog();
   }
 

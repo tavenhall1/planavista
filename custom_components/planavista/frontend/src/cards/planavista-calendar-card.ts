@@ -879,6 +879,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       default_view: config?.default_view || config?.view || global?.default_view || 'week',
       theme: config?.theme || global?.theme || 'light',
       theme_overrides: global?.theme_overrides,
+      location_autocomplete: global?.location_autocomplete === true,
     };
 
     // A card-level `calendars` list (entity_ids) narrows the visible calendars.
@@ -1091,6 +1092,7 @@ export class PlanaVistaCalendarCard extends LitElement {
             .mode=${pvState.dialogOpen}
             .prefill=${pvState.createPrefill}
             .timeFormat=${display?.time_format || '12h'}
+            .locationAutocomplete=${display.location_autocomplete === true}
           ></pv-event-create-dialog>
         ` : nothing}
 
