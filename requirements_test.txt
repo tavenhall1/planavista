@@ -1,0 +1,6 @@
+# Backend test dependencies (run through scripts/test-backend.sh).
+# pytest-homeassistant-custom-component 0.13.367 pins homeassistant==2026.9.4.
+# The integration depends on the frontend component, so the frontend package
+# that Home Assistant 2026.9.4 pins is installed too.
+pytest-homeassistant-custom-component==0.13.367
+home-assistant-frontend==20260826.7

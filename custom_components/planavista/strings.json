@@ -7,7 +7,8 @@
       }
     },
     "abort": {
-      "already_configured": "PlanaVista is already configured."
+      "already_configured": "PlanaVista is already configured.",
+      "single_instance_allowed": "PlanaVista is already set up. Only one instance is supported."
     }
   },
   "options": {
