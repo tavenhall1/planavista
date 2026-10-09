@@ -83,6 +83,9 @@ THEMES: Final = [THEME_PLANAVISTA, THEME_MINIMAL, THEME_MODERN, THEME_DARK]
 # Update intervals
 UPDATE_INTERVAL_SECONDS: Final = 60
 
+# Upper bound for each Google Calendar API request (and token refresh)
+GOOGLE_API_TIMEOUT_SECONDS: Final = 15
+
 # Entity prefixes
 SENSOR_PREFIX: Final = "planavista"
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 import logging
 from typing import Any
-import urllib.parse
 
 import voluptuous as vol
 
@@ -23,7 +22,6 @@ from homeassistant.exceptions import (
     UnknownUser,
 )
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service import async_register_admin_service
 
 from .const import (
@@ -55,8 +53,11 @@ from .const import (
 )
 from .coordinator import PlanaVistaConfigEntry, async_apply_config
 from .google_api import (
+    GoogleApiError,
     async_get_google_token,
     async_google_create_event,
+    async_google_find_event,
+    async_google_patch_event,
     get_google_calendar_id,
 )
 
@@ -348,9 +349,10 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
                     )
 
                 return
-            except Exception as err:
-                _LOGGER.error(
-                    "PlanaVista: Google API create FAILED for calendar '%s': %s",
+            except GoogleApiError as err:
+                _LOGGER.warning(
+                    "Google Calendar could not create the event on %s; "
+                    "creating a separate event on each calendar instead: %s",
                     primary_cal_id, err,
                 )
     else:
@@ -446,52 +448,23 @@ async def ws_get_event_organizer(
         connection.send_result(msg["id"], {"organizer_entity_id": None})
         return
 
-    http_session = async_get_clientsession(hass)
-    encoded_id = urllib.parse.quote(cal_id, safe="")
-    encoded_uid = urllib.parse.quote(uid, safe="")
-    url = (
-        f"https://www.googleapis.com/calendar/v3/calendars/"
-        f"{encoded_id}/events?iCalUID={encoded_uid}&maxResults=1"
-    )
-
     try:
-        async with http_session.get(
-            url,
-            headers={"Authorization": f"Bearer {access_token}"},
-        ) as resp:
-            if resp.status != 200:
-                _LOGGER.debug(
-                    "PlanaVista: organizer lookup failed (HTTP %s) for uid=%s",
-                    resp.status, uid,
-                )
-                connection.send_result(msg["id"], {"organizer_entity_id": None})
-                return
-
-            data = await resp.json()
-            items = data.get("items", [])
-            if not items:
-                connection.send_result(msg["id"], {"organizer_entity_id": None})
-                return
-
-            organizer_email = items[0].get("organizer", {}).get("email", "")
-            if not organizer_email:
-                connection.send_result(msg["id"], {"organizer_entity_id": None})
-                return
-
-            # Map organizer email → PlanaVista calendar entity_id
-            for cal_eid in sorted(_async_configured_calendar_ids(hass)):
-                google_id = get_google_calendar_id(hass, cal_eid)
-                if google_id and google_id.lower() == organizer_email.lower():
-                    connection.send_result(msg["id"], {
-                        "organizer_entity_id": cal_eid,
-                    })
-                    return
-
-            connection.send_result(msg["id"], {"organizer_entity_id": None})
-
-    except Exception as err:
-        _LOGGER.warning("PlanaVista: organizer lookup failed: %s", err)
+        event = await async_google_find_event(hass, access_token, cal_id, uid)
+    except GoogleApiError as err:
+        _LOGGER.debug("Organizer lookup for uid=%s failed: %s", uid, err)
         connection.send_result(msg["id"], {"organizer_entity_id": None})
+        return
+
+    organizer_email = ((event or {}).get("organizer") or {}).get("email", "")
+    if organizer_email:
+        # Map organizer email → PlanaVista calendar entity_id
+        for cal_eid in sorted(_async_configured_calendar_ids(hass)):
+            google_id = get_google_calendar_id(hass, cal_eid)
+            if google_id and google_id.lower() == organizer_email.lower():
+                connection.send_result(msg["id"], {"organizer_entity_id": cal_eid})
+                return
+
+    connection.send_result(msg["id"], {"organizer_entity_id": None})
 
 
 @websocket_api.websocket_command(
@@ -545,37 +518,20 @@ async def ws_update_event(
         connection.send_error(msg["id"], "no_token", "Could not obtain Google OAuth token")
         return
 
-    http_session = async_get_clientsession(hass)
-    encoded_cal = urllib.parse.quote(cal_id, safe="")
-    encoded_uid = urllib.parse.quote(uid, safe="")
-
     # Step 1: Find the Google event ID from the iCal UID
-    list_url = (
-        f"https://www.googleapis.com/calendar/v3/calendars/"
-        f"{encoded_cal}/events?iCalUID={encoded_uid}&maxResults=1"
-    )
-
     try:
-        async with http_session.get(
-            list_url,
-            headers={"Authorization": f"Bearer {access_token}"},
-        ) as resp:
-            if resp.status != 200:
-                text = await resp.text()
-                connection.send_error(
-                    msg["id"], "lookup_failed",
-                    f"Failed to look up event: HTTP {resp.status}: {text}",
-                )
-                return
-            data = await resp.json()
-            items = data.get("items", [])
-            if not items:
-                connection.send_error(msg["id"], "not_found", "Event not found")
-                return
-            event_id = items[0]["id"]
-    except Exception as err:
-        connection.send_error(msg["id"], "lookup_error", str(err))
+        event = await async_google_find_event(hass, access_token, cal_id, uid)
+    except GoogleApiError as err:
+        connection.send_error(
+            msg["id"],
+            "lookup_failed" if err.status else "lookup_error",
+            f"Failed to look up event: {err}",
+        )
         return
+    if event is None:
+        connection.send_error(msg["id"], "not_found", "Event not found")
+        return
+    event_id = event["id"]
 
     # Step 2: Build PATCH body
     body: dict = {}
@@ -614,34 +570,19 @@ async def ws_update_event(
         body["attendees"] = [{"email": email} for email in unique_emails]
 
     # Step 3: PATCH the event
-    encoded_event = urllib.parse.quote(event_id, safe="")
-    patch_url = (
-        f"https://www.googleapis.com/calendar/v3/calendars/"
-        f"{encoded_cal}/events/{encoded_event}?sendUpdates=all"
-    )
-
     try:
-        async with http_session.patch(
-            patch_url,
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-            },
-            json=body,
-        ) as resp:
-            if resp.status not in (200, 201):
-                text = await resp.text()
-                connection.send_error(
-                    msg["id"], "patch_failed",
-                    f"Google Calendar API PATCH error {resp.status}: {text}",
-                )
-                return
-            result = await resp.json()
-            _LOGGER.info(
-                "PlanaVista: updated event uid=%s (id=%s) on calendar %s",
-                uid, event_id, cal_id,
-            )
-            connection.send_result(msg["id"], {"success": True, "event_id": result.get("id")})
-    except Exception as err:
+        result = await async_google_patch_event(
+            hass, access_token, cal_id, event_id, body
+        )
+    except GoogleApiError as err:
         _LOGGER.error("PlanaVista: update_event PATCH failed: %s", err)
-        connection.send_error(msg["id"], "patch_error", str(err))
+        connection.send_error(
+            msg["id"], "patch_failed" if err.status else "patch_error", str(err)
+        )
+        return
+
+    _LOGGER.info(
+        "PlanaVista: updated event uid=%s (id=%s) on calendar %s",
+        uid, event_id, cal_id,
+    )
+    connection.send_result(msg["id"], {"success": True, "event_id": result.get("id")})
