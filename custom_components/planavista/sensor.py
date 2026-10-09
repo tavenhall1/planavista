@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -10,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import SENSOR_PREFIX
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
@@ -70,6 +70,10 @@ class PlanaVistaConfigSensor(CoordinatorEntity, SensorEntity):
 class PlanaVistaUpcomingEventsSensor(CoordinatorEntity, SensorEntity):
     """Sensor that shows upcoming events count."""
 
+    # The 7-day event list is large and the timestamp changes on every
+    # refresh. Neither is useful in history, so the recorder skips both.
+    _unrecorded_attributes = frozenset({"events", "last_updated"})
+
     def __init__(self, coordinator: PlanaVistaCoordinator, entry: ConfigEntry) -> None:
         """Initialize the upcoming events sensor."""
         super().__init__(coordinator)
@@ -88,11 +92,8 @@ class PlanaVistaUpcomingEventsSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
-        if not self.coordinator.data:
-            return {"events": [], "last_updated": datetime.now().isoformat()}
-
-        upcoming = self.coordinator.data.get("upcoming_events", [])
+        data = self.coordinator.data or {}
         return {
-            "events": upcoming,
-            "last_updated": datetime.now().isoformat(),
+            "events": data.get("upcoming_events", []),
+            "last_updated": dt_util.now().isoformat(),
         }
