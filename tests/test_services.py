@@ -104,6 +104,59 @@ async def test_save_config_keeps_new_and_unknown_display_keys(
     assert state.attributes["display"]["location_autocomplete"] is True
 
 
+async def test_save_config_accepts_the_wizard_payload(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, hass_admin_user: MockUser
+) -> None:
+    """The exact shape the onboarding wizard sends is accepted and reaches the sensor."""
+    calendars = [
+        {
+            "entity_id": "calendar.test_alex",
+            "display_name": "Alex",
+            "color": "#fb8072",
+            "color_light": "#fde0dd",
+            "icon": "mdi:account",
+            "person_entity": "",
+            "visible": True,
+        },
+        {
+            "entity_id": "calendar.test_blair",
+            "display_name": "Blair",
+            "color": "#80b1d3",
+            "color_light": "#dbe9f4",
+            "icon": "mdi:account",
+            "person_entity": "",
+            "visible": False,
+        },
+    ]
+    display = {
+        "time_format": "24h",
+        "weather_entity": "",
+        "first_day": "sunday",
+        "default_view": "agenda",
+        "theme": "midnight",
+        "theme_overrides": {"accent": "#277DA1", "corner_style": "pill"},
+        "location_autocomplete": False,
+    }
+
+    await hass.services.async_call(
+        DOMAIN,
+        "save_config",
+        {"calendars": calendars, "display": display, "onboarding_complete": True},
+        blocking=True,
+        context=Context(user_id=hass_admin_user.id),
+    )
+    await hass.async_block_till_done()
+
+    assert loaded_entry.data["calendars"] == calendars
+    assert loaded_entry.data["display"] == display
+    assert loaded_entry.data["onboarding_complete"] is True
+    attrs = hass.states.get("sensor.planavista_config").attributes
+    # The sensor adds live state to each calendar; every saved field must come through unchanged
+    assert [{k: cal[k] for k in expected} for cal, expected in zip(attrs["calendars"], calendars)] == calendars
+    assert attrs["display"] == display
+    assert attrs["onboarding_complete"] is True
+
+
 @pytest.mark.parametrize(
     "payload",
     [
