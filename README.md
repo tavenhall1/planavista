@@ -22,7 +22,7 @@
 - **4 Calendar Views** — Day (per-person columns), Week, Month, and Agenda
 - **Deep Google Calendar Integration** — Attendee invitations, in-place PATCH edits, real organizer detection via API
 - **Shared Event Awareness** — Multi-participant detection, organizer badges, stripe gradients, participant avatars
-- **Full Event Management** — Create, edit, and delete events with location autocomplete and multi-calendar support
+- **Full Event Management** — Create, edit, and delete events with optional address suggestions and multi-calendar support
 - **Past Event Dimming** — Finished events automatically fade so you can focus on what's next
 - **20-Color Palette** — Earth, ocean, warm, and vivid tones for calendar personalization
 - **Built-in Onboarding Wizard** — Auto-discovers your calendars, weather, and people entities
@@ -31,7 +31,7 @@
 - **Per-Person Day View** — Skylight-inspired columns with large person avatars
 - **Fully Responsive** — Optimized for phones, tablets, wall displays, and large screens
 - **Easy Install via HACS** — No YAML or code required, just point-and-click setup
-- **100% Local** — Your data never leaves your network
+- **Local by Default** — Your calendar data stays on your network; the only optional lookup is address suggestions, which is off until you turn it on
 
 ---
 
@@ -190,8 +190,10 @@ Open the gear icon on the card header to access the settings panel and theme cus
 
 1. Click the **+ New** button in the card header (or the "+ Add" button on any day in week/agenda view)
 2. Enter a title, select one or more calendars, and pick start/end times
-3. Optionally add a location (autocomplete via OpenStreetMap sorted by distance) or description
+3. Optionally add a location or description. Locations are plain text unless you turn on **Address suggestions** (see below)
 4. Click **Add** — for multi-calendar events on Google Calendar, attendees are automatically invited via the API
+
+**Address suggestions** are **off by default**. An admin can turn them on under the card's **Settings > Preferences**. When on, the location text you type (and nothing else) is sent to [Photon](https://photon.komoot.io) (OpenStreetMap data) to suggest addresses. When off, locations are plain text and nothing is sent.
 
 ### Editing Events
 
