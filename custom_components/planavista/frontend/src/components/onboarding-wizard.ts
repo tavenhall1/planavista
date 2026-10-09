@@ -392,8 +392,8 @@ export class PvOnboardingWizard extends LitElement {
             ></div>
           </div>
           <p class="field-hint">
-            <strong>Off (recommended):</strong> PlanaVista stays 100% local. Locations are plain
-            text and nothing leaves your home network.
+            <strong>Off (recommended):</strong> address lookup stays 100% local. Locations are plain
+            text and nothing is sent anywhere.
           </p>
           <p class="field-hint">
             <strong>On:</strong> as you type a location, the text you've typed is sent to Photon
