@@ -13,14 +13,9 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 import { weatherIcon } from '../utils/weather-icons';
+import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../utils/weather-subscription';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-interface DayForecast {
-  condition: string;
-  tempHigh: number;
-  tempLow: number;
-}
 
 export class PVViewWeek extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -34,15 +29,9 @@ export class PVViewWeek extends LitElement {
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
 
-  @state() private _forecast: Array<{
-    datetime: string;
-    condition: string;
-    temperature: number;
-    templow?: number;
-  }> = [];
+  @state() private _forecast: ForecastEntry[] = [];
 
-  private _weatherUnsub?: () => void;
-  private _subscribedEntity = '';
+  private _forecastSub = new ForecastSubscription(forecast => { this._forecast = forecast; });
 
   static styles = [
     baseStyles,
@@ -237,71 +226,30 @@ export class PVViewWeek extends LitElement {
     return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`;
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    // A re-attached view gets no property change, so re-subscribe here.
+    if (this.hasUpdated) this._syncForecast();
+  }
+
   updated(changed: PropertyValues) {
     super.updated(changed);
     if (changed.has('weatherEntity') || changed.has('hass')) {
-      this._subscribeWeather();
+      this._syncForecast();
     }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this._unsubWeather();
+    this._forecastSub.stop();
   }
 
-  private _unsubWeather() {
-    if (this._weatherUnsub) {
-      this._weatherUnsub();
-      this._weatherUnsub = undefined;
-    }
-    this._subscribedEntity = '';
-  }
-
-  private async _subscribeWeather() {
-    if (!this.weatherEntity || !this.hass?.connection) {
-      this._unsubWeather();
-      this._forecast = [];
-      return;
-    }
-    // Only re-subscribe if entity changed
-    if (this._subscribedEntity === this.weatherEntity && this._weatherUnsub) return;
-    this._unsubWeather();
-    this._subscribedEntity = this.weatherEntity;
-
-    try {
-      // Try modern HA subscription API (2024.3+)
-      this._weatherUnsub = await (this.hass.connection as any).subscribeMessage(
-        (msg: any) => {
-          this._forecast = msg.forecast || [];
-        },
-        {
-          type: 'weather/subscribe_forecast',
-          forecast_type: 'daily',
-          entity_id: this.weatherEntity,
-        }
-      );
-    } catch {
-      // Fallback: try legacy attribute
-      const entity = this.hass.states[this.weatherEntity];
-      if (entity?.attributes?.forecast) {
-        this._forecast = entity.attributes.forecast;
-      }
-    }
-  }
-
-  private _getForecastMap(): Map<string, DayForecast> {
-    const map = new Map<string, DayForecast>();
-    for (const fc of this._forecast) {
-      if (!fc.datetime) continue;
-      const d = new Date(fc.datetime);
-      const key = getDateKey(d);
-      map.set(key, {
-        condition: fc.condition || '',
-        tempHigh: fc.temperature ?? 0,
-        tempLow: (fc as any).templow ?? fc.temperature ?? 0,
-      });
-    }
-    return map;
+  private _syncForecast() {
+    this._forecastSub.update(
+      this.hass?.connection as unknown as ForecastConnection | undefined,
+      this.weatherEntity,
+      this.hass?.states?.[this.weatherEntity]?.attributes?.forecast,
+    );
   }
 
   render() {
@@ -313,7 +261,7 @@ export class PVViewWeek extends LitElement {
     weekEnd.setHours(23, 59, 59, 999);
     const weekEvents = getEventsForDateRange(visible, weekStart, weekEnd);
     const deduped = deduplicateSharedEvents(weekEvents, this.calendars);
-    const forecasts = this._getForecastMap();
+    const forecasts = buildForecastMap(this._forecast);
 
     return html`
       <div class="week-container">
