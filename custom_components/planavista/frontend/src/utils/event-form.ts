@@ -1,4 +1,4 @@
-import { CreateEventData } from '../types';
+import { CalendarEvent, CreateEventData, DeleteEventData } from '../types';
 import { calendarDaysBetween, getDateKey, isDateOnly, parseEventDate } from './date-utils';
 
 /**
@@ -166,4 +166,101 @@ export function buildEventBase(f: EventFormDates, text: EventTextFields): Omit<C
   if (description) base.description = description;
   if (location) base.location = location;
   return base;
+}
+
+// ---------------------------------------------------------------------------
+// Editing = delete + recreate
+// ---------------------------------------------------------------------------
+
+/**
+ * Delete payload for one calendar's copy of an event. A recurring instance
+ * carries its recurrence_id (and never a recurrence_range), so only that
+ * instance is removed, never the whole series.
+ */
+export function buildDeleteData(
+  event: Pick<CalendarEvent, 'calendar_entity_id' | 'uid' | 'recurrence_id'>,
+  entityId: string = event.calendar_entity_id,
+): DeleteEventData {
+  if (!event.uid) {
+    throw new Error('This event has no unique ID, so it can only be changed in its calendar app.');
+  }
+  const data: DeleteEventData = { entity_id: entityId, uid: event.uid };
+  if (event.recurrence_id) data.recurrence_id = event.recurrence_id;
+  return data;
+}
+
+/**
+ * Create payload that puts an event back exactly as the backend reported it
+ * (date-only all-day dates with their exclusive end, or the original ISO
+ * datetimes). A restored recurring instance comes back as a single event.
+ */
+export function buildRestoreData(event: CalendarEvent, entityId: string = event.calendar_entity_id): CreateEventData {
+  const data: CreateEventData = isDateOnly(event.start)
+    ? { entity_id: entityId, summary: event.summary, start_date: event.start, end_date: event.end }
+    : { entity_id: entityId, summary: event.summary, start_date_time: event.start, end_date_time: event.end };
+  if (event.description) data.description = event.description;
+  if (event.location) data.location = event.location;
+  return data;
+}
+
+/** The three payloads an edit needs. */
+export interface EditPlan {
+  deleteData: DeleteEventData;
+  createData: CreateEventData;
+  restoreData: CreateEventData;
+}
+
+/** Plan editing `original` on one calendar: delete it, create `base`, restore on failure. */
+export function planEdit(
+  original: CalendarEvent,
+  entityId: string,
+  base: Omit<CreateEventData, 'entity_id'>,
+): EditPlan {
+  return {
+    deleteData: buildDeleteData(original, entityId),
+    createData: { ...base, entity_id: entityId },
+    restoreData: buildRestoreData(original, entityId),
+  };
+}
+
+/** Thrown when an edit failed after the delete; the message says whether the original came back. */
+export class EditRestoreError extends Error {
+  constructor(message: string, readonly restored: boolean) {
+    super(message);
+    this.name = 'EditRestoreError';
+  }
+}
+
+function errorText(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object' && 'message' in err) return String((err as { message: unknown }).message);
+  return String(err);
+}
+
+/**
+ * Run delete -> create. If create fails after the delete succeeded, run
+ * restore and throw an EditRestoreError saying whether the original came back.
+ * A failed delete is rethrown before anything is created.
+ */
+export async function runEditWithRestore(steps: {
+  remove: () => Promise<unknown>;
+  create: () => Promise<unknown>;
+  restore: () => Promise<unknown>;
+}): Promise<void> {
+  await steps.remove();
+  try {
+    await steps.create();
+  } catch (createErr) {
+    const reason = errorText(createErr);
+    try {
+      await steps.restore();
+    } catch (restoreErr) {
+      throw new EditRestoreError(
+        `Your changes couldn't be saved (${reason}), and the original event couldn't be put back ` +
+        `(${errorText(restoreErr)}). Please re-create it in your calendar app.`,
+        false,
+      );
+    }
+    throw new EditRestoreError(`Your changes couldn't be saved (${reason}). The original event was restored.`, true);
+  }
 }

@@ -1,0 +1,58 @@
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../src/utils/ha-utils', () => ({
+  createEvent: vi.fn(),
+  deleteEvent: vi.fn(),
+  refreshPlanaVista: vi.fn(async () => {}),
+}));
+
+import type { HomeAssistant } from 'custom-card-helpers';
+import type { CreateEventData, DeleteEventData } from '../src/types';
+import { createEvent, deleteEvent } from '../src/utils/ha-utils';
+import { PlanaVistaController } from '../src/state/state-manager';
+
+const host = {
+  addController: () => {},
+  removeController: () => {},
+  requestUpdate: () => {},
+  updateComplete: Promise.resolve(true),
+};
+const state = new PlanaVistaController(host).state;
+const hass = {} as HomeAssistant;
+
+afterAll(() => {
+  state.stopAutoAdvance();
+});
+
+describe('doEditEvent', () => {
+  const del: DeleteEventData = { entity_id: 'calendar.test_alex', uid: 'u1', recurrence_id: '20261009T200000Z' };
+  const next: CreateEventData = {
+    entity_id: 'calendar.test_alex', summary: 'Dentist', start_date_time: '2026-10-09T16:00:00-05:00', end_date_time: '2026-10-09T17:00:00-05:00',
+  };
+  const original: CreateEventData = {
+    entity_id: 'calendar.test_alex', summary: 'Dentist', start_date_time: '2026-10-09T15:00:00-05:00', end_date_time: '2026-10-09T16:00:00-05:00',
+  };
+
+  beforeEach(() => {
+    vi.mocked(createEvent).mockReset();
+    vi.mocked(deleteEvent).mockReset();
+    vi.mocked(deleteEvent).mockResolvedValue(undefined);
+  });
+
+  it('deletes the instance and creates the edited event', async () => {
+    vi.mocked(createEvent).mockResolvedValue(undefined);
+    await state.doEditEvent(hass, del, next, original);
+    expect(deleteEvent).toHaveBeenCalledWith(hass, del);
+    expect(createEvent).toHaveBeenCalledTimes(1);
+    expect(createEvent).toHaveBeenCalledWith(hass, next);
+  });
+
+  it('restores the original event when the recreate fails', async () => {
+    vi.mocked(createEvent)
+      .mockRejectedValueOnce(new Error('Invalid end time'))
+      .mockResolvedValueOnce(undefined);
+    await expect(state.doEditEvent(hass, del, next, original)).rejects.toThrow('The original event was restored.');
+    expect(createEvent).toHaveBeenNthCalledWith(2, hass, original);
+    expect(state.isLoading).toBe(false);
+  });
+});

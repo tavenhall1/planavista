@@ -3,6 +3,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { ViewType, CalendarEvent, DialogType, CreateEventData, DeleteEventData } from '../types';
 import { createEvent, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
 import { navigateDate } from '../utils/date-utils';
+import { runEditWithRestore } from '../utils/event-form';
 
 /**
  * Singleton state manager for PlanaVista.
@@ -152,30 +153,31 @@ class PlanaVistaStateManager {
     }
   }
 
+  /**
+   * Edit = delete + recreate. If the recreate fails, `restore` (the original
+   * event's payload) is created again and the thrown error says so.
+   */
   async doEditEvent(
     hass: HomeAssistant,
     oldEvent: DeleteEventData,
-    newEvent: CreateEventData
+    newEvent: CreateEventData,
+    restore: CreateEventData,
   ): Promise<void> {
     this.isLoading = true;
     this._notify();
-    let deleteSucceeded = false;
     try {
-      await deleteEvent(hass, oldEvent);
-      deleteSucceeded = true;
-      await createEvent(hass, newEvent);
+      await runEditWithRestore({
+        remove: () => deleteEvent(hass, oldEvent),
+        create: () => createEvent(hass, newEvent),
+        restore: () => createEvent(hass, restore),
+      });
       await refreshPlanaVista(hass);
       this.selectedEvent = null;
       this.closeDialog();
     } catch (err) {
       console.error('PlanaVista: Failed to edit event', err);
-      if (deleteSucceeded) {
-        // Original was deleted but replacement failed — inform user clearly
-        throw new Error(
-          'The original event was deleted but the replacement could not be created. ' +
-          'Please create the event manually. Error: ' + (err instanceof Error ? err.message : String(err))
-        );
-      }
+      // Show whatever is on the calendar now (the restored original, if any).
+      await refreshPlanaVista(hass).catch(() => undefined);
       throw err;
     } finally {
       this.isLoading = false;

@@ -1,9 +1,10 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarConfig, CalendarEvent, CreateEventData, DeleteEventData } from '../types';
+import { CalendarConfig, CalendarEvent, CreateEventData } from '../types';
 import { PlanaVistaController } from '../state/state-manager';
 import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
+import { EditRestoreError, buildDeleteData, buildRestoreData, planEdit, runEditWithRestore } from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -1174,13 +1175,8 @@ export class PVEventCreateDialog extends LitElement {
     const kept = [...selected].filter(id => original.has(id));
 
     if (primaryEntityId && kept.includes(primaryEntityId) && uid) {
-      const deleteData: DeleteEventData = {
-        entity_id: primaryEntityId,
-        uid,
-        recurrence_id: recurrenceId,
-      };
-      const createData: CreateEventData = { ...baseData, entity_id: primaryEntityId } as CreateEventData;
-      await this._pv.state.doEditEvent(this.hass, deleteData, createData);
+      const plan = planEdit(this.prefill as CalendarEvent, primaryEntityId, baseData);
+      await this._pv.state.doEditEvent(this.hass, plan.deleteData, plan.createData, plan.restoreData);
     } else if (primaryEntityId && removed.includes(primaryEntityId) && uid) {
       await deleteEvent(this.hass, { entity_id: primaryEntityId, uid, recurrence_id: recurrenceId });
     }
@@ -1296,23 +1292,21 @@ export class PVEventCreateDialog extends LitElement {
             } catch { /* best-effort */ }
           }, 3000);
         } else if (selected.size > 1 && uid) {
-          // Was single-calendar, now adding guests — delete old + create with attendees
-          const primaryEntityId = this.prefill?.calendar_entity_id;
-          if (primaryEntityId) {
-            await deleteEvent(this.hass, {
-              entity_id: primaryEntityId,
-              uid,
-              recurrence_id: this.prefill?.recurrence_id,
-            });
-          }
-
+          // Was single-calendar, now adding guests — delete old + create with
+          // attendees, putting the original back if the create fails
+          const original = this.prefill as CalendarEvent;
+          const primaryEntityId = original.calendar_entity_id;
           const primaryId = organizerEntity || [...selected][0];
           const attendeeIds = [...selected].filter(id => id !== primaryId);
-          await createEventWithAttendees(this.hass, {
-            ...baseData,
-            entity_id: primaryId,
-            attendee_entity_ids: attendeeIds,
-          } as CreateEventData & { attendee_entity_ids: string[] });
+          await runEditWithRestore({
+            remove: () => deleteEvent(this.hass, buildDeleteData(original, primaryEntityId)),
+            create: () => createEventWithAttendees(this.hass, {
+              ...baseData,
+              entity_id: primaryId,
+              attendee_entity_ids: attendeeIds,
+            } as CreateEventData & { attendee_entity_ids: string[] }),
+            restore: () => createEvent(this.hass, buildRestoreData(original, primaryEntityId)),
+          });
 
           // Delayed refresh for Google propagation
           const calEntities = [...selected];
@@ -1328,17 +1322,11 @@ export class PVEventCreateDialog extends LitElement {
             } catch { /* best-effort */ }
           }, 3000);
         } else {
-          // Single-calendar event staying single — simple delete+recreate
-          const primaryEntityId = this.prefill?.calendar_entity_id;
-          if (primaryEntityId && uid) {
-            const deleteData: DeleteEventData = {
-              entity_id: primaryEntityId,
-              uid,
-              recurrence_id: this.prefill?.recurrence_id,
-            };
-            const createData: CreateEventData = { ...baseData, entity_id: primaryEntityId } as CreateEventData;
-            await this._pv.state.doEditEvent(this.hass, deleteData, createData);
-          }
+          // Single-calendar event staying single — delete + recreate; the
+          // state manager restores the original if the recreate fails
+          const primaryEntityId = this.prefill?.calendar_entity_id || '';
+          const plan = planEdit(this.prefill as CalendarEvent, primaryEntityId, baseData);
+          await this._pv.state.doEditEvent(this.hass, plan.deleteData, plan.createData, plan.restoreData);
         }
       } else {
         // Create mode
@@ -1378,7 +1366,9 @@ export class PVEventCreateDialog extends LitElement {
         }
       }
     } catch (err: any) {
-      this._error = `Failed to save event: ${err?.message || 'Unknown error'}`;
+      this._error = err instanceof EditRestoreError
+        ? err.message
+        : `Failed to save event: ${err?.message || 'Unknown error'}`;
       this._saving = false;
     }
   }
