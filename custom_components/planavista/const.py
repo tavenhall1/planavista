@@ -89,6 +89,10 @@ GOOGLE_API_TIMEOUT_SECONDS: Final = 15
 # Entity prefixes
 SENSOR_PREFIX: Final = "planavista"
 
+# Card bundle: frontend/dist is served at FRONTEND_URL_PATH
+FRONTEND_URL_PATH: Final = "/planavista_panel/dist"
+FRONTEND_BUNDLE: Final = "planavista-cards.js"
+
 # Services
 SERVICE_SAVE_CONFIG: Final = "save_config"
 SERVICE_DELETE_EVENT: Final = "delete_event"

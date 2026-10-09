@@ -1,6 +1,7 @@
 """The PlanaVista integration."""
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 
@@ -10,8 +11,9 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
-from .const import DOMAIN
+from .const import DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .services import async_setup_services
 
@@ -21,10 +23,8 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-# Frontend resource URL - single bundled output from LitElement/TypeScript build
-FRONTEND_SCRIPTS = [
-    "/planavista_panel/dist/planavista-cards.js",
-]
+# Only the built bundle is published; sources next to it stay private.
+FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -45,25 +45,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     return True
 
 
+def _bundle_hash(bundle: Path) -> str:
+    """Return the first 8 hex digits of the bundle's SHA-256."""
+    return hashlib.sha256(bundle.read_bytes()).hexdigest()[:8]
+
+
 async def async_register_frontend(hass: HomeAssistant) -> None:
-    """Register the frontend resources."""
-    # Get the path to the frontend directory
-    frontend_path = Path(__file__).parent / "frontend"
+    """Serve frontend/dist and load the card with a cache-busting URL.
 
-    # Register static path to serve the JS files using the new async API
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(
-            url_path="/planavista_panel",
-            path=str(frontend_path),
-            cache_headers=False,
-        )
-    ])
+    The ?v= query changes whenever the integration version or the bundle
+    changes, so browsers fetch the new card after an update.
+    """
+    integration = await async_get_integration(hass, DOMAIN)
+    bundle_hash = await hass.async_add_executor_job(
+        _bundle_hash, FRONTEND_DIST / FRONTEND_BUNDLE
+    )
 
-    # Add all JS files to the frontend (order matters - base must load first)
-    for script_url in FRONTEND_SCRIPTS:
-        add_extra_js_url(hass, script_url)
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                url_path=FRONTEND_URL_PATH,
+                path=str(FRONTEND_DIST),
+                cache_headers=False,
+            )
+        ]
+    )
 
-    _LOGGER.info("PlanaVista v1.0 frontend registered (single bundle)")
+    script_url = (
+        f"{FRONTEND_URL_PATH}/{FRONTEND_BUNDLE}?v={integration.version}-{bundle_hash}"
+    )
+    add_extra_js_url(hass, script_url)
+    _LOGGER.debug("PlanaVista card registered at %s", script_url)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> bool:
