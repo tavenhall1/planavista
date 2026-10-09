@@ -22,6 +22,10 @@ CONF_FIRST_DAY: Final = "first_day"
 CONF_DEFAULT_VIEW: Final = "default_view"
 CONF_THEME: Final = "theme"
 CONF_COLOR_LIGHT: Final = "color_light"
+CONF_DISPLAY: Final = "display"
+CONF_ONBOARDING_COMPLETE: Final = "onboarding_complete"
+CONF_THEME_OVERRIDES: Final = "theme_overrides"
+CONF_LOCATION_AUTOCOMPLETE: Final = "location_autocomplete"
 
 # Display settings
 TIME_FORMAT_12H: Final = "12h"

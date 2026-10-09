@@ -73,5 +73,19 @@
       "no_calendars": "No calendars configured. Please add calendars first.",
       "calendar_not_found": "Calendar not found. It may have been removed."
     }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "PlanaVista is not set up yet."
+    },
+    "calendar_not_configured": {
+      "message": "{entity_id} is not a calendar configured in PlanaVista."
+    },
+    "calendar_unavailable": {
+      "message": "Calendar {entity_id} is not available right now."
+    },
+    "delete_not_supported": {
+      "message": "Calendar {entity_id} does not support deleting events."
+    }
   }
 }

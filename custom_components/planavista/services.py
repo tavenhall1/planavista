@@ -1,25 +1,59 @@
 """Services and WebSocket commands for PlanaVista."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 import logging
+from typing import Any
 import urllib.parse
 
 import voluptuous as vol
 
+from homeassistant.auth.permissions.const import POLICY_CONTROL
 from homeassistant.components import websocket_api
-from homeassistant.components.calendar import DOMAIN as CALENDAR_DOMAIN
+from homeassistant.components.calendar import (
+    DOMAIN as CALENDAR_DOMAIN,
+    CalendarEntityFeature,
+)
 from homeassistant.components.calendar.const import DATA_COMPONENT
-from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.core import Context, HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import (
+    HomeAssistantError,
+    ServiceValidationError,
+    Unauthorized,
+    UnknownUser,
+)
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service import async_register_admin_service
 
 from .const import (
+    CALENDAR_VIEWS,
     CONF_CALENDARS,
+    CONF_COLOR,
+    CONF_COLOR_LIGHT,
+    CONF_DEFAULT_VIEW,
+    CONF_DISPLAY,
+    CONF_DISPLAY_NAME,
+    CONF_FIRST_DAY,
+    CONF_ICON,
+    CONF_LOCATION_AUTOCOMPLETE,
+    CONF_ONBOARDING_COMPLETE,
+    CONF_PERSON_ENTITY,
+    CONF_THEME,
+    CONF_THEME_OVERRIDES,
+    CONF_TIME_FORMAT,
+    CONF_VISIBLE,
+    CONF_WEATHER_ENTITY,
     DOMAIN,
+    FIRST_DAY_MONDAY,
+    FIRST_DAY_SUNDAY,
     SERVICE_CREATE_EVENT_WITH_ATTENDEES,
     SERVICE_DELETE_EVENT,
     SERVICE_SAVE_CONFIG,
+    TIME_FORMAT_12H,
+    TIME_FORMAT_24H,
 )
-from .coordinator import async_apply_config
+from .coordinator import PlanaVistaConfigEntry, async_apply_config
 from .google_api import (
     async_get_google_token,
     async_google_create_event,
@@ -28,71 +62,197 @@ from .google_api import (
 
 _LOGGER = logging.getLogger(__name__)
 
+CALENDAR_ENTITY_ID = cv.entity_domain(CALENDAR_DOMAIN)
+
+# Calendars and display settings are replaced wholesale by save_config. Keys
+# the card adds later are kept (extra=ALLOW_EXTRA) so the card can evolve
+# without a backend release.
+CALENDAR_CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): CALENDAR_ENTITY_ID,
+        vol.Optional(CONF_DISPLAY_NAME): cv.string,
+        vol.Optional(CONF_COLOR): cv.string,
+        vol.Optional(CONF_COLOR_LIGHT): cv.string,
+        vol.Optional(CONF_ICON): cv.string,
+        vol.Optional(CONF_PERSON_ENTITY): vol.Any(None, cv.string),
+        vol.Optional(CONF_VISIBLE): cv.boolean,
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
+DISPLAY_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_TIME_FORMAT): vol.In([TIME_FORMAT_12H, TIME_FORMAT_24H]),
+        vol.Optional(CONF_WEATHER_ENTITY): vol.Any(None, "", cv.entity_domain("weather")),
+        vol.Optional(CONF_FIRST_DAY): vol.In([FIRST_DAY_MONDAY, FIRST_DAY_SUNDAY]),
+        vol.Optional(CONF_DEFAULT_VIEW): vol.In(CALENDAR_VIEWS),
+        vol.Optional(CONF_THEME): cv.string,
+        vol.Optional(CONF_THEME_OVERRIDES): vol.Any(None, dict),
+        vol.Optional(CONF_LOCATION_AUTOCOMPLETE): cv.boolean,
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
+SAVE_CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_CALENDARS): [CALENDAR_CONFIG_SCHEMA],
+        vol.Optional(CONF_DISPLAY): DISPLAY_SCHEMA,
+        vol.Optional(CONF_ONBOARDING_COMPLETE): cv.boolean,
+    }
+)
+
+DELETE_EVENT_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): CALENDAR_ENTITY_ID,
+        vol.Required("uid"): cv.string,
+        vol.Optional("recurrence_id"): vol.Any(None, cv.string),
+    }
+)
+
+CREATE_EVENT_SCHEMA = vol.All(
+    vol.Schema(
+        {
+            vol.Required("entity_id"): CALENDAR_ENTITY_ID,
+            vol.Optional("attendee_entity_ids", default=list): vol.All(
+                cv.ensure_list, [CALENDAR_ENTITY_ID]
+            ),
+            vol.Required("summary"): cv.string,
+            vol.Optional("description"): cv.string,
+            vol.Optional("location"): cv.string,
+            vol.Inclusive("start_date_time", "datetime"): cv.string,
+            vol.Inclusive("end_date_time", "datetime"): cv.string,
+            vol.Inclusive("start_date", "date"): cv.string,
+            vol.Inclusive("end_date", "date"): cv.string,
+        }
+    ),
+    cv.has_at_least_one_key("start_date_time", "start_date"),
+)
+
 
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register PlanaVista services and WebSocket commands (once per HA start)."""
-    hass.services.async_register(DOMAIN, SERVICE_SAVE_CONFIG, _async_save_config)
-    hass.services.async_register(DOMAIN, SERVICE_DELETE_EVENT, _async_delete_event)
+    async_register_admin_service(
+        hass, DOMAIN, SERVICE_SAVE_CONFIG, _async_save_config, SAVE_CONFIG_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_DELETE_EVENT, _async_delete_event, DELETE_EVENT_SCHEMA
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_CREATE_EVENT_WITH_ATTENDEES,
         _async_create_event_with_attendees,
+        CREATE_EVENT_SCHEMA,
     )
     websocket_api.async_register_command(hass, ws_get_event_organizer)
     websocket_api.async_register_command(hass, ws_update_event)
 
 
-async def _async_save_config(call: ServiceCall) -> None:
-    """Save config submitted by the frontend onboarding wizard."""
-    hass = call.hass
-    call_data = call.data
-    entries = hass.config_entries.async_entries(DOMAIN)
+@callback
+def _async_get_loaded_entry(hass: HomeAssistant) -> PlanaVistaConfigEntry:
+    """Return the loaded PlanaVista entry or explain that there is none."""
+    entries: list[PlanaVistaConfigEntry] = hass.config_entries.async_loaded_entries(
+        DOMAIN
+    )
     if not entries:
-        _LOGGER.error("save_config: no PlanaVista config entry found")
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="not_loaded"
+        )
+    return entries[0]
+
+
+@callback
+def _async_configured_calendar_ids(hass: HomeAssistant) -> set[str]:
+    """Return the calendar entity ids configured in PlanaVista."""
+    return {
+        calendar["entity_id"]
+        for entry in hass.config_entries.async_loaded_entries(DOMAIN)
+        for calendar in entry.data.get(CONF_CALENDARS, [])
+        if calendar.get("entity_id")
+    }
+
+
+@callback
+def _async_check_configured(hass: HomeAssistant, entity_ids: Iterable[str]) -> None:
+    """Refuse calendars that PlanaVista is not configured to show."""
+    configured = _async_configured_calendar_ids(hass)
+    for entity_id in entity_ids:
+        if entity_id not in configured:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="calendar_not_configured",
+                translation_placeholders={"entity_id": entity_id},
+            )
+
+
+async def _async_check_control(
+    hass: HomeAssistant, context: Context, entity_ids: Iterable[str]
+) -> None:
+    """Require control permission on each calendar, as calendar services do.
+
+    Calls without a user (automations, scripts) are allowed. Admin and
+    regular users have control permission; read-only users do not.
+    """
+    if context.user_id is None:
         return
-    config_entry = entries[0]
-    new_data = dict(config_entry.data)
+    user = await hass.auth.async_get_user(context.user_id)
+    if user is None:
+        raise UnknownUser(context=context, permission=POLICY_CONTROL)
+    for entity_id in entity_ids:
+        if not user.permissions.check_entity(entity_id, POLICY_CONTROL):
+            raise Unauthorized(
+                context=context, entity_id=entity_id, permission=POLICY_CONTROL
+            )
 
-    if "calendars" in call_data:
-        new_data[CONF_CALENDARS] = list(call_data["calendars"])
-    if "display" in call_data:
-        new_data["display"] = dict(call_data["display"])
-    if "onboarding_complete" in call_data:
-        new_data["onboarding_complete"] = bool(call_data["onboarding_complete"])
 
-    await async_apply_config(hass, config_entry, new_data)
+async def _async_save_config(call: ServiceCall) -> None:
+    """Save the settings submitted by the card's setup wizard (admin only)."""
+    hass = call.hass
+    entry = _async_get_loaded_entry(hass)
+    new_data = dict(entry.data)
+
+    if CONF_CALENDARS in call.data:
+        new_data[CONF_CALENDARS] = [dict(cal) for cal in call.data[CONF_CALENDARS]]
+    if CONF_DISPLAY in call.data:
+        new_data[CONF_DISPLAY] = dict(call.data[CONF_DISPLAY])
+    if CONF_ONBOARDING_COMPLETE in call.data:
+        new_data[CONF_ONBOARDING_COMPLETE] = call.data[CONF_ONBOARDING_COMPLETE]
+
+    await async_apply_config(hass, entry, new_data)
 
     _LOGGER.info(
         "PlanaVista config saved via save_config service (calendars=%d, onboarding=%s)",
         len(new_data.get(CONF_CALENDARS, [])),
-        new_data.get("onboarding_complete"),
+        new_data.get(CONF_ONBOARDING_COMPLETE),
     )
 
 
 async def _async_delete_event(call: ServiceCall) -> None:
     """Delete a calendar event by UID via direct entity access."""
     hass = call.hass
-    entity_id = call.data.get("entity_id")
-    uid = call.data.get("uid")
-    recurrence_id = call.data.get("recurrence_id", "")
+    entity_id: str = call.data["entity_id"]
+    uid: str = call.data["uid"]
+    recurrence_id: str | None = call.data.get("recurrence_id") or None
 
-    if not entity_id or not uid:
-        _LOGGER.error("planavista.delete_event: entity_id and uid are required")
-        return
+    _async_check_configured(hass, [entity_id])
+    await _async_check_control(hass, call.context, [entity_id])
 
-    entity_comp = hass.data.get(DATA_COMPONENT)
-    if not entity_comp or not hasattr(entity_comp, "get_entity"):
-        raise Exception("Calendar platform not available")
+    component = hass.data.get(DATA_COMPONENT)
+    entity = component.get_entity(entity_id) if component else None
+    if entity is None:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="calendar_unavailable",
+            translation_placeholders={"entity_id": entity_id},
+        )
+    if not (entity.supported_features or 0) & CalendarEntityFeature.DELETE_EVENT:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="delete_not_supported",
+            translation_placeholders={"entity_id": entity_id},
+        )
 
-    entity = entity_comp.get_entity(entity_id)
-    if not entity:
-        raise Exception(f"Calendar entity {entity_id} not found")
-
-    if not hasattr(entity, "async_delete_event"):
-        raise Exception(f"Calendar {entity_id} does not support event deletion")
-
-    kwargs = {"uid": uid}
+    kwargs: dict[str, Any] = {"uid": uid}
     if recurrence_id:
         kwargs["recurrence_id"] = recurrence_id
     await entity.async_delete_event(**kwargs)
@@ -107,11 +267,11 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
     Falls back to creating separate events for non-Google calendars.
     """
     hass = call.hass
-    entity_id = call.data.get("entity_id")
-    attendee_entity_ids = call.data.get("attendee_entity_ids", [])
+    entity_id: str = call.data["entity_id"]
+    attendee_entity_ids: list[str] = call.data["attendee_entity_ids"]
 
-    if not entity_id:
-        raise Exception("entity_id is required")
+    _async_check_configured(hass, [entity_id, *attendee_entity_ids])
+    await _async_check_control(hass, call.context, [entity_id, *attendee_entity_ids])
 
     _LOGGER.debug(
         "PlanaVista: create_event_with_attendees called — "
@@ -120,7 +280,7 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
     )
 
     event_data = {
-        "summary": call.data.get("summary", ""),
+        "summary": call.data["summary"],
         "description": call.data.get("description", ""),
         "location": call.data.get("location", ""),
         "start_date_time": call.data.get("start_date_time"),
@@ -183,7 +343,9 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
 
                 # For non-Google attendees, fall back to separate events
                 for att_id in non_google_attendees:
-                    await _async_create_event_via_ha(hass, att_id, event_data)
+                    await _async_create_event_via_ha(
+                        hass, att_id, event_data, call.context
+                    )
 
                 return
             except Exception as err:
@@ -201,13 +363,13 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
     _LOGGER.debug(
         "PlanaVista: creating separate events via HA service (no attendee linking)"
     )
-    await _async_create_event_via_ha(hass, entity_id, event_data)
+    await _async_create_event_via_ha(hass, entity_id, event_data, call.context)
     for att_id in attendee_entity_ids:
-        await _async_create_event_via_ha(hass, att_id, event_data)
+        await _async_create_event_via_ha(hass, att_id, event_data, call.context)
 
 
 async def _async_create_event_via_ha(
-    hass: HomeAssistant, entity_id: str, event_data: dict
+    hass: HomeAssistant, entity_id: str, event_data: dict, context: Context
 ) -> None:
     """Fallback: create event using HA's calendar.create_event service."""
     service_data: dict = {"summary": event_data.get("summary", "")}
@@ -230,7 +392,28 @@ async def _async_create_event_via_ha(
         service_data,
         target={"entity_id": entity_id},
         blocking=True,
+        context=context,
     )
+
+
+@callback
+def _async_ws_check_calendars(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+    entity_ids: list[str],
+) -> bool:
+    """Send an error and return False unless every calendar is configured."""
+    configured = _async_configured_calendar_ids(hass)
+    for entity_id in entity_ids:
+        if entity_id not in configured:
+            connection.send_error(
+                msg["id"],
+                "not_configured",
+                f"{entity_id} is not a calendar configured in PlanaVista",
+            )
+            return False
+    return True
 
 
 @websocket_api.websocket_command(
@@ -249,6 +432,9 @@ async def ws_get_event_organizer(
     """Look up the organizer of a calendar event via Google Calendar API."""
     entity_id = msg["entity_id"]
     uid = msg["uid"]
+
+    if not _async_ws_check_calendars(hass, connection, msg, [entity_id]):
+        return
 
     cal_id = get_google_calendar_id(hass, entity_id)
     if not cal_id:
@@ -293,17 +479,13 @@ async def ws_get_event_organizer(
                 return
 
             # Map organizer email → PlanaVista calendar entity_id
-            entries = hass.config_entries.async_entries(DOMAIN)
-            if entries:
-                calendars = entries[0].data.get(CONF_CALENDARS, [])
-                for cal_config in calendars:
-                    cal_eid = cal_config.get("entity_id", "")
-                    google_id = get_google_calendar_id(hass, cal_eid)
-                    if google_id and google_id.lower() == organizer_email.lower():
-                        connection.send_result(msg["id"], {
-                            "organizer_entity_id": cal_eid,
-                        })
-                        return
+            for cal_eid in sorted(_async_configured_calendar_ids(hass)):
+                google_id = get_google_calendar_id(hass, cal_eid)
+                if google_id and google_id.lower() == organizer_email.lower():
+                    connection.send_result(msg["id"], {
+                        "organizer_entity_id": cal_eid,
+                    })
+                    return
 
             connection.send_result(msg["id"], {"organizer_entity_id": None})
 
@@ -339,6 +521,19 @@ async def ws_update_event(
     """
     entity_id = msg["entity_id"]
     uid = msg["uid"]
+    attendee_entity_ids: list[str] = msg.get("attendee_entity_ids", [])
+
+    if not _async_ws_check_calendars(
+        hass, connection, msg, [entity_id, *attendee_entity_ids]
+    ):
+        return
+    for checked_id in (entity_id, *attendee_entity_ids):
+        if not connection.user.permissions.check_entity(checked_id, POLICY_CONTROL):
+            raise Unauthorized(
+                context=connection.context(msg),
+                entity_id=checked_id,
+                permission=POLICY_CONTROL,
+            )
 
     cal_id = get_google_calendar_id(hass, entity_id)
     if not cal_id:
