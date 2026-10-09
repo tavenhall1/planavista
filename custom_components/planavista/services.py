@@ -350,6 +350,13 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
 
                 return
             except GoogleApiError as err:
+                if err.status is None:
+                    # A timeout or network error: Google may still have created the
+                    # event, so creating copies could duplicate it.
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN,
+                        translation_key="create_outcome_unknown",
+                    ) from err
                 _LOGGER.warning(
                     "Google Calendar could not create the event on %s; "
                     "creating a separate event on each calendar instead: %s",

@@ -16,6 +16,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.planavista.const import DOMAIN
@@ -161,7 +162,37 @@ async def test_failed_token_refresh_returns_none(
     assert "Could not get a Google access token for calendar.family_google" in caplog.text
 
 
-async def test_create_falls_back_when_google_times_out(
+async def test_create_does_not_duplicate_when_google_times_out(
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    setup_calendars: dict[str, FakeCalendar],
+    google_lookups: None,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """A timed-out Google create may have succeeded, so no fallback events are made."""
+    aioclient_mock.post(EVENTS_URL, side_effect=_hang)
+
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(
+            DOMAIN,
+            "create_event_with_attendees",
+            {
+                "entity_id": "calendar.test_alex",
+                "attendee_entity_ids": ["calendar.test_blair"],
+                "summary": "Recital",
+                "start_date": "2026-10-20",
+                "end_date": "2026-10-21",
+            },
+            blocking=True,
+        )
+
+    assert err.value.translation_key == "create_outcome_unknown"
+    assert aioclient_mock.call_count == 1
+    for entity_id in ("calendar.test_alex", "calendar.test_blair"):
+        assert setup_calendars[entity_id].events == []
+
+
+async def test_create_falls_back_when_google_rejects_the_request(
     hass: HomeAssistant,
     loaded_entry: MockConfigEntry,
     setup_calendars: dict[str, FakeCalendar],
@@ -169,8 +200,8 @@ async def test_create_falls_back_when_google_times_out(
     aioclient_mock: AiohttpClientMocker,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A Google request that times out falls back to one event per calendar."""
-    aioclient_mock.post(EVENTS_URL, side_effect=_hang)
+    """An HTTP error from Google means nothing was created, so each calendar gets an event."""
+    aioclient_mock.post(EVENTS_URL, status=500, text="backend error")
 
     await hass.services.async_call(
         DOMAIN,
@@ -188,7 +219,7 @@ async def test_create_falls_back_when_google_times_out(
     assert aioclient_mock.call_count == 1
     for entity_id in ("calendar.test_alex", "calendar.test_blair"):
         assert [ev.summary for ev in setup_calendars[entity_id].events] == ["Recital"]
-    assert "Google Calendar request failed" in caplog.text
+    assert "Google Calendar API error 500" in caplog.text
 
 
 async def test_create_uses_google_with_attendees(
