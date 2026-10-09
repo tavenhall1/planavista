@@ -48,8 +48,8 @@ case "${1:-}" in
     docker restart "$NAME" >/dev/null
     wait_up ;;
   deploy-frontend)
-    docker exec "$NAME" mkdir -p "/config/$SRC/frontend/dist"
-    docker cp "$REPO/$SRC/frontend/dist/." "$NAME:/config/$SRC/frontend/dist/"
+    docker exec "$NAME" mkdir -p "/config/$SRC/frontend"
+    tar -C "$REPO/$SRC/frontend" -cf - dist | docker cp - "$NAME:/config/$SRC/frontend/"
     echo "frontend copied; hard-refresh the browser (Ctrl+Shift+R)" ;;
   wait)   wait_up ;;
   logs)   docker logs --tail 2000 "$NAME" 2>&1 | grep -i -E "planavista|error|exception" | tail -n "${2:-50}" ;;
