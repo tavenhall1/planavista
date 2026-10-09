@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/utils/ha-utils', () => ({
   createEvent: vi.fn(),
@@ -39,6 +39,10 @@ describe('doEditEvent', () => {
     vi.mocked(deleteEvent).mockResolvedValue(undefined);
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('deletes the instance and creates the edited event', async () => {
     vi.mocked(createEvent).mockResolvedValue(undefined);
     await state.doEditEvent(hass, del, next, original);
@@ -48,11 +52,13 @@ describe('doEditEvent', () => {
   });
 
   it('restores the original event when the recreate fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(createEvent)
       .mockRejectedValueOnce(new Error('Invalid end time'))
       .mockResolvedValueOnce(undefined);
     await expect(state.doEditEvent(hass, del, next, original)).rejects.toThrow('The original event was restored.');
     expect(createEvent).toHaveBeenNthCalledWith(2, hass, original);
     expect(state.isLoading).toBe(false);
+    expect(errorSpy).toHaveBeenCalledWith('PlanaVista: Failed to edit event', expect.anything());
   });
 });
