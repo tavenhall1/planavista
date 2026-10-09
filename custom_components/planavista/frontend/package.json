@@ -9,6 +9,7 @@
   "scripts": {
     "start": "rollup -c --watch",
     "build": "rollup -c",
+    "test": "vitest run",
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "@rollup/plugin-typescript": "^12.1.0",
     "rollup": "^4.28.0",
     "tslib": "^2.8.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "5.0.3"
   }
 }

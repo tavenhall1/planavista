@@ -38,7 +38,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 - Keep PRs focused — one feature or fix per PR
 - Include screenshots for any UI changes
-- Ensure frontend builds without errors (`cd custom_components/planavista/frontend && npm run build`)
+- Ensure the frontend builds and its tests pass (`cd custom_components/planavista/frontend && npm run build && npm test`)
 - Don't introduce breaking changes without discussion first
 - Update documentation if your change affects user-facing behavior
 
@@ -58,12 +58,14 @@ cd custom_components/planavista/frontend
 npm install
 npm run build    # Production build
 npm run start    # Watch mode with rebuilds
+npm test         # Unit tests (vitest, always run in America/Chicago time)
 ```
 
 ### Testing Changes
 
 - **Backend (Python)**: Requires Home Assistant restart
 - **Frontend (TypeScript)**: Build + hard refresh (Ctrl+Shift+R), no restart needed
+- **Frontend unit tests**: `npm test` in `custom_components/planavista/frontend`. Tests live in `frontend/test/*.test.ts` and always run with `TZ=America/Chicago` (set in `vitest.config.ts` and `test/setup.ts`), so date bugs that only appear west of UTC reproduce on every machine.
 
 ## Code Style
 

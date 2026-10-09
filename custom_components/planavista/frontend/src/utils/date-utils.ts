@@ -1,10 +1,34 @@
 import { ViewType } from '../types';
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
- * Format a time string from ISO datetime.
+ * True for a date-only value ("2026-10-09"), the form Home Assistant uses for
+ * all-day event starts and (exclusive) ends.
  */
-export function formatTime(isoString: string, format: '12h' | '24h' = '12h'): string {
-  const date = new Date(isoString);
+export function isDateOnly(value: string): boolean {
+  return DATE_ONLY.test(value);
+}
+
+/**
+ * Parse an event start/end string. Date-only values become LOCAL midnight of
+ * that day (`new Date("2026-10-09")` would be UTC midnight, which is the
+ * previous evening west of UTC). Datetimes, with or without an offset, parse
+ * normally. Every event-date parse in the card goes through this.
+ */
+export function parseEventDate(value: string): Date {
+  if (isDateOnly(value)) {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(value);
+}
+
+/**
+ * Format the local time of an event start/end string.
+ */
+export function formatTime(value: string, format: '12h' | '24h' = '12h'): string {
+  const date = parseEventDate(value);
   if (format === '24h') {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
