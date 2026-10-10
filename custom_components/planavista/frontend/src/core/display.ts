@@ -1,4 +1,4 @@
-import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
+import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides } from '../types';
 
 /** Display settings for one card: its YAML wins, then the saved settings, then defaults. */
 export function resolveDisplay(config: PlanaVistaCardConfig | undefined, data: PlanaVistaData | null): DisplayConfig {
@@ -12,4 +12,15 @@ export function resolveDisplay(config: PlanaVistaCardConfig | undefined, data: P
     theme_overrides: saved?.theme_overrides,
     location_autocomplete: saved?.location_autocomplete === true,
   };
+}
+
+/**
+ * The display settings a theme choice saves. Settings saves merge into the
+ * saved display, so no customizations is sent as null, which removes them.
+ */
+export function themeDisplayChange(
+  theme: string,
+  overrides: ThemeOverrides,
+): { theme: string; theme_overrides: ThemeOverrides | null } {
+  return { theme, theme_overrides: Object.keys(overrides).length > 0 ? overrides : null };
 }

@@ -232,6 +232,27 @@ async def test_marking_a_shared_screen_needs_a_parent_pin(
     assert reply["error"]["code"] == "parent_mode_required"
 
 
+async def test_config_save_merges_display_settings(
+    hass: HomeAssistant,
+    hass_ws_client: Any,
+    accounts: dict[str, MockUser],
+    household: Any,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Each page saves only what it changed, so one page can't undo another's save (spec 14.1)."""
+    client = await hass_ws_client(hass)
+    before = dict(mock_config_entry.data["display"])
+    theme = {"theme": "dark", "theme_overrides": {"accent": "#277DA1"}}
+    assert (await ws_command(client, {"type": "planavista/config/save", "display": theme}))["success"]
+    assert (await ws_command(client, {"type": "planavista/config/save", "display": {"time_format": "24h"}}))["success"]
+    assert mock_config_entry.data["display"] == {**before, **theme, "time_format": "24h"}
+
+    # null removes a setting, as clearing a theme's customizations does.
+    reply = await ws_command(client, {"type": "planavista/config/save", "display": {"theme_overrides": None}})
+    assert reply["success"]
+    assert mock_config_entry.data["display"] == {**before, "theme": "dark", "time_format": "24h"}
+
+
 async def test_config_save_still_works_when_the_household_file_is_newer(
     hass: HomeAssistant,
     hass_ws_client: Any,
@@ -243,10 +264,11 @@ async def test_config_save_still_works_when_the_household_file_is_newer(
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     client = await hass_ws_client(hass)
+    before = dict(mock_config_entry.data["display"])
 
     saved = await ws_command(client, {"type": "planavista/config/save", "display": {"time_format": "24h"}})
     assert saved["success"]
-    assert mock_config_entry.data["display"] == {"time_format": "24h"}
+    assert mock_config_entry.data["display"] == {**before, "time_format": "24h"}
     refused = await ws_command(
         client, {"type": "planavista/household/member/save", "member": {"name": "Erin"}}
     )

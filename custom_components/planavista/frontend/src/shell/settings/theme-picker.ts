@@ -4,6 +4,7 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { animationStyles, baseStyles, buttonStyles, formStyles } from '../../styles/shared';
 import { settingsPageStyles } from '../../styles/settings';
+import { themeDisplayChange } from '../../core/display';
 import type { HouseholdView } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
@@ -60,9 +61,9 @@ export class PvThemePicker extends LitElement {
     if (this._saveTimer === undefined) return;
     window.clearTimeout(this._saveTimer);
     this._saveTimer = undefined;
-    const overrides = Object.keys(this._themeOverrides).length > 0 ? this._themeOverrides : undefined;
+    // Only the theme's own settings: a save merges, so other pages' settings stay.
     this.api
-      .saveConfig({ display: { ...this.data.display, theme: this._theme, theme_overrides: overrides } })
+      .saveConfig({ display: themeDisplayChange(this._theme, this._themeOverrides) })
       .catch(err => this._error(err));
   }
 

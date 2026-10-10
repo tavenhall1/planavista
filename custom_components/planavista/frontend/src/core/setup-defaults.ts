@@ -7,24 +7,25 @@ export interface LocaleLike {
 }
 
 /**
- * Calendar options for a new household (spec 14.7 leaves them out of setup):
- * Home Assistant's own time format and first day when they are set
- * explicitly, and the first weather entity when none is chosen. Every other
- * saved value stays.
+ * Calendar options for a new household (spec 14.7 leaves them out of setup),
+ * as changes to the saved ones: Home Assistant's own time format and first
+ * day when they are set explicitly, and the first weather entity when none
+ * is chosen. Saves merge, so every other saved value (the theme picked a
+ * moment ago included) stays.
  */
 export function setupDisplayDefaults(
   display: DisplayConfig,
   locale: LocaleLike | undefined,
   weatherEntities: string[],
-): DisplayConfig {
-  const result = { ...display };
-  if (locale?.time_format === '12') result.time_format = '12h';
-  if (locale?.time_format === '24') result.time_format = '24h';
+): Partial<DisplayConfig> {
+  const changes: Partial<DisplayConfig> = {};
+  if (locale?.time_format === '12') changes.time_format = '12h';
+  if (locale?.time_format === '24') changes.time_format = '24h';
   if (locale?.first_weekday === 'monday' || locale?.first_weekday === 'sunday') {
-    result.first_day = locale.first_weekday;
+    changes.first_day = locale.first_weekday;
   }
-  if (!result.weather_entity && weatherEntities.length > 0) {
-    result.weather_entity = [...weatherEntities].sort()[0];
+  if (!display.weather_entity && weatherEntities.length > 0) {
+    changes.weather_entity = [...weatherEntities].sort()[0];
   }
-  return result;
+  return changes;
 }

@@ -423,7 +423,10 @@ async def ws_setup_save(
 async def ws_config_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """The parent-mode counterpart of the admin-only save_config action (spec 6.5)."""
+    """The parent-mode counterpart of the admin-only save_config action (spec 6.5).
+
+    Display settings merge into the saved ones (a None value removes one).
+    """
     if _parent(hass, connection, msg, needs_file=False) is None:
         return
     changes = {
@@ -431,7 +434,7 @@ async def ws_config_save(
         for key in (CONF_CALENDARS, CONF_DISPLAY, CONF_ONBOARDING_COMPLETE)
         if key in msg
     }
-    await async_store_config(hass, changes)
+    await async_store_config(hass, changes, merge_display=True)
     connection.send_result(msg["id"])
 
 

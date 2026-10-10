@@ -209,19 +209,28 @@ async def _async_check_control(
             )
 
 
-async def async_store_config(hass: HomeAssistant, changes: Mapping[str, Any]) -> None:
+async def async_store_config(
+    hass: HomeAssistant, changes: Mapping[str, Any], *, merge_display: bool = False
+) -> None:
     """Save calendars, display settings, and onboarding_complete.
 
     The save_config action and the card's planavista/config/save both come
-    here. A calendar newly linked to a Home Assistant person joins that
-    person's member, who is added when needed (spec section 7.2).
+    here. The action replaces the display settings; the card merges them
+    (`merge_display`), so each Settings page sends only what it changed and
+    one page's save can't undo another's. A None value removes a setting.
+    A calendar newly linked to a Home Assistant person joins that person's
+    member, who is added when needed (spec section 7.2).
     """
     entry = _async_get_loaded_entry(hass)
     new_data = dict(entry.data)
     if CONF_CALENDARS in changes:
         new_data[CONF_CALENDARS] = [dict(cal) for cal in changes[CONF_CALENDARS]]
     if CONF_DISPLAY in changes:
-        new_data[CONF_DISPLAY] = dict(changes[CONF_DISPLAY])
+        display = dict(changes[CONF_DISPLAY])
+        if merge_display:
+            merged = {**entry.data.get(CONF_DISPLAY, {}), **display}
+            display = {key: value for key, value in merged.items() if value is not None}
+        new_data[CONF_DISPLAY] = display
     if CONF_ONBOARDING_COMPLETE in changes:
         new_data[CONF_ONBOARDING_COMPLETE] = changes[CONF_ONBOARDING_COMPLETE]
 

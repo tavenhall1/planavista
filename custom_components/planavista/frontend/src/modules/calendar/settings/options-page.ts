@@ -33,9 +33,10 @@ export class PvCalendarOptionsPage extends LitElement {
     }
   }
 
+  /** Show the change and save only it: saves merge, so other pages' settings (the theme) stay. */
   private _apply(change: Partial<DisplayConfig>): void {
     this._draft = { ...this._draft, ...change };
-    this.api.saveConfig({ display: { ...this.data.display, ...this._draft } }).catch(err => this._error(err));
+    this.api.saveConfig({ display: change }).catch(err => this._error(err));
   }
 
   /** Tell the host a save failed (it shows the words in a toast). */
