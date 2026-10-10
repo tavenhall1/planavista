@@ -22,6 +22,7 @@ import {
 } from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../../../styles/shared';
 import { LocationSearch } from '../utils/location-search';
+import { contrastText } from '../../../core/color';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -175,7 +176,7 @@ export class PVEventCreateDialog extends LitElement {
         transform: translateX(-50%);
         font-size: 0.5rem;
         font-weight: 700;
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
         text-transform: uppercase;
         letter-spacing: 0.3px;
         line-height: 1;
@@ -212,7 +213,7 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       .show-more-btn:hover {
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
       }
 
       .ends-hint {
@@ -725,7 +726,7 @@ export class PVEventCreateDialog extends LitElement {
                     border-radius: var(--pv-radius-sm, 8px);
                     font-size: 0.8125rem; color: var(--pv-text-secondary);
                   ">
-                    <ha-icon icon="mdi:information-outline" style="--mdc-icon-size: 16px; color: var(--pv-accent, #6366F1); flex-shrink: 0;"></ha-icon>
+                    <ha-icon icon="mdi:information-outline" style="--mdc-icon-size: 16px; color: var(--pv-accent-ink, var(--pv-accent, #6366F1)); flex-shrink: 0;"></ha-icon>
                     Tap a guest to remove them from this event
                   </div>
                 ` : nothing}
@@ -742,7 +743,7 @@ export class PVEventCreateDialog extends LitElement {
                         <button
                           class="cal-option ${selected ? 'selected' : ''} ${isLockedOrganizer ? 'locked' : ''}"
                           style="${selected
-                            ? `background: ${cal.color}; --cal-bg: ${cal.color}`
+                            ? `background: ${cal.color}; --cal-bg: ${cal.color}; color: ${contrastText(cal.color)}`
                             : `--cal-bg: ${cal.color}`}"
                           @click=${() => this._toggleCalendar(cal.entity_id)}
                         >

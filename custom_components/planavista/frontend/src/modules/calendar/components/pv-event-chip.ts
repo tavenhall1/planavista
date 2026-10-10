@@ -61,13 +61,6 @@ export class PVEventChip extends LitElement {
         text-overflow: ellipsis;
       }
 
-      .chip-title--wrap {
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        white-space: normal;
-      }
-
       .chip-title--nowrap {
         white-space: nowrap;
       }
@@ -138,8 +131,8 @@ export class PVEventChip extends LitElement {
         flex-shrink: 0;
       }
 
-      /* Compact mode (month view) */
-      .chip--compact {
+      /* Compact mode (month view); .chip.chip--compact outranks the wider screens' .chip padding */
+      .chip.chip--compact {
         padding: 0.25rem 0.5rem;
         border-left-width: 2px;
         border-radius: var(--pv-radius-sm, 4px);
@@ -172,7 +165,7 @@ export class PVEventChip extends LitElement {
         .chip-title { font-size: 1.375rem; }
         .chip-time { font-size: 1.125rem; }
         .chip-avatar, .chip-initial, .chip-overflow { width: 40px; height: 40px; font-size: 0.8125rem; }
-        .chip--compact { padding: 0.375rem 0.75rem; border-left-width: 3px; }
+        .chip.chip--compact { padding: 0.375rem 0.75rem; border-left-width: 3px; }
         .chip--compact .chip-title { font-size: 1rem; }
       }
     `,
@@ -208,7 +201,8 @@ export class PVEventChip extends LitElement {
 
     const past = isEventPast(event) ? ' past' : '';
     const chipClass = (this.compact ? 'chip chip--compact' : 'chip') + past;
-    const titleClass = this.compact ? 'chip-title chip-title--wrap' : 'chip-title chip-title--nowrap';
+    // One line in every chip, so Month can count how many fit in a day.
+    const titleClass = 'chip-title chip-title--nowrap';
 
     // Time display
     const isAllDay = isAllDayEvent(event);
@@ -247,7 +241,7 @@ export class PVEventChip extends LitElement {
           if (avatar) {
             return html`<img class="chip-avatar" src="${avatar}" alt="${name}" />`;
           }
-          return html`<div class="chip-initial" style="background: ${cal.color}">${name[0]?.toUpperCase() || '?'}</div>`;
+          return html`<div class="chip-initial" style="background: ${cal.color}; color: ${contrastText(cal.color)}">${name[0]?.toUpperCase() || '?'}</div>`;
         })}
         ${overflow > 0 ? html`<div class="chip-overflow">+${overflow}</div>` : nothing}
       </div>

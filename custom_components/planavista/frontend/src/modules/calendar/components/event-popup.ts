@@ -8,6 +8,7 @@ import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../../../util
 import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../../../styles/shared';
 import { formatTime, formatDate, parseEventDate } from '../../../utils/date-utils';
 import { isAllDayEvent } from '../utils/event-utils';
+import { contrastText } from '../../../core/color';
 
 export class PVEventPopup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -263,7 +264,7 @@ export class PVEventPopup extends LitElement {
             ${isShared ? html`
               <div class="participants-row">
                 ${shared!.map(p => html`
-                  <span class="participant-chip" style="background: ${p.calendar_color}">
+                  <span class="participant-chip" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
                     ${p.calendar_name}
                     ${p.entity_id === this._organizerEntityId
                       ? html`<span class="organizer-tag">organizer</span>`

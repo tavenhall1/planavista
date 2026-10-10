@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { property } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
@@ -16,10 +16,11 @@ import {
 } from '../utils/event-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { contrastText } from '../../../core/color';
+import type { Layout } from '../../../core/layout';
+import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
 
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;
-const HOUR_HEIGHT = 80; // px per hour
 
 export class PVViewDay extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -32,6 +33,14 @@ export class PVViewDay extends LitElement {
   @property({ attribute: false }) avatarBorderMode: string = 'primary';
   @property({ attribute: false }) sharedEventMap: Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>> = new Map();
   @property({ type: Number }) tick = 0;
+  /** The card's layout: portrait fits about 14 hours on screen (spec 12.2). */
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+
+  /** The hour height in px; the grid, the events, and the now-line all scale with it. */
+  @state() private _hourPx = HOUR_PX;
+  private _hoursObserver?: ResizeObserver;
+  /** The scrolling grid being measured; it's missing while no calendar is visible. */
+  private _measured: HTMLElement | null = null;
 
   static styles = [
     baseStyles,
@@ -177,7 +186,7 @@ export class PVViewDay extends LitElement {
       .time-grid {
         display: flex;
         position: relative;
-        height: ${(DAY_END_HOUR - DAY_START_HOUR) * HOUR_HEIGHT}px;
+        height: calc(${DAY_END_HOUR - DAY_START_HOUR} * var(--pv-hour-px, ${HOUR_PX}px));
         flex-shrink: 0;
       }
 
@@ -330,7 +339,7 @@ export class PVViewDay extends LitElement {
         justify-content: center;
         gap: 8px;
         padding: 12px 16px;
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         font-size: 0.9375rem;
         font-weight: 600;
         background: var(--pv-border-subtle, rgba(0, 0, 0, 0.03));
@@ -367,7 +376,7 @@ export class PVViewDay extends LitElement {
         gap: 8px;
         padding: 16px;
         cursor: pointer;
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         font-size: 0.9375rem;
         font-weight: 600;
         background: var(--pv-border-subtle, rgba(0, 0, 0, 0.03));
@@ -476,7 +485,22 @@ export class PVViewDay extends LitElement {
 
   private _scrollContainer?: HTMLElement;
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    // Moved within the page: measure again (an element that never rendered waits for updated()).
+    if (this.hasUpdated) this._watchHours();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._hoursObserver?.disconnect();
+    this._measured = null;
+  }
+
   firstUpdated() {
+    // Fit the hours before scrolling to now; fitting afterwards would stop that scroll.
+    this._watchHours();
+    this._fitHours();
     this._scrollToNow();
   }
 
@@ -485,6 +509,32 @@ export class PVViewDay extends LitElement {
     if (changedProps.has('currentDate')) {
       this._scrollToNow();
     }
+    this._watchHours();
+    if (changedProps.has('layout')) this._fitHours();
+  }
+
+  /** Measure the scrolling grid whenever it's a new element. */
+  private _watchHours(): void {
+    const wrapper = this.shadowRoot?.querySelector<HTMLElement>('.time-grid-wrapper') ?? null;
+    if (wrapper === this._measured) return;
+    this._hoursObserver?.disconnect();
+    this._measured = wrapper;
+    if (!wrapper || typeof ResizeObserver === 'undefined') return;
+    this._hoursObserver ??= new ResizeObserver(() => this._fitHours());
+    this._hoursObserver.observe(wrapper);
+  }
+
+  /** Size the hours for the layout, keeping the same time at the top (turning the tablet keeps your place). */
+  private _fitHours(): void {
+    const wrapper = this._measured;
+    if (!wrapper) return;
+    const next = dayHourHeight(this.layout, wrapper.clientHeight);
+    if (next === this._hourPx) return;
+    const top = rescaleScroll(wrapper.scrollTop, this._hourPx, next);
+    this._hourPx = next;
+    void this.updateComplete.then(() => {
+      wrapper.scrollTop = top;
+    });
   }
 
   private _scrollToNow() {
@@ -536,7 +586,7 @@ export class PVViewDay extends LitElement {
     }
 
     return html`
-      <div class="day-container">
+      <div class="day-container" style="--pv-hour-px: ${this._hourPx}px">
         ${allDayEvents.length > 0 ? html`
           <div class="all-day-section">
             <div class="all-day-gutter">All Day</div>
@@ -571,7 +621,7 @@ export class PVViewDay extends LitElement {
                   ${avatar
                     ? html`<img class="person-avatar" src="${avatar}" alt="${name}"
                         style="${borderColor ? `--pv-avatar-border: ${borderColor}` : ''}" />`
-                    : html`<div class="person-initial" style="background: ${color}">${name[0]?.toUpperCase() || '?'}</div>`}
+                    : html`<div class="person-initial" style="background: ${color}; color: ${contrastText(color)}">${name[0]?.toUpperCase() || '?'}</div>`}
                   <span class="person-name">${name}</span>
                 </div>
               `;
@@ -726,7 +776,7 @@ export class PVViewDay extends LitElement {
                           src="${avatar}" alt="${name}"
                           style="--participant-color: ${p.calendar_color}" />`
                       : html`<div class="event-participant-initial"
-                          style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}"
+                          style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}"
                         >${name[0]?.toUpperCase() || '?'}</div>`;
                   })}
                 </div>

@@ -12,6 +12,8 @@ import { memoizeOne } from '../../utils/render-cache';
 import { ForecastEntry } from '../../utils/weather-subscription';
 import { CalendarStoreController } from './calendar-store';
 import { CalendarDerived, deriveCalendarData } from './calendar-derive';
+import { withModeColors } from './mode-colors';
+import { contrastText } from '../../core/color';
 
 import './components/view-day';
 import './components/view-week';
@@ -117,7 +119,7 @@ export class PvCalendarModule extends LitElement {
 
       .pvc-filter-btn.has-hidden {
         border-color: var(--pv-accent);
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
       }
 
       .pvc-filter-badge {
@@ -185,7 +187,7 @@ export class PvCalendarModule extends LitElement {
       }
 
       .pvc-filter-check-icon {
-        color: white;
+        color: var(--item-ink, white);
         font-size: 14px;
         line-height: 1;
       }
@@ -201,7 +203,7 @@ export class PvCalendarModule extends LitElement {
         justify-content: center;
         font-weight: 700;
         font-size: 0.8125rem;
-        color: white;
+        color: var(--item-ink, white);
         background-size: cover;
         background-position: center;
       }
@@ -437,7 +439,7 @@ export class PvCalendarModule extends LitElement {
         justify-content: center;
         font-weight: 700;
         font-size: 0.625rem;
-        color: white;
+        color: var(--chip-ink, white);
         background-size: cover;
         background-position: center;
       }
@@ -529,15 +531,16 @@ export class PvCalendarModule extends LitElement {
     if (changed.has('view') && this.view) this._pv.store.setView(this.view);
   }
 
-  /** Cached until the data, the card config, or the calendar filter changes. */
+  /** Cached until the data, the card config, the calendar filter, or the mode changes. */
   private _derive = memoizeOne((
     data: PlanaVistaData | null,
     config: PlanaVistaCardConfig | undefined,
     hidden: Set<string>,
-  ): CalendarDerived => deriveCalendarData(data, config, hidden));
+    mode: Mode,
+  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode), config, hidden));
 
   private _derived(): CalendarDerived {
-    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars);
+    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode);
   }
 
   render() {
@@ -609,7 +612,7 @@ export class PvCalendarModule extends LitElement {
                 return html`
                   <div
                     class="pvc-filter-item ${isActive ? 'active' : ''}"
-                    style="--item-color: ${cal.color}"
+                    style="--item-color: ${cal.color}; --item-ink: ${contrastText(cal.color)}"
                     @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
                   >
                     <div class="pvc-filter-check">
@@ -639,7 +642,7 @@ export class PvCalendarModule extends LitElement {
             return html`
               <button
                 class="pvc-cal-chip ${isActive ? 'active' : ''}"
-                style="--chip-color: ${cal.color}"
+                style="--chip-color: ${cal.color}; --chip-ink: ${contrastText(cal.color)}"
                 @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
               >
                 <div
@@ -718,6 +721,7 @@ export class PvCalendarModule extends LitElement {
         const { sharedEventMap } = this._derived();
         const tick = this._tick;
         return html`<pv-view-day
+          layout=${this.layout}
           .hass=${this.hass}
           .events=${events}
           .calendars=${calendars}
@@ -733,6 +737,7 @@ export class PvCalendarModule extends LitElement {
       case 'week': {
         const tick = this._tick;
         return html`<pv-view-week
+          layout=${this.layout}
           .hass=${this.hass}
           .events=${events}
           .calendars=${calendars}
@@ -748,6 +753,7 @@ export class PvCalendarModule extends LitElement {
       case 'month': {
         const tick = this._tick;
         return html`<pv-view-month
+          layout=${this.layout}
           .hass=${this.hass}
           .events=${events}
           .calendars=${calendars}
@@ -762,6 +768,7 @@ export class PvCalendarModule extends LitElement {
       case 'agenda': {
         const tick = this._tick;
         return html`<pv-view-agenda
+          layout=${this.layout}
           .hass=${this.hass}
           .events=${events}
           .calendars=${calendars}
@@ -785,7 +792,8 @@ export class PvCalendarModule extends LitElement {
     // all participants. The clicked copy stays the "main" event: we don't
     // guess organizer since HA doesn't expose that field from Google Calendar.
     if (clicked.uid) {
-      const allEvents = this.data?.events || [];
+      // The mode's colors, so the popup's people match the views.
+      const allEvents = withModeColors(this.data, this.mode)?.events || [];
       const siblings = allEvents.filter(
         (ev: any) => ev.uid === clicked.uid && ev.uid !== '',
       );

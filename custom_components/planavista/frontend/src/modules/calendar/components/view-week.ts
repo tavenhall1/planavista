@@ -4,6 +4,7 @@ import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles, animationStyles } from '../../../styles/shared';
+import type { Layout } from '../../../core/layout';
 import { getStartOfWeek, isToday, getDateKey } from '../../../utils/date-utils';
 import {
   compareEventsForDisplay,
@@ -29,6 +30,8 @@ export class PVViewWeek extends LitElement {
   @property({ attribute: false }) forecast: ForecastEntry[] = [];
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
+  /** The card's layout: four days across in landscape, two in portrait, one on a phone (spec 12.3). */
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
 
 
   static styles = [
@@ -51,6 +54,11 @@ export class PVViewWeek extends LitElement {
         padding: 0.75rem 1rem 0.5rem;
         flex-shrink: 0;
       }
+
+      /* Days across follow the card's own shape, not the window's (spec 12.1). */
+      :host([layout='landscape']) .day-grid { grid-template-columns: repeat(4, 1fr); }
+      :host([layout='portrait']) .day-grid { grid-template-columns: repeat(2, 1fr); }
+      :host([layout='phone']) .day-grid { grid-template-columns: 1fr; }
 
       .day-grid {
         display: grid;
@@ -97,7 +105,7 @@ export class PVViewWeek extends LitElement {
       }
 
       .day-card--today .day-name {
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
       }
 
       .day-meta {
@@ -110,7 +118,7 @@ export class PVViewWeek extends LitElement {
 
       .add-event-link {
         font-size: 0.6875rem;
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
         cursor: pointer;
         font-weight: 500;
         background: none;
@@ -164,15 +172,9 @@ export class PVViewWeek extends LitElement {
 
       /* ═══════════ RESPONSIVE ═══════════ */
 
-      /* MD: tablets, 2 columns */
-      @media (max-width: 1023px) {
-        .day-grid { grid-template-columns: repeat(2, 1fr); }
-      }
-
-      /* SM/XS: phones, 1 column (agenda-like) */
+      /* SM/XS: small screens, tighter cards */
       @media (max-width: 767px) {
         .day-grid {
-          grid-template-columns: 1fr;
           gap: 0.375rem;
           padding: 0 0.5rem 0.5rem;
         }
