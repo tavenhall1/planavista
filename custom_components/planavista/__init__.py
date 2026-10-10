@@ -17,6 +17,7 @@ from homeassistant.loader import async_get_integration
 from .const import DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .household.store import async_get_household, async_start_household
+from .household.websocket import async_setup_household_websocket
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register services, WebSocket commands, and the card bundle once."""
     async_setup_services(hass)
+    async_setup_household_websocket(hass)
     await async_register_frontend(hass)
     return True
 
