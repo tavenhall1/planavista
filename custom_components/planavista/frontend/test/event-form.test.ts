@@ -11,7 +11,7 @@ import {
   withEndTime,
   withStartTime,
   type EventFormDates,
-} from '../src/utils/event-form';
+} from '../src/modules/calendar/utils/event-form';
 
 describe('calendarDaysBetween', () => {
   it('counts calendar days, not 24-hour blocks', () => {

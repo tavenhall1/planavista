@@ -2,11 +2,11 @@
 // Single entry point: imports the unified card and registers it with HA
 
 // Reusable sub-components
-import './components/color-swatch-picker';
-import './components/onboarding-wizard';
-import './components/pv-event-chip';
+import './core/color-swatch-picker';
+import './shell/onboarding-wizard';
+import './modules/calendar/components/pv-event-chip';
 
-import './cards/planavista-calendar-card';
+import './shell/planavista-card';
 import { version } from '../package.json';
 
 // Register card with the HA card picker (once, even if another copy of the bundle ran first)

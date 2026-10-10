@@ -4,7 +4,7 @@ import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { baseStyles, buttonStyles, formStyles, animationStyles, scrollbarStyles } from '../styles/shared';
 import { ThemeOverrides } from '../types';
-import { PvColorSwatchPicker } from './color-swatch-picker';
+import { PvColorSwatchPicker } from '../core/color-swatch-picker';
 
 interface CalendarEntry {
   entity_id: string;

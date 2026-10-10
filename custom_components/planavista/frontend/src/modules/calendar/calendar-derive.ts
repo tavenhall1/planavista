@@ -1,5 +1,5 @@
 import type { CalendarConfig, CalendarEvent, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
-import { filterVisibleEvents } from '../../utils/event-utils';
+import { filterVisibleEvents } from './utils/event-utils';
 
 /** A calendar that shares an event (same UID), for Day-view participant avatars. */
 export interface SharedParticipant {

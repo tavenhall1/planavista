@@ -1,15 +1,15 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig, WeatherCondition } from '../types';
-import { baseStyles, animationStyles } from '../styles/shared';
+import { CalendarEvent, CalendarConfig, WeatherCondition } from '../../../types';
+import { baseStyles, animationStyles } from '../../../styles/shared';
 import {
   formatDate,
   getRelativeLabel,
   getDateKey,
   isToday,
-} from '../utils/date-utils';
+} from '../../../utils/date-utils';
 import {
   compareEventsForDisplay,
   groupEventsByDate,
@@ -17,8 +17,8 @@ import {
   deduplicateSharedEvents,
   SharedEvent,
 } from '../utils/event-utils';
-import { weatherIcon } from '../utils/weather-icons';
-import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../utils/weather-subscription';
+import { weatherIcon } from '../../../utils/weather-icons';
+import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../../../utils/weather-subscription';
 
 const DAYS_PER_PAGE = 14;
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

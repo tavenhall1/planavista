@@ -1,10 +1,10 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig } from '../types';
-import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../styles/shared';
-import { formatTime } from '../utils/date-utils';
+import { CalendarEvent, CalendarConfig } from '../../../types';
+import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../../../styles/shared';
+import { formatTime } from '../../../utils/date-utils';
 import {
   isAllDayEvent,
   isEventPast,
@@ -14,8 +14,8 @@ import {
   detectOverlaps,
   filterVisibleEvents,
 } from '../utils/event-utils';
-import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
-import { contrastText } from '../styles/themes';
+import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
+import { contrastText } from '../../../styles/themes';
 
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;

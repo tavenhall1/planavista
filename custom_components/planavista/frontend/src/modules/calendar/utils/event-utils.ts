@@ -1,5 +1,5 @@
-import { CalendarEvent, CalendarConfig } from '../types';
-import { getDateKey, isDateOnly, parseEventDate } from './date-utils';
+import { CalendarEvent, CalendarConfig } from '../../../types';
+import { getDateKey, isDateOnly, parseEventDate } from '../../../utils/date-utils';
 
 export interface SharedEvent extends CalendarEvent {
   shared_calendars: Array<{

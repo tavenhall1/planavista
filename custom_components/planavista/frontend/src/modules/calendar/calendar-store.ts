@@ -3,7 +3,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { ViewType, CalendarEvent, DialogType, CreateEventData, DeleteEventData } from '../../types';
 import { createEvent, deleteEvent, refreshPlanaVista } from '../../utils/ha-utils';
 import { getDateKey, navigateDate, rolloverDate } from '../../utils/date-utils';
-import { runEditWithRestore } from '../../utils/event-form';
+import { runEditWithRestore } from './utils/event-form';
 
 /**
  * The calendar's UI state for one card: view, date, calendar filter,

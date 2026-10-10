@@ -8,7 +8,7 @@ import {
   formDatesFromEvent,
   planEdit,
   runEditWithRestore,
-} from '../src/utils/event-form';
+} from '../src/modules/calendar/utils/event-form';
 
 const weeklyLesson: CalendarEvent = {
   summary: 'Piano lesson',

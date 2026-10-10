@@ -1,10 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig } from '../types';
-import { baseStyles } from '../styles/shared';
-import { getMonthGrid, isToday, getDateKey } from '../utils/date-utils';
+import { CalendarEvent, CalendarConfig } from '../../../types';
+import { baseStyles } from '../../../styles/shared';
+import { getMonthGrid, isToday, getDateKey } from '../../../utils/date-utils';
 import {
   groupEventsByDate,
   filterVisibleEvents,

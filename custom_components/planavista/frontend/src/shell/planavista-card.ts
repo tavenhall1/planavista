@@ -14,17 +14,17 @@ import { swipeDirection } from '../utils/gestures';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
 
 // Import card editor (visual editor instead of YAML panel)
-import './planavista-calendar-card-editor';
+import './planavista-card-editor';
 
 // Import view components (triggers registration)
-import '../components/view-day';
-import '../components/view-week';
-import '../components/view-month';
-import '../components/view-agenda';
-import '../components/event-popup';
-import '../components/event-create-dialog';
-import '../components/onboarding-wizard';
-import '../components/pv-clock';
+import '../modules/calendar/components/view-day';
+import '../modules/calendar/components/view-week';
+import '../modules/calendar/components/view-month';
+import '../modules/calendar/components/view-agenda';
+import '../modules/calendar/components/event-popup';
+import '../modules/calendar/components/event-create-dialog';
+import './onboarding-wizard';
+import './pv-clock';
 
 /** What render() derives from the config sensor (see _derive). */
 interface CardDerived extends CalendarDerived {

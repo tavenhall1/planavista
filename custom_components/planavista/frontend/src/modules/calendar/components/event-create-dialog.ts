@@ -1,10 +1,10 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state, query } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarConfig, CalendarEvent, CreateEventData } from '../types';
-import { CalendarStore, StoreSubscriber } from '../modules/calendar/calendar-store';
-import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
+import { CalendarConfig, CalendarEvent, CreateEventData } from '../../../types';
+import { CalendarStore, StoreSubscriber } from '../calendar-store';
+import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../../../utils/ha-utils';
 import {
   EditRestoreError,
   EventFormDates,
@@ -20,7 +20,7 @@ import {
   withEndTime,
   withStartTime,
 } from '../utils/event-form';
-import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../styles/shared';
+import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../../../styles/shared';
 import { LocationSearch } from '../utils/location-search';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];

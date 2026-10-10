@@ -1,13 +1,13 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarConfig } from '../types';
+import { CalendarConfig } from '../../../types';
 import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isAllDayEvent, isEventPast } from '../utils/event-utils';
-import { contrastText } from '../styles/themes';
-import { formatTime } from '../utils/date-utils';
-import { getPersonAvatar, getPersonName } from '../utils/ha-utils';
-import { baseStyles } from '../styles/shared';
+import { contrastText } from '../../../styles/themes';
+import { formatTime } from '../../../utils/date-utils';
+import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
+import { baseStyles } from '../../../styles/shared';
 
 export class PVEventChip extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
