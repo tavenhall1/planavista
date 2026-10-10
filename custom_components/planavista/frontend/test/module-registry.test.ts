@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ModuleRegistry, resolveModules, type ModuleDefinition } from '../src/core/module-registry';
+import { ModuleRegistry, initialModuleView, resolveModules, type ModuleDefinition } from '../src/core/module-registry';
 
 const mod = (id: string, order: number): ModuleDefinition => ({
-  id, label: id, icon: 'mdi:puzzle', tag: `pv-${id}-module`, order, watchedEntities: () => [],
+  id, label: id, icon: 'mdi:puzzle', tag: `pv-${id}-module`, order, views: [], watchedEntities: () => [],
 });
 const calendar = mod('calendar', 10);
 const chores = mod('chores', 20);
@@ -53,5 +53,19 @@ describe('resolveModules', () => {
 
   it('has nothing to show when no modules are registered', () => {
     expect(resolveModules([], {})).toEqual({ shown: [], initial: undefined });
+  });
+});
+
+describe('initialModuleView', () => {
+  const calendar = {
+    views: [{ id: 'day', label: 'Day' }, { id: 'week', label: 'Week' }],
+    initialView: ({ config }: { config: { view?: string } | undefined }) => config?.view,
+  };
+
+  it('opens on the view a module asks for when it offers it, else its first', () => {
+    expect(initialModuleView(calendar, { config: { type: 'custom:planavista-card', view: 'week' }, data: null })).toBe('week');
+    expect(initialModuleView(calendar, { config: { type: 'custom:planavista-card', view: 'year' as never }, data: null })).toBe('day');
+    expect(initialModuleView(calendar, { config: undefined, data: null })).toBe('day');
+    expect(initialModuleView({ views: [] }, { config: undefined, data: null })).toBe('');
   });
 });

@@ -3,14 +3,14 @@ import { property, state } from 'lit/decorators.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
-import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides, WeatherCondition } from '../types';
+import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides } from '../types';
 import { resolveTheme, clearThemeCache, applyThemeWithOverrides } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { getPlanaVistaData } from '../utils/ha-utils';
-import { weatherIcon } from '../utils/weather-icons';
+import { todayHighLow } from '../utils/weather-subscription';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
 import { resolveDisplay } from '../core/display';
-import { ModuleDefinition, ResolvedModules, moduleRegistry, resolveModules } from '../core/module-registry';
+import { ModuleDefinition, ResolvedModules, initialModuleView, moduleRegistry, resolveModules } from '../core/module-registry';
 import { SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { registerShellSettings } from './definition';
@@ -20,9 +20,10 @@ import { LayoutController } from './layout-controller';
 import { ensurePageStyles } from './page-styles';
 import { SessionController } from './session-controller';
 
-// The card editor, the setup and Settings wizard, and the header clock.
+// The card editor, Settings and setup, the header, and the bar.
 import './planavista-card-editor';
-import './pv-clock';
+import './pv-glance-header';
+import './pv-nav-bar';
 import './settings/theme-picker';
 import './pv-parent-strip';
 import './pv-pin-sheet';
@@ -57,6 +58,10 @@ export class PlanaVistaCard extends LitElement {
   private _settingsVia: 'access' | 'session' | null = null;
   /** A theme was previewed in Settings, and its save is on the way. */
   private _previewed = false;
+  /** The view each module shows; the bar and the module both change it (data down, events up). */
+  @state() private _views: Record<string, string> = {};
+  /** The module the switcher picked; null for the card's first. */
+  @state() private _moduleId: string | null = null;
 
   private _household = new HouseholdController(this);
   private _session = new SessionController(this, () => this._api);
@@ -83,10 +88,6 @@ export class PlanaVistaCard extends LitElement {
         color: var(--pv-text);
       }
 
-      pv-clock {
-        display: contents;
-      }
-
       ha-card {
         display: flex;
         flex-direction: column;
@@ -95,90 +96,30 @@ export class PlanaVistaCard extends LitElement {
         background: var(--pv-card-bg);
         border-radius: var(--pv-radius-lg);
         box-shadow: var(--pv-shadow);
+        /* Header type scales with the card, not the window (spec 12.1). */
+        container-type: inline-size;
       }
 
-/* ================================================================
-         HEADER: weather left, date center, time right
-         ================================================================ */
-
-      .pvc-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 18px 24px;
-        background: var(--pv-header-gradient);
-        color: var(--pv-header-text);
+      /* One header, module, and bar in every layout; only their order changes,
+         so turning a tablet never rebuilds the module (spec 12.1). */
+      pv-glance-header {
+        order: 1;
         flex-shrink: 0;
       }
 
-/* -- Weather (left) -- */
-
-      .pvc-weather {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-        padding: 6px 10px;
-        border-radius: var(--pv-radius-sm);
-        transition: background 200ms ease;
-        -webkit-tap-highlight-color: transparent;
+      .pv-module {
+        order: 3;
+        flex: 1 1 auto;
+        min-height: 0;
       }
 
-      .pvc-weather:hover {
-        background: rgba(255, 255, 255, 0.15);
+      pv-nav-bar {
+        order: 4;
+        flex-shrink: 0;
       }
 
-      .pvc-weather:active {
-        background: rgba(255, 255, 255, 0.25);
-      }
-
-      .pvc-weather-info {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .pvc-weather-temp {
-        font-size: 1.75rem;
-        font-weight: 700;
-        line-height: 1.15;
-        letter-spacing: -0.5px;
-      }
-
-      .pvc-weather-condition {
-        font-size: 0.8125rem;
-        opacity: 0.85;
-        text-transform: capitalize;
-        line-height: 1.3;
-      }
-
-/* -- Date (center) -- */
-
-      .pvc-header-date {
-        font-size: 1.25rem;
-        font-weight: 600;
-        opacity: 0.95;
-        text-align: center;
-        white-space: nowrap;
-      }
-
-/* -- Time (right) -- */
-
-      .pvc-header-time {
-        text-align: right;
-      }
-
-      .pvc-time-display {
-        font-size: 2rem;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        line-height: 1.15;
-      }
-
-      .pvc-time-ampm {
-        font-size: 0.875rem;
-        font-weight: 500;
-        opacity: 0.8;
-        margin-left: 3px;
+      :host([layout='landscape']) pv-nav-bar {
+        order: 2;
       }
 
 /* Empty state */
@@ -229,14 +170,6 @@ export class PlanaVistaCard extends LitElement {
         line-height: 1.5;
       }
 
-/* Placeholder when no weather configured */
-
-      .pvc-no-weather {
-        padding: 6px 10px;
-        opacity: 0.6;
-        font-size: 0.875rem;
-      }
-
 /* Settings overlay */
 
       .pvc-settings-overlay {
@@ -252,64 +185,6 @@ export class PlanaVistaCard extends LitElement {
         to { opacity: 1; }
       }
 
-      @media (max-width: 479px){
-/* Header: date only, slim bar */
-        .pvc-header {
-          padding: 8px 14px;
-          justify-content: center;
-        }
-        .pvc-weather { display: none; }
-        .pvc-header-time { display: none; }
-        .pvc-header-date { font-size: 0.9375rem; }
-      }
-
-      @media (min-width: 480px) and (max-width: 767px){
-        .pvc-header {
-          padding: 10px 16px;
-        }
-        .pvc-weather { display: none; }
-        .pvc-header-time { display: none; }
-        .pvc-header-date { font-size: 1.0625rem; }
-      }
-
-/* md: tablets (768–1023px), single row, slightly compressed */
-
-      @media (min-width: 768px) and (max-width: 1023px){
-        .pvc-weather-icon { --icon-size: 36px; }
-        .pvc-weather-temp { font-size: 1.5rem; }
-        .pvc-time-display { font-size: 1.75rem; }
-      }
-
-/* short height (landscape phone, etc.): date-only compact header */
-
-      @media (max-height: 500px){
-        .pvc-header {
-          padding: 6px 14px;
-          justify-content: center;
-        }
-        .pvc-weather { display: none; }
-        .pvc-header-time { display: none; }
-        .pvc-header-date { font-size: 0.875rem; }
-      }
-
-      @media (min-width: 1024px){
-        .pvc-header { padding: 22px 28px; }
-        .pvc-weather-temp { font-size: 2rem; }
-        .pvc-weather-condition { font-size: 0.9375rem; }
-        .pvc-header-date { font-size: 1.5rem; }
-        .pvc-time-display { font-size: 2.5rem; }
-        .pvc-time-ampm { font-size: 1rem; }
-      }
-
-      @media (min-width: 1440px){
-        .pvc-header { padding: 26px 36px; }
-        .pvc-weather-icon { --icon-size: 56px; }
-        .pvc-weather-temp { font-size: 2.375rem; }
-        .pvc-weather-condition { font-size: 1.0625rem; }
-        .pvc-header-date { font-size: 1.75rem; }
-        .pvc-time-display { font-size: 3rem; }
-        .pvc-time-ampm { font-size: 1.125rem; }
-      }
     `,
   ];
 
@@ -366,6 +241,31 @@ export class PlanaVistaCard extends LitElement {
 
   setConfig(config: PlanaVistaCardConfig) {
     this._config = { entity: DEFAULT_ENTITY, ...config };
+    // The card's own view and module options apply whenever its config changes.
+    this._views = {};
+    this._moduleId = null;
+  }
+
+  /** The module on screen: the one the switcher picked, else the card's first. */
+  private _activeModule(): ModuleDefinition | undefined {
+    const modules = this._modules();
+    return modules.shown.find(m => m.id === this._moduleId) ?? modules.initial;
+  }
+
+  protected willUpdate(changed: PropertyValues): void {
+    super.willUpdate(changed);
+    // The view a card opens on is chosen once, when the data first arrives (as in 1.1.0).
+    const mod = this._activeModule();
+    const data = this._data();
+    if (mod && data && !(mod.id in this._views)) {
+      this._views = { ...this._views, [mod.id]: initialModuleView(mod, { config: this._config, data }) };
+    }
+  }
+
+  private _setView(id: string): void {
+    const mod = this._activeModule();
+    if (!mod || this._views[mod.id] === id) return;
+    this._views = { ...this._views, [mod.id]: id };
   }
 
   connectedCallback(): void {
@@ -580,17 +480,6 @@ export class PlanaVistaCard extends LitElement {
     return weatherId ? this.hass?.states?.[weatherId] : null;
   }
 
-  private _showWeatherDetails() {
-    const entityId = this._display().weather_entity;
-    if (entityId) {
-      this.dispatchEvent(new CustomEvent('hass-more-info', {
-        detail: { entityId },
-        bubbles: true,
-        composed: true,
-      }));
-    }
-  }
-
   render() {
     if (!this._config || !this.hass) return nothing;
 
@@ -627,13 +516,14 @@ export class PlanaVistaCard extends LitElement {
     }
 
     const display = this._display();
-    const active = this._modules().initial;
+    const active = this._activeModule();
 
     return html`
       <ha-card>
         ${this._renderParentStrip()}
         ${this._config.hide_header ? nothing : this._renderHeader(display)}
         ${active ? this._renderModule(active, data, display) : nothing}
+        ${active ? this._renderBar(active) : nothing}
         ${this._settingsOpen ? html`
           <div class="pvc-settings-overlay">
             <pv-settings
@@ -662,50 +552,48 @@ export class PlanaVistaCard extends LitElement {
     const tag = unsafeStatic(mod.tag);
     return staticHtml`
       <${tag}
+        class="pv-module"
+        layout=${this._layout.layout}
         .hass=${this.hass}
         .cardConfig=${this._config}
         .data=${data}
         .display=${display}
+        .view=${this._views[mod.id]}
         .previewOverrides=${this._previewOverrides}
         .forecast=${this._forecast.forecast}
-        .canOpenSettings=${this._access() !== 'none'}
-        @pv-open-settings=${this._openSettings}
+        @pv-view-change=${(e: CustomEvent<{ view: string }>) => this._setView(e.detail.view)}
       ></${tag}>
     `;
   }
 
   private _renderHeader(display: DisplayConfig) {
-    const hideWeather = !!(this._config as PlanaVistaCardConfig)?.hide_weather;
-    const weather = hideWeather ? null : this._getWeatherEntity();
-
+    const weather = this._config?.hide_weather ? null : this._getWeatherEntity();
     return html`
-      <div class="pvc-header">
-        ${weather ? html`
-          <div class="pvc-weather" @click=${this._showWeatherDetails}
-               title="Click for weather details">
-            <div class="pvc-weather-icon">
-              ${weatherIcon((weather.state || 'cloudy') as WeatherCondition, 48)}
-            </div>
-            <div class="pvc-weather-info">
-              <span class="pvc-weather-temp">
-                ${Math.round(weather.attributes.temperature ?? 0)}°${this._getTempUnit(weather)}
-              </span>
-              <span class="pvc-weather-condition">
-                ${(weather.state || '').replace(/-/g, ' ')}
-              </span>
-            </div>
-          </div>
-        ` : html`<div class="pvc-no-weather"></div>`}
-
-        <pv-clock .timeFormat=${display.time_format || '12h'}></pv-clock>
-      </div>
+      <pv-glance-header
+        layout=${this._layout.layout}
+        .timeFormat=${display.time_format || '12h'}
+        .weather=${weather ?? null}
+        .weatherEntity=${display.weather_entity}
+        .today=${todayHighLow(this._forecast.forecast, new Date())}
+      ></pv-glance-header>
     `;
   }
 
-  private _getTempUnit(weather: any): string {
-    const unit = weather.attributes.temperature_unit || '';
-    if (unit.includes('C')) return 'C';
-    return 'F';
+  /** The switcher, the module's views, and the gear (spec 12.2). */
+  private _renderBar(active: ModuleDefinition) {
+    return html`
+      <pv-nav-bar
+        layout=${this._layout.layout}
+        .modules=${this._modules().shown.map(m => ({ id: m.id, label: m.label, icon: m.icon }))}
+        .activeModule=${active.id}
+        .views=${active.views}
+        .activeView=${this._views[active.id] ?? ''}
+        .canOpenSettings=${this._access() !== 'none'}
+        @pv-module-select=${(e: CustomEvent<{ id: string }>) => { this._moduleId = e.detail.id; }}
+        @pv-view-select=${(e: CustomEvent<{ id: string }>) => this._setView(e.detail.id)}
+        @pv-open-settings=${this._openSettings}
+      ></pv-nav-bar>
+    `;
   }
 
   static getConfigElement() {

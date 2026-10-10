@@ -2,14 +2,15 @@ import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
-import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides } from '../../types';
+import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides, ViewType } from '../../types';
+import type { Layout } from '../../core/layout';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../../styles/shared';
 import { getPersonAvatar, getPersonName } from '../../utils/ha-utils';
 import { swipeDirection } from '../../utils/gestures';
 import { memoizeOne } from '../../utils/render-cache';
 import { ForecastEntry } from '../../utils/weather-subscription';
 import { CalendarStoreController } from './calendar-store';
-import { CalendarDerived, deriveCalendarData, initialView } from './calendar-derive';
+import { CalendarDerived, deriveCalendarData } from './calendar-derive';
 
 import './components/view-day';
 import './components/view-week';
@@ -25,7 +26,7 @@ const DEFAULT_ENTITY = 'sensor.planavista_config';
  * popup and dialog. The shell renders it inside the card and hands it the
  * card config, the PlanaVista data, and the resolved display settings.
  *
- * @fires pv-open-settings - when the gear is tapped
+ * @fires pv-view-change - { view } when it wants another view (a day tapped in Month)
  */
 export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -36,8 +37,10 @@ export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) previewOverrides: ThemeOverrides | null = null;
   /** The card's daily forecast, for Week and Agenda. */
   @property({ attribute: false }) forecast: ForecastEntry[] = [];
-  /** Shows the gear (Home Assistant admins only, as before). */
-  @property({ type: Boolean }) canOpenSettings = false;
+  /** The view the shell shows (the bar's choice). */
+  @property({ attribute: false }) view: ViewType | undefined;
+  /** The card's layout (spec 12.1), passed on to the views. */
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
 
   /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
   @state() private _tick = Math.floor(Date.now() / 60000);
@@ -45,7 +48,6 @@ export class PvCalendarModule extends LitElement {
   @state() private _refreshing = false;
 
   private _pv = new CalendarStoreController(this);
-  private _viewInitialized = false;
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
@@ -299,41 +301,6 @@ export class PvCalendarModule extends LitElement {
         border-color: var(--pv-accent);
       }
 
-/* View switcher */
-
-      .pvc-view-tabs {
-        display: flex;
-        background: var(--pv-border-subtle);
-        border-radius: var(--pv-radius-sm, 8px);
-        padding: 2px;
-      }
-
-      .pvc-view-tab {
-        padding: 6px 14px;
-        border: none;
-        border-radius: var(--pv-radius-sm, 6px);
-        background: transparent;
-        color: var(--pv-text-secondary);
-        font-size: 0.8125rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 200ms ease;
-        font-family: inherit;
-        text-transform: capitalize;
-        min-height: 36px;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      .pvc-view-tab.active {
-        background: var(--pv-card-bg);
-        color: var(--pv-text);
-        box-shadow: var(--pv-shadow);
-      }
-
-      .pvc-view-tab:hover:not(.active) {
-        color: var(--pv-text);
-      }
-
 /* ================================================================
          CALENDAR VIEW BODY
          ================================================================ */
@@ -351,8 +318,7 @@ export class PvCalendarModule extends LitElement {
 
 /* Refresh + Gear buttons */
 
-      .pvc-refresh-btn,
-      .pvc-settings-btn {
+      .pvc-refresh-btn {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -369,8 +335,7 @@ export class PvCalendarModule extends LitElement {
         --mdc-icon-size: 22px;
       }
 
-      .pvc-refresh-btn:hover,
-      .pvc-settings-btn:hover {
+      .pvc-refresh-btn:hover {
         background: var(--pv-event-hover);
         color: var(--pv-text);
       }
@@ -394,85 +359,39 @@ export class PvCalendarModule extends LitElement {
         display: none; /* hidden on desktop: filter dropdown used instead */
       }
 
-/* xs: phones (≤479px), date-only header, avatar strip, compact controls */
+/* Phone: the person chips replace the Calendars dropdown (spec 12.1: the card's own size). */
 
-      @media (max-width: 479px){
-/* Toolbar */
-        .pvc-toolbar {
-          flex-wrap: wrap;
-          justify-content: center;
-          padding: 8px 10px;
-          gap: 6px;
-        }
-/* Hide desktop filter dropdown, show inline avatar strip */
-        .pvc-filter-wrap { display: none; }
-        .pvc-cal-strip {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          width: 100%;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          padding-bottom: 2px;
-        }
-        .pvc-cal-strip::-webkit-scrollbar { display: none; }
-        .pvc-controls {
-          width: 100%;
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 4px;
-        }
-        .pvc-new-btn {
-          padding: 6px 12px;
-          font-size: 0.8125rem;
-          min-height: 34px;
-        }
-        .pvc-today-btn {
-          padding: 4px 10px;
-          font-size: 0.8125rem;
-          min-height: 32px;
-        }
-        .pvc-nav-btn {
-          width: 34px;
-          height: 34px;
-        }
-        .pvc-view-tab {
-          padding: 4px 8px;
-          font-size: 0.6875rem;
-          min-height: 30px;
-        }
-        .pvc-settings-btn {
-          width: 34px;
-          height: 34px;
-        }
+      :host([layout='phone']) .pvc-toolbar {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 8px 10px;
+        gap: 6px;
       }
 
-/* sm: large phones (480–767px), compact header, avatar strip */
+      :host([layout='phone']) .pvc-filter-wrap {
+        display: none;
+      }
 
-      @media (min-width: 480px) and (max-width: 767px){
-/* Show avatar strip, hide dropdown */
-        .pvc-filter-wrap { display: none; }
-        .pvc-cal-strip {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-        .pvc-cal-strip::-webkit-scrollbar { display: none; }
-        .pvc-toolbar {
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 6px;
-        }
-        .pvc-controls {
-          width: 100%;
-          justify-content: center;
-          flex-wrap: wrap;
-        }
+      :host([layout='phone']) .pvc-cal-strip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+      }
+
+      :host([layout='phone']) .pvc-cal-strip::-webkit-scrollbar {
+        display: none;
+      }
+
+      :host([layout='phone']) .pvc-controls {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 4px;
       }
 
 /* Calendar strip chips */
@@ -539,8 +458,6 @@ export class PvCalendarModule extends LitElement {
         .pvc-new-btn { padding: 11px 22px; font-size: 1.0625rem; min-height: 48px; }
         .pvc-today-btn { padding: 8px 18px; font-size: 1rem; min-height: 44px; }
         .pvc-nav-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
-        .pvc-view-tab { padding: 8px 16px; font-size: 0.9375rem; min-height: 44px; }
-        .pvc-settings-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
       }
 
 /* xl: wall-mounted touch displays (1440px+, 27"+), scale up ~40% */
@@ -554,8 +471,6 @@ export class PvCalendarModule extends LitElement {
         .pvc-new-btn { padding: 14px 28px; font-size: 1.1875rem; min-height: 56px; }
         .pvc-today-btn { padding: 10px 22px; font-size: 1.125rem; min-height: 52px; }
         .pvc-nav-btn { width: 56px; height: 56px; --mdc-icon-size: 28px; }
-        .pvc-view-tab { padding: 10px 20px; font-size: 1.0625rem; min-height: 52px; }
-        .pvc-settings-btn { width: 56px; height: 56px; --mdc-icon-size: 28px; }
       }
     `,
   ];
@@ -585,17 +500,8 @@ export class PvCalendarModule extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues): void {
-    // The card's own view (YAML `view` or `default_view`) applies whenever the card config changes.
-    if (changed.has('cardConfig')) {
-      const cardView = this.cardConfig?.view || this.cardConfig?.default_view;
-      if (cardView) this._pv.store.setView(cardView);
-    }
-    // The first time data arrives, a card without its own view opens on the saved default view.
-    if (!this._viewInitialized && this.data) {
-      const view = initialView(this.cardConfig, this.data);
-      if (view) this._pv.store.setView(view);
-      this._viewInitialized = true;
-    }
+    // The shell owns which view shows (the bar); the store follows it.
+    if (changed.has('view') && this.view) this._pv.store.setView(this.view);
   }
 
   /** Cached until the data, the card config, or the calendar filter changes. */
@@ -616,7 +522,7 @@ export class PvCalendarModule extends LitElement {
     const display = this.display;
 
     return html`
-      ${this._renderToolbar(calendars, store.currentView)}
+      ${this._renderToolbar(calendars)}
       <div class="pvc-body"
         @touchstart=${this._onTouchStart}
         @touchend=${this._onTouchEnd}
@@ -652,7 +558,7 @@ export class PvCalendarModule extends LitElement {
     `;
   }
 
-  private _renderToolbar(calendars: CalendarConfig[], currentView: string) {
+  private _renderToolbar(calendars: CalendarConfig[]) {
     const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
 
     return html`
@@ -740,27 +646,12 @@ export class PvCalendarModule extends LitElement {
             </button>
           </div>
 
-          <div class="pvc-view-tabs">
-            ${(['day', 'week', 'month', 'agenda'] as const).map(view => html`
-              <button
-                class="pvc-view-tab ${currentView === view ? 'active' : ''}"
-                @click=${() => this._pv.store.setView(view)}
-              >${view}</button>
-            `)}
-          </div>
-
           <button class="pvc-refresh-btn ${this._refreshing ? 'spinning' : ''}"
             @click=${this._refreshCalendars}
             title="Refresh calendars" aria-label="Refresh calendars"
             ?disabled=${this._refreshing}>
             <ha-icon icon="mdi:autorenew"></ha-icon>
           </button>
-          ${this.canOpenSettings ? html`
-            <button class="pvc-settings-btn" @click=${this._openSettings}
-              title="Settings" aria-label="Open settings">
-              <ha-icon icon="mdi:cog"></ha-icon>
-            </button>
-          ` : nothing}
         </div>
       </div>
     `;
@@ -918,7 +809,7 @@ export class PvCalendarModule extends LitElement {
 
   private _onDayClick(e: CustomEvent) {
     this._pv.store.setDate(e.detail.date);
-    this._pv.store.setView('day');
+    this.dispatchEvent(new CustomEvent('pv-view-change', { detail: { view: 'day' }, bubbles: true, composed: true }));
   }
 
   private _onTouchStart(e: TouchEvent) {
@@ -939,10 +830,6 @@ export class PvCalendarModule extends LitElement {
 
   private _onTouchCancel() {
     this._touchStart = null;
-  }
-
-  private _openSettings() {
-    this.dispatchEvent(new CustomEvent('pv-open-settings', { bubbles: true, composed: true }));
   }
 
   private async _refreshCalendars() {

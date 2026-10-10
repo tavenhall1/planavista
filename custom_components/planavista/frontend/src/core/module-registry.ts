@@ -6,6 +6,12 @@ export interface ModuleContext {
   data: PlanaVistaData | null;
 }
 
+/** A view a module offers in the bar (the calendar's Day, Week, Month, Agenda). */
+export interface ModuleView {
+  id: string;
+  label: string;
+}
+
 /** A feature area the card hosts (Calendar today; Chores and Lists later). */
 export interface ModuleDefinition {
   /** Stable id, used by the card options `modules` and `module`. */
@@ -18,8 +24,18 @@ export interface ModuleDefinition {
   tag: string;
   /** Position among modules; lower comes first. */
   order: number;
+  /** The views the bar offers, in order (spec 12.2). */
+  views: ModuleView[];
+  /** The view to open on, when the card's options or saved settings name one. */
+  initialView?(ctx: ModuleContext): string | undefined;
   /** Entities whose state changes should re-render this module. */
   watchedEntities(ctx: ModuleContext): string[];
+}
+
+/** The view a module opens on: the one it asks for when it offers it, else its first. */
+export function initialModuleView(mod: Pick<ModuleDefinition, 'views' | 'initialView'>, ctx: ModuleContext): string {
+  const wanted = mod.initialView?.(ctx);
+  return mod.views.some(view => view.id === wanted) ? (wanted as string) : mod.views[0]?.id ?? '';
 }
 
 function byOrderThenId(a: { order: number; id: string }, b: { order: number; id: string }): number {
