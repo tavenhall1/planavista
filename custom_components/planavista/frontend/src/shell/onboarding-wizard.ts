@@ -4,7 +4,8 @@ import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { baseStyles, buttonStyles, formStyles, animationStyles, scrollbarStyles } from '../styles/shared';
 import { ThemeOverrides } from '../types';
-import { PvColorSwatchPicker } from './color-swatch-picker';
+import { PvColorSwatchPicker } from '../core/color-swatch-picker';
+import { setupSteps, settingsPages, WizardContext, WizardPage } from '../core/page-registry';
 
 interface CalendarEntry {
   entity_id: string;
@@ -18,9 +19,10 @@ interface CalendarEntry {
 /**
  * pv-onboarding-wizard
  *
- * A full-screen onboarding wizard that guides the user through 3 pages of
- * initial setup: Preferences → Calendars → Theme. On completion, it calls
- * the planavista.save_config service and fires an 'onboarding-complete' event.
+ * A full-screen onboarding wizard that guides the user through the setup
+ * steps registered in core/page-registry (today: Preferences, Calendars,
+ * Theme). On completion, it calls the planavista.save_config service and
+ * fires an 'onboarding-complete' event.
  *
  * In 'settings' mode, it pre-populates from existing config and uses tabs
  * instead of a linear flow. Fires 'settings-save' on save.
@@ -37,23 +39,23 @@ export class PvOnboardingWizard extends LitElement {
   // Navigation
   @state() private _page = 0;
 
-  // Page 0 — Preferences
+  // Preferences page
   @state() private _timeFormat: '12h' | '24h' = '12h';
   @state() private _firstDay: 'sunday' | 'monday' = 'sunday';
   @state() private _weatherEntity = '';
   @state() private _defaultView: 'day' | 'week' | 'month' | 'agenda' = 'week';
   @state() private _locationAutocomplete = false;
 
-  // Page 1 — Calendars
+  // Calendars page
   @state() private _calendarConfigs: CalendarEntry[] = [];
   @state() private _calendarsInitialized = false;
   @state() private _dragIdx: number | null = null;
   @state() private _dragOverIdx: number | null = null;
 
-  // Page 2 — Theme
+  // Theme page
   @state() private _theme: 'light' | 'dark' | 'minimal' | 'vibrant' = 'light';
 
-  // Page 2 — Theme customization overrides
+  // Theme page: customization overrides
   @state() private _themeOverrides: ThemeOverrides = {};
   @state() private _customizeOpen = false;
 
@@ -166,12 +168,27 @@ export class PvOnboardingWizard extends LitElement {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
 
+  /** This mode's pages, in order: the setup steps, or the Settings tabs. */
+  private _pages(): WizardPage<WizardContext>[] {
+    const registry = this.mode === 'settings' ? settingsPages : setupSteps;
+    return registry.pages({ mode: this.mode });
+  }
+
+  private _renderPageContent(page: WizardPage<WizardContext> | undefined) {
+    switch (page?.id) {
+      case 'preferences': return this._renderPreferences();
+      case 'calendars': return this._renderCalendars();
+      case 'theme': return this._renderTheme();
+      default: return nothing;
+    }
+  }
+
   private _goBack() {
     if (this._page > 0) this._page -= 1;
   }
 
   private async _goNext() {
-    if (this._page < 2) {
+    if (this._page < this._pages().length - 1) {
       this._page += 1;
     } else {
       await this._finish();
@@ -216,8 +233,8 @@ export class PvOnboardingWizard extends LitElement {
     } catch (err) {
       console.error('[pv-onboarding-wizard] save_config failed:', err);
       this._saveError = this.mode === 'settings'
-        ? 'Save failed — please try again.'
-        : 'Setup failed — please try again.';
+        ? 'Save failed. Please try again.'
+        : 'Setup failed. Please try again.';
     } finally {
       this._saving = false;
     }
@@ -278,10 +295,10 @@ export class PvOnboardingWizard extends LitElement {
 
   // ─── Render helpers ──────────────────────────────────────────────────────────
 
-  private _renderProgressDots() {
+  private _renderProgressDots(pages: WizardPage<WizardContext>[]) {
     return html`
-      <div class="progress-dots" aria-label="Step ${this._page + 1} of 3">
-        ${[0, 1, 2].map(i => html`
+      <div class="progress-dots" aria-label="Step ${this._page + 1} of ${pages.length}">
+        ${pages.map((_, i) => html`
           <div
             class="dot ${i === this._page ? 'dot--active' : ''}"
             aria-current="${i === this._page ? 'step' : 'false'}"
@@ -291,7 +308,7 @@ export class PvOnboardingWizard extends LitElement {
     `;
   }
 
-  private _renderPage0() {
+  private _renderPreferences() {
     return html`
       <div class="page-content">
         <h2 class="page-title">Preferences</h2>
@@ -398,14 +415,14 @@ export class PvOnboardingWizard extends LitElement {
           <p class="field-hint">
             <strong>On:</strong> as you type a location, the text you've typed is sent to Photon
             (photon.komoot.io), a free OpenStreetMap-based service, to suggest addresses. Nothing
-            else is sent &mdash; not your home location or any calendar details.
+            else is sent: not your home location or any calendar details.
           </p>
         </div>
       </div>
     `;
   }
 
-  private _renderPage1() {
+  private _renderCalendars() {
     if (this._calendarConfigs.length === 0) {
       return html`
         <div class="page-content">
@@ -505,7 +522,7 @@ export class PvOnboardingWizard extends LitElement {
           </div>
         </div>
 
-        <!-- Expandable details — only shown when included -->
+        <!-- Expandable details: only shown when included -->
         ${cal.include ? html`
           <div class="cal-details">
             <!-- Display name input -->
@@ -743,7 +760,7 @@ export class PvOnboardingWizard extends LitElement {
     `;
   }
 
-  private _renderPage2() {
+  private _renderTheme() {
     const themes: Array<{
       key: 'light' | 'dark' | 'minimal' | 'vibrant';
       name: string;
@@ -843,8 +860,9 @@ export class PvOnboardingWizard extends LitElement {
 
   render() {
     const isSettings = this.mode === 'settings';
-    const pageLabels = ['Preferences', 'Calendars', 'Theme'];
-    const isLast = this._page === 2;
+    const pages = this._pages();
+    const page = pages[Math.min(this._page, pages.length - 1)];
+    const isLast = this._page >= pages.length - 1;
 
     // Right button label
     let rightBtnLabel: string;
@@ -860,7 +878,7 @@ export class PvOnboardingWizard extends LitElement {
 
     return html`
       <div class="wizard-container" role="dialog" aria-modal="true"
-        aria-label="${isSettings ? 'PlanaVista Settings' : 'PlanaVista Setup'} — ${pageLabels[this._page]}">
+        aria-label="${isSettings ? 'PlanaVista Settings' : 'PlanaVista Setup'}: ${page?.label ?? ''}">
 
         <div class="wizard-header">
 
@@ -894,14 +912,14 @@ export class PvOnboardingWizard extends LitElement {
           <div class="wizard-header-center">
             ${isSettings ? html`
               <div class="settings-tabs" role="tablist">
-                ${pageLabels.map((label, i) => html`
+                ${pages.map((p, i) => html`
                   <button
                     class="settings-tab ${this._page === i ? 'settings-tab--active' : ''}"
                     role="tab"
                     aria-selected="${this._page === i}"
                     type="button"
                     @click=${() => { this._page = i; }}
-                  >${label}</button>
+                  >${p.label}</button>
                 `)}
               </div>
             ` : html`
@@ -913,7 +931,7 @@ export class PvOnboardingWizard extends LitElement {
                 </span>
                 <span class="wizard-title-text">PlanaVista Setup</span>
               </div>
-              ${this._renderProgressDots()}
+              ${this._renderProgressDots(pages)}
             `}
           </div>
 
@@ -947,9 +965,7 @@ export class PvOnboardingWizard extends LitElement {
         ${this._saveError ? html`<p class="save-error-banner" role="alert">${this._saveError}</p>` : nothing}
 
         <div class="wizard-content">
-          ${this._page === 0 ? this._renderPage0() : ''}
-          ${this._page === 1 ? this._renderPage1() : ''}
-          ${this._page === 2 ? this._renderPage2() : ''}
+          ${this._renderPageContent(page)}
         </div>
 
       </div>
@@ -1764,7 +1780,7 @@ export class PvOnboardingWizard extends LitElement {
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones — compact wizard */
+      /* xs: phones, compact wizard */
       @media (max-width: 479px) {
         .wizard-header { padding: 0.5rem 0.625rem; gap: 0.25rem; }
         .wizard-title-text { font-size: 0.8125rem; }

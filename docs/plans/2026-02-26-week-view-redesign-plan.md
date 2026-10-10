@@ -1,4 +1,4 @@
-# Week View Redesign — Implementation Plan
+# Week View Redesign: Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -79,7 +79,7 @@ export function getOrganizerCalendar(
 
 **Step 2: Add SharedEvent to the exports used by other files**
 
-The `SharedEvent` interface and `deduplicateSharedEvents` are already exported. No changes needed — just note that views will import them.
+The `SharedEvent` interface and `deduplicateSharedEvents` are already exported. No changes needed: just note that views will import them.
 
 **Step 3: Build and verify**
 
@@ -111,7 +111,7 @@ In `types.ts`, add to the `ThemeOverrides` interface after `now_color`:
 
 **Step 2: No theme engine change needed**
 
-Unlike colors/shadows, `event_style` doesn't map to a CSS variable — it's a rendering mode flag read by components directly from `ThemeOverrides`. The card will pass it to views as a property. No changes to `applyThemeWithOverrides()`.
+Unlike colors/shadows, `event_style` doesn't map to a CSS variable: it's a rendering mode flag read by components directly from `ThemeOverrides`. The card will pass it to views as a property. No changes to `applyThemeWithOverrides()`.
 
 **Step 3: Build and verify**
 
@@ -287,7 +287,7 @@ export class PVEventChip extends LitElement {
         font-weight: 500;
       }
 
-      /* Responsive — small screens */
+      /* Responsive: small screens */
       @media (max-width: 479px) {
         .chip { padding: 0.375rem 0.5rem; }
         .chip-title { font-size: 0.8125rem; }
@@ -327,11 +327,11 @@ export class PVEventChip extends LitElement {
     if (this.showStripes && isMulti) {
       bgStyle = `background: ${buildStripeGradient(cals)}`;
     } else if (this.showStripes) {
-      // Single participant — solid pastel
+      // Single participant: solid pastel
       const bgColor = cals[0]?.color_light || event.calendar_color_light || event.calendar_color;
       bgStyle = `background: ${bgColor}`;
     } else {
-      // Solid mode — theme background
+      // Solid mode: theme background
       bgStyle = `background: var(--pv-card-bg, #FFFFFF)`;
     }
 
@@ -1232,7 +1232,7 @@ git commit -m "feat: rewrite agenda view as continuous day cards with lazy loadi
 
 ---
 
-### Task 7: Update month view — deduplication, bigger pills, month name
+### Task 7: Update month view: deduplication, bigger pills, month name
 
 **Files:**
 - Modify: `custom_components/planavista/frontend/src/components/view-month.ts`
@@ -1310,7 +1310,7 @@ Expected: Build succeeds. Month view shows deduped events with pv-event-chip in 
 
 ```bash
 git add custom_components/planavista/frontend/src/components/view-month.ts custom_components/planavista/frontend/src/cards/planavista-calendar-card.ts
-git commit -m "feat: update month view — deduplicate shared events, bigger pills, add month name"
+git commit -m "feat: update month view, deduplicate shared events, bigger pills, add month name"
 ```
 
 ---

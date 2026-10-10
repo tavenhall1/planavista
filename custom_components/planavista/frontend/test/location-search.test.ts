@@ -4,7 +4,7 @@ import {
   buildPhotonUrl,
   formatPhotonFeature,
   parsePhotonResponse,
-} from '../src/utils/location-search';
+} from '../src/modules/calendar/utils/location-search';
 
 type FetchCall = { url: string; init: RequestInit; resolve: (body: unknown) => void; reject: (err: unknown) => void };
 

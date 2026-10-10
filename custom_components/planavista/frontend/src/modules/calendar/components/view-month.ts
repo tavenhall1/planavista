@@ -1,10 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig } from '../types';
-import { baseStyles } from '../styles/shared';
-import { getMonthGrid, isToday, getDateKey } from '../utils/date-utils';
+import { CalendarEvent, CalendarConfig } from '../../../types';
+import { baseStyles } from '../../../styles/shared';
+import { getMonthGrid, isToday, getDateKey } from '../../../utils/date-utils';
 import {
   groupEventsByDate,
   filterVisibleEvents,
@@ -139,7 +139,7 @@ export class PVViewMonth extends LitElement {
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones — compact day cells */
+      /* xs: phones, compact day cells */
       @media (max-width: 479px) {
         .month-name { font-size: 0.9375rem; padding: 0.375rem 0.5rem; }
         .weekday-name { font-size: 0.5625rem; padding: 0.25rem 0; letter-spacing: 0.02em; }
@@ -155,7 +155,7 @@ export class PVViewMonth extends LitElement {
         .day-number { font-size: 0.75rem; }
       }
 
-      /* short height — tighter cells */
+      /* short height: tighter cells */
       @media (max-height: 500px) {
         .day-cell { padding: 0.125rem; }
         .day-number { font-size: 0.6875rem; }

@@ -36,7 +36,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ### Pull Request Guidelines
 
-- Keep PRs focused — one feature or fix per PR
+- Keep PRs focused: one feature or fix per PR
 - Include screenshots for any UI changes
 - Ensure the frontend builds and its tests pass (`cd custom_components/planavista/frontend && npm run build && npm test`)
 - Don't introduce breaking changes without discussion first
@@ -82,4 +82,4 @@ npm test         # Unit tests (vitest, always run in America/Chicago time)
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE) — Copyright (c) 2025-2026 Stephen Hall.
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE). Copyright (c) 2025-2026 Stephen Hall.

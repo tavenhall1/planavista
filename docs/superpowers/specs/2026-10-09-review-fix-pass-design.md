@@ -1,4 +1,4 @@
-# Review Fix Pass — Design
+# Review Fix Pass: Design
 
 **Date:** 2026-10-09
 **Status:** Approved

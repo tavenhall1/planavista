@@ -275,7 +275,7 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
     await _async_check_control(hass, call.context, [entity_id, *attendee_entity_ids])
 
     _LOGGER.debug(
-        "PlanaVista: create_event_with_attendees called — "
+        "PlanaVista: create_event_with_attendees called: "
         "organizer=%s, attendees=%s",
         entity_id, attendee_entity_ids,
     )

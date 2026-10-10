@@ -328,7 +328,7 @@ export function applyThemeWithOverrides(
       merged['--pv-shadow-xl'] = shadows.shadowXl;
     }
 
-    // Avatar border — only set CSS var for custom hex colors
+    // Avatar border: only set CSS var for custom hex colors
     // 'primary' and 'light' modes are handled per-avatar in view-day.ts
     if (overrides.avatar_border && overrides.avatar_border !== 'primary' && overrides.avatar_border !== 'light') {
       merged['--pv-avatar-border'] = overrides.avatar_border;

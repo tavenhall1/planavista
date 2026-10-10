@@ -71,9 +71,11 @@ def test_manifest() -> None:
 
 
 def test_hacs_json() -> None:
-    """Only keys HACS accepts, and the oldest Home Assistant that has local brand icons."""
+    """Only keys HACS accepts, the oldest Home Assistant that has local brand
+    icons, and releases only (HACS doesn't offer the default branch)."""
     assert _read_json(REPO / "hacs.json") == {
         "name": "PlanaVista",
         "render_readme": True,
         "homeassistant": "2026.3.0",
+        "hide_default_branch": True,
     }

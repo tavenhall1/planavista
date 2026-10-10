@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CalendarEvent } from '../src/types';
-import { getEventPosition } from '../src/utils/event-utils';
+import { getEventPosition } from '../src/modules/calendar/utils/event-utils';
 
 function ev(start: string, end: string): CalendarEvent {
   return {

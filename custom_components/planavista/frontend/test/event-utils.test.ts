@@ -8,7 +8,7 @@ import {
   isAllDayEvent,
   isEventPast,
   isMultiDayEvent,
-} from '../src/utils/event-utils';
+} from '../src/modules/calendar/utils/event-utils';
 
 function ev(summary: string, start: string, end: string, extra: Partial<CalendarEvent> = {}): CalendarEvent {
   return {

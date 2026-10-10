@@ -1,12 +1,12 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, DeleteEventData } from '../types';
-import { PlanaVistaController } from '../state/state-manager';
-import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
-import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../styles/shared';
-import { formatTime, formatDate, parseEventDate } from '../utils/date-utils';
+import { CalendarEvent, DeleteEventData } from '../../../types';
+import { CalendarStore, StoreSubscriber } from '../calendar-store';
+import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../../../utils/ha-utils';
+import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../../../styles/shared';
+import { formatTime, formatDate, parseEventDate } from '../../../utils/date-utils';
 import { isAllDayEvent } from '../utils/event-utils';
 
 export class PVEventPopup extends LitElement {
@@ -20,7 +20,10 @@ export class PVEventPopup extends LitElement {
   @state() private _deleteError = '';
   @state() private _organizerEntityId: string | null = null;
 
-  private _pv = new PlanaVistaController(this);
+  /** The calendar state of the card that opened this. */
+  @property({ attribute: false }) store!: CalendarStore;
+  /** Re-renders when that store changes (the controller registers itself with this element). */
+  private _storeSubscription = new StoreSubscriber(this, () => this.store);
   private _lastOrganizerUid = '';
 
   updated(changedProps: Map<string, unknown>) {
@@ -379,12 +382,12 @@ export class PVEventPopup extends LitElement {
     this._deleteMode = null;
     this._deleting = false;
     this._deleteError = '';
-    this._pv.state.selectEvent(null);
+    this.store.selectEvent(null);
   }
 
   private _edit() {
     if (this.event) {
-      this._pv.state.openEditDialog(this.event);
+      this.store.openEditDialog(this.event);
     }
   }
 
@@ -392,13 +395,13 @@ export class PVEventPopup extends LitElement {
     if (this.event) {
       this._confirmDelete = false;
       this._deleteMode = null;
-      this._pv.state.openEditDialog(this.event, { removeGuests: true });
+      this.store.openEditDialog(this.event, { removeGuests: true });
     }
   }
 
   private async _delete() {
     if (!this.event?.uid) {
-      this._deleteError = 'Cannot delete — this event has no unique ID. Delete it from your calendar app directly.';
+      this._deleteError = 'Cannot delete this event: it has no unique ID. Delete it from your calendar app directly.';
       return;
     }
 
@@ -423,7 +426,7 @@ export class PVEventPopup extends LitElement {
           }
         }
         await refreshPlanaVista(this.hass);
-        this._pv.state.selectEvent(null);
+        this.store.selectEvent(null);
       } else if (isShared && this._deleteMode === 'remove-me') {
         // Delete only from the organizer's calendar (first in shared list)
         const organizerId = this.event.calendar_entity_id;
@@ -433,15 +436,15 @@ export class PVEventPopup extends LitElement {
           recurrence_id: this.event.recurrence_id,
         });
         await refreshPlanaVista(this.hass);
-        this._pv.state.selectEvent(null);
+        this.store.selectEvent(null);
       } else {
-        // Single-calendar event — normal delete
+        // Single-calendar event: normal delete
         const data: DeleteEventData = {
           entity_id: this.event.calendar_entity_id,
           uid: this.event.uid,
           recurrence_id: this.event.recurrence_id,
         };
-        await this._pv.state.doDeleteEvent(this.hass, data);
+        await this.store.doDeleteEvent(this.hass, data);
       }
     } catch (err) {
       console.error('PlanaVista: Delete failed', err);

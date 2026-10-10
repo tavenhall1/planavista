@@ -1,5 +1,5 @@
-import { CalendarEvent, CalendarConfig } from '../types';
-import { getDateKey, isDateOnly, parseEventDate } from './date-utils';
+import { CalendarEvent, CalendarConfig } from '../../../types';
+import { getDateKey, isDateOnly, parseEventDate } from '../../../utils/date-utils';
 
 export interface SharedEvent extends CalendarEvent {
   shared_calendars: Array<{
@@ -302,7 +302,7 @@ export function filterVisibleEvents(
 
 /**
  * Build a CSS linear-gradient for multi-participant diagonal stripes.
- * One stripe per participant — organizer (first) gets a larger band.
+ * One stripe per participant: organizer (first) gets a larger band.
  * Uses each participant's color_light for soft pastel bands.
  */
 export function buildStripeGradient(

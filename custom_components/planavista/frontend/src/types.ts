@@ -11,12 +11,16 @@ export interface PlanaVistaCardConfig {
   view?: 'day' | 'week' | 'month' | 'agenda';
   // Card-level YAML overrides (fall back to global sensor config)
   default_view?: 'day' | 'week' | 'month' | 'agenda';
-  calendars?: string[];       // entity_id filter list — show only these
+  calendars?: string[];       // entity_id filter list: show only these
   hide_weather?: boolean;
   hide_header?: boolean;
   weather_entity?: string;
   time_format?: '12h' | '24h';
   first_day?: 'monday' | 'sunday';
+  /** Modules this card shows, in order (default: every module). */
+  modules?: string[];
+  /** Module the card opens on (default: the first one shown). */
+  module?: string;
 }
 
 export interface PlanaVistaGridConfig extends PlanaVistaCardConfig {

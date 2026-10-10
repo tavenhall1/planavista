@@ -1,15 +1,15 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { defineElement } from '../utils/define';
+import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, CalendarConfig, WeatherCondition } from '../types';
-import { baseStyles, animationStyles } from '../styles/shared';
+import { CalendarEvent, CalendarConfig, WeatherCondition } from '../../../types';
+import { baseStyles, animationStyles } from '../../../styles/shared';
 import {
   formatDate,
   getRelativeLabel,
   getDateKey,
   isToday,
-} from '../utils/date-utils';
+} from '../../../utils/date-utils';
 import {
   compareEventsForDisplay,
   groupEventsByDate,
@@ -17,8 +17,8 @@ import {
   deduplicateSharedEvents,
   SharedEvent,
 } from '../utils/event-utils';
-import { weatherIcon } from '../utils/weather-icons';
-import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../utils/weather-subscription';
+import { weatherIcon } from '../../../utils/weather-icons';
+import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../../../utils/weather-subscription';
 
 const DAYS_PER_PAGE = 14;
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -208,7 +208,7 @@ export class PVViewAgenda extends LitElement {
         .day-events { padding: 0.5rem 0.625rem 0.625rem; gap: 0.5rem; }
       }
 
-      /* XL: wall displays — ~50% larger */
+      /* XL: wall displays, ~50% larger */
       @media (min-width: 1440px) {
         .agenda-container { max-width: 960px; }
         .day-name { font-size: 1.5rem; }

@@ -1,17 +1,16 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { HomeAssistant } from 'custom-card-helpers';
-import { ViewType, CalendarEvent, DialogType, CreateEventData, DeleteEventData } from '../types';
-import { createEvent, deleteEvent, refreshPlanaVista } from '../utils/ha-utils';
-import { getDateKey, navigateDate, rolloverDate } from '../utils/date-utils';
-import { runEditWithRestore } from '../utils/event-form';
+import { ViewType, CalendarEvent, DialogType, CreateEventData, DeleteEventData } from '../../types';
+import { createEvent, deleteEvent, refreshPlanaVista } from '../../utils/ha-utils';
+import { getDateKey, navigateDate, rolloverDate } from '../../utils/date-utils';
+import { runEditWithRestore } from './utils/event-form';
 
 /**
- * Singleton state manager for PlanaVista.
- * Holds client-side UI state shared across all cards.
+ * The calendar's UI state for one card: view, date, calendar filter,
+ * selection, and open dialogs. Every card owns its own store, so two cards
+ * on one dashboard never overwrite each other.
  */
-class PlanaVistaStateManager {
-  private static _instance: PlanaVistaStateManager;
-
+export class CalendarStore {
   // State
   hiddenCalendars = new Set<string>();
   currentView: ViewType = 'day';
@@ -29,17 +28,6 @@ class PlanaVistaStateManager {
   private _onVisibilityChange = (): void => {
     if (document.visibilityState === 'visible') this.checkRollover();
   };
-
-  private constructor() {
-    this.startAutoAdvance();
-  }
-
-  static getInstance(): PlanaVistaStateManager {
-    if (!PlanaVistaStateManager._instance) {
-      PlanaVistaStateManager._instance = new PlanaVistaStateManager();
-    }
-    return PlanaVistaStateManager._instance;
-  }
 
   // =========================================================================
   // Subscription
@@ -210,9 +198,15 @@ class PlanaVistaStateManager {
     }
   }
 
+  /** True while the day-change timer runs (between start and stop). */
+  get autoAdvancing(): boolean {
+    return this._autoAdvanceTimer !== null;
+  }
+
   startAutoAdvance(): void {
     if (this._autoAdvanceTimer) return;
-    this._todayKey = getDateKey(new Date());
+    // Catch up on a day that changed while the timer was stopped.
+    this.checkRollover();
     this._autoAdvanceTimer = setInterval(() => this.checkRollover(), 60000);
     // Timers are throttled or paused while a tablet sleeps; check as soon as it wakes.
     if (typeof document !== 'undefined') {
@@ -232,33 +226,63 @@ class PlanaVistaStateManager {
 }
 
 /**
- * ReactiveController wrapper for Lit components.
- * Add to any LitElement to get access to shared PlanaVista state.
+ * Gives one element its own CalendarStore, re-renders it when the store
+ * changes, and runs the store's day-change timer while it is connected.
  *
  * Usage:
- *   private _pv = new PlanaVistaController(this);
- *   // Access state: this._pv.state.currentView
- *   // Actions: this._pv.state.setView('week')
+ *   private _pv = new CalendarStoreController(this);
+ *   // this._pv.store.currentView, this._pv.store.setView('week')
  */
-export class PlanaVistaController implements ReactiveController {
-  host: ReactiveControllerHost;
-  private _state: PlanaVistaStateManager;
+export class CalendarStoreController implements ReactiveController {
+  readonly store = new CalendarStore();
 
-  constructor(host: ReactiveControllerHost) {
-    this.host = host;
-    this._state = PlanaVistaStateManager.getInstance();
+  constructor(private readonly host: ReactiveControllerHost) {
     host.addController(this);
   }
 
   hostConnected(): void {
-    this._state.subscribe(this.host);
+    this.store.subscribe(this.host);
+    this.store.startAutoAdvance();
   }
 
   hostDisconnected(): void {
-    this._state.unsubscribe(this.host);
+    this.store.unsubscribe(this.host);
+    this.store.stopAutoAdvance();
+  }
+}
+
+/**
+ * Re-renders a child element (the event popup or dialog) whenever the store
+ * its parent handed it changes, and follows the parent to a new store.
+ */
+export class StoreSubscriber implements ReactiveController {
+  private _store: CalendarStore | undefined;
+
+  constructor(
+    private readonly host: ReactiveControllerHost,
+    private readonly getStore: () => CalendarStore | undefined,
+  ) {
+    host.addController(this);
   }
 
-  get state(): PlanaVistaStateManager {
-    return this._state;
+  hostConnected(): void {
+    this._sync();
+  }
+
+  hostUpdate(): void {
+    this._sync();
+  }
+
+  hostDisconnected(): void {
+    this._store?.unsubscribe(this.host);
+    this._store = undefined;
+  }
+
+  private _sync(): void {
+    const next = this.getStore();
+    if (next === this._store) return;
+    this._store?.unsubscribe(this.host);
+    next?.subscribe(this.host);
+    this._store = next;
   }
 }
