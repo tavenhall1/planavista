@@ -94,6 +94,18 @@
       "message": "People and PINs can't be changed until PlanaVista is updated."
     }
   },
+  "entity": {
+    "select": {
+      "appearance": {
+        "name": "Appearance",
+        "state": {
+          "light": "Light",
+          "dark": "Dark",
+          "automatic": "Automatic"
+        }
+      }
+    }
+  },
   "issues": {
     "household_newer_version": {
       "title": "Update PlanaVista to change people and PINs",
