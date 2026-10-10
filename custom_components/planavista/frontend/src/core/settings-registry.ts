@@ -57,6 +57,12 @@ export interface SetupContext {
 export interface SetupStep extends WizardPage<SetupContext> {
   /** The element that renders the step. */
   tag: string;
+  /** The step's question, shown large (spec 14.7: one question per step). */
+  heading: string;
+  /** A short line under the heading. */
+  lead?: string;
+  /** The main button's label; Next (or Finish on the last step) when left out. */
+  primary?: string;
 }
 
 /** Where setup starts: the saved step while it still applies, else the first. */

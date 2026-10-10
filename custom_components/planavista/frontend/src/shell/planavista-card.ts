@@ -13,20 +13,20 @@ import { resolveDisplay } from '../core/display';
 import { ModuleDefinition, ResolvedModules, moduleRegistry, resolveModules } from '../core/module-registry';
 import { SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
-import { registerShellPages, registerShellSettings } from './definition';
+import { registerShellSettings } from './definition';
 import { HouseholdController } from './household-controller';
 import { LayoutController } from './layout-controller';
 import { SessionController } from './session-controller';
 
 // The card editor, the setup and Settings wizard, and the header clock.
 import './planavista-card-editor';
-import './onboarding-wizard';
 import './pv-clock';
 import './settings/theme-picker';
 import './pv-parent-strip';
 import './pv-pin-sheet';
 import './pv-notice-sheet';
 import './settings/pv-settings';
+import './setup/pv-setup';
 
 /** A sheet the card shows over everything: a parent's PIN, or why there is no way in. */
 type CardSheet =
@@ -366,9 +366,9 @@ export class PlanaVistaCard extends LitElement {
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
     this._guardSettings();
-    // While settings panel is open, the wizard owns theme via theme-preview events.
-    // Only apply saved theme from sensor when settings are closed.
-    if (this._settingsOpen) return;
+    // While Settings or setup is open, its theme picker previews through
+    // theme-preview events; the saved theme applies again once it closes.
+    if (this._settingsOpen || this._wizardOpen) return;
     if (changedProps.has('hass') || changedProps.has('_config') || changedProps.has('_settingsOpen')) {
       this._applySavedTheme();
     }
@@ -405,6 +405,49 @@ export class PlanaVistaCard extends LitElement {
     } else if (access === 'no_pin') {
       this._sheet = { kind: 'no_pin' };
     }
+  }
+
+  /** Start setup: straight away for an admin or a parent, or after a parent's PIN. */
+  private _beginSetup(event?: Event) {
+    this._sheetOpener = (event?.composedPath?.()[0] as HTMLElement | undefined) ?? null;
+    if (this._access() === 'open' || this._session.session?.parent) {
+      this._wizardOpen = true;
+    } else if (this._access() === 'pin') {
+      this._sheet = { kind: 'pin', purpose: 'setup', heading: "Who's setting up PlanaVista?" };
+    }
+  }
+
+  private _renderSetupCard() {
+    const access = this._access();
+    const icon = html`
+      <div class="pvc-setup-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+          <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+        </svg>
+      </div>
+    `;
+    if (access !== 'open' && access !== 'pin') {
+      return html`
+        <div class="pvc-setup-pending">
+          ${icon}
+          <p class="pvc-setup-title">PlanaVista isn't set up yet</p>
+          <p class="pvc-setup-hint">An admin can set it up from their own Home Assistant login.</p>
+        </div>
+      `;
+    }
+    return html`
+      <div class="pvc-setup-pending"
+        role="button"
+        tabindex="0"
+        aria-label="Begin PlanaVista setup"
+        @click=${this._beginSetup}
+        @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._beginSetup(e); } }}
+      >
+        ${icon}
+        <p class="pvc-setup-title">PlanaVista</p>
+        <p class="pvc-setup-hint">Tap to begin setup</p>
+      </div>
+    `;
   }
 
   private _onUnlocked(event: CustomEvent<{ result: UnlockResult }>) {
@@ -552,36 +595,22 @@ export class PlanaVistaCard extends LitElement {
       `;
     }
 
-    // Onboarding: show setup card until user explicitly launches the wizard
+    // First-run setup: a card that starts setup, until setup is finished.
     if (data.onboarding_complete === false && !this._onboardingDone) {
-      if (this._wizardOpen) {
-        return html`
-          <ha-card>
-            <pv-onboarding-wizard
-              .hass=${this.hass}
-              .api=${this._api}
-              @onboarding-complete=${this._onOnboardingComplete}
-            ></pv-onboarding-wizard>
-          </ha-card>
-        `;
-      }
       return html`
         <ha-card>
-          <div class="pvc-setup-pending"
-            role="button"
-            tabindex="0"
-            aria-label="Begin PlanaVista setup"
-            @click=${() => { this._wizardOpen = true; }}
-            @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._wizardOpen = true; } }}
-          >
-            <div class="pvc-setup-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
-                <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
-              </svg>
-            </div>
-            <p class="pvc-setup-title">PlanaVista</p>
-            <p class="pvc-setup-hint">Tap to begin setup</p>
-          </div>
+          ${this._wizardOpen ? html`
+            <pv-setup
+              .hass=${this.hass}
+              .data=${data}
+              .household=${this._household.view}
+              .api=${this._api}
+              .layout=${this._layout.layout}
+              @onboarding-complete=${this._onOnboardingComplete}
+              @theme-preview=${this._onThemePreview}
+            ></pv-setup>
+          ` : this._renderSetupCard()}
+          ${this._renderSheet()}
         </ha-card>
       `;
     }
@@ -680,7 +709,6 @@ export class PlanaVistaCard extends LitElement {
   }
 }
 
-registerShellPages();
 registerShellSettings();
 defineElement('planavista-calendar-card', PlanaVistaCard);
 defineElementAlias('planavista-card', 'planavista-calendar-card', PlanaVistaCard);

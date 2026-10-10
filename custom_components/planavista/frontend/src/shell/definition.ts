@@ -1,4 +1,4 @@
-import { PageRegistry, WizardContext, WizardPage, settingsPages, setupSteps } from '../core/page-registry';
+import { PageRegistry } from '../core/page-registry';
 import { version } from '../../package.json';
 import {
   SettingsContext,
@@ -8,22 +8,6 @@ import {
   settingsRegistry,
   setupRegistry,
 } from '../core/settings-registry';
-
-/** Pages the shell itself contributes to setup and Settings. */
-export const shellPages: WizardPage<WizardContext>[] = [
-  { id: 'theme', label: 'Theme', order: 900 },
-];
-
-/** Add the shell's pages to setup and Settings. */
-export function registerShellPages(
-  steps: PageRegistry<WizardContext> = setupSteps,
-  settings: PageRegistry<WizardContext> = settingsPages,
-): void {
-  for (const page of shellPages) {
-    steps.register(page);
-    settings.register(page);
-  }
-}
 
 /** The theme names Settings shows (keys as display.theme saves them). */
 const THEME_NAMES: Record<string, string> = {
@@ -86,10 +70,39 @@ export const shellSettingsPages: SettingsPage[] = [
 
 /** The shell's setup steps; modules add theirs between them (spec 14.7). */
 export const shellSetupSteps: SetupStep[] = [
-  { id: 'welcome', label: 'Welcome', order: 0, tag: 'pv-setup-welcome' },
-  { id: 'people', label: 'Who lives here?', order: 100, tag: 'pv-setup-people' },
-  { id: 'look', label: 'Look', order: 900, tag: 'pv-setup-look' },
-  { id: 'done', label: 'Done', order: 1000, tag: 'pv-setup-done' },
+  {
+    id: 'welcome',
+    label: 'Welcome',
+    order: 0,
+    tag: 'pv-setup-welcome',
+    heading: 'Welcome to PlanaVista',
+    lead: 'About 5 minutes. Everything can change later in Settings.',
+    primary: 'Set up',
+  },
+  {
+    id: 'people',
+    label: 'Who lives here?',
+    order: 100,
+    tag: 'pv-setup-people',
+    heading: 'Who lives here?',
+    lead: 'Choose everyone in your home and what they are. People without Home Assistant can be added too.',
+  },
+  {
+    id: 'look',
+    label: 'Look',
+    order: 900,
+    tag: 'pv-setup-look',
+    heading: 'Pick a look',
+    lead: 'You can change it any time in Settings.',
+  },
+  {
+    id: 'done',
+    label: 'Done',
+    order: 1000,
+    tag: 'pv-setup-done',
+    heading: "You're all set",
+    primary: 'Open the calendar',
+  },
 ];
 
 /** Add the shell's Settings pages and setup steps. */
