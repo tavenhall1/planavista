@@ -25,7 +25,7 @@ export interface ForecastConnection {
   ): Promise<Unsubscribe>;
 }
 
-function safeUnsubscribe(unsub: Unsubscribe): void {
+export function safeUnsubscribe(unsub: Unsubscribe): void {
   try {
     const result = unsub();
     if (result && typeof (result as Promise<void>).catch === 'function') {
