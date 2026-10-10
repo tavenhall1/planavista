@@ -26,10 +26,11 @@ import './settings/theme-picker';
 import './pv-parent-strip';
 import './pv-pin-sheet';
 import './pv-notice-sheet';
+import './settings/pv-settings';
 
 /** A sheet the card shows over everything: a parent's PIN, or why there is no way in. */
 type CardSheet =
-  | { kind: 'pin'; purpose: 'settings' | 'setup'; heading: string }
+  | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue'; heading: string }
   | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
@@ -48,6 +49,12 @@ export class PlanaVistaCard extends LitElement {
   @state() private _previewOverrides: ThemeOverrides | null = null;
   @state() private _sheet: CardSheet | null = null;
   private _sheetOpener: HTMLElement | null = null;
+  /** Drafts of person edits; they outlive Settings until the page reloads (spec 9.4). */
+  private _drafts = new Map<string, unknown>();
+  /** How Settings was opened: by this account's own rights, or through parent mode. */
+  private _settingsVia: 'access' | 'session' | null = null;
+  /** A theme was previewed in Settings, and its save is on the way. */
+  private _previewed = false;
 
   private _household = new HouseholdController(this);
   private _session = new SessionController(this, () => this._api);
@@ -358,6 +365,7 @@ export class PlanaVistaCard extends LitElement {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    this._guardSettings();
     // While settings panel is open, the wizard owns theme via theme-preview events.
     // Only apply saved theme from sensor when settings are closed.
     if (this._settingsOpen) return;
@@ -390,6 +398,7 @@ export class PlanaVistaCard extends LitElement {
     this._sheetOpener = (event?.composedPath?.()[0] as HTMLElement | undefined) ?? null;
     const access = this._access();
     if (access === 'open' || this._session.session?.parent) {
+      this._settingsVia = access === 'open' ? 'access' : 'session';
       this._settingsOpen = true;
     } else if (access === 'pin') {
       this._sheet = { kind: 'pin', purpose: 'settings', heading: "Who's opening Settings?" };
@@ -402,8 +411,31 @@ export class PlanaVistaCard extends LitElement {
     const sheet = this._sheet;
     this._session.unlocked(event.detail.result);
     this._closeSheet();
-    if (sheet?.kind === 'pin' && sheet.purpose === 'settings') this._settingsOpen = true;
+    if (sheet?.kind === 'pin' && (sheet.purpose === 'settings' || sheet.purpose === 'continue')) {
+      this._settingsVia = 'session';
+      this._settingsOpen = true;
+    }
     if (sheet?.kind === 'pin' && sheet.purpose === 'setup') this._wizardOpen = true;
+  }
+
+  private _onSheetCancel() {
+    const sheet = this._sheet;
+    this._closeSheet();
+    // Without parent mode, Settings can't stay open on this screen.
+    if (sheet?.kind === 'pin' && sheet.purpose === 'continue') this._onSettingsClose();
+  }
+
+  /** Settings stays open only while this account may use it, or parent mode is on. */
+  private _guardSettings() {
+    if (!this._settingsOpen || this._session.session?.parent || this._sheet) return;
+    const access = this._access();
+    if (access === 'open') return;
+    if (this._settingsVia === 'access' && access === 'pin') {
+      // This account was just marked as a shared screen.
+      this._sheet = { kind: 'pin', purpose: 'continue', heading: "Enter a parent's PIN to keep changing settings" };
+      return;
+    }
+    this._onSettingsClose();
   }
 
   private _closeSheet() {
@@ -439,7 +471,7 @@ export class PlanaVistaCard extends LitElement {
         .heading=${sheet.heading}
         .shuffle=${!!view?.security.shuffle_keypad}
         @pv-unlocked=${this._onUnlocked}
-        @pv-sheet-close=${this._closeSheet}
+        @pv-sheet-close=${this._onSheetCancel}
       ></pv-pin-sheet>
     `;
   }
@@ -460,19 +492,23 @@ export class PlanaVistaCard extends LitElement {
     `;
   }
 
-  private _onSettingsSave() {
-    this._settingsOpen = false;
-    this._previewOverrides = null;
-    // _settingsOpen is now false so updated() will apply the newly saved theme on next hass cycle.
-    clearThemeCache(this);
-  }
-
   private _onSettingsClose() {
     this._settingsOpen = false;
+    this._settingsVia = null;
     this._previewOverrides = null;
-    // Revert to saved theme immediately (undo any preview changes)
     clearThemeCache(this);
+    if (this._previewed) {
+      // The theme picker saves what was previewed as it closes, and the sensor
+      // brings it back in a moment; showing the old theme until then would flicker.
+      this._previewed = false;
+      return;
+    }
     this._applySavedTheme();
+  }
+
+  private _onSettingsLock() {
+    this._session.lock();
+    if (this._access() !== 'open') this._onSettingsClose();
   }
 
   private _onThemePreview(e: CustomEvent<{ theme: string; overrides: ThemeOverrides | null }>) {
@@ -482,6 +518,7 @@ export class PlanaVistaCard extends LitElement {
     applyThemeWithOverrides(this, resolved, overrides);
     // Modules read the previewed avatar border and event style from here.
     this._previewOverrides = overrides;
+    this._previewed = true;
   }
 
   private _getWeatherEntity() {
@@ -559,15 +596,20 @@ export class PlanaVistaCard extends LitElement {
         ${active ? this._renderModule(active, data, display) : nothing}
         ${this._settingsOpen ? html`
           <div class="pvc-settings-overlay">
-            <pv-onboarding-wizard
+            <pv-settings
               .hass=${this.hass}
+              .data=${data}
+              .household=${this._household.view}
               .api=${this._api}
-              mode="settings"
-              .config=${data}
-              @settings-save=${this._onSettingsSave}
-              @settings-close=${this._onSettingsClose}
+              .layout=${this._layout.layout}
+              .session=${this._session.session}
+              .sessionEndsAt=${this._session.endsAt ?? 0}
+              .parent=${this._household.view?.members.find(m => m.id === this._session.session?.memberId) ?? null}
+              .drafts=${this._drafts}
+              @pv-settings-close=${this._onSettingsClose}
+              @pv-lock=${this._onSettingsLock}
               @theme-preview=${this._onThemePreview}
-            ></pv-onboarding-wizard>
+            ></pv-settings>
           </div>
         ` : nothing}
         ${this._renderSheet()}

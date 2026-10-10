@@ -80,6 +80,12 @@ describe('settings registry', () => {
     expect(settings.pages(quiet).find(p => p.id === 'pins')?.summary?.(quiet)).toBe('Not a shared screen');
   });
 
+  it('leaves out People and PINs when there is no household', () => {
+    const { settings } = registries();
+    const ctx = { household: null, data: context().data };
+    expect(settings.pages(ctx).map(p => p.id)).toEqual(['calendars', 'calendar-options', 'appearance', 'about']);
+  });
+
   it('lists the setup steps in order and resumes where setup stopped', () => {
     const { setup } = registries();
     const steps = setup.pages(context());

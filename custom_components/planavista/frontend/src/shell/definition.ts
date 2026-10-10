@@ -47,6 +47,7 @@ export const shellSettingsPages: SettingsPage[] = [
     group: 'people',
     order: 100,
     tag: 'pv-settings-people',
+    applies: ({ household }) => household !== null,
     summary: ({ household }) => {
       const n = household?.members.length ?? 0;
       return n === 0 ? 'No one yet' : count(n, 'person', 'people');
@@ -66,6 +67,7 @@ export const shellSettingsPages: SettingsPage[] = [
     group: 'security',
     order: 500,
     tag: 'pv-settings-pins',
+    applies: ({ household }) => household !== null,
     summary: ({ household }) => {
       const pins = household?.members.filter(m => m.has_pin).length ?? 0;
       const screen = household?.account.shared ? 'Shared screen' : 'Not a shared screen';
