@@ -104,6 +104,20 @@ first_day: sunday           # sunday | monday
 
 ---
 
+## People, PINs, and Settings
+
+PlanaVista keeps a list of the people in your household. Anyone whose calendar is linked to a Home Assistant person joins the list on their own, and you can add people who don't use Home Assistant, such as young children. Each person has a color, a picture (an initial, an emoji, or their Home Assistant photo), an age group, and can be marked as a parent. In Settings, Calendars shows who each calendar belongs to.
+
+**Settings.** Tap the gear on the calendar. Settings opens straight away for Home Assistant admins and for parents signed in with their own account. Children signed in with their own account don't see the gear.
+
+**Shared family screens.** A wall tablet that the whole family uses should sign in with its own Home Assistant account, one that isn't an admin. On that account, Settings asks for a parent's PIN first. Once a parent has a PIN, mark the tablet's account as a shared family screen in Settings, under PINs and parent mode. A non-admin account is safer on a shared screen because an admin account also opens Home Assistant's own settings, which no PlanaVista PIN can guard. An account that isn't linked to anyone and isn't an admin is treated as a shared screen too.
+
+**PINs and parent mode.** Anyone can have a PIN of 4 to 6 digits. A parent's PIN starts parent mode on that screen: the top of the card shows whose it is, with a countdown and a Lock button. Parent mode ends after two quiet minutes, when the screen sleeps, when the page reloads, or when someone taps Lock. After 5 wrong tries a PIN pauses for 30 seconds, and each pause after that is twice as long, up to 15 minutes. A parent can clear a pause. PlanaVista keeps PINs only as salted hashes, and never puts them in actions, events, or its logs.
+
+**Forgot every parent's PIN?** Sign in to Home Assistant with a parent's or an admin's own account and set new ones in Settings, under PINs and parent mode.
+
+---
+
 ## Calendar Views
 
 ### Day View
