@@ -11,6 +11,7 @@ import { weatherIcon } from '../utils/weather-icons';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
 import { resolveDisplay } from '../core/display';
 import { ModuleDefinition, ResolvedModules, moduleRegistry, resolveModules } from '../core/module-registry';
+import { registerShellPages } from './definition';
 
 // The card editor, the setup and Settings wizard, and the header clock.
 import './planavista-card-editor';
@@ -532,5 +533,6 @@ export class PlanaVistaCard extends LitElement {
   }
 }
 
+registerShellPages();
 defineElement('planavista-calendar-card', PlanaVistaCard);
 defineElementAlias('planavista-card', PlanaVistaCard);
