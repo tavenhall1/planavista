@@ -10,11 +10,13 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
+from .household.store import async_get_household, async_start_household
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +42,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     await coordinator.async_config_entry_first_refresh()
     coordinator.async_start_tracking()
     entry.runtime_data = coordinator
+
+    # People and calendars are linked once Home Assistant has started, when
+    # every person entity exists.
+    household = await async_get_household(hass)
+
+    async def _async_start_household(_hass: HomeAssistant) -> None:
+        await async_start_household(hass, household, entry)
+
+    entry.async_on_unload(async_at_started(hass, _async_start_household))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

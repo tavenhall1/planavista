@@ -157,6 +157,31 @@ async def test_save_config_accepts_the_wizard_payload(
     assert attrs["onboarding_complete"] is True
 
 
+async def test_save_config_gives_a_newly_linked_calendar_its_person(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, hass_admin_user: MockUser
+) -> None:
+    """Linking a calendar to a person adds that person to the household."""
+    from custom_components.planavista.household.store import DATA_HOUSEHOLD
+
+    hass.states.async_set("person.casey", "home", {"friendly_name": "Casey"})
+    calendars = deepcopy(CONFIGURED_CALENDARS)
+    calendars[1]["person_entity"] = "person.casey"
+    calendars[0]["member_id"] = "nobody_by_this_id"
+
+    await hass.services.async_call(
+        DOMAIN,
+        "save_config",
+        {"calendars": calendars},
+        blocking=True,
+        context=Context(user_id=hass_admin_user.id),
+    )
+
+    rows = loaded_entry.data["calendars"]
+    assert [row["member_id"] for row in rows] == [None, "casey"]
+    casey = hass.data[DATA_HOUSEHOLD].member("casey")
+    assert casey["person"] == "person.casey" and casey["parent"] is False
+
+
 @pytest.mark.parametrize(
     "payload",
     [
