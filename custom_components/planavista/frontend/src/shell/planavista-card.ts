@@ -17,6 +17,7 @@ import { registerShellPages, registerShellSettings } from './definition';
 import './planavista-card-editor';
 import './onboarding-wizard';
 import './pv-clock';
+import './settings/theme-picker';
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
 
