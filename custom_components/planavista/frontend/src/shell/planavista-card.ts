@@ -15,6 +15,7 @@ import { SettingsAccess, parentsWithPins, settingsAccess } from '../core/househo
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { registerShellSettings } from './definition';
 import { HouseholdController } from './household-controller';
+import { ForecastController } from './forecast-controller';
 import { LayoutController } from './layout-controller';
 import { ensurePageStyles } from './page-styles';
 import { SessionController } from './session-controller';
@@ -60,6 +61,8 @@ export class PlanaVistaCard extends LitElement {
   private _household = new HouseholdController(this);
   private _session = new SessionController(this, () => this._api);
   private _layout = new LayoutController(this);
+  /** One forecast for the card; the header may hide its weather, but Week and Agenda still show it, as in 1.1.0. */
+  private _forecast = new ForecastController(this, () => this._display().weather_entity);
   private _api = new HouseholdApi(
     { callWS: <T>(msg: Record<string, unknown>) => (this.hass as any).callWS(msg) as Promise<T> },
     () => this._session.token,
@@ -664,6 +667,7 @@ export class PlanaVistaCard extends LitElement {
         .data=${data}
         .display=${display}
         .previewOverrides=${this._previewOverrides}
+        .forecast=${this._forecast.forecast}
         .canOpenSettings=${this._access() !== 'none'}
         @pv-open-settings=${this._openSettings}
       ></${tag}>

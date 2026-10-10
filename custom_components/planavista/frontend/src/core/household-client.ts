@@ -1,7 +1,7 @@
 import { HouseholdView, Member, MemberChanges } from './household';
-import { safeUnsubscribe } from '../utils/weather-subscription';
+import { Unsubscribe, retryDelayMs, safeUnsubscribe } from '../utils/subscriptions';
 
-type Unsubscribe = () => void | Promise<void>;
+export { retryDelayMs };
 
 /** The part of hass.connection the subscription uses. */
 export interface HouseholdConnection {
@@ -12,14 +12,6 @@ export interface HouseholdConnection {
   ): Promise<Unsubscribe>;
   addEventListener(event: 'ready', listener: () => void): void;
   removeEventListener(event: 'ready', listener: () => void): void;
-}
-
-const RETRY_FIRST_MS = 1000;
-const RETRY_MAX_MS = 30_000;
-
-/** How long to wait before try `attempt` + 1 after a failed subscribe: 1 s, doubling, at most 30 s. */
-export function retryDelayMs(attempt: number): number {
-  return Math.min(RETRY_MAX_MS, RETRY_FIRST_MS * 2 ** attempt);
 }
 
 /**

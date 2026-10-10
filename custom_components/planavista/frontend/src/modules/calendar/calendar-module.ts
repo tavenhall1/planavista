@@ -7,6 +7,7 @@ import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../
 import { getPersonAvatar, getPersonName } from '../../utils/ha-utils';
 import { swipeDirection } from '../../utils/gestures';
 import { memoizeOne } from '../../utils/render-cache';
+import { ForecastEntry } from '../../utils/weather-subscription';
 import { CalendarStoreController } from './calendar-store';
 import { CalendarDerived, deriveCalendarData, initialView } from './calendar-derive';
 
@@ -33,6 +34,8 @@ export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) display!: DisplayConfig;
   /** Theme overrides being previewed in Settings; they win over the saved ones. */
   @property({ attribute: false }) previewOverrides: ThemeOverrides | null = null;
+  /** The card's daily forecast, for Week and Agenda. */
+  @property({ attribute: false }) forecast: ForecastEntry[] = [];
   /** Shows the gear (Home Assistant admins only, as before). */
   @property({ type: Boolean }) canOpenSettings = false;
 
@@ -823,7 +826,7 @@ export class PvCalendarModule extends LitElement {
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
           .firstDay=${firstDay}
-          .weatherEntity=${display?.weather_entity || ''}
+          .forecast=${this.forecast}
           .showStripes=${showStripes}
           .tick=${tick}
         ></pv-view-week>`;
@@ -851,7 +854,7 @@ export class PvCalendarModule extends LitElement {
           .currentDate=${currentDate}
           .hiddenCalendars=${hiddenCalendars}
           .timeFormat=${timeFormat}
-          .weatherEntity=${display?.weather_entity || ''}
+          .forecast=${this.forecast}
           .showStripes=${showStripes}
           .tick=${tick}
         ></pv-view-agenda>`;

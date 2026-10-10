@@ -1,5 +1,5 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { property, state } from 'lit/decorators.js';
+import { LitElement, html, css, nothing } from 'lit';
+import { property } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
@@ -13,7 +13,7 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 import { weatherIcon } from '../../../utils/weather-icons';
-import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../../../utils/weather-subscription';
+import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -25,13 +25,11 @@ export class PVViewWeek extends LitElement {
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ attribute: false }) firstDay: 'monday' | 'sunday' = 'sunday';
-  @property({ attribute: false }) weatherEntity: string = '';
+  /** The card's daily forecast (one subscription per card, in the shell). */
+  @property({ attribute: false }) forecast: ForecastEntry[] = [];
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
 
-  @state() private _forecast: ForecastEntry[] = [];
-
-  private _forecastSub = new ForecastSubscription(forecast => { this._forecast = forecast; });
 
   static styles = [
     baseStyles,
@@ -226,32 +224,6 @@ export class PVViewWeek extends LitElement {
     return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`;
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    // A re-attached view gets no property change, so re-subscribe here.
-    if (this.hasUpdated) this._syncForecast();
-  }
-
-  updated(changed: PropertyValues) {
-    super.updated(changed);
-    if (changed.has('weatherEntity') || changed.has('hass')) {
-      this._syncForecast();
-    }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._forecastSub.stop();
-  }
-
-  private _syncForecast() {
-    this._forecastSub.update(
-      this.hass?.connection as unknown as ForecastConnection | undefined,
-      this.weatherEntity,
-      this.hass?.states?.[this.weatherEntity]?.attributes?.forecast,
-    );
-  }
-
   render() {
     const visible = filterVisibleEvents(this.events, this.hiddenCalendars);
     const days = this._getWeekDays();
@@ -261,7 +233,7 @@ export class PVViewWeek extends LitElement {
     weekEnd.setHours(23, 59, 59, 999);
     const weekEvents = getEventsForDateRange(visible, weekStart, weekEnd);
     const deduped = deduplicateSharedEvents(weekEvents, this.calendars);
-    const forecasts = buildForecastMap(this._forecast);
+    const forecasts = buildForecastMap(this.forecast);
 
     return html`
       <div class="week-container">

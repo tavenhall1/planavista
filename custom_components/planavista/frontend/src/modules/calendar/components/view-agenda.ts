@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -18,7 +18,7 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 import { weatherIcon } from '../../../utils/weather-icons';
-import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../../../utils/weather-subscription';
+import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 
 const DAYS_PER_PAGE = 14;
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -30,14 +30,12 @@ export class PVViewAgenda extends LitElement {
   @property({ type: Object }) currentDate: Date = new Date();
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
-  @property({ attribute: false }) weatherEntity: string = '';
+  /** The card's daily forecast (one subscription per card, in the shell). */
+  @property({ attribute: false }) forecast: ForecastEntry[] = [];
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
 
   @state() private _daysLoaded = DAYS_PER_PAGE;
-  @state() private _forecast: ForecastEntry[] = [];
-
-  private _forecastSub = new ForecastSubscription(forecast => { this._forecast = forecast; });
 
   static styles = [
     baseStyles,
@@ -242,7 +240,7 @@ export class PVViewAgenda extends LitElement {
     const grouped = groupEventsByDate(sharedEvents);
 
     // Weather forecast
-    const forecast = buildForecastMap(this._forecast);
+    const forecast = buildForecastMap(this.forecast);
 
     return html`
       <div class="agenda-container">
@@ -309,32 +307,6 @@ export class PVViewAgenda extends LitElement {
         </div>
       </div>
     `;
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    // A re-attached view gets no property change, so re-subscribe here.
-    if (this.hasUpdated) this._syncForecast();
-  }
-
-  updated(changed: PropertyValues) {
-    super.updated(changed);
-    if (changed.has('weatherEntity') || changed.has('hass')) {
-      this._syncForecast();
-    }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._forecastSub.stop();
-  }
-
-  private _syncForecast() {
-    this._forecastSub.update(
-      this.hass?.connection as unknown as ForecastConnection | undefined,
-      this.weatherEntity,
-      this.hass?.states?.[this.weatherEntity]?.attributes?.forecast,
-    );
   }
 
   private _loadMore() {
