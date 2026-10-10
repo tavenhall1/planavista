@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defineElement } from '../src/utils/define';
+import { defineElement, defineElementAlias } from '../src/utils/define';
 
 /** Minimal stand-in for window.customElements, which throws on a second define like the real one. */
 class FakeRegistry {
@@ -88,5 +88,25 @@ describe('defineElement', () => {
     expect(() => defineElement('pv-event-chip', NewChip)).not.toThrow();
     expect(defineElement('pv-event-chip', NewChip)).toBe(false);
     expect(registry.get('pv-event-chip')).toBe(OldChip);
+  });
+});
+
+describe('defineElementAlias', () => {
+  it('registers the alias as a subclass, even when an older bundle took the original name', () => {
+    const registry = new FakeRegistry();
+    registry.define('planavista-calendar-card', OldChip);
+    vi.stubGlobal('customElements', registry);
+    const Card = class {} as unknown as CustomElementConstructor;
+    expect(defineElement('planavista-calendar-card', Card)).toBe(false);
+    expect(defineElementAlias('planavista-card', Card)).toBe(true);
+    expect(Object.getPrototypeOf(registry.get('planavista-card'))).toBe(Card);
+  });
+
+  it('skips an alias that another bundle already defined', () => {
+    const registry = new FakeRegistry();
+    registry.define('planavista-card', OldChip);
+    vi.stubGlobal('customElements', registry);
+    expect(defineElementAlias('planavista-card', NewChip)).toBe(false);
+    expect(registry.get('planavista-card')).toBe(OldChip);
   });
 });

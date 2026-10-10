@@ -1,19 +1,15 @@
-// PlanaVista
-// Single entry point: imports the unified card and registers it with HA
-
-// Reusable sub-components
-import './core/color-swatch-picker';
-import './shell/onboarding-wizard';
-import './modules/calendar/components/pv-event-chip';
-
+// PlanaVista: the single entry point. Modules register themselves first,
+// then the card that hosts them.
+import './modules/calendar';
 import './shell/planavista-card';
 import { version } from '../package.json';
 
-// Register card with the HA card picker (once, even if another copy of the bundle ran first)
+// Register the card with the HA card picker (once, even if another copy of the bundle ran first).
+// New dashboards get the neutral name; `custom:planavista-calendar-card` keeps working.
 window.customCards = window.customCards || [];
-if (!window.customCards.some(card => card.type === 'planavista-calendar-card')) {
+if (!window.customCards.some(card => card.type === 'planavista-card' || card.type === 'planavista-calendar-card')) {
   window.customCards.push({
-    type: 'planavista-calendar-card',
+    type: 'planavista-card',
     name: 'PlanaVista',
     description: 'All-in-one calendar with clock, weather, toggles, and views',
     preview: true,

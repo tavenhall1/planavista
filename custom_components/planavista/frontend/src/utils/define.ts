@@ -35,3 +35,13 @@ function register(tag: string, ctor: CustomElementConstructor): boolean {
   customElements.define(tag, ctor);
   return true;
 }
+
+/**
+ * Register `tag` as another name for `base`. The browser registers a class
+ * under one name only, so the alias is an empty subclass.
+ *
+ * Returns true when this call registered the alias right away.
+ */
+export function defineElementAlias(tag: string, base: CustomElementConstructor): boolean {
+  return defineElement(tag, class extends base {});
+}
