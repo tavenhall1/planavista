@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveDisplay } from '../src/core/display';
+import { resolveDisplay, themeDisplayChange } from '../src/core/display';
 import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../src/types';
 
 const saved = (display: Partial<DisplayConfig>): PlanaVistaData => ({
@@ -38,5 +38,15 @@ describe('resolveDisplay', () => {
 
   it('treats the card\'s view as its default view when default_view is not set', () => {
     expect(resolveDisplay(card({ view: 'day' }), saved({ default_view: 'month' })).default_view).toBe('day');
+  });
+});
+
+describe('themeDisplayChange', () => {
+  it('saves the theme with its customizations', () => {
+    expect(themeDisplayChange('dark', { accent: '#277DA1' })).toEqual({ theme: 'dark', theme_overrides: { accent: '#277DA1' } });
+  });
+
+  it('sends null when nothing is customized, which removes the saved customizations', () => {
+    expect(themeDisplayChange('light', {})).toEqual({ theme: 'light', theme_overrides: null });
   });
 });

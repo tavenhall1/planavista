@@ -7,10 +7,13 @@ from typing import Any
 
 import pytest
 from pytest_homeassistant_custom_component.common import (
+    CLIENT_ID,
     MockConfigEntry,
+    MockUser,
     setup_test_component_platform,
 )
 
+from homeassistant.auth.const import GROUP_ID_USER
 from homeassistant.components.calendar import (
     DOMAIN as CALENDAR_DOMAIN,
     CalendarEntity,
@@ -163,3 +166,82 @@ async def setup_calendars(
     """Load the calendar component with the fake calendars before the test runs."""
     await async_load_calendars(hass, fake_calendars)
     return fake_calendars
+
+
+@pytest.fixture
+async def accounts(
+    hass: HomeAssistant, hass_admin_user: MockUser, local_auth: Any
+) -> dict[str, MockUser]:
+    """The sample household's Home Assistant accounts.
+
+    admin is linked to no one. alex and casey are their own logins, linked
+    through their people. kitchen is the wall tablet. guest is linked to no
+    one and isn't an admin. Blair has a person but no login.
+    """
+    group = await hass.auth.async_get_group(GROUP_ID_USER)
+    users = {"admin": hass_admin_user}
+    for name in ("alex", "casey", "kitchen", "guest"):
+        users[name] = MockUser(name=name.title(), groups=[group]).add_to_hass(hass)
+    hass.states.async_set(
+        "person.alex", "home", {"friendly_name": "Alex", "user_id": users["alex"].id}
+    )
+    hass.states.async_set(
+        "person.casey", "home", {"friendly_name": "Casey", "user_id": users["casey"].id}
+    )
+    hass.states.async_set("person.blair", "not_home", {"friendly_name": "Blair"})
+    return users
+
+
+@pytest.fixture
+async def household(
+    hass: HomeAssistant,
+    setup_calendars: dict[str, FakeCalendar],
+    accounts: dict[str, MockUser],
+    mock_config_entry: MockConfigEntry,
+) -> Any:
+    """PlanaVista with the sample household: parents Alex and Blair, Casey (teen), Dana (6)."""
+    from custom_components.planavista.household.members import add_member
+    from custom_components.planavista.household.store import DATA_HOUSEHOLD
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    household = hass.data[DATA_HOUSEHOLD]
+    members: list[dict[str, Any]] = []
+    for changes in (
+        {"name": "Alex", "parent": True, "person": "person.alex"},
+        {"name": "Blair", "parent": True, "person": "person.blair"},
+        {"name": "Casey", "age_group": "teen", "person": "person.casey"},
+        {"name": "Dana", "age_group": "young_child"},
+    ):
+        members, _ = add_member(members, changes)
+    household.members = members
+    await household.async_save()
+    return household
+
+
+async def set_pin(hass: HomeAssistant, household: Any, member_id: str, pin: str) -> None:
+    """Give a member a PIN without going through the card."""
+    from custom_components.planavista.household.security import hash_pin
+
+    household.pins[member_id] = await hass.async_add_executor_job(hash_pin, pin)
+    await household.async_save()
+
+
+async def ws_client_for(hass: HomeAssistant, hass_ws_client: Any, user: MockUser) -> Any:
+    """A WebSocket client signed in as `user`."""
+    refresh_token = await hass.auth.async_create_refresh_token(user, CLIENT_ID)
+    return await hass_ws_client(hass, hass.auth.async_create_access_token(refresh_token))
+
+
+async def ws_command(
+    client: Any, fields: dict[str, Any], seen: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Send a command and return its result, skipping (and keeping) subscription events."""
+    message = dict(fields)
+    await client.send_json_auto_id(message)
+    while True:
+        reply = await client.receive_json()
+        if seen is not None:
+            seen.append(reply)
+        if reply.get("id") == message["id"] and reply.get("type") == "result":
+            return reply

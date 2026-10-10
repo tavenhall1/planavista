@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.planavista.const import DOMAIN
 
@@ -136,3 +137,66 @@ async def test_save_config_applies_in_place_and_options_still_work(
     state = hass.states.get("sensor.planavista_config")
     assert state.attributes["display"]["time_format"] == "12h"
     assert _calendar_ids(hass) == ["calendar.test_blair"]
+
+
+async def _edit_calendar_details(
+    hass: HomeAssistant, entry: MockConfigEntry, entity_id: str, details: dict[str, Any]
+) -> dict[str, Any]:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "edit_calendar"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"calendar": entity_id}
+    )
+    assert result["step_id"] == "edit_calendar_details"
+    result = await hass.config_entries.options.async_configure(result["flow_id"], details)
+    await hass.async_block_till_done()
+    return result
+
+
+async def test_editing_a_calendar_keeps_who_it_belongs_to(
+    hass: HomeAssistant, household: Any, mock_config_entry: MockConfigEntry
+) -> None:
+    """Keys the card added, such as member_id, survive an edit here (spec 6.6)."""
+    rows = deepcopy(mock_config_entry.data["calendars"])
+    rows[1] = {**rows[1], "member_id": "dana", "added_by_a_newer_card": True}
+    hass.config_entries.async_update_entry(
+        mock_config_entry, data={**mock_config_entry.data, "calendars": rows}
+    )
+
+    result = await _edit_calendar_details(
+        hass,
+        mock_config_entry,
+        "calendar.test_blair",
+        {"display_name": "Blair B", "color": [39, 125, 161], "icon": "mdi:account", "person_entity": ""},
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    blair = mock_config_entry.data["calendars"][1]
+    assert blair["display_name"] == "Blair B"
+    assert blair["member_id"] == "dana"
+    assert blair["added_by_a_newer_card"] is True
+
+
+async def test_linking_a_person_here_gives_the_calendar_their_member(
+    hass: HomeAssistant, household: Any, mock_config_entry: MockConfigEntry
+) -> None:
+    """A calendar linked to a person here follows the household's rules, as in Settings (spec 7.2)."""
+    er.async_get(hass).async_get_or_create("person", "person", "casey", suggested_object_id="casey")
+    rows = deepcopy(mock_config_entry.data["calendars"])
+    rows[1] = {**rows[1], "member_id": "dana"}
+    hass.config_entries.async_update_entry(
+        mock_config_entry, data={**mock_config_entry.data, "calendars": rows}
+    )
+
+    await _edit_calendar_details(
+        hass,
+        mock_config_entry,
+        "calendar.test_blair",
+        {"display_name": "Blair", "color": [39, 125, 161], "icon": "mdi:account", "person_entity": "person.casey"},
+    )
+
+    blair = mock_config_entry.data["calendars"][1]
+    assert blair["person_entity"] == "person.casey"
+    assert blair["member_id"] == "casey"

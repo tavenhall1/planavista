@@ -72,6 +72,8 @@ export interface CalendarConfig {
   color_light: string;
   icon: string;
   person_entity: string;
+  /** The household member it belongs to (set by PlanaVista; null for nobody). */
+  member_id?: string | null;
   visible: boolean;
   state?: string;
   attributes?: Record<string, any>;

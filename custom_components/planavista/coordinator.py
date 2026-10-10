@@ -157,13 +157,17 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                     color_light = calendar_config.get("color_light", "")
 
+                    # Spread the saved row first so keys the card adds (member_id,
+                    # and whatever later releases add) reach the card unchanged.
                     calendar_data = {
+                        **calendar_config,
                         "entity_id": entity_id,
                         "display_name": display_name,
                         "color": color,
                         "color_light": color_light,
                         "icon": calendar_config.get("icon", "mdi:calendar"),
                         "person_entity": calendar_config.get("person_entity", ""),
+                        "member_id": calendar_config.get("member_id"),
                         "visible": calendar_config.get("visible", True),
                         "state": calendar_state.state,
                         "attributes": dict(calendar_state.attributes),

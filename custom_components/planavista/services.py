@@ -1,7 +1,7 @@
 """Services and WebSocket commands for PlanaVista."""
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 import logging
 from typing import Any
 
@@ -60,6 +60,8 @@ from .google_api import (
     async_google_patch_event,
     get_google_calendar_id,
 )
+from .household.members import link_calendars
+from .household.store import DATA_HOUSEHOLD, async_person_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,6 +78,7 @@ CALENDAR_CONFIG_SCHEMA = vol.Schema(
         vol.Optional(CONF_COLOR_LIGHT): cv.string,
         vol.Optional(CONF_ICON): cv.string,
         vol.Optional(CONF_PERSON_ENTITY): vol.Any(None, cv.string),
+        vol.Optional("member_id"): vol.Any(None, cv.string),
         vol.Optional(CONF_VISIBLE): cv.boolean,
     },
     extra=vol.ALLOW_EXTRA,
@@ -206,25 +209,71 @@ async def _async_check_control(
             )
 
 
-async def _async_save_config(call: ServiceCall) -> None:
-    """Save the settings submitted by the card's setup wizard (admin only)."""
-    hass = call.hass
-    entry = _async_get_loaded_entry(hass)
-    new_data = dict(entry.data)
+async def async_store_config(
+    hass: HomeAssistant,
+    changes: Mapping[str, Any],
+    *,
+    merge_display: bool = False,
+    entry: PlanaVistaConfigEntry | None = None,
+) -> None:
+    """Save calendars, display settings, and onboarding_complete.
 
-    if CONF_CALENDARS in call.data:
-        new_data[CONF_CALENDARS] = [dict(cal) for cal in call.data[CONF_CALENDARS]]
-    if CONF_DISPLAY in call.data:
-        new_data[CONF_DISPLAY] = dict(call.data[CONF_DISPLAY])
-    if CONF_ONBOARDING_COMPLETE in call.data:
-        new_data[CONF_ONBOARDING_COMPLETE] = call.data[CONF_ONBOARDING_COMPLETE]
+    The save_config action, the card's planavista/config/save, and the
+    options flow (which names its `entry`, loaded or not) all come here.
+    The action replaces the display settings; the card merges them
+    (`merge_display`), so each Settings page sends only what it changed and
+    one page's save can't undo another's. A None value removes a setting.
+    A calendar newly linked to a Home Assistant person joins that person's
+    member, who is added when needed (spec section 7.2).
+    """
+    if entry is None:
+        entry = _async_get_loaded_entry(hass)
+    new_data = dict(entry.data)
+    if CONF_CALENDARS in changes:
+        new_data[CONF_CALENDARS] = [dict(cal) for cal in changes[CONF_CALENDARS]]
+    if CONF_DISPLAY in changes:
+        display = dict(changes[CONF_DISPLAY])
+        if merge_display:
+            merged = {**entry.data.get(CONF_DISPLAY, {}), **display}
+            display = {key: value for key, value in merged.items() if value is not None}
+        new_data[CONF_DISPLAY] = display
+    if CONF_ONBOARDING_COMPLETE in changes:
+        new_data[CONF_ONBOARDING_COMPLETE] = changes[CONF_ONBOARDING_COMPLETE]
+
+    household = hass.data.get(DATA_HOUSEHOLD)
+    if household is not None and household.available and CONF_CALENDARS in changes:
+        linked_before = {
+            cal.get("entity_id"): cal.get("person_entity")
+            for cal in entry.data.get(CONF_CALENDARS, [])
+        }
+        newly_linked = {
+            cal["person_entity"]
+            for cal in new_data[CONF_CALENDARS]
+            if cal.get("person_entity")
+            and linked_before.get(cal.get("entity_id")) != cal["person_entity"]
+        }
+        rows, members = link_calendars(
+            new_data[CONF_CALENDARS],
+            household.members,
+            await async_person_info(hass),
+            newly_linked,
+        )
+        new_data[CONF_CALENDARS] = rows
+        if members != household.members:
+            household.members = members
+            await household.async_save()
 
     await async_apply_config(hass, entry, new_data)
 
+
+async def _async_save_config(call: ServiceCall) -> None:
+    """Save the settings sent by an admin or an automation."""
+    await async_store_config(call.hass, call.data)
+    entry = _async_get_loaded_entry(call.hass)
     _LOGGER.info(
         "PlanaVista config saved via save_config service (calendars=%d, onboarding=%s)",
-        len(new_data.get(CONF_CALENDARS, [])),
-        new_data.get(CONF_ONBOARDING_COMPLETE),
+        len(entry.data.get(CONF_CALENDARS, [])),
+        entry.data.get(CONF_ONBOARDING_COMPLETE),
     )
 
 

@@ -89,6 +89,15 @@
     },
     "create_outcome_unknown": {
       "message": "Google Calendar did not answer in time, so the event may or may not have been created. Check the calendar before trying again."
+    },
+    "household_unavailable": {
+      "message": "People and PINs can't be changed until PlanaVista is updated."
+    }
+  },
+  "issues": {
+    "household_newer_version": {
+      "title": "Update PlanaVista to change people and PINs",
+      "description": "The household file was saved by a newer version of PlanaVista. The calendar keeps working, but people, PINs, and shared screens can't be changed until PlanaVista is updated."
     }
   }
 }

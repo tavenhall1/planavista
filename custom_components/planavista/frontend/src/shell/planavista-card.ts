@@ -11,12 +11,27 @@ import { weatherIcon } from '../utils/weather-icons';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
 import { resolveDisplay } from '../core/display';
 import { ModuleDefinition, ResolvedModules, moduleRegistry, resolveModules } from '../core/module-registry';
-import { registerShellPages } from './definition';
+import { SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
+import { HouseholdApi, UnlockResult } from '../core/household-client';
+import { registerShellSettings } from './definition';
+import { HouseholdController } from './household-controller';
+import { LayoutController } from './layout-controller';
+import { SessionController } from './session-controller';
 
 // The card editor, the setup and Settings wizard, and the header clock.
 import './planavista-card-editor';
-import './onboarding-wizard';
 import './pv-clock';
+import './settings/theme-picker';
+import './pv-parent-strip';
+import './pv-pin-sheet';
+import './pv-notice-sheet';
+import './settings/pv-settings';
+import './setup/pv-setup';
+
+/** A sheet the card shows over everything: a parent's PIN, or why there is no way in. */
+type CardSheet =
+  | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue'; heading: string }
+  | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
 
@@ -32,6 +47,23 @@ export class PlanaVistaCard extends LitElement {
   @state() private _onboardingDone = false;
   @state() private _settingsOpen = false;
   @state() private _previewOverrides: ThemeOverrides | null = null;
+  @state() private _sheet: CardSheet | null = null;
+  private _sheetOpener: HTMLElement | null = null;
+  /** Drafts of person edits; they outlive Settings until the page reloads (spec 9.4). */
+  private _drafts = new Map<string, unknown>();
+  /** How Settings was opened: by this account's own rights, or through parent mode. */
+  private _settingsVia: 'access' | 'session' | null = null;
+  /** A theme was previewed in Settings, and its save is on the way. */
+  private _previewed = false;
+
+  private _household = new HouseholdController(this);
+  private _session = new SessionController(this, () => this._api);
+  private _layout = new LayoutController(this);
+  private _api = new HouseholdApi(
+    { callWS: <T>(msg: Record<string, unknown>) => (this.hass as any).callWS(msg) as Promise<T> },
+    () => this._session.token,
+    token => this._session.ended(token),
+  );
 
   static styles = [
     baseStyles,
@@ -334,9 +366,10 @@ export class PlanaVistaCard extends LitElement {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
-    // While settings panel is open, the wizard owns theme via theme-preview events.
-    // Only apply saved theme from sensor when settings are closed.
-    if (this._settingsOpen) return;
+    this._guardSettings();
+    // While Settings or setup is open, its theme picker previews through
+    // theme-preview events; the saved theme applies again once it closes.
+    if (this._settingsOpen || this._wizardOpen) return;
     if (changedProps.has('hass') || changedProps.has('_config') || changedProps.has('_settingsOpen')) {
       this._applySavedTheme();
     }
@@ -355,23 +388,171 @@ export class PlanaVistaCard extends LitElement {
     clearThemeCache(this);
   }
 
-  private _openSettings() {
-    this._settingsOpen = true;
+  /** What the gear may do for this account; until the household answers, admins only, as in 1.1.0. */
+  private _access(): SettingsAccess {
+    const isAdmin = !!this.hass?.user?.is_admin;
+    if (!this._household.ready) return isAdmin ? 'open' : 'none';
+    return settingsAccess(this._household.view, isAdmin);
   }
 
-  private _onSettingsSave() {
-    this._settingsOpen = false;
-    this._previewOverrides = null;
-    // _settingsOpen is now false so updated() will apply the newly saved theme on next hass cycle.
-    clearThemeCache(this);
+  private _openSettings(event?: Event) {
+    this._sheetOpener = (event?.composedPath?.()[0] as HTMLElement | undefined) ?? null;
+    const access = this._access();
+    if (access === 'open' || this._session.session?.parent) {
+      this._settingsVia = access === 'open' ? 'access' : 'session';
+      this._settingsOpen = true;
+    } else if (access === 'pin') {
+      this._sheet = { kind: 'pin', purpose: 'settings', heading: "Who's opening Settings?" };
+    } else if (access === 'no_pin') {
+      this._sheet = { kind: 'no_pin' };
+    }
+  }
+
+  /** Start setup: straight away for an admin or a parent, or after a parent's PIN. */
+  private _beginSetup(event?: Event) {
+    this._sheetOpener = (event?.composedPath?.()[0] as HTMLElement | undefined) ?? null;
+    if (this._access() === 'open' || this._session.session?.parent) {
+      this._wizardOpen = true;
+    } else if (this._access() === 'pin') {
+      this._sheet = { kind: 'pin', purpose: 'setup', heading: "Who's setting up PlanaVista?" };
+    }
+  }
+
+  private _renderSetupCard() {
+    const access = this._access();
+    const icon = html`
+      <div class="pvc-setup-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+          <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+        </svg>
+      </div>
+    `;
+    if (access !== 'open' && access !== 'pin') {
+      return html`
+        <div class="pvc-setup-pending">
+          ${icon}
+          <p class="pvc-setup-title">PlanaVista isn't set up yet</p>
+          <p class="pvc-setup-hint">An admin can set it up from their own Home Assistant login.</p>
+        </div>
+      `;
+    }
+    return html`
+      <div class="pvc-setup-pending"
+        role="button"
+        tabindex="0"
+        aria-label="Begin PlanaVista setup"
+        @click=${this._beginSetup}
+        @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._beginSetup(e); } }}
+      >
+        ${icon}
+        <p class="pvc-setup-title">PlanaVista</p>
+        <p class="pvc-setup-hint">Tap to begin setup</p>
+      </div>
+    `;
+  }
+
+  private _onUnlocked(event: CustomEvent<{ result: UnlockResult }>) {
+    const sheet = this._sheet;
+    this._session.unlocked(event.detail.result);
+    this._closeSheet();
+    if (sheet?.kind === 'pin' && (sheet.purpose === 'settings' || sheet.purpose === 'continue')) {
+      this._settingsVia = 'session';
+      this._settingsOpen = true;
+    }
+    if (sheet?.kind === 'pin' && sheet.purpose === 'setup') this._wizardOpen = true;
+  }
+
+  private _onSheetCancel() {
+    const sheet = this._sheet;
+    this._closeSheet();
+    // Without parent mode, Settings can't stay open on this screen.
+    if (sheet?.kind === 'pin' && sheet.purpose === 'continue') this._onSettingsClose();
+  }
+
+  /** Settings stays open only while this account may use it, or parent mode is on. */
+  private _guardSettings() {
+    if (!this._settingsOpen || this._session.session?.parent || this._sheet) return;
+    const access = this._access();
+    if (access === 'open') return;
+    if (this._settingsVia === 'access' && access === 'pin') {
+      // This account was just marked as a shared screen.
+      this._sheet = { kind: 'pin', purpose: 'continue', heading: "Enter a parent's PIN to keep changing settings" };
+      return;
+    }
+    this._onSettingsClose();
+  }
+
+  private _closeSheet() {
+    this._sheet = null;
+    const opener = this._sheetOpener;
+    this._sheetOpener = null;
+    opener?.focus?.();
+  }
+
+  private _renderSheet() {
+    const sheet = this._sheet;
+    if (!sheet) return nothing;
+    const layout = this._layout.layout;
+    if (sheet.kind === 'no_pin') {
+      return html`
+        <pv-notice-sheet
+          .layout=${layout}
+          heading="Settings needs a parent's PIN"
+          body="On a shared screen, a parent opens Settings with their PIN, and no parent has one yet. Sign in to Home Assistant with a parent's or an admin's own account, then set one in Settings, PINs and parent mode."
+          .actions=${[{ id: 'ok', label: 'OK', kind: 'primary' }]}
+          @pv-sheet-action=${this._closeSheet}
+        ></pv-notice-sheet>
+      `;
+    }
+    const view = this._household.view;
+    return html`
+      <pv-pin-sheet
+        .hass=${this.hass}
+        .api=${this._api}
+        .layout=${layout}
+        mode="unlock"
+        .members=${view ? parentsWithPins(view.members) : []}
+        .heading=${sheet.heading}
+        .shuffle=${!!view?.security.shuffle_keypad}
+        @pv-unlocked=${this._onUnlocked}
+        @pv-sheet-close=${this._onSheetCancel}
+      ></pv-pin-sheet>
+    `;
+  }
+
+  /** Whose parent mode is on, with its countdown and Lock, even when the header is hidden. */
+  private _renderParentStrip() {
+    const session = this._session.session;
+    if (!session?.parent) return nothing;
+    const parent = this._household.view?.members.find(m => m.id === session.memberId);
+    if (!parent) return nothing;
+    return html`
+      <pv-parent-strip
+        .member=${parent}
+        .hass=${this.hass}
+        .endsAt=${this._session.endsAt ?? 0}
+        @pv-lock=${() => this._session.lock()}
+      ></pv-parent-strip>
+    `;
   }
 
   private _onSettingsClose() {
     this._settingsOpen = false;
+    this._settingsVia = null;
     this._previewOverrides = null;
-    // Revert to saved theme immediately (undo any preview changes)
     clearThemeCache(this);
+    if (this._previewed) {
+      // The theme picker saves what was previewed as it closes, and the sensor
+      // brings it back in a moment; showing the old theme until then would flicker.
+      this._previewed = false;
+      return;
+    }
     this._applySavedTheme();
+  }
+
+  private _onSettingsLock() {
+    this._session.lock();
+    if (this._access() !== 'open') this._onSettingsClose();
   }
 
   private _onThemePreview(e: CustomEvent<{ theme: string; overrides: ThemeOverrides | null }>) {
@@ -381,6 +562,7 @@ export class PlanaVistaCard extends LitElement {
     applyThemeWithOverrides(this, resolved, overrides);
     // Modules read the previewed avatar border and event style from here.
     this._previewOverrides = overrides;
+    this._previewed = true;
   }
 
   private _getWeatherEntity() {
@@ -414,35 +596,22 @@ export class PlanaVistaCard extends LitElement {
       `;
     }
 
-    // Onboarding: show setup card until user explicitly launches the wizard
+    // First-run setup: a card that starts setup, until setup is finished.
     if (data.onboarding_complete === false && !this._onboardingDone) {
-      if (this._wizardOpen) {
-        return html`
-          <ha-card>
-            <pv-onboarding-wizard
-              .hass=${this.hass}
-              @onboarding-complete=${this._onOnboardingComplete}
-            ></pv-onboarding-wizard>
-          </ha-card>
-        `;
-      }
       return html`
         <ha-card>
-          <div class="pvc-setup-pending"
-            role="button"
-            tabindex="0"
-            aria-label="Begin PlanaVista setup"
-            @click=${() => { this._wizardOpen = true; }}
-            @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._wizardOpen = true; } }}
-          >
-            <div class="pvc-setup-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
-                <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
-              </svg>
-            </div>
-            <p class="pvc-setup-title">PlanaVista</p>
-            <p class="pvc-setup-hint">Tap to begin setup</p>
-          </div>
+          ${this._wizardOpen ? html`
+            <pv-setup
+              .hass=${this.hass}
+              .data=${data}
+              .household=${this._household.view}
+              .api=${this._api}
+              .layout=${this._layout.layout}
+              @onboarding-complete=${this._onOnboardingComplete}
+              @theme-preview=${this._onThemePreview}
+            ></pv-setup>
+          ` : this._renderSetupCard()}
+          ${this._renderSheet()}
         </ha-card>
       `;
     }
@@ -452,20 +621,28 @@ export class PlanaVistaCard extends LitElement {
 
     return html`
       <ha-card>
+        ${this._renderParentStrip()}
         ${this._config.hide_header ? nothing : this._renderHeader(display)}
         ${active ? this._renderModule(active, data, display) : nothing}
         ${this._settingsOpen ? html`
           <div class="pvc-settings-overlay">
-            <pv-onboarding-wizard
+            <pv-settings
               .hass=${this.hass}
-              mode="settings"
-              .config=${data}
-              @settings-save=${this._onSettingsSave}
-              @settings-close=${this._onSettingsClose}
+              .data=${data}
+              .household=${this._household.view}
+              .api=${this._api}
+              .layout=${this._layout.layout}
+              .session=${this._session.session}
+              .sessionEndsAt=${this._session.endsAt ?? 0}
+              .parent=${this._household.view?.members.find(m => m.id === this._session.session?.memberId) ?? null}
+              .drafts=${this._drafts}
+              @pv-settings-close=${this._onSettingsClose}
+              @pv-lock=${this._onSettingsLock}
               @theme-preview=${this._onThemePreview}
-            ></pv-onboarding-wizard>
+            ></pv-settings>
           </div>
         ` : nothing}
+        ${this._renderSheet()}
       </ha-card>
     `;
   }
@@ -480,7 +657,7 @@ export class PlanaVistaCard extends LitElement {
         .data=${data}
         .display=${display}
         .previewOverrides=${this._previewOverrides}
-        .canOpenSettings=${!!(this.hass as any).user?.is_admin}
+        .canOpenSettings=${this._access() !== 'none'}
         @pv-open-settings=${this._openSettings}
       ></${tag}>
     `;
@@ -533,6 +710,6 @@ export class PlanaVistaCard extends LitElement {
   }
 }
 
-registerShellPages();
+registerShellSettings();
 defineElement('planavista-calendar-card', PlanaVistaCard);
 defineElementAlias('planavista-card', 'planavista-calendar-card', PlanaVistaCard);
