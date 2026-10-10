@@ -6,6 +6,7 @@ import { baseStyles, buttonStyles, formStyles, animationStyles, scrollbarStyles 
 import { ThemeOverrides } from '../types';
 import { PvColorSwatchPicker } from '../core/color-swatch-picker';
 import { setupSteps, settingsPages, WizardContext, WizardPage } from '../core/page-registry';
+import type { HouseholdApi } from '../core/household-client';
 
 interface CalendarEntry {
   entity_id: string;
@@ -35,6 +36,8 @@ export class PvOnboardingWizard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: String }) mode: 'onboarding' | 'settings' = 'onboarding';
   @property({ attribute: false }) config?: any;
+  /** Saves go through planavista/config/save, which parent mode may use. */
+  @property({ attribute: false }) api?: HouseholdApi;
 
   // Navigation
   @state() private _page = 0;
@@ -224,7 +227,11 @@ export class PvOnboardingWizard extends LitElement {
       if (this.mode === 'onboarding') {
         payload.onboarding_complete = true;
       }
-      await this.hass.callService('planavista', 'save_config', payload);
+      if (this.api) {
+        await this.api.saveConfig(payload);
+      } else {
+        await this.hass.callService('planavista', 'save_config', payload);
+      }
       const eventName = this.mode === 'settings' ? 'settings-save' : 'onboarding-complete';
       this.dispatchEvent(new CustomEvent(eventName, {
         bubbles: true,

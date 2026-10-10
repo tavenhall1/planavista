@@ -11,13 +11,26 @@ import { weatherIcon } from '../utils/weather-icons';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
 import { resolveDisplay } from '../core/display';
 import { ModuleDefinition, ResolvedModules, moduleRegistry, resolveModules } from '../core/module-registry';
+import { SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
+import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { registerShellPages, registerShellSettings } from './definition';
+import { HouseholdController } from './household-controller';
+import { LayoutController } from './layout-controller';
+import { SessionController } from './session-controller';
 
 // The card editor, the setup and Settings wizard, and the header clock.
 import './planavista-card-editor';
 import './onboarding-wizard';
 import './pv-clock';
 import './settings/theme-picker';
+import './pv-parent-strip';
+import './pv-pin-sheet';
+import './pv-notice-sheet';
+
+/** A sheet the card shows over everything: a parent's PIN, or why there is no way in. */
+type CardSheet =
+  | { kind: 'pin'; purpose: 'settings' | 'setup'; heading: string }
+  | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
 
@@ -33,6 +46,16 @@ export class PlanaVistaCard extends LitElement {
   @state() private _onboardingDone = false;
   @state() private _settingsOpen = false;
   @state() private _previewOverrides: ThemeOverrides | null = null;
+  @state() private _sheet: CardSheet | null = null;
+  private _sheetOpener: HTMLElement | null = null;
+
+  private _household = new HouseholdController(this);
+  private _session = new SessionController(this, () => this._api);
+  private _layout = new LayoutController(this);
+  private _api = new HouseholdApi(
+    { callWS: <T>(msg: Record<string, unknown>) => (this.hass as any).callWS(msg) as Promise<T> },
+    () => this._session.token,
+  );
 
   static styles = [
     baseStyles,
@@ -356,8 +379,85 @@ export class PlanaVistaCard extends LitElement {
     clearThemeCache(this);
   }
 
-  private _openSettings() {
-    this._settingsOpen = true;
+  /** What the gear may do for this account; until the household answers, admins only, as in 1.1.0. */
+  private _access(): SettingsAccess {
+    const isAdmin = !!this.hass?.user?.is_admin;
+    if (!this._household.ready) return isAdmin ? 'open' : 'none';
+    return settingsAccess(this._household.view, isAdmin);
+  }
+
+  private _openSettings(event?: Event) {
+    this._sheetOpener = (event?.composedPath?.()[0] as HTMLElement | undefined) ?? null;
+    const access = this._access();
+    if (access === 'open' || this._session.session?.parent) {
+      this._settingsOpen = true;
+    } else if (access === 'pin') {
+      this._sheet = { kind: 'pin', purpose: 'settings', heading: "Who's opening Settings?" };
+    } else if (access === 'no_pin') {
+      this._sheet = { kind: 'no_pin' };
+    }
+  }
+
+  private _onUnlocked(event: CustomEvent<{ result: UnlockResult }>) {
+    const sheet = this._sheet;
+    this._session.unlocked(event.detail.result);
+    this._closeSheet();
+    if (sheet?.kind === 'pin' && sheet.purpose === 'settings') this._settingsOpen = true;
+    if (sheet?.kind === 'pin' && sheet.purpose === 'setup') this._wizardOpen = true;
+  }
+
+  private _closeSheet() {
+    this._sheet = null;
+    const opener = this._sheetOpener;
+    this._sheetOpener = null;
+    opener?.focus?.();
+  }
+
+  private _renderSheet() {
+    const sheet = this._sheet;
+    if (!sheet) return nothing;
+    const layout = this._layout.layout;
+    if (sheet.kind === 'no_pin') {
+      return html`
+        <pv-notice-sheet
+          .layout=${layout}
+          heading="Settings needs a parent's PIN"
+          body="On a shared screen, a parent opens Settings with their PIN, and no parent has one yet. Sign in to Home Assistant with a parent's or an admin's own account, then set one in Settings, PINs and parent mode."
+          .actions=${[{ id: 'ok', label: 'OK', kind: 'primary' }]}
+          @pv-sheet-action=${this._closeSheet}
+        ></pv-notice-sheet>
+      `;
+    }
+    const view = this._household.view;
+    return html`
+      <pv-pin-sheet
+        .hass=${this.hass}
+        .api=${this._api}
+        .layout=${layout}
+        mode="unlock"
+        .members=${view ? parentsWithPins(view.members) : []}
+        .heading=${sheet.heading}
+        .shuffle=${!!view?.security.shuffle_keypad}
+        @pv-unlocked=${this._onUnlocked}
+        @pv-sheet-close=${this._closeSheet}
+      ></pv-pin-sheet>
+    `;
+  }
+
+  /** Whose parent mode is on, with its countdown and Lock, even when the header is hidden. */
+  private _renderParentStrip() {
+    const session = this._session.session;
+    if (!session?.parent) return nothing;
+    const parent = this._household.view?.members.find(m => m.id === session.memberId);
+    if (!parent) return nothing;
+    return html`
+      <pv-parent-strip
+        .member=${parent}
+        .hass=${this.hass}
+        .endsAt=${this._session.endsAt ?? 0}
+        @pv-lock=${() => this._session.lock()}
+      ></pv-parent-strip>
+    `;
   }
 
   private _onSettingsSave() {
@@ -422,6 +522,7 @@ export class PlanaVistaCard extends LitElement {
           <ha-card>
             <pv-onboarding-wizard
               .hass=${this.hass}
+              .api=${this._api}
               @onboarding-complete=${this._onOnboardingComplete}
             ></pv-onboarding-wizard>
           </ha-card>
@@ -453,12 +554,14 @@ export class PlanaVistaCard extends LitElement {
 
     return html`
       <ha-card>
+        ${this._renderParentStrip()}
         ${this._config.hide_header ? nothing : this._renderHeader(display)}
         ${active ? this._renderModule(active, data, display) : nothing}
         ${this._settingsOpen ? html`
           <div class="pvc-settings-overlay">
             <pv-onboarding-wizard
               .hass=${this.hass}
+              .api=${this._api}
               mode="settings"
               .config=${data}
               @settings-save=${this._onSettingsSave}
@@ -467,6 +570,7 @@ export class PlanaVistaCard extends LitElement {
             ></pv-onboarding-wizard>
           </div>
         ` : nothing}
+        ${this._renderSheet()}
       </ha-card>
     `;
   }
@@ -481,7 +585,7 @@ export class PlanaVistaCard extends LitElement {
         .data=${data}
         .display=${display}
         .previewOverrides=${this._previewOverrides}
-        .canOpenSettings=${!!(this.hass as any).user?.is_admin}
+        .canOpenSettings=${this._access() !== 'none'}
         @pv-open-settings=${this._openSettings}
       ></${tag}>
     `;
