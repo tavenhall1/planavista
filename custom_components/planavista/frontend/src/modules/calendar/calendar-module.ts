@@ -2,8 +2,9 @@ import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
-import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides, ViewType } from '../../types';
+import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
 import type { Layout } from '../../core/layout';
+import type { Mode, ThemeShape } from '../../styles/theme-pairs';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../../styles/shared';
 import { getPersonAvatar, getPersonName } from '../../utils/ha-utils';
 import { swipeDirection } from '../../utils/gestures';
@@ -27,14 +28,17 @@ const DEFAULT_ENTITY = 'sensor.planavista_config';
  * card config, the PlanaVista data, and the resolved display settings.
  *
  * @fires pv-view-change - { view } when it wants another view (a day tapped in Month)
+ * @fires pv-overlay-change - { open } when its event popup or dialog opens or closes
  */
 export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) cardConfig?: PlanaVistaCardConfig;
   @property({ attribute: false }) data: PlanaVistaData | null = null;
   @property({ attribute: false }) display!: DisplayConfig;
-  /** Theme overrides being previewed in Settings; they win over the saved ones. */
-  @property({ attribute: false }) previewOverrides: ThemeOverrides | null = null;
+  /** Light or dark, as the card's appearance worked it out (spec 12.4). */
+  @property({ attribute: false }) mode: Mode = 'light';
+  /** The look's shape settings: event style and avatar border. */
+  @property({ attribute: false }) shape: ThemeShape = {};
   /** The card's daily forecast, for Week and Agenda. */
   @property({ attribute: false }) forecast: ForecastEntry[] = [];
   /** The view the shell shows (the bar's choice). */
@@ -48,6 +52,8 @@ export class PvCalendarModule extends LitElement {
   @state() private _refreshing = false;
 
   private _pv = new CalendarStoreController(this);
+  /** What pv-overlay-change last said, so the card hears each change once. */
+  private _overlayOpen = false;
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
@@ -488,6 +494,25 @@ export class PvCalendarModule extends LitElement {
       this._tickTimer = null;
     }
     document.removeEventListener('click', this._filterCloseHandler);
+    // A popup that goes away with the module no longer holds the appearance back.
+    if (this._overlayOpen) {
+      this._overlayOpen = false;
+      this._fireOverlay(false);
+    }
+  }
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    const store = this._pv.store;
+    const open = !!(store.selectedEvent || store.dialogOpen);
+    if (open !== this._overlayOpen) {
+      this._overlayOpen = open;
+      this._fireOverlay(open);
+    }
+  }
+
+  private _fireOverlay(open: boolean): void {
+    this.dispatchEvent(new CustomEvent('pv-overlay-change', { detail: { open }, bubbles: true, composed: true }));
   }
 
   /** Bump `_tick` just after each minute boundary (the header clock has its own timer). */
@@ -685,10 +710,8 @@ export class PvCalendarModule extends LitElement {
     const currentDate = this._pv.store.currentDate;
     const hiddenCalendars = this._pv.store.hiddenCalendars;
 
-    // Merge preview overrides (live editing) over saved overrides
-    const overrides = this.previewOverrides || display?.theme_overrides;
-    const avatarBorder = overrides?.avatar_border || 'primary';
-    const showStripes = (overrides?.event_style || 'stripes') === 'stripes';
+    const avatarBorder = this.shape.avatar_border || 'primary';
+    const showStripes = (this.shape.event_style || 'stripes') === 'stripes';
 
     switch (view) {
       case 'day': {
