@@ -208,7 +208,7 @@ export class PVViewAgenda extends LitElement {
         .day-events { padding: 0.5rem 0.625rem 0.625rem; gap: 0.5rem; }
       }
 
-      /* XL: wall displays — ~50% larger */
+      /* XL: wall displays, ~50% larger */
       @media (min-width: 1440px) {
         .agenda-container { max-width: 960px; }
         .day-name { font-size: 1.5rem; }

@@ -214,7 +214,7 @@ export class PVViewDay extends LitElement {
         margin-left: 0;
       }
 
-      /* Hour lines — transparent, replaced by alternating bands */
+      /* Hour lines: transparent, replaced by alternating bands */
       .hour-line {
         position: absolute;
         left: 0;
@@ -232,7 +232,7 @@ export class PVViewDay extends LitElement {
         pointer-events: none;
       }
 
-      /* Positioned events — light background, accent border */
+      /* Positioned events: light background, accent border */
       .positioned-event {
         position: absolute;
         left: 3px;
@@ -404,7 +404,7 @@ export class PVViewDay extends LitElement {
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones — hide column headers, compact events */
+      /* xs: phones, hide column headers, compact events */
       @media (max-width: 479px) {
         .column-headers { display: none; }
         .time-gutter { width: 40px; }
@@ -416,7 +416,7 @@ export class PVViewDay extends LitElement {
         .next-day-footer { padding: 10px; font-size: 0.8125rem; }
       }
 
-      /* sm: large phones — hide column headers, narrower gutter */
+      /* sm: large phones, hide column headers, narrower gutter */
       @media (min-width: 480px) and (max-width: 767px) {
         .column-headers { display: none; }
         .time-gutter { width: 48px; }
@@ -425,25 +425,25 @@ export class PVViewDay extends LitElement {
         .event-title { font-size: 0.875rem; }
       }
 
-      /* md: tablets — smaller avatars */
+      /* md: tablets, smaller avatars */
       @media (min-width: 768px) and (max-width: 1023px) {
         .person-avatar, .person-initial { width: 48px; height: 48px; font-size: 1.125rem; }
         .person-name { font-size: 0.8125rem; }
       }
 
-      /* short height — compact avatars */
+      /* short height: compact avatars */
       @media (max-height: 500px) {
         .person-avatar, .person-initial { width: 32px; height: 32px; font-size: 0.875rem; }
         .person-header { padding: 0.375rem 0.25rem; gap: 3px; }
         .person-name { font-size: 0.75rem; }
       }
 
-      /* tall height — larger avatars */
+      /* tall height: larger avatars */
       @media (min-height: 901px) {
         .person-avatar, .person-initial { width: 64px; height: 64px; }
       }
 
-      /* lg: large screens (1024–1439px) — scale up ~20% */
+      /* lg: large screens (1024–1439px), scale up ~20% */
       @media (min-width: 1024px) {
         .time-gutter { width: 72px; }
         .time-label { font-size: 0.8125rem; }
@@ -457,7 +457,7 @@ export class PVViewDay extends LitElement {
         .next-day-footer { font-size: 1.0625rem; }
       }
 
-      /* xl: wall displays (1440px+) — scale up ~40% */
+      /* xl: wall displays (1440px+), scale up ~40% */
       @media (min-width: 1440px) {
         .time-gutter { width: 84px; }
         .time-label { font-size: 0.9375rem; }

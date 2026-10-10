@@ -150,7 +150,7 @@ export class PVEventChip extends LitElement {
         font-weight: 500;
       }
 
-      /* Responsive — small screens */
+      /* Responsive: small screens */
       @media (max-width: 479px) {
         .chip { padding: 0.375rem 0.5rem; }
         .chip-title { font-size: 0.8125rem; }
@@ -166,7 +166,7 @@ export class PVEventChip extends LitElement {
         .chip-avatar, .chip-initial, .chip-overflow { width: 28px; height: 28px; }
       }
 
-      /* XL screens — ~50% larger for wall displays */
+      /* XL screens: ~50% larger for wall displays */
       @media (min-width: 1440px) {
         .chip { padding: 1rem 1.25rem; gap: 0.75rem; border-left-width: 4px; }
         .chip-title { font-size: 1.375rem; }
@@ -192,11 +192,11 @@ export class PVEventChip extends LitElement {
     if (this.showStripes && isMulti) {
       bgStyle = `background: ${buildStripeGradient(cals)}`;
     } else if (this.showStripes) {
-      // Single participant — solid pastel
+      // Single participant: solid pastel
       const bgColor = cals[0]?.color_light || event.calendar_color_light || event.calendar_color;
       bgStyle = `background: ${bgColor}`;
     } else {
-      // Solid mode — theme background
+      // Solid mode: theme background
       bgStyle = `background: var(--pv-card-bg, #FFFFFF)`;
     }
 

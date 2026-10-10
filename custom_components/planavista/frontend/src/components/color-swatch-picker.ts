@@ -197,7 +197,7 @@ export class PvColorSwatchPicker extends LitElement {
         border-radius: 50%;
       }
 
-      /* Custom swatch button — same sizing */
+      /* Custom swatch button: same sizing */
       .swatch-btn.custom-btn {
         border-radius: 8px;
       }

@@ -508,7 +508,7 @@ export class PVEventCreateDialog extends LitElement {
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones — bottom-sheet dialog */
+      /* xs: phones, bottom-sheet dialog */
       @media (max-width: 479px) {
         .pv-overlay {
           align-items: flex-end;
@@ -531,7 +531,7 @@ export class PVEventCreateDialog extends LitElement {
         .cal-option { padding: 0.25rem 0.5rem; font-size: 0.75rem; min-height: 36px; }
       }
 
-      /* sm: large phones — slightly wider dialog */
+      /* sm: large phones, slightly wider dialog */
       @media (min-width: 480px) and (max-width: 767px) {
         .pv-dialog { max-width: calc(100% - 1rem); }
         .pv-dialog-header { padding: 1rem 1.25rem; }
@@ -1218,7 +1218,7 @@ export class PVEventCreateDialog extends LitElement {
     this._saving = true;
 
     try {
-      // Base event data (without entity_id — set per calendar). All-day ends
+      // Base event data (without entity_id, set per calendar). All-day ends
       // are exclusive; an edited event keeps its original length.
       const baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string } = buildEventBase(this._formDates, {
         summary: this._title,
@@ -1235,7 +1235,7 @@ export class PVEventCreateDialog extends LitElement {
         const organizerEntity = this._organizerEntityId || this.prefill?.calendar_entity_id || '';
 
         if (isSharedEvent && uid && organizerEntity) {
-          // Shared Google Calendar event — use PATCH to update in-place
+          // Shared Google Calendar event: use PATCH to update in-place
           // This preserves the event ID and attendee linking
           const allParticipantEntityIds = [...selected];
           try {
@@ -1272,7 +1272,7 @@ export class PVEventCreateDialog extends LitElement {
             } catch { /* best-effort */ }
           }, 3000);
         } else if (selected.size > 1 && uid) {
-          // Was single-calendar, now adding guests — delete old + create with
+          // Was single-calendar, now adding guests: delete old + create with
           // attendees, putting the original back if the create fails
           const original = this.prefill as CalendarEvent;
           const primaryEntityId = original.calendar_entity_id;
@@ -1308,7 +1308,7 @@ export class PVEventCreateDialog extends LitElement {
             } catch { /* best-effort */ }
           }, 3000);
         } else {
-          // Single-calendar event staying single — delete + recreate; the
+          // Single-calendar event staying single: delete + recreate; the
           // state manager restores the original if the recreate fails
           const primaryEntityId = this.prefill?.calendar_entity_id || '';
           const plan = planEdit(this.prefill as CalendarEvent, primaryEntityId, baseData);
@@ -1319,7 +1319,7 @@ export class PVEventCreateDialog extends LitElement {
         const entityIds = [...selected];
 
         if (entityIds.length > 1) {
-          // Multiple calendars — use attendees service (Google API when available)
+          // Multiple calendars: use attendees service (Google API when available)
           const primaryId = this._organizerEntityId || entityIds[0];
           const attendeeIds = entityIds.filter(id => id !== primaryId);
           await createEventWithAttendees(this.hass, {
@@ -1346,7 +1346,7 @@ export class PVEventCreateDialog extends LitElement {
             }
           }, 3000);
         } else {
-          // Single calendar — use normal create
+          // Single calendar: use normal create
           const data: CreateEventData = { ...baseData, entity_id: entityIds[0] } as CreateEventData;
           await this._pv.state.doCreateEvent(this.hass, data);
         }

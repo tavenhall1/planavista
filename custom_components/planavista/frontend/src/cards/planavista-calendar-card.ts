@@ -89,7 +89,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       /* ================================================================
-         HEADER — weather left, date center, time right
+         HEADER: weather left, date center, time right
          ================================================================ */
       .pvc-header {
         display: flex;
@@ -169,7 +169,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       }
 
       /* ================================================================
-         TOOLBAR — avatars left, controls right
+         TOOLBAR: avatars left, controls right
          ================================================================ */
       .pvc-toolbar {
         display: flex;
@@ -554,10 +554,10 @@ export class PlanaVistaCalendarCard extends LitElement {
 
       /* --- Mobile calendar avatar strip (inline in toolbar) --- */
       .pvc-cal-strip {
-        display: none; /* hidden on desktop — filter dropdown used instead */
+        display: none; /* hidden on desktop: filter dropdown used instead */
       }
 
-      /* xs: phones (≤479px) — date-only header, avatar strip, compact controls */
+      /* xs: phones (≤479px), date-only header, avatar strip, compact controls */
       @media (max-width: 479px) {
         /* Header: date only, slim bar */
         .pvc-header {
@@ -626,7 +626,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         }
       }
 
-      /* sm: large phones (480–767px) — compact header, avatar strip */
+      /* sm: large phones (480–767px), compact header, avatar strip */
       @media (min-width: 480px) and (max-width: 767px) {
         .pvc-header {
           padding: 10px 16px;
@@ -716,14 +716,14 @@ export class PlanaVistaCalendarCard extends LitElement {
         color: var(--pv-text-muted);
       }
 
-      /* md: tablets (768–1023px) — single row, slightly compressed */
+      /* md: tablets (768–1023px), single row, slightly compressed */
       @media (min-width: 768px) and (max-width: 1023px) {
         .pvc-weather-icon { --icon-size: 36px; }
         .pvc-weather-temp { font-size: 1.5rem; }
         .pvc-time-display { font-size: 1.75rem; }
       }
 
-      /* short height (landscape phone, etc.) — date-only compact header */
+      /* short height (landscape phone, etc.): date-only compact header */
       @media (max-height: 500px) {
         .pvc-header {
           padding: 6px 14px;
@@ -734,7 +734,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         .pvc-header-date { font-size: 0.875rem; }
       }
 
-      /* lg: large desktops / small wall displays (1024–1439px) — scale up ~20% */
+      /* lg: large desktops / small wall displays (1024–1439px), scale up ~20% */
       @media (min-width: 1024px) {
         .pvc-header { padding: 22px 28px; }
         .pvc-weather-temp { font-size: 2rem; }
@@ -752,7 +752,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         .pvc-settings-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
       }
 
-      /* xl: wall-mounted touch displays (1440px+, 27"+) — scale up ~40% */
+      /* xl: wall-mounted touch displays (1440px+, 27"+), scale up ~40% */
       @media (min-width: 1440px) {
         .pvc-header { padding: 26px 36px; }
         .pvc-weather-icon { --icon-size: 56px; }
@@ -1023,7 +1023,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       `;
     }
 
-    // Onboarding — show setup card until user explicitly launches the wizard
+    // Onboarding: show setup card until user explicitly launches the wizard
     if (data.onboarding_complete === false && !this._onboardingDone) {
       if (this._wizardOpen) {
         return html`
@@ -1113,7 +1113,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   }
 
   // ====================================================================
-  // HEADER — weather (left), date (center), time (right)
+  // HEADER: weather (left), date (center), time (right)
   // ====================================================================
 
   private _renderHeader(display: DisplayConfig) {
@@ -1151,7 +1151,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   }
 
   // ====================================================================
-  // TOOLBAR — person toggles, + New, nav, view tabs
+  // TOOLBAR: person toggles, + New, nav, view tabs
   // ====================================================================
 
   private _renderToolbar(calendars: CalendarConfig[], currentView: string) {
@@ -1378,7 +1378,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     const clicked: CalendarEvent = e.detail.event;
 
     // For shared events (same UID on multiple calendars), enrich with
-    // all participants. The clicked copy stays the "main" event — we don't
+    // all participants. The clicked copy stays the "main" event: we don't
     // guess organizer since HA doesn't expose that field from Google Calendar.
     if (clicked.uid) {
       const pvData = getPlanaVistaData(this.hass);
@@ -1387,7 +1387,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         (ev: any) => ev.uid === clicked.uid && ev.uid !== '',
       );
 
-      // Deduplicate by calendar — recurring events share the same UID across
+      // Deduplicate by calendar: recurring events share the same UID across
       // all instances, so without this we'd get N chips per participant.
       const seen = new Set<string>();
       const uniqueParticipants = siblings.filter((s: any) => {

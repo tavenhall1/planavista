@@ -10,7 +10,7 @@
 
 ## 1. `pv-event-chip` Component
 
-Reusable web component for rendering a single event. Used in week, agenda, and month views (NOT day view — day view keeps per-person columns).
+Reusable web component for rendering a single event. Used in week, agenda, and month views (NOT day view, day view keeps per-person columns).
 
 ### Properties
 
@@ -58,7 +58,7 @@ Reusable web component for rendering a single event. Used in week, agenda, and m
 - Stripes still apply to background
 - Narrower diagonal bands
 
-## 2. Week View — Day Card Layout
+## 2. Week View: Day Card Layout
 
 Replaces the current time-grid week view entirely.
 
@@ -68,7 +68,7 @@ CSS Grid, 4 columns on desktop:
 - Row 1: Days 1-4 (e.g., Sun-Wed)
 - Row 2: Days 5-7 (e.g., Thu-Sat)
 
-No "Next week" card — users navigate with existing arrow buttons.
+No "Next week" card: users navigate with existing arrow buttons.
 
 ### Week Label
 
@@ -105,7 +105,7 @@ Shown above the grid: "February 23 - March 1". Shows both month names if the wee
 | MD (768-1023px) | 2 | Scrollable |
 | SM/XS (<768px) | 1 | Vertical scroll (like agenda) |
 
-## 3. Agenda View — Continuous Day Cards
+## 3. Agenda View: Continuous Day Cards
 
 Replaces the current grouped-event list.
 
@@ -153,7 +153,7 @@ Add "February 2026" prominently in toolbar/header area above the grid.
 
 Clicking a day still navigates to day view.
 
-## 5. Theme Customizer — Event Style Toggle
+## 5. Theme Customizer: Event Style Toggle
 
 ### New Override
 
@@ -216,14 +216,14 @@ Returns CSS `repeating-linear-gradient(135deg, ...)` string from participant col
 
 | File | Action |
 |------|--------|
-| `components/pv-event-chip.ts` | **NEW** — reusable event chip component |
-| `components/view-week.ts` | **REWRITE** — day-card grid replacing time grid |
-| `components/view-agenda.ts` | **REWRITE** — continuous day cards with lazy loading |
-| `components/view-month.ts` | **UPDATE** — dedup, bigger pills, pv-event-chip compact |
-| `components/view-day.ts` | **UPDATE** — bump text sizes |
-| `cards/planavista-calendar-card.ts` | **UPDATE** — pass weather forecast + event_style to views |
-| `types.ts` | **UPDATE** — add event_style to ThemeOverrides |
-| `styles/themes.ts` | **UPDATE** — event_style override resolution |
-| `components/onboarding-wizard.ts` | **UPDATE** — add Event Style toggle |
-| `utils/event-utils.ts` | **UPDATE** — add getOrganizerColor, buildStripeGradient |
-| `main.ts` | **UPDATE** — import pv-event-chip |
+| `components/pv-event-chip.ts` | **NEW**: reusable event chip component |
+| `components/view-week.ts` | **REWRITE**: day-card grid replacing time grid |
+| `components/view-agenda.ts` | **REWRITE**: continuous day cards with lazy loading |
+| `components/view-month.ts` | **UPDATE**: dedup, bigger pills, pv-event-chip compact |
+| `components/view-day.ts` | **UPDATE**: bump text sizes |
+| `cards/planavista-calendar-card.ts` | **UPDATE**: pass weather forecast + event_style to views |
+| `types.ts` | **UPDATE**: add event_style to ThemeOverrides |
+| `styles/themes.ts` | **UPDATE**: event_style override resolution |
+| `components/onboarding-wizard.ts` | **UPDATE**: add Event Style toggle |
+| `utils/event-utils.ts` | **UPDATE**: add getOrganizerColor, buildStripeGradient |
+| `main.ts` | **UPDATE**: import pv-event-chip |

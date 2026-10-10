@@ -1,4 +1,4 @@
-"""Google Calendar API helpers — direct API calls with attendee support.
+"""Google Calendar API helpers: direct API calls with attendee support.
 
 Every request is bounded by GOOGLE_API_TIMEOUT_SECONDS. Failures raise
 GoogleApiError so callers can fall back to Home Assistant's calendar services.

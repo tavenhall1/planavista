@@ -48,7 +48,7 @@ git checkout -b fix/review-pass
 
 ---
 
-## Part A — Backend (Python)
+## Part A: Backend (Python)
 
 ### Task A1: Backend test harness and single config entry
 
@@ -806,7 +806,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         Tries direct entity access first (returns CalendarEvent objects with uid),
         then falls back to the calendar.get_events service (which may omit uid).
         """
-        # Approach 1: Direct entity access — gives us CalendarEvent objects with uid
+        # Approach 1: Direct entity access: gives us CalendarEvent objects with uid
         try:
             entity_comp = self.hass.data.get(DATA_COMPONENT)
             if entity_comp and hasattr(entity_comp, "get_entity"):
@@ -844,7 +844,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 entity_id, err,
             )
 
-        # Approach 2: Fallback — calendar.get_events service (may omit uid)
+        # Approach 2: Fallback: calendar.get_events service (may omit uid)
         try:
             response = await self.hass.services.async_call(
                 CALENDAR_DOMAIN,
@@ -897,7 +897,7 @@ type PlanaVistaConfigEntry = ConfigEntry[PlanaVistaCoordinator]
 Create `custom_components/planavista/google_api.py` (`__init__.py:317-426` moved verbatim, renamed `_get_google_calendar_id` → `get_google_calendar_id`, `_ensure_google_token` → `async_get_google_token`, `_google_api_create_event` → `async_google_create_event`):
 
 ```python
-"""Google Calendar API helpers — direct API calls with attendee support."""
+"""Google Calendar API helpers: direct API calls with attendee support."""
 from __future__ import annotations
 
 import logging
@@ -1154,7 +1154,7 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
         raise Exception("entity_id is required")
 
     _LOGGER.debug(
-        "PlanaVista: create_event_with_attendees called — "
+        "PlanaVista: create_event_with_attendees called, "
         "organizer=%s, attendees=%s",
         entity_id, attendee_entity_ids,
     )
@@ -1577,7 +1577,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) 
     coord = getattr(entry, "runtime_data", None)
     if coord and getattr(coord, "_suppress_reload", False):
         coord._suppress_reload = False
-        _LOGGER.debug("Skipping reload — save_config already applied changes")
+        _LOGGER.debug("Skipping reload, save_config already applied changes")
         return
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
@@ -2805,7 +2805,7 @@ async def _async_create_event_with_attendees(call: ServiceCall) -> None:
     await _async_check_control(hass, call.context, [entity_id, *attendee_entity_ids])
 
     _LOGGER.debug(
-        "PlanaVista: create_event_with_attendees called — "
+        "PlanaVista: create_event_with_attendees called, "
         "organizer=%s, attendees=%s",
         entity_id, attendee_entity_ids,
     )
@@ -4130,7 +4130,7 @@ GOOGLE_API_TIMEOUT_SECONDS: Final = 15
 Replace `custom_components/planavista/google_api.py` entirely with:
 
 ```python
-"""Google Calendar API helpers — direct API calls with attendee support.
+"""Google Calendar API helpers: direct API calls with attendee support.
 
 Every request is bounded by GOOGLE_API_TIMEOUT_SECONDS. Failures raise
 GoogleApiError so callers can fall back to Home Assistant's calendar services.
@@ -5159,7 +5159,7 @@ EOF
 
 ---
 
-## Part B — Frontend (TypeScript)
+## Part B: Frontend (TypeScript)
 
 ### Task B1: Frontend test harness and `parseEventDate`
 
@@ -6758,7 +6758,7 @@ become:
 
 ```ts
         } else if (selected.size > 1 && uid) {
-          // Was single-calendar, now adding guests — delete old + create with attendees
+          // Was single-calendar, now adding guests: delete old + create with attendees
           const primaryEntityId = this.prefill?.calendar_entity_id;
           if (primaryEntityId) {
             await deleteEvent(this.hass, {
@@ -6781,7 +6781,7 @@ become:
 
 ```ts
         } else if (selected.size > 1 && uid) {
-          // Was single-calendar, now adding guests — delete old + create with
+          // Was single-calendar, now adding guests: delete old + create with
           // attendees, putting the original back if the create fails
           const original = this.prefill as CalendarEvent;
           const primaryEntityId = original.calendar_entity_id;
@@ -6803,7 +6803,7 @@ become:
 - Lines 1331-1341:
 
 ```ts
-          // Single-calendar event staying single — simple delete+recreate
+          // Single-calendar event staying single: simple delete+recreate
           const primaryEntityId = this.prefill?.calendar_entity_id;
           if (primaryEntityId && uid) {
             const deleteData: DeleteEventData = {
@@ -6819,7 +6819,7 @@ become:
 become (a missing uid now surfaces as an error instead of leaving the dialog stuck on "Saving..."):
 
 ```ts
-          // Single-calendar event staying single — delete + recreate; the
+          // Single-calendar event staying single: delete + recreate; the
           // state manager restores the original if the recreate fails
           const primaryEntityId = this.prefill?.calendar_entity_id || '';
           const plan = planEdit(this.prefill as CalendarEvent, primaryEntityId, baseData);
@@ -7062,7 +7062,7 @@ become:
     this._saving = true;
 
     try {
-      // Build the base event data (without entity_id — we'll set per-calendar)
+      // Build the base event data (without entity_id, we'll set per-calendar)
       const baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string } = {
         summary: this._title.trim(),
       };
@@ -7094,7 +7094,7 @@ become:
     this._saving = true;
 
     try {
-      // Base event data (without entity_id — set per calendar). All-day ends
+      // Base event data (without entity_id, set per calendar). All-day ends
       // are exclusive; an edited event keeps its original length.
       const baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string } = buildEventBase(this._formDates, {
         summary: this._title,
@@ -9599,7 +9599,7 @@ become:
           <p class="field-hint">
             <strong>On:</strong> as you type a location, the text you've typed is sent to Photon
             (photon.komoot.io), a free OpenStreetMap-based service, to suggest addresses. Nothing
-            else is sent &mdash; not your home location or any calendar details.
+            else is sent: not your home location or any calendar details.
           </p>
         </div>
       </div>
@@ -9967,7 +9967,7 @@ EOF
 
 ---
 
-## Part C — CI, release, and verification
+## Part C: CI, release, and verification
 
 ### Task R1: Frontend CI workflow and first CI run
 

@@ -158,7 +158,7 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Single confirmation step — wizard handles actual setup in-card."""
+        """Single confirmation step; the wizard handles actual setup in-card."""
         if user_input is not None:
             return self.async_create_entry(
                 title=NAME,

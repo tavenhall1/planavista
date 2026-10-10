@@ -6,7 +6,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 /**
  * Minimal visual card editor for PlanaVista.
  *
- * Registered as `planavista-calendar-card-editor` — HA shows this in the
+ * Registered as `planavista-calendar-card-editor`: HA shows this in the
  * card picker instead of the raw YAML panel. The actual setup wizard lives
  * inside the card on the dashboard.
  */

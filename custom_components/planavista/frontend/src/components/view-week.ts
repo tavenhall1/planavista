@@ -166,12 +166,12 @@ export class PVViewWeek extends LitElement {
 
       /* ═══════════ RESPONSIVE ═══════════ */
 
-      /* MD: tablets — 2 columns */
+      /* MD: tablets, 2 columns */
       @media (max-width: 1023px) {
         .day-grid { grid-template-columns: repeat(2, 1fr); }
       }
 
-      /* SM/XS: phones — 1 column (agenda-like) */
+      /* SM/XS: phones, 1 column (agenda-like) */
       @media (max-width: 767px) {
         .day-grid {
           grid-template-columns: 1fr;
@@ -191,7 +191,7 @@ export class PVViewWeek extends LitElement {
         .day-card { min-height: 140px; }
       }
 
-      /* XL: wall displays — ~50% larger */
+      /* XL: wall displays, ~50% larger */
       @media (min-width: 1440px) {
         .week-label { font-size: 1.5rem; }
         .day-name { font-size: 1.375rem; }

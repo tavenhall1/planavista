@@ -1,2 +1,2 @@
 node_modules/
-# dist/ is NOT ignored — committed for HACS users
+# dist/ is NOT ignored: committed for HACS users

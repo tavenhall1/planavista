@@ -302,7 +302,7 @@ export function filterVisibleEvents(
 
 /**
  * Build a CSS linear-gradient for multi-participant diagonal stripes.
- * One stripe per participant — organizer (first) gets a larger band.
+ * One stripe per participant: organizer (first) gets a larger band.
  * Uses each participant's color_light for soft pastel bands.
  */
 export function buildStripeGradient(

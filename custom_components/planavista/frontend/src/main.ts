@@ -1,5 +1,5 @@
 // PlanaVista
-// Single entry point — imports the unified card and registers it with HA
+// Single entry point: imports the unified card and registers it with HA
 
 // Reusable sub-components
 import './components/color-swatch-picker';

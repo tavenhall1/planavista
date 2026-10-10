@@ -210,7 +210,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         Tries direct entity access first (returns CalendarEvent objects with uid),
         then falls back to the calendar.get_events service (which may omit uid).
         """
-        # Approach 1: Direct entity access — gives us CalendarEvent objects with uid
+        # Approach 1: Direct entity access: gives us CalendarEvent objects with uid
         try:
             entity_comp = self.hass.data.get(DATA_COMPONENT)
             if entity_comp and hasattr(entity_comp, "get_entity"):
@@ -248,7 +248,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 entity_id, err,
             )
 
-        # Approach 2: Fallback — calendar.get_events service (may omit uid)
+        # Approach 2: Fallback: calendar.get_events service (may omit uid)
         try:
             response = await self.hass.services.async_call(
                 CALENDAR_DOMAIN,

@@ -1,8 +1,8 @@
-# Provider Abstraction Layer — Design Document
+# Provider Abstraction Layer: Design Document
 
 **Date:** 2026-02-27
 **Status:** Approved
-**Scope:** Phase 1 — Abstraction + Google adapter (Path 1: piggyback on HA integrations)
+**Scope:** Phase 1, Abstraction + Google adapter (Path 1: piggyback on HA integrations)
 
 ---
 
@@ -14,14 +14,14 @@ PlanaVista's deep Google Calendar features (attendees, PATCH edits, organizer de
 
 1. Extract all provider-specific code behind a clean abstract interface
 2. Make adding a new provider a single-file task with no changes to routing code
-3. Preserve all existing behavior — no functional changes
+3. Preserve all existing behavior: no functional changes
 4. Keep the frontend completely provider-agnostic (it already is)
 5. Document the extension process so future providers have a clear blueprint
 
 ## Non-Goals (deferred to later phases)
 
 - Implementing a second provider (Outlook, CalDAV, etc.)
-- PlanaVista-native calendar entities (Path 2 — PlanaVista owns OAuth and creates `calendar.*` entities)
+- PlanaVista-native calendar entities (Path 2, PlanaVista owns OAuth and creates `calendar.*` entities)
 - Availability/free-busy checking across providers
 
 ---
@@ -60,7 +60,7 @@ custom_components/planavista/
     __init__.py    # Provider registry + resolve_provider()
     base.py        # CalendarProvider abstract base class
     google.py      # Google Calendar adapter (extracted from __init__.py)
-  __init__.py      # Thin router — delegates to providers via registry
+  __init__.py      # Thin router: delegates to providers via registry
 ```
 
 ---
@@ -341,6 +341,6 @@ When PlanaVista owns the OAuth credentials and creates `calendar.*` entities dir
 1. Add a config flow step for API credential entry (OAuth2 redirect or service account key)
 2. Implement `CalendarEntity` subclass that syncs with the provider's API
 3. Create a provider adapter whose `detect()` matches PlanaVista-created entities and whose `get_token()` reads from PlanaVista's own config entry
-4. Register alongside the piggyback adapter — both can coexist
+4. Register alongside the piggyback adapter: both can coexist
 
 The provider interface does not change. The only difference is where credentials live.

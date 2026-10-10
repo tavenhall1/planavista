@@ -398,7 +398,7 @@ export class PVEventPopup extends LitElement {
 
   private async _delete() {
     if (!this.event?.uid) {
-      this._deleteError = 'Cannot delete — this event has no unique ID. Delete it from your calendar app directly.';
+      this._deleteError = 'Cannot delete this event: it has no unique ID. Delete it from your calendar app directly.';
       return;
     }
 
@@ -435,7 +435,7 @@ export class PVEventPopup extends LitElement {
         await refreshPlanaVista(this.hass);
         this._pv.state.selectEvent(null);
       } else {
-        // Single-calendar event — normal delete
+        // Single-calendar event: normal delete
         const data: DeleteEventData = {
           entity_id: this.event.calendar_entity_id,
           uid: this.event.uid,

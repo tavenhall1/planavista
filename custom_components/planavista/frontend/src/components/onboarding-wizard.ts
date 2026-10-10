@@ -37,23 +37,23 @@ export class PvOnboardingWizard extends LitElement {
   // Navigation
   @state() private _page = 0;
 
-  // Page 0 — Preferences
+  // Page 0: Preferences
   @state() private _timeFormat: '12h' | '24h' = '12h';
   @state() private _firstDay: 'sunday' | 'monday' = 'sunday';
   @state() private _weatherEntity = '';
   @state() private _defaultView: 'day' | 'week' | 'month' | 'agenda' = 'week';
   @state() private _locationAutocomplete = false;
 
-  // Page 1 — Calendars
+  // Page 1: Calendars
   @state() private _calendarConfigs: CalendarEntry[] = [];
   @state() private _calendarsInitialized = false;
   @state() private _dragIdx: number | null = null;
   @state() private _dragOverIdx: number | null = null;
 
-  // Page 2 — Theme
+  // Page 2: Theme
   @state() private _theme: 'light' | 'dark' | 'minimal' | 'vibrant' = 'light';
 
-  // Page 2 — Theme customization overrides
+  // Page 2: Theme customization overrides
   @state() private _themeOverrides: ThemeOverrides = {};
   @state() private _customizeOpen = false;
 
@@ -216,8 +216,8 @@ export class PvOnboardingWizard extends LitElement {
     } catch (err) {
       console.error('[pv-onboarding-wizard] save_config failed:', err);
       this._saveError = this.mode === 'settings'
-        ? 'Save failed — please try again.'
-        : 'Setup failed — please try again.';
+        ? 'Save failed. Please try again.'
+        : 'Setup failed. Please try again.';
     } finally {
       this._saving = false;
     }
@@ -398,7 +398,7 @@ export class PvOnboardingWizard extends LitElement {
           <p class="field-hint">
             <strong>On:</strong> as you type a location, the text you've typed is sent to Photon
             (photon.komoot.io), a free OpenStreetMap-based service, to suggest addresses. Nothing
-            else is sent &mdash; not your home location or any calendar details.
+            else is sent: not your home location or any calendar details.
           </p>
         </div>
       </div>
@@ -505,7 +505,7 @@ export class PvOnboardingWizard extends LitElement {
           </div>
         </div>
 
-        <!-- Expandable details — only shown when included -->
+        <!-- Expandable details: only shown when included -->
         ${cal.include ? html`
           <div class="cal-details">
             <!-- Display name input -->
@@ -860,7 +860,7 @@ export class PvOnboardingWizard extends LitElement {
 
     return html`
       <div class="wizard-container" role="dialog" aria-modal="true"
-        aria-label="${isSettings ? 'PlanaVista Settings' : 'PlanaVista Setup'} — ${pageLabels[this._page]}">
+        aria-label="${isSettings ? 'PlanaVista Settings' : 'PlanaVista Setup'}: ${pageLabels[this._page]}">
 
         <div class="wizard-header">
 
@@ -1764,7 +1764,7 @@ export class PvOnboardingWizard extends LitElement {
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones — compact wizard */
+      /* xs: phones, compact wizard */
       @media (max-width: 479px) {
         .wizard-header { padding: 0.5rem 0.625rem; gap: 0.25rem; }
         .wizard-title-text { font-size: 0.8125rem; }
