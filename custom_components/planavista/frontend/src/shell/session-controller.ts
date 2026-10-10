@@ -1,18 +1,22 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
+import { ConnectionEvents, ConnectionWatch } from '../core/connection-watch';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { SESSION_IDLE_MS, Session, expired, noteActivity, startSession } from '../core/session';
 
-type Host = ReactiveControllerHost & HTMLElement;
+type Host = ReactiveControllerHost & HTMLElement & { hass?: { connection?: unknown } };
 
 /**
  * The card's PIN session (spec 9.4). A PIN starts it; touches keep it open,
  * reported at most every 30 seconds; Lock, two quiet minutes, a hidden page,
- * or a touch the backend refuses (it forgot the session, for example after a
- * restart) end it. Ending is the safe way to fail on a kiosk.
+ * a dropped or re-made connection (the backend bound the session to the old
+ * one), or a command or touch the backend refuses (it forgot the session,
+ * for example after a restart) end it. Ending is the safe way to fail on a
+ * kiosk.
  */
 export class SessionController implements ReactiveController {
   session: Session | null = null;
   private _timer: number | undefined;
+  private readonly _connection = new ConnectionWatch(() => this._forget());
 
   constructor(
     private readonly _host: Host,
@@ -34,13 +38,29 @@ export class SessionController implements ReactiveController {
     this._host.addEventListener('pointerdown', this._onActivity, true);
     this._host.addEventListener('keydown', this._onActivity, true);
     document.addEventListener('visibilitychange', this._onVisibility);
+    this._followConnection();
+  }
+
+  hostUpdate(): void {
+    // A no-op unless Home Assistant handed the card a different connection.
+    this._followConnection();
   }
 
   hostDisconnected(): void {
     this._host.removeEventListener('pointerdown', this._onActivity, true);
     this._host.removeEventListener('keydown', this._onActivity, true);
     document.removeEventListener('visibilitychange', this._onVisibility);
+    this._connection.stop();
     this.lock();
+  }
+
+  /** The backend refused a command made with this session: it has already ended there. */
+  ended(token: string): void {
+    if (this.session?.token === token) this._forget();
+  }
+
+  private _followConnection(): void {
+    this._connection.follow(this._host.hass?.connection as ConnectionEvents | undefined);
   }
 
   /** A PIN was accepted: start the session it returned. */

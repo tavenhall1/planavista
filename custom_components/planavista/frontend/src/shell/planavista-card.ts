@@ -62,6 +62,7 @@ export class PlanaVistaCard extends LitElement {
   private _api = new HouseholdApi(
     { callWS: <T>(msg: Record<string, unknown>) => (this.hass as any).callWS(msg) as Promise<T> },
     () => this._session.token,
+    token => this._session.ended(token),
   );
 
   static styles = [

@@ -8,18 +8,38 @@ export interface HouseholdConnection {
   subscribeMessage(
     callback: (view: HouseholdView) => void,
     message: Record<string, unknown>,
+    options?: { resubscribe?: boolean },
   ): Promise<Unsubscribe>;
+  addEventListener(event: 'ready', listener: () => void): void;
+  removeEventListener(event: 'ready', listener: () => void): void;
+}
+
+const RETRY_FIRST_MS = 1000;
+const RETRY_MAX_MS = 30_000;
+
+/** How long to wait before try `attempt` + 1 after a failed subscribe: 1 s, doubling, at most 30 s. */
+export function retryDelayMs(attempt: number): number {
+  return Math.min(RETRY_MAX_MS, RETRY_FIRST_MS * 2 ** attempt);
 }
 
 /**
  * Follows planavista/household/subscribe with at most one live subscription.
  * A subscribe that resolves after stop() is dropped at once. When the backend
- * has no household (an older PlanaVista), the view is null.
+ * has no household (an older PlanaVista, or not set up yet), the view is null.
+ *
+ * After Home Assistant restarts, the socket comes back before PlanaVista's
+ * commands do, and the socket library drops a resubscribe that fails. So
+ * this subscribes itself after every reconnect and keeps trying (keeping the
+ * last view meanwhile), or a kiosk would keep a frozen household until it
+ * reloads.
  */
 export class HouseholdSubscription {
   private _connection: HouseholdConnection | undefined;
   private _unsub: Unsubscribe | null = null;
   private _generation = 0;
+  private _retry: ReturnType<typeof setTimeout> | undefined;
+  private _attempt = 0;
+  private _hadView = false;
 
   constructor(private readonly _onView: (view: HouseholdView | null) => void) {}
 
@@ -28,13 +48,47 @@ export class HouseholdSubscription {
     this.stop();
     this._connection = connection;
     if (!connection) return;
+    connection.addEventListener('ready', this._onReady);
+    this._subscribe();
+  }
+
+  stop(): void {
+    this._generation++;
+    this._cancelRetry();
+    this._connection?.removeEventListener('ready', this._onReady);
+    this._connection = undefined;
+    this._hadView = false;
+    if (this._unsub) {
+      const unsub = this._unsub;
+      this._unsub = null;
+      safeUnsubscribe(unsub);
+    }
+  }
+
+  /** The socket was made again: the backend forgot the subscription with the old one. */
+  private _onReady = (): void => {
+    if (!this._connection) return;
+    this._generation++;
+    // Not unsubscribed: command ids start again after a reconnect, so the
+    // old id may belong to a new command now.
+    this._unsub = null;
+    this._cancelRetry();
+    this._subscribe();
+  };
+
+  private _subscribe(): void {
+    const connection = this._connection;
+    if (!connection) return;
     const generation = this._generation;
     connection
       .subscribeMessage(
         view => {
-          if (generation === this._generation) this._onView(view);
+          if (generation !== this._generation) return;
+          this._hadView = true;
+          this._onView(view);
         },
         { type: 'planavista/household/subscribe' },
+        { resubscribe: false },
       )
       .then(unsub => {
         if (generation !== this._generation) {
@@ -42,20 +96,22 @@ export class HouseholdSubscription {
           return;
         }
         this._unsub = unsub;
+        this._attempt = 0;
       })
       .catch(() => {
-        if (generation === this._generation) this._onView(null);
+        if (generation !== this._generation) return;
+        if (!this._hadView) this._onView(null);
+        this._retry = setTimeout(() => {
+          this._retry = undefined;
+          if (generation === this._generation) this._subscribe();
+        }, retryDelayMs(this._attempt++));
       });
   }
 
-  stop(): void {
-    this._generation++;
-    this._connection = undefined;
-    if (this._unsub) {
-      const unsub = this._unsub;
-      this._unsub = null;
-      safeUnsubscribe(unsub);
-    }
+  private _cancelRetry(): void {
+    if (this._retry !== undefined) clearTimeout(this._retry);
+    this._retry = undefined;
+    this._attempt = 0;
   }
 }
 
@@ -75,18 +131,28 @@ export interface UnlockResult {
   retry_after?: number | null;
 }
 
-/** The household and PIN commands, with this card's session token added when it has one. */
+/**
+ * The household and PIN commands, with this card's session token added when
+ * it has one. A command refused with parent_mode_required although it
+ * carried a session means the backend already ended that session (after a
+ * reconnect or a restart); `onSessionEnded` hears about it.
+ */
 export class HouseholdApi {
   constructor(
     private readonly _ws: WsCaller,
     private readonly _session: () => string | null,
+    private readonly _onSessionEnded?: (token: string) => void,
   ) {}
 
   private _call<T>(type: string, fields: Record<string, unknown>, withSession = true): Promise<T> {
     const message: Record<string, unknown> = { type, ...fields };
     const token = withSession ? this._session() : null;
-    if (token) message.session = token;
-    return this._ws.callWS<T>(message);
+    if (!token) return this._ws.callWS<T>(message);
+    message.session = token;
+    return this._ws.callWS<T>(message).catch((err: unknown) => {
+      if (errorCode(err) === 'parent_mode_required') this._onSessionEnded?.(token);
+      throw err;
+    });
   }
 
   saveMember(changes: MemberChanges, existing?: { id: string; rev: number }): Promise<{ member: Member }> {
