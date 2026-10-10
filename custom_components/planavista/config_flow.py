@@ -40,6 +40,7 @@ from .const import (
     DEFAULT_THEME,
 )
 from .coordinator import async_apply_config
+from .services import async_store_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -406,9 +407,11 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
             return self.async_abort(reason="calendar_not_found")
 
         if user_input is not None:
-            # Update the calendar
+            # Update the calendar, keeping the keys this form doesn't show
+            # (member_id, and whatever a newer card added).
             color_hex = _rgb_to_hex(user_input[CONF_COLOR])
             updated_calendar = {
+                **calendar_data,
                 "entity_id": calendar_data["entity_id"],
                 CONF_DISPLAY_NAME: user_input[CONF_DISPLAY_NAME],
                 CONF_COLOR: color_hex,
@@ -421,10 +424,11 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
             new_calendars = list(current_calendars)
             new_calendars[calendar_index] = updated_calendar
 
-            new_data = dict(self.config_entry.data)
-            new_data[CONF_CALENDARS] = new_calendars
-
-            await async_apply_config(self.hass, self.config_entry, new_data)
+            # Saved like the card's Settings: a newly linked person brings
+            # their member along (spec 7.2).
+            await async_store_config(
+                self.hass, {CONF_CALENDARS: new_calendars}, entry=self.config_entry
+            )
 
             return self.async_create_entry(title="", data={})
 
