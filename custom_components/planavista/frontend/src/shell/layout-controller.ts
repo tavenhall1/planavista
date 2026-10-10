@@ -1,5 +1,5 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { Box, Layout, classifyLayout } from '../core/layout';
+import { Box, Layout, LayoutTracker } from '../core/layout';
 
 type Host = ReactiveControllerHost & HTMLElement;
 
@@ -12,9 +12,7 @@ const TEXT_FIELDS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
  */
 export class LayoutController implements ReactiveController {
   layout: Layout = 'landscape';
-  private _box: Box | null = null;
-  private _measured = false;
-  private _textFocused = false;
+  private readonly _tracker = new LayoutTracker();
   private _observer?: ResizeObserver;
 
   constructor(private readonly _host: Host) {
@@ -42,9 +40,7 @@ export class LayoutController implements ReactiveController {
 
   private _measure(box: Box): void {
     if (box.width === 0 && box.height === 0) return; // not laid out yet
-    const next = classifyLayout(box, this._measured ? this.layout : null, this._box, this._textFocused);
-    this._box = box;
-    this._measured = true;
+    const next = this._tracker.measure(box);
     if (next !== this.layout || this._host.getAttribute('layout') !== next) {
       this.layout = next;
       this._host.setAttribute('layout', next);
@@ -54,10 +50,10 @@ export class LayoutController implements ReactiveController {
 
   private _onFocusIn = (event: FocusEvent): void => {
     const target = event.composedPath()[0] as HTMLElement | undefined;
-    this._textFocused = !!target && TEXT_FIELDS.has(target.tagName);
+    this._tracker.focus(!!target && TEXT_FIELDS.has(target.tagName));
   };
 
   private _onFocusOut = (): void => {
-    this._textFocused = false;
+    this._tracker.blur();
   };
 }

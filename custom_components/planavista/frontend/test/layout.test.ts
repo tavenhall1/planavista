@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyLayout } from '../src/core/layout';
+import { LayoutTracker, classifyLayout } from '../src/core/layout';
 
 describe('classifyLayout', () => {
   it('sorts the reference sizes', () => {
@@ -32,5 +32,52 @@ describe('classifyLayout', () => {
 
   it('treats a card with no height as landscape', () => {
     expect(classifyLayout({ width: 900, height: 0 }, null, null, false)).toBe('landscape');
+  });
+});
+
+describe('LayoutTracker', () => {
+  it('keeps portrait while the keyboard opens, changes height, and closes', () => {
+    const tracker = new LayoutTracker();
+    expect(tracker.measure({ width: 800, height: 1280 })).toBe('portrait');
+    tracker.focus(true);
+    expect(tracker.measure({ width: 800, height: 560 })).toBe('portrait');
+    // The suggestion strip goes away: taller than a moment ago, still below where it began.
+    expect(tracker.measure({ width: 800, height: 620 })).toBe('portrait');
+    expect(tracker.measure({ width: 800, height: 520 })).toBe('portrait');
+    expect(tracker.measure({ width: 800, height: 1280 })).toBe('portrait');
+  });
+
+  it('keeps the box from before the keyboard when focus moves to another field', () => {
+    const tracker = new LayoutTracker();
+    tracker.measure({ width: 800, height: 1280 });
+    tracker.focus(true);
+    tracker.measure({ width: 800, height: 560 });
+    tracker.blur();
+    tracker.focus(true);
+    expect(tracker.measure({ width: 800, height: 640 })).toBe('portrait');
+  });
+
+  it('follows real size changes once the keyboard is gone', () => {
+    const tracker = new LayoutTracker();
+    tracker.measure({ width: 800, height: 1280 });
+    tracker.focus(true);
+    tracker.measure({ width: 800, height: 560 });
+    tracker.blur();
+    expect(tracker.measure({ width: 800, height: 1280 })).toBe('portrait');
+    expect(tracker.measure({ width: 800, height: 700 })).toBe('landscape');
+  });
+
+  it('follows a rotation even while a field has focus', () => {
+    const tracker = new LayoutTracker();
+    tracker.measure({ width: 800, height: 1280 });
+    tracker.focus(true);
+    expect(tracker.measure({ width: 1280, height: 400 })).toBe('landscape');
+  });
+
+  it('ignores focus in controls that bring up no keyboard', () => {
+    const tracker = new LayoutTracker();
+    tracker.measure({ width: 800, height: 1280 });
+    tracker.focus(false);
+    expect(tracker.measure({ width: 800, height: 700 })).toBe('landscape');
   });
 });
