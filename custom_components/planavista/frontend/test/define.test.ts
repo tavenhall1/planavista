@@ -4,6 +4,7 @@ import { defineElement } from '../src/utils/define';
 /** Minimal stand-in for window.customElements, which throws on a second define like the real one. */
 class FakeRegistry {
   private readonly _defs = new Map<string, CustomElementConstructor>();
+  private readonly _waiting = new Map<string, Array<() => void>>();
   get(name: string): CustomElementConstructor | undefined {
     return this._defs.get(name);
   }
@@ -12,8 +13,23 @@ class FakeRegistry {
       throw new DOMException(`the name "${name}" has already been used with this registry`, 'NotSupportedError');
     }
     this._defs.set(name, ctor);
+    for (const resolve of this._waiting.get(name) ?? []) resolve();
+    this._waiting.delete(name);
+  }
+  whenDefined(name: string): Promise<void> {
+    if (this._defs.has(name)) return Promise.resolve();
+    return new Promise(resolve => {
+      this._waiting.set(name, [...(this._waiting.get(name) ?? []), resolve]);
+    });
   }
 }
+
+/** A Home Assistant page: the markup has <home-assistant>, whether or not it is defined yet. */
+const onHomeAssistantPage = () => {
+  vi.stubGlobal('document', { querySelector: (selector: string) => (selector === 'home-assistant' ? {} : null) });
+};
+
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 const OldChip = class {} as unknown as CustomElementConstructor;
 const NewChip = class {} as unknown as CustomElementConstructor;
@@ -28,6 +44,41 @@ describe('defineElement', () => {
     vi.stubGlobal('customElements', registry);
     expect(defineElement('pv-event-chip', NewChip)).toBe(true);
     expect(registry.get('pv-event-chip')).toBe(NewChip);
+  });
+
+  it('waits for Home Assistant to define its root, then defines into the registry in use by then', async () => {
+    // Home Assistant's page imports its app and this bundle in parallel. The
+    // app replaces window.customElements with a scoped-registry polyfill; an
+    // element defined natively before that is invisible to the polyfill.
+    onHomeAssistantPage();
+    const native = new FakeRegistry();
+    vi.stubGlobal('customElements', native);
+    expect(defineElement('planavista-calendar-card', NewChip)).toBe(false);
+    expect(native.get('planavista-calendar-card')).toBeUndefined();
+
+    const polyfilled = new FakeRegistry();
+    vi.stubGlobal('customElements', polyfilled);
+    polyfilled.define('home-assistant', OldChip);
+    native.define('home-assistant', OldChip); // the polyfill also defines a stand-in natively
+    await settle();
+    expect(polyfilled.get('planavista-calendar-card')).toBe(NewChip);
+    expect(native.get('planavista-calendar-card')).toBeUndefined();
+  });
+
+  it('defines right away once Home Assistant has defined its root', () => {
+    onHomeAssistantPage();
+    const registry = new FakeRegistry();
+    registry.define('home-assistant', OldChip);
+    vi.stubGlobal('customElements', registry);
+    expect(defineElement('pv-event-chip', NewChip)).toBe(true);
+    expect(registry.get('pv-event-chip')).toBe(NewChip);
+  });
+
+  it('defines right away on a page without Home Assistant', () => {
+    vi.stubGlobal('document', { querySelector: () => null });
+    const registry = new FakeRegistry();
+    vi.stubGlobal('customElements', registry);
+    expect(defineElement('pv-event-chip', NewChip)).toBe(true);
   });
 
   it('skips a tag another bundle already defined instead of throwing', () => {
