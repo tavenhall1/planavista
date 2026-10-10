@@ -15,7 +15,7 @@ import {
   filterVisibleEvents,
 } from '../utils/event-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
-import { contrastText } from '../../../styles/themes';
+import { contrastText } from '../../../core/color';
 
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;

@@ -1,5 +1,8 @@
 import { css, CSSResult } from 'lit';
 import { ThemeOverrides } from '../types';
+import { contrastText } from '../core/color';
+
+export { contrastText };
 
 // ============================================================================
 // Color Utility Functions
@@ -12,11 +15,6 @@ function luminance(hex: string): number {
   const b = parseInt(hex.slice(5, 7), 16) / 255;
   const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-}
-
-/** Returns '#FFFFFF' or '#1A1B1E' for best contrast against bg. */
-export function contrastText(bgHex: string): string {
-  return luminance(bgHex) > 0.4 ? '#1A1B1E' : '#FFFFFF';
 }
 
 /** Convert hex to rgba string. */

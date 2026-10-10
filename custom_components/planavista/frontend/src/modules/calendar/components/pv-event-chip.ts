@@ -4,7 +4,7 @@ import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig } from '../../../types';
 import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isAllDayEvent, isEventPast } from '../utils/event-utils';
-import { contrastText } from '../../../styles/themes';
+import { contrastText } from '../../../core/color';
 import { formatTime } from '../../../utils/date-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { baseStyles } from '../../../styles/shared';
