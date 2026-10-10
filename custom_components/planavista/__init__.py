@@ -14,7 +14,8 @@ from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
-from .const import DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
+from .appearance import migrate_display
+from .const import CONF_DISPLAY, DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .household.store import async_get_household, async_start_household
 from .household.websocket import async_setup_household_websocket
@@ -55,6 +56,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     entry.async_on_unload(async_at_started(hass, _async_start_household))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> bool:
+    """Bring an entry from an older release up to date (spec 7.8).
+
+    Minor version 2 writes the appearance settings beside 1.1.0's theme
+    keys. An entry from a newer release with the same major version (a step
+    back in HACS) loads as it is.
+    """
+    if entry.version > 1:
+        return False
+    if entry.minor_version < 2:
+        data = dict(entry.data)
+        data[CONF_DISPLAY] = migrate_display(data.get(CONF_DISPLAY, {}))
+        hass.config_entries.async_update_entry(entry, data=data, minor_version=2)
     return True
 
 

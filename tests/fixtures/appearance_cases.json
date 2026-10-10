@@ -1,0 +1,59 @@
+{
+  "description": "Appearance settings derived from a saved display (spec 12.4). appearance.py and the card's core/appearance.ts both read this file, so the two can't drift apart. 'legacy' is what the backend writes back for 1.1.0.",
+  "cases": [
+    {
+      "name": "a 1.1.0 install on Clean Light",
+      "display": {"theme": "planavista", "time_format": "12h"},
+      "settings": {"appearance": "light", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "planavista", "colors_light": {}, "colors_dark": {}, "shape": {}, "motion": "device"},
+      "legacy": {"theme": "planavista", "theme_overrides": {}}
+    },
+    {
+      "name": "Deep Dark with customizations moves them to the dark version",
+      "display": {"theme": "dark", "theme_overrides": {"accent": "#277DA1", "background": "#0F1420", "header_style": "custom", "header_custom": "#171D2B", "corner_style": "pill"}},
+      "settings": {"appearance": "dark", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "planavista", "colors_light": {}, "colors_dark": {"accent": "#277DA1", "background": "#0F1420", "header": "#171D2B"}, "shape": {"corner_style": "pill"}, "motion": "device"},
+      "legacy": {"theme": "dark", "theme_overrides": {"accent": "#277DA1", "background": "#0F1420", "header_style": "custom", "header_custom": "#171D2B", "corner_style": "pill"}}
+    },
+    {
+      "name": "Vibrant with a header preset and the pale avatar border",
+      "display": {"theme": "modern", "theme_overrides": {"header_style": "gradient_teal", "avatar_border": "light", "event_style": "solid"}},
+      "settings": {"appearance": "light", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "vibrant", "colors_light": {"header": "gradient_teal"}, "colors_dark": {}, "shape": {"avatar_border": "white", "event_style": "solid"}, "motion": "device"},
+      "legacy": {"theme": "modern", "theme_overrides": {"header_style": "gradient_teal", "avatar_border": "light", "event_style": "solid"}}
+    },
+    {
+      "name": "Minimal",
+      "display": {"theme": "minimal"},
+      "settings": {"appearance": "light", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "minimal", "colors_light": {}, "colors_dark": {}, "shape": {}, "motion": "device"},
+      "legacy": {"theme": "minimal", "theme_overrides": {}}
+    },
+    {
+      "name": "the new keys win over 1.1.0's",
+      "display": {"theme": "planavista", "theme_overrides": {"accent": "#F94144"}, "appearance": "automatic", "appearance_switch": "schedule", "light_from": "06:30", "dark_from": "20:15", "theme_pair": "minimal", "colors_light": {"accent": "#43AA8B"}, "colors_dark": {}, "shape": {"shadow_depth": "none"}, "motion": "reduced"},
+      "settings": {"appearance": "automatic", "appearance_switch": "schedule", "light_from": "06:30", "dark_from": "20:15", "theme_pair": "minimal", "colors_light": {"accent": "#43AA8B"}, "colors_dark": {}, "shape": {"shadow_depth": "none"}, "motion": "reduced"},
+      "legacy": {"theme": "minimal", "theme_overrides": {"accent": "#43AA8B", "shadow_depth": "none"}}
+    },
+    {
+      "name": "PlanaVista dark reads back as Deep Dark with its dark colors",
+      "display": {"theme": "planavista", "appearance": "dark", "theme_pair": "planavista", "colors_light": {"accent": "#F94144"}, "colors_dark": {"now_color": "#F87171"}},
+      "settings": {"appearance": "dark", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "planavista", "colors_light": {"accent": "#F94144"}, "colors_dark": {"now_color": "#F87171"}, "shape": {}, "motion": "device"},
+      "legacy": {"theme": "dark", "theme_overrides": {"now_color": "#F87171"}}
+    },
+    {
+      "name": "values PlanaVista doesn't know fall back",
+      "display": {"theme": "sepia", "appearance": "dim", "appearance_switch": "moon", "light_from": "7am", "dark_from": "25:00", "theme_pair": "neon", "motion": "wild"},
+      "settings": {"appearance": "light", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "planavista", "colors_light": {}, "colors_dark": {}, "shape": {}, "motion": "device"},
+      "legacy": {"theme": "planavista", "theme_overrides": {}}
+    },
+    {
+      "name": "Vibrant dark reads back as Vibrant",
+      "display": {"appearance": "dark", "theme_pair": "vibrant"},
+      "settings": {"appearance": "dark", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "vibrant", "colors_light": {}, "colors_dark": {}, "shape": {}, "motion": "device"},
+      "legacy": {"theme": "modern", "theme_overrides": {}}
+    },
+    {
+      "name": "a plain header has no 1.1.0 equivalent",
+      "display": {"theme": "dark", "appearance": "dark", "theme_pair": "planavista", "colors_dark": {"header": "plain"}},
+      "settings": {"appearance": "dark", "appearance_switch": "sun", "light_from": "07:00", "dark_from": "21:00", "theme_pair": "planavista", "colors_light": {}, "colors_dark": {"header": "plain"}, "shape": {}, "motion": "device"},
+      "legacy": {"theme": "dark", "theme_overrides": {}}
+    }
+  ]
+}

@@ -129,11 +129,19 @@ def config_entry_data() -> dict[str, Any]:
 
 
 @pytest.fixture
+def config_entry_minor_version() -> int:
+    """The entry's minor version: this release's (a test module overrides it to test an upgrade)."""
+    return 2
+
+
+@pytest.fixture
 def mock_config_entry(
-    hass: HomeAssistant, config_entry_data: dict[str, Any]
+    hass: HomeAssistant, config_entry_data: dict[str, Any], config_entry_minor_version: int
 ) -> MockConfigEntry:
     """Add a PlanaVista config entry to hass without setting it up."""
-    entry = MockConfigEntry(domain=DOMAIN, title="PlanaVista", data=config_entry_data)
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="PlanaVista", data=config_entry_data, minor_version=config_entry_minor_version
+    )
     entry.add_to_hass(hass)
     return entry
 

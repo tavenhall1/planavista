@@ -24,6 +24,25 @@ from homeassistant.exceptions import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_register_admin_service
 
+from .appearance import (
+    APPEARANCE,
+    APPEARANCE_KEYS,
+    APPEARANCE_SWITCH,
+    CLOCK_PATTERN,
+    COLORS_DARK,
+    COLORS_LIGHT,
+    DARK_FROM,
+    HEADER_PRESETS,
+    LIGHT_FROM,
+    MODES,
+    MOTION,
+    MOTIONS,
+    PAIRS,
+    SHAPE,
+    SWITCHES,
+    THEME_PAIR,
+    with_legacy_theme,
+)
 from .const import (
     CALENDAR_VIEWS,
     CONF_CALENDARS,
@@ -84,6 +103,30 @@ CALENDAR_CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+_HEX_COLOR = vol.Match(r"^#[0-9A-Fa-f]{6}$")
+
+# One version's colors (spec 12.4). Later releases may add keys (spec 7.8).
+THEME_COLORS_SCHEMA = vol.Schema(
+    {
+        vol.Optional("accent"): _HEX_COLOR,
+        vol.Optional("background"): _HEX_COLOR,
+        vol.Optional("header"): vol.Any("plain", vol.In(HEADER_PRESETS), _HEX_COLOR),
+        vol.Optional("now_color"): _HEX_COLOR,
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
+# Shape settings, shared by both versions. "light" is 1.1.0's spelling of "white".
+THEME_SHAPE_SCHEMA = vol.Schema(
+    {
+        vol.Optional("corner_style"): vol.In(["sharp", "rounded", "pill"]),
+        vol.Optional("shadow_depth"): vol.In(["none", "subtle", "bold"]),
+        vol.Optional("event_style"): vol.In(["stripes", "solid"]),
+        vol.Optional("avatar_border"): vol.Any(vol.In(["primary", "white", "light"]), _HEX_COLOR),
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
 DISPLAY_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_TIME_FORMAT): vol.In([TIME_FORMAT_12H, TIME_FORMAT_24H]),
@@ -93,6 +136,15 @@ DISPLAY_SCHEMA = vol.Schema(
         vol.Optional(CONF_THEME): cv.string,
         vol.Optional(CONF_THEME_OVERRIDES): vol.Any(None, dict),
         vol.Optional(CONF_LOCATION_AUTOCOMPLETE): cv.boolean,
+        vol.Optional(APPEARANCE): vol.Any(None, vol.In(MODES)),
+        vol.Optional(APPEARANCE_SWITCH): vol.Any(None, vol.In(SWITCHES)),
+        vol.Optional(LIGHT_FROM): vol.Any(None, vol.Match(CLOCK_PATTERN)),
+        vol.Optional(DARK_FROM): vol.Any(None, vol.Match(CLOCK_PATTERN)),
+        vol.Optional(THEME_PAIR): vol.Any(None, vol.In(PAIRS)),
+        vol.Optional(COLORS_LIGHT): vol.Any(None, THEME_COLORS_SCHEMA),
+        vol.Optional(COLORS_DARK): vol.Any(None, THEME_COLORS_SCHEMA),
+        vol.Optional(SHAPE): vol.Any(None, THEME_SHAPE_SCHEMA),
+        vol.Optional(MOTION): vol.Any(None, vol.In(MOTIONS)),
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -223,6 +275,8 @@ async def async_store_config(
     The action replaces the display settings; the card merges them
     (`merge_display`), so each Settings page sends only what it changed and
     one page's save can't undo another's. A None value removes a setting.
+    A save that changes an appearance setting writes every appearance key and
+    rewrites 1.1.0's theme and theme_overrides from them.
     A calendar newly linked to a Home Assistant person joins that person's
     member, who is added when needed (spec section 7.2).
     """
@@ -236,6 +290,9 @@ async def async_store_config(
         if merge_display:
             merged = {**entry.data.get(CONF_DISPLAY, {}), **display}
             display = {key: value for key, value in merged.items() if value is not None}
+        if any(key in changes[CONF_DISPLAY] for key in APPEARANCE_KEYS):
+            # 1.1.0's theme keys follow the new ones, so a rollback shows this look (spec 7.8).
+            display = with_legacy_theme(display)
         new_data[CONF_DISPLAY] = display
     if CONF_ONBOARDING_COMPLETE in changes:
         new_data[CONF_ONBOARDING_COMPLETE] = changes[CONF_ONBOARDING_COMPLETE]

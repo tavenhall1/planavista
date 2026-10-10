@@ -39,6 +39,7 @@ from .const import (
     DEFAULT_VIEW,
     DEFAULT_THEME,
 )
+from .appearance import appearance_settings, theme_choice, with_legacy_theme
 from .coordinator import async_apply_config
 from .services import async_store_config
 
@@ -151,6 +152,8 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PlanaVista."""
 
     VERSION = 1
+    # 2: appearance settings beside 1.1.0's theme keys (spec 12.4); see async_migrate_entry.
+    MINOR_VERSION = 2
 
     def __init__(self):
         """Initialize the config flow."""
@@ -484,16 +487,24 @@ class PlanaVistaOptionsFlow(config_entries.OptionsFlow):
         """Handle display options."""
         if user_input is not None:
             # Keep display keys this form doesn't edit (theme_overrides,
-            # location_autocomplete, and any the card adds later).
-            new_data = dict(self.config_entry.data)
-            new_data["display"] = {
-                **self.config_entry.data.get("display", {}),
+            # location_autocomplete, the appearance settings, and any later ones).
+            old_display = self.config_entry.data.get("display", {})
+            display = {
+                **old_display,
                 CONF_TIME_FORMAT: user_input[CONF_TIME_FORMAT],
                 CONF_WEATHER_ENTITY: user_input.get(CONF_WEATHER_ENTITY, ""),
                 CONF_FIRST_DAY: user_input[CONF_FIRST_DAY],
                 CONF_DEFAULT_VIEW: user_input[CONF_DEFAULT_VIEW],
                 CONF_THEME: user_input[CONF_THEME],
             }
+            if user_input[CONF_THEME] != old_display.get(CONF_THEME):
+                # The 1.1.0 theme list picks a theme and Light or Dark; colors
+                # stay with the version they were made for.
+                display = with_legacy_theme(
+                    {**display, **appearance_settings(old_display), **theme_choice(user_input[CONF_THEME])}
+                )
+            new_data = dict(self.config_entry.data)
+            new_data["display"] = display
 
             await async_apply_config(self.hass, self.config_entry, new_data)
             return self.async_create_entry(title="", data={})
