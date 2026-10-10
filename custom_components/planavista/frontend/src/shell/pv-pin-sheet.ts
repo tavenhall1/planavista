@@ -20,6 +20,7 @@ import {
 import type { Layout } from '../core/layout';
 import { saveErrorMessage } from '../core/page-host';
 import '../core/pv-member-avatar';
+import { SheetMotion, motionOf } from './sheet-motion';
 
 type Step = 'pick' | 'enter' | 'choose' | 'confirm';
 
@@ -35,9 +36,11 @@ function formatWait(ms: number): string {
  * entered twice. The digits typed never reach the DOM; the boxes only show
  * how many there are.
  *
+ * Each of its events fires once the sheet has left.
+ *
  * @fires pv-unlocked - { result } when a PIN was accepted
  * @fires pv-pin-set - { memberId } when a new PIN was saved
- * @fires pv-sheet-close - Cancel, Escape, or a tap outside
+ * @fires pv-sheet-close - Cancel, Escape, a tap outside, or a drag down
  */
 export class PvPinSheet extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
@@ -64,16 +67,23 @@ export class PvPinSheet extends LitElement {
   private _digits: string[] = keypadDigits(false);
   private _ticker: number | undefined;
   private _started = false;
+  private _sheetMotion = new SheetMotion(this);
+  private _detachDrag: (() => void) | null = null;
+  private _closing = false;
 
   connectedCallback(): void {
     super.connectedCallback();
     this.addEventListener('keydown', this._onKey);
+    // Reduced motion: a wrong PIN fades instead of shaking (spec 11.5).
+    this.toggleAttribute('reduced', motionOf(this) === 'reduced');
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.removeEventListener('keydown', this._onKey);
     window.clearInterval(this._ticker);
+    this._detachDrag?.();
+    this._detachDrag = null;
   }
 
   protected willUpdate(_changed: PropertyValues): void {
@@ -91,6 +101,34 @@ export class PvPinSheet extends LitElement {
 
   protected firstUpdated(): void {
     this.renderRoot.querySelector<HTMLElement>('.person, .key')?.focus();
+    const { panel, backdrop, zone } = this._parts();
+    this._sheetMotion.open(panel, backdrop);
+    this._detachDrag = this._sheetMotion.attachDrag(zone, panel, this._cancel);
+  }
+
+  private _parts(): { panel: HTMLElement; backdrop: HTMLElement; zone: HTMLElement } {
+    const root = this.renderRoot;
+    return {
+      panel: root.querySelector<HTMLElement>('.panel')!,
+      backdrop: root.querySelector<HTMLElement>('.backdrop')!,
+      zone: root.querySelector<HTMLElement>('.grab-zone')!,
+    };
+  }
+
+  /** The one way out: the sheet leaves first, then says why (spec 12.3). */
+  private async _leave(type: string, detail: Record<string, unknown>): Promise<void> {
+    if (this._closing) return;
+    this._closing = true;
+    const { panel, backdrop } = this._parts();
+    await this._sheetMotion.close(panel, backdrop);
+    this._fire(type, detail);
+    // A sheet its page keeps open must not stay invisible over the card, catching every tap.
+    requestAnimationFrame(() => {
+      if (!this.isConnected) return;
+      for (const element of [panel, backdrop]) element.getAnimations().forEach(animation => animation.cancel());
+      panel.style.transform = '';
+      this._closing = false;
+    });
   }
 
   static styles = [
@@ -134,7 +172,7 @@ export class PvPinSheet extends LitElement {
         padding: 0 8px;
         border: none;
         background: transparent;
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         font: inherit;
         cursor: pointer;
       }
@@ -216,16 +254,12 @@ export class PvPinSheet extends LitElement {
         margin-top: 12px;
       }
 
-      @media (prefers-reduced-motion: no-preference) {
-        .boxes.shake {
-          animation: pv-shake 300ms ease-in-out;
-        }
+      :host([reduced]) .boxes.shake {
+        animation: pv-fade 300ms ease-in-out;
       }
 
-      @media (prefers-reduced-motion: reduce) {
-        .boxes.shake {
-          animation: pv-fade 300ms ease-in-out;
-        }
+      :host(:not([reduced])) .boxes.shake {
+        animation: pv-shake 300ms ease-in-out;
       }
 
       @keyframes pv-shake {
@@ -243,6 +277,7 @@ export class PvPinSheet extends LitElement {
     return html`
       <div class="backdrop" @click=${this._cancel}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="pin-heading">
+        <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         ${this._step === 'pick' ? this._renderPicker() : this._renderPad()}
       </div>
     `;
@@ -389,7 +424,7 @@ export class PvPinSheet extends LitElement {
     try {
       const result = await this.api.unlock(who.id, this._entry.digits);
       if (result.ok) {
-        this._fire('pv-unlocked', { result });
+        void this._leave('pv-unlocked', { result });
         return;
       }
       this._entry = startEntry(who.pin_length);
@@ -416,7 +451,7 @@ export class PvPinSheet extends LitElement {
     this._busy = true;
     try {
       await this.api.setPin(target.id, pin);
-      this._fire('pv-pin-set', { memberId: target.id });
+      void this._leave('pv-pin-set', { memberId: target.id });
     } catch (err) {
       this._restartChoosing(saveErrorMessage(errorCode(err)));
     } finally {
@@ -432,7 +467,7 @@ export class PvPinSheet extends LitElement {
   }
 
   private _cancel = (): void => {
-    this._fire('pv-sheet-close', {});
+    void this._leave('pv-sheet-close', {});
   };
 
   private _onKey = (event: KeyboardEvent): void => {
