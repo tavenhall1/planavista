@@ -7,6 +7,7 @@ import { Member } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import { saveErrorMessage } from '../../core/page-host';
+import '../pv-notice-sheet';
 import '../pv-pin-sheet';
 
 /**
@@ -24,6 +25,8 @@ export class PvPinActions extends LitElement {
   @property({ type: Boolean }) sharedScreens = false;
 
   @state() private _choosing = false;
+  /** Asking "Remove {name}'s PIN?" first, since it is one tap from Change PIN. */
+  @state() private _confirmingRemove = false;
   @state() private _message = '';
   @state() private _busy = false;
 
@@ -93,7 +96,8 @@ export class PvPinActions extends LitElement {
             ${this.member.has_pin ? 'Change PIN' : 'Set PIN'}
           </button>
           ${this.member.has_pin ? html`
-            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy} @click=${this._remove}>Remove PIN</button>
+            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy}
+              @click=${() => { this._message = ''; this._confirmingRemove = true; }}>Remove PIN</button>
           ` : nothing}
           ${this._paused() ? html`
             <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy} @click=${this._clearPause}>Clear pause</button>
@@ -113,7 +117,27 @@ export class PvPinActions extends LitElement {
           @pv-sheet-close=${this._closeSheet}
         ></pv-pin-sheet>
       ` : nothing}
+      ${this._confirmingRemove ? html`
+        <pv-notice-sheet
+          .layout=${this.layout}
+          heading=${`Remove ${this.member.name}'s PIN?`}
+          body=${this.member.parent
+            ? `On a shared screen, ${this.member.name} will need a new PIN to start parent mode.`
+            : 'You can set a new one any time.'}
+          .actions=${[
+            { id: 'cancel', label: 'Cancel', kind: 'secondary' },
+            { id: 'remove', label: 'Remove PIN', kind: 'destructive' },
+          ]}
+          @pv-sheet-action=${this._onRemoveChoice}
+        ></pv-notice-sheet>
+      ` : nothing}
     `;
+  }
+
+  private async _onRemoveChoice(event: CustomEvent<{ id: string }>): Promise<void> {
+    event.stopPropagation();
+    this._confirmingRemove = false;
+    if (event.detail.id === 'remove') await this._remove();
   }
 
   private _closeSheet(event: Event): void {

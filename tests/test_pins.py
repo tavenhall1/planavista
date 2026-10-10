@@ -188,6 +188,28 @@ async def test_the_last_parent_pin_stays_while_a_screen_is_shared(
     assert "blair" not in household.pins
 
 
+async def test_the_last_parent_pin_stays_on_a_screen_that_needs_one(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any
+) -> None:
+    """An upgraded wall tablet is often an unmarked account, and it needs a parent's PIN too (spec 9.5)."""
+    await set_pin(hass, household, "blair", PIN)
+    guest = await ws_client_for(hass, hass_ws_client, accounts["guest"])
+    session = (await _unlock(guest, "blair", PIN))["session"]
+    for command in (
+        {"type": "planavista/pin/clear", "member_id": "blair"},
+        {"type": "planavista/household/member/save", "member_id": "blair", "member": {"parent": False}},
+        {"type": "planavista/household/member/delete", "member_id": "blair"},
+    ):
+        denied = await ws_command(guest, {**command, "session": session})
+        assert denied["error"]["code"] == "last_parent_pin", command
+    assert "blair" in household.pins
+
+    # From a parent's own login, with no screen marked shared, it can go.
+    alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
+    assert (await ws_command(alex, {"type": "planavista/pin/clear", "member_id": "blair"}))["success"]
+    assert "blair" not in household.pins
+
+
 async def test_a_parent_can_clear_a_pause(
     hass: HomeAssistant, hass_ws_client: Any, household: Any, kitchen: Any
 ) -> None:

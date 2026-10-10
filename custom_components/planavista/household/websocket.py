@@ -108,6 +108,18 @@ def _account(hass: HomeAssistant, household: Household, user: User) -> Account:
 
 
 @callback
+def _screens_need_parent_pin(
+    hass: HomeAssistant, household: Household, connection: websocket_api.ActiveConnection
+) -> bool:
+    """Some screen needs a parent's PIN for Settings: one marked shared, or this one (spec 9.5).
+
+    An upgraded wall tablet is often an account linked to no one and not
+    marked shared, so the account making the change counts too.
+    """
+    return bool(household.shared_users) or _account(hass, household, connection.user).screen_rules
+
+
+@callback
 def _session(
     household: Household, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> SessionView | None:
@@ -250,7 +262,7 @@ async def ws_member_save(
             members,
             household.pins,
             household.pins,
-            bool(household.shared_users),
+            _screens_need_parent_pin(hass, household, connection),
         )
     except MemberError as err:
         _member_error(connection, msg, err)
@@ -285,7 +297,11 @@ async def ws_member_delete(
     try:
         members = remove_member(household.members, member_id)
         check_parent_pins(
-            household.members, members, household.pins, pins, bool(household.shared_users)
+            household.members,
+            members,
+            household.pins,
+            pins,
+            _screens_need_parent_pin(hass, household, connection),
         )
     except MemberError as err:
         _member_error(connection, msg, err)
@@ -570,7 +586,7 @@ async def ws_pin_set(
 async def ws_pin_clear(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Remove a PIN, unless shared screens would be left with no parent PIN."""
+    """Remove a PIN, unless a screen that needs one would be left with no parent PIN."""
     context = _pin_manager(hass, connection, msg)
     if context is None:
         return
@@ -579,7 +595,11 @@ async def ws_pin_clear(
     pins = {key: value for key, value in household.pins.items() if key != member_id}
     try:
         check_parent_pins(
-            household.members, household.members, household.pins, pins, bool(household.shared_users)
+            household.members,
+            household.members,
+            household.pins,
+            pins,
+            _screens_need_parent_pin(hass, household, connection),
         )
     except MemberError as err:
         _member_error(connection, msg, err)
