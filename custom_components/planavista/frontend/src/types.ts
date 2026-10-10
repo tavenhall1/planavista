@@ -17,6 +17,10 @@ export interface PlanaVistaCardConfig {
   weather_entity?: string;
   time_format?: '12h' | '24h';
   first_day?: 'monday' | 'sunday';
+  /** Modules this card shows, in order (default: every module). */
+  modules?: string[];
+  /** Module the card opens on (default: the first one shown). */
+  module?: string;
 }
 
 export interface PlanaVistaGridConfig extends PlanaVistaCardConfig {

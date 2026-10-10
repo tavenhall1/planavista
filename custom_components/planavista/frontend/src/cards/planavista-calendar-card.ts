@@ -7,7 +7,8 @@ import { CalendarStoreController } from '../modules/calendar/calendar-store';
 import { applyTheme, resolveTheme, clearThemeCache, applyThemeWithOverrides } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { getPlanaVistaData, getPersonAvatar, getPersonName } from '../utils/ha-utils';
-import { filterVisibleEvents } from '../utils/event-utils';
+import { resolveDisplay } from '../core/display';
+import { CalendarDerived, calendarWatchedEntities, deriveCalendarData } from '../modules/calendar/calendar-derive';
 import { weatherIcon } from '../utils/weather-icons';
 import { swipeDirection } from '../utils/gestures';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
@@ -25,21 +26,10 @@ import '../components/event-create-dialog';
 import '../components/onboarding-wizard';
 import '../components/pv-clock';
 
-/** A calendar that shares an event (same UID), for Day-view participant avatars. */
-interface SharedParticipant {
-  entity_id: string;
-  calendar_name: string;
-  calendar_color: string;
-  person_entity: string;
-}
-
 /** What render() derives from the config sensor (see _derive). */
-interface CardDerived {
+interface CardDerived extends CalendarDerived {
   data: PlanaVistaData | null;
-  calendars: CalendarConfig[];
   display: DisplayConfig;
-  visibleEvents: CalendarEvent[];
-  sharedEventMap: Map<string, SharedParticipant[]>;
 }
 
 export class PlanaVistaCalendarCard extends LitElement {
@@ -817,9 +807,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     const { calendars, display } = this._derived();
     const ids = [this._config?.entity || 'sensor.planavista_config'];
     if (display.weather_entity) ids.push(display.weather_entity);
-    for (const cal of calendars) {
-      if (cal.person_entity) ids.push(cal.person_entity);
-    }
+    ids.push(...calendarWatchedEntities(calendars));
     return ids;
   }
 
@@ -869,48 +857,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     hidden: Set<string>,
   ): CardDerived => {
     const data = this.hass ? getPlanaVistaData(this.hass, config?.entity) : null;
-
-    // Card YAML wins, then the sensor's display config, then defaults.
-    const global = data?.display;
-    const display: DisplayConfig = {
-      time_format: config?.time_format || global?.time_format || '12h',
-      weather_entity: config?.weather_entity || global?.weather_entity || '',
-      first_day: config?.first_day || global?.first_day || 'sunday',
-      default_view: config?.default_view || config?.view || global?.default_view || 'week',
-      theme: config?.theme || global?.theme || 'light',
-      theme_overrides: global?.theme_overrides,
-      location_autocomplete: global?.location_autocomplete === true,
-    };
-
-    // A card-level `calendars` list (entity_ids) narrows the visible calendars.
-    const all = (data?.calendars || []).filter((c: CalendarConfig) => c.visible !== false);
-    const cardFilter = config?.calendars;
-    const calendars = Array.isArray(cardFilter) && cardFilter.length > 0
-      ? all.filter((c: CalendarConfig) => cardFilter.includes(c.entity_id))
-      : all;
-
-    // Group all events by UID to find shared events (Day-view participant avatars).
-    const events = data?.events || [];
-    const sharedEventMap = new Map<string, SharedParticipant[]>();
-    for (const ev of events) {
-      const uid = ev.uid;
-      if (!uid) continue;
-      if (!sharedEventMap.has(uid)) sharedEventMap.set(uid, []);
-      const arr = sharedEventMap.get(uid)!;
-      const eid = ev.calendar_entity_id;
-      // Deduplicate by calendar entity (recurring events share UIDs)
-      if (!arr.some(p => p.entity_id === eid)) {
-        const cal = calendars.find(c => c.entity_id === eid);
-        arr.push({
-          entity_id: eid,
-          calendar_name: ev.calendar_name || cal?.display_name || '',
-          calendar_color: ev.calendar_color || cal?.color || '',
-          person_entity: cal?.person_entity || '',
-        });
-      }
-    }
-
-    return { data, calendars, display, visibleEvents: filterVisibleEvents(events, hidden), sharedEventMap };
+    return { data, display: resolveDisplay(config, data), ...deriveCalendarData(data, config, hidden) };
   });
 
   private _derived(): CardDerived {
