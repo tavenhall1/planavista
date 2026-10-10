@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftChanges, draftOf, draftProblem, isDirty } from '../src/core/person-draft';
+import { beginDraft, draftChanges, draftOf, draftProblem, isDirty, rebaseDraft } from '../src/core/person-draft';
 import { Member } from '../src/core/household';
 
 const PALETTE = ['#F94144', '#277DA1', '#43AA8B'];
@@ -23,12 +23,34 @@ describe('person drafts', () => {
   });
 
   it('sends everything for someone new and only changes for someone saved', () => {
-    const fresh = { ...draftOf(null, [], PALETTE), name: '  Dana ', age_group: 'young_child' as const };
-    expect(draftChanges(fresh, null)).toEqual({
+    const fresh = beginDraft(null, [], PALETTE);
+    expect(fresh.rev).toBeNull();
+    const named = { ...fresh, draft: { ...fresh.draft, name: '  Dana ', age_group: 'young_child' as const } };
+    expect(draftChanges(named)).toEqual({
       name: 'Dana', color: '#F94144', picture: { initial: true }, age_group: 'young_child', parent: false, person: null,
     });
-    const edited = { ...draftOf(ALEX, [ALEX], PALETTE), picture: { emoji: '\u{1F996}' } };
-    expect(draftChanges(edited, ALEX)).toEqual({ picture: { emoji: '\u{1F996}' } });
+    const saved = beginDraft(ALEX, [ALEX], PALETTE);
+    const edited = { ...saved, draft: { ...saved.draft, picture: { emoji: '\u{1F996}' } } };
+    expect(draftChanges(edited)).toEqual({ picture: { emoji: '\u{1F996}' } });
+  });
+
+  it('keeps the revision the edit began from, so a newer version is noticed', () => {
+    const record = beginDraft(ALEX, [ALEX], PALETTE);
+    expect(record.rev).toBe(2);
+    expect(record.start).toEqual(draftOf(ALEX, [ALEX], PALETTE));
+    expect(record.draft).toEqual(record.start);
+  });
+
+  it('keeps editing on top of the version another screen saved', () => {
+    const record = beginDraft(ALEX, [ALEX], PALETTE);
+    const edited = { ...record, draft: { ...record.draft, picture: { emoji: '\u{1F996}' } } };
+    // Another screen changed Alex's color; this screen changed only the picture.
+    const newer = { ...ALEX, color: '#43AA8B', rev: 3 } as Member;
+    const rebased = rebaseDraft(edited, newer, [newer], PALETTE);
+    expect(rebased.rev).toBe(3);
+    expect(rebased.start).toEqual(draftOf(newer, [newer], PALETTE));
+    expect(rebased.draft).toEqual({ ...draftOf(newer, [newer], PALETTE), picture: { emoji: '\u{1F996}' } });
+    expect(draftChanges(rebased)).toEqual({ picture: { emoji: '\u{1F996}' } });
   });
 
   it('knows when there is something to save', () => {

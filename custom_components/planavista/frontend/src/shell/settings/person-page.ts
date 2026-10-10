@@ -15,7 +15,7 @@ import {
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import { POP_PAGE, saveErrorMessage } from '../../core/page-host';
-import { PersonDraft, draftChanges, draftOf, draftProblem, isDirty } from '../../core/person-draft';
+import { DraftRecord, PersonDraft, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft } from '../../core/person-draft';
 import { PvColorSwatchPicker } from '../../core/color-swatch-picker';
 import type { PlanaVistaData } from '../../types';
 import '../../core/pv-member-avatar';
@@ -43,6 +43,8 @@ export class PvSettingsPerson extends LitElement {
 
   @state() private _draft!: PersonDraft;
   @state() private _start!: PersonDraft;
+  /** The revision the edit began from (null for someone new); Save sends it. */
+  private _rev: number | null = null;
   @state() private _problem = '';
   @state() private _saving = false;
   @state() private _notice: Notice | null = null;
@@ -63,10 +65,20 @@ export class PvSettingsPerson extends LitElement {
 
   protected willUpdate(): void {
     if (!this._loaded && this.household) {
-      this._start = draftOf(this._member, this.household.members, PALETTE);
-      this._draft = (this.drafts.get(this._draftKey) as PersonDraft | undefined) ?? this._start;
+      const kept = this.drafts.get(this._draftKey) as DraftRecord | undefined;
+      this._use(kept ?? beginDraft(this._member, this.household.members, PALETTE));
       this._loaded = true;
     }
+  }
+
+  private _use(record: DraftRecord): void {
+    this._draft = record.draft;
+    this._start = record.start;
+    this._rev = record.rev;
+  }
+
+  private get _record(): DraftRecord {
+    return { draft: this._draft, start: this._start, rev: this._rev };
   }
 
   /** Settings asks before leaving a page with changes (spec 14.1). */
@@ -498,7 +510,7 @@ export class PvSettingsPerson extends LitElement {
   private _change(patch: Partial<PersonDraft>): void {
     this._draft = { ...this._draft, ...patch };
     this._problem = '';
-    this.drafts.set(this._draftKey, this._draft);
+    this.drafts.set(this._draftKey, this._record);
   }
 
   private _linkPerson(person: string): void {
@@ -529,9 +541,15 @@ export class PvSettingsPerson extends LitElement {
       return;
     }
     const member = this._member;
+    if (this._rev !== null && !member) {
+      this._problem = 'That person was removed on another screen.';
+      return;
+    }
     this._saving = true;
     try {
-      await this.api.saveMember(draftChanges(this._draft, member), member ? { id: member.id, rev: member.rev } : undefined);
+      // The revision the edit began from: a newer one means another screen saved meanwhile.
+      const existing = member && this._rev !== null ? { id: member.id, rev: this._rev } : undefined;
+      await this.api.saveMember(draftChanges(this._record), existing);
       this.drafts.delete(this._draftKey);
       this._start = this._draft;
       this._pop();
@@ -582,10 +600,16 @@ export class PvSettingsPerson extends LitElement {
   private _onChangedChoice(event: CustomEvent<{ id: string }>): void {
     event.stopPropagation();
     this._notice = null;
-    if (event.detail.id !== 'load' || !this.household) return;
-    this._start = draftOf(this._member, this.household.members, PALETTE);
-    this._draft = this._start;
-    this.drafts.delete(this._draftKey);
+    const member = this._member;
+    if (!this.household || !member) return;
+    if (event.detail.id === 'load') {
+      this._use(beginDraft(member, this.household.members, PALETTE));
+      this.drafts.delete(this._draftKey);
+    } else {
+      // Keep editing: this screen's changes on top of the version saved on the other screen.
+      this._use(rebaseDraft(this._record, member, this.household.members, PALETTE));
+      this.drafts.set(this._draftKey, this._record);
+    }
   }
 }
 
