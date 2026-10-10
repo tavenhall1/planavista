@@ -3,18 +3,11 @@
 import './modules/calendar';
 import './shell/planavista-card';
 import { version } from '../package.json';
+import { registerCardPicker } from './shell/card-picker';
 
 // Register the card with the HA card picker (once, even if another copy of the bundle ran first).
-// New dashboards get the neutral name; `custom:planavista-calendar-card` keeps working.
 window.customCards = window.customCards || [];
-if (!window.customCards.some(card => card.type === 'planavista-card' || card.type === 'planavista-calendar-card')) {
-  window.customCards.push({
-    type: 'planavista-card',
-    name: 'PlanaVista',
-    description: 'All-in-one calendar with clock, weather, toggles, and views',
-    preview: true,
-  });
-}
+registerCardPicker(window.customCards);
 
 console.info(
   `%c PLANAVISTA %c v${version} `,
