@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ModuleRegistry } from '../src/core/module-registry';
-import { calendarModule, registerCalendarModule } from '../src/modules/calendar/definition';
+import {
+  calendarModule,
+  calendarSettingsPages,
+  calendarSetupSteps,
+  registerCalendarModule,
+} from '../src/modules/calendar/definition';
 import type { CalendarConfig, PlanaVistaData } from '../src/types';
 
 const cal = (entity_id: string, person_entity = '', visible = true): CalendarConfig => ({
@@ -29,5 +34,15 @@ describe('the calendar module', () => {
     const modules = new ModuleRegistry();
     registerCalendarModule(modules);
     expect(modules.list().map(m => m.id)).toEqual(['calendar']);
+  });
+});
+
+describe('calendar settings pages', () => {
+  it('adds Calendars and Calendar options to Settings, and Calendars to setup', () => {
+    expect(calendarSettingsPages.map(p => [p.id, p.group, p.tag])).toEqual([
+      ['calendars', 'calendar', 'pv-calendar-calendars-page'],
+      ['calendar-options', 'calendar', 'pv-calendar-options-page'],
+    ]);
+    expect(calendarSetupSteps.map(s => s.id)).toEqual(['calendars']);
   });
 });
