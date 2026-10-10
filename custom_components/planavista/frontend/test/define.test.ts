@@ -92,21 +92,54 @@ describe('defineElement', () => {
 });
 
 describe('defineElementAlias', () => {
-  it('registers the alias as a subclass, even when an older bundle took the original name', () => {
+  it('subclasses the class that holds the original name, so a card from an older bundle stays whole', () => {
     const registry = new FakeRegistry();
     registry.define('planavista-calendar-card', OldChip);
     vi.stubGlobal('customElements', registry);
     const Card = class {} as unknown as CustomElementConstructor;
     expect(defineElement('planavista-calendar-card', Card)).toBe(false);
-    expect(defineElementAlias('planavista-card', Card)).toBe(true);
+    expect(defineElementAlias('planavista-card', 'planavista-calendar-card', Card)).toBe(true);
+    expect(Object.getPrototypeOf(registry.get('planavista-card'))).toBe(OldChip);
+  });
+
+  it('subclasses the card from this bundle when it holds the original name', () => {
+    const registry = new FakeRegistry();
+    vi.stubGlobal('customElements', registry);
+    const Card = class {} as unknown as CustomElementConstructor;
+    defineElement('planavista-calendar-card', Card);
+    expect(defineElementAlias('planavista-card', 'planavista-calendar-card', Card)).toBe(true);
     expect(Object.getPrototypeOf(registry.get('planavista-card'))).toBe(Card);
+  });
+
+  it('falls back to the given class when nothing holds the original name', () => {
+    const registry = new FakeRegistry();
+    vi.stubGlobal('customElements', registry);
+    expect(defineElementAlias('planavista-card', 'planavista-calendar-card', NewChip)).toBe(true);
+    expect(Object.getPrototypeOf(registry.get('planavista-card'))).toBe(NewChip);
   });
 
   it('skips an alias that another bundle already defined', () => {
     const registry = new FakeRegistry();
     registry.define('planavista-card', OldChip);
     vi.stubGlobal('customElements', registry);
-    expect(defineElementAlias('planavista-card', NewChip)).toBe(false);
+    expect(defineElementAlias('planavista-card', 'planavista-calendar-card', NewChip)).toBe(false);
     expect(registry.get('planavista-card')).toBe(OldChip);
+  });
+
+  it('waits with the original while Home Assistant is starting, then aliases what holds the name', async () => {
+    onHomeAssistantPage();
+    const native = new FakeRegistry();
+    vi.stubGlobal('customElements', native);
+    const Card = class {} as unknown as CustomElementConstructor;
+    defineElement('planavista-calendar-card', Card);
+    expect(defineElementAlias('planavista-card', 'planavista-calendar-card', NewChip)).toBe(false);
+
+    const polyfilled = new FakeRegistry();
+    vi.stubGlobal('customElements', polyfilled);
+    polyfilled.define('home-assistant', OldChip);
+    native.define('home-assistant', OldChip);
+    await settle();
+    expect(polyfilled.get('planavista-calendar-card')).toBe(Card);
+    expect(Object.getPrototypeOf(polyfilled.get('planavista-card'))).toBe(Card);
   });
 });

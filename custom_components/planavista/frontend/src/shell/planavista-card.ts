@@ -535,4 +535,4 @@ export class PlanaVistaCard extends LitElement {
 
 registerShellPages();
 defineElement('planavista-calendar-card', PlanaVistaCard);
-defineElementAlias('planavista-card', PlanaVistaCard);
+defineElementAlias('planavista-card', 'planavista-calendar-card', PlanaVistaCard);
