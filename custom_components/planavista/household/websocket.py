@@ -6,6 +6,8 @@ The PIN commands (planavista/pin/*) are at the end of this file.
 """
 from __future__ import annotations
 
+from functools import partial
+import math
 import time
 from typing import Any
 
@@ -15,6 +17,7 @@ from homeassistant.auth.models import User
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.util import dt as dt_util
 
 from ..const import CONF_CALENDARS, CONF_DISPLAY, CONF_ONBOARDING_COMPLETE, DOMAIN
 from ..services import CALENDAR_CONFIG_SCHEMA, DISPLAY_SCHEMA, async_store_config
@@ -29,7 +32,17 @@ from .members import (
     reorder_members,
     update_member,
 )
-from .permissions import Account, SessionView, parent_level
+from .permissions import Account, SessionView, may_manage_pin, parent_level
+from .security import (
+    SESSION_IDLE_SECONDS,
+    after_failure,
+    after_success,
+    hash_pin,
+    pause_remaining,
+    tries_left,
+    valid_pin,
+    verify_pin,
+)
 from .store import DATA_HOUSEHOLD, Household
 
 # What the card shows when a change breaks a rule (spec 11.7: say what to do).
@@ -422,6 +435,214 @@ async def ws_config_save(
     connection.send_result(msg["id"])
 
 
+# PIN fields accept any value; the handler checks the format with a fixed
+# message, so Home Assistant's error logging can never quote a PIN.
+INVALID_PIN = "PINs are 4 to 6 digits."
+
+
+@callback
+def _pin_manager(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> tuple[Household, str | None] | None:
+    """The household and this command's session token, when the account may manage the PIN."""
+    household = _household(hass, connection, msg)
+    if household is None:
+        return None
+    if household.member(msg["member_id"]) is None:
+        connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
+        return None
+    account = _account(hass, household, connection.user)
+    session = _session(household, connection, msg)
+    if may_manage_pin(account, session, msg["member_id"]) is None:
+        _refuse(connection, msg, account)
+        return None
+    if not household.available:
+        connection.send_error(
+            msg["id"], "unavailable", "Update PlanaVista to change people and PINs."
+        )
+        return None
+    return household, msg.get("session") if session else None
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/pin/unlock",
+        vol.Required("member_id"): str,
+        vol.Required("pin"): object,
+    }
+)
+@websocket_api.async_response
+async def ws_pin_unlock(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Check a PIN and start parent mode (a parent) or the member's own session."""
+    household = _household(hass, connection, msg)
+    if household is None:
+        return
+    member_id = msg["member_id"]
+    member = household.member(member_id)
+    # One check at a time per member: parallel tries must not skip a pause.
+    async with household.pin_lock(member_id):
+        record = household.pins.get(member_id) if member else None
+        if record is None:
+            connection.send_result(msg["id"], {"ok": False, "reason": "no_pin"})
+            return
+        now = dt_util.utcnow()
+        if (wait := pause_remaining(record, now)) > 0:
+            connection.send_result(
+                msg["id"], {"ok": False, "reason": "paused", "retry_after": math.ceil(wait)}
+            )
+            return
+        pin = msg["pin"] if isinstance(msg["pin"], str) else ""
+        if not await hass.async_add_executor_job(verify_pin, pin, record):
+            record = after_failure(record, now)
+            household.pins[member_id] = record
+            await household.async_save()
+            wait = pause_remaining(record, now)
+            connection.send_result(
+                msg["id"],
+                {
+                    "ok": False,
+                    "reason": "paused" if wait else "wrong_pin",
+                    "tries_left": tries_left(record),
+                    "retry_after": math.ceil(wait) if wait else None,
+                },
+            )
+            return
+        if record.get("failures") or record.get("lockouts"):
+            household.pins[member_id] = after_success(record)
+            await household.async_save()
+    session = household.sessions.start(
+        member_id, bool(member.get("parent")), connection, _monotonic()
+    )
+    connection.subscriptions[("planavista_session", session.token)] = partial(
+        household.sessions.end, session.token
+    )
+    connection.send_result(
+        msg["id"],
+        {
+            "ok": True,
+            "session": session.token,
+            "member_id": member_id,
+            "parent": session.parent,
+            "expires_in": SESSION_IDLE_SECONDS,
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/pin/set",
+        vol.Required("member_id"): str,
+        vol.Required("pin"): object,
+        vol.Optional("session"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_pin_set(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Set or change a PIN. The member's other sessions end; this one stays."""
+    context = _pin_manager(hass, connection, msg)
+    if context is None:
+        return
+    household, token = context
+    if not valid_pin(msg["pin"]):
+        connection.send_error(msg["id"], "invalid_pin", INVALID_PIN)
+        return
+    household.pins[msg["member_id"]] = await hass.async_add_executor_job(hash_pin, msg["pin"])
+    household.sessions.end_member(msg["member_id"], keep=token)
+    await household.async_save()
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/pin/clear",
+        vol.Required("member_id"): str,
+        vol.Optional("session"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_pin_clear(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Remove a PIN, unless shared screens would be left with no parent PIN."""
+    context = _pin_manager(hass, connection, msg)
+    if context is None:
+        return
+    household, token = context
+    member_id = msg["member_id"]
+    pins = {key: value for key, value in household.pins.items() if key != member_id}
+    try:
+        check_parent_pins(
+            household.members, household.members, household.pins, pins, bool(household.shared_users)
+        )
+    except MemberError as err:
+        _member_error(connection, msg, err)
+        return
+    household.data["security"]["pins"] = pins
+    household.sessions.end_member(member_id, keep=token)
+    await household.async_save()
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/pin/clear_lockout",
+        vol.Required("member_id"): str,
+        vol.Optional("session"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_pin_clear_lockout(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """A parent ends a pause after too many wrong tries (spec 9.6)."""
+    context = _parent(hass, connection, msg)
+    if context is None:
+        return
+    household, _by = context
+    if (record := household.pins.get(msg["member_id"])) is not None:
+        household.pins[msg["member_id"]] = after_success(record)
+        await household.async_save()
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "planavista/pin/lock", vol.Required("session"): str}
+)
+@callback
+def ws_pin_lock(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """End a session now (Lock, or the page was hidden)."""
+    household = _household(hass, connection, msg)
+    if household is None:
+        return
+    if household.sessions.get(msg["session"], connection, _monotonic()) is not None:
+        household.sessions.end(msg["session"])
+        connection.subscriptions.pop(("planavista_session", msg["session"]), None)
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "planavista/pin/touch", vol.Required("session"): str}
+)
+@callback
+def ws_pin_touch(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Someone is using the screen: keep the session open."""
+    household = _household(hass, connection, msg)
+    if household is None:
+        return
+    if household.sessions.get(msg["session"], connection, _monotonic(), touch=True) is None:
+        connection.send_error(msg["id"], "session_ended", "The PIN session ended.")
+        return
+    connection.send_result(msg["id"], {"expires_in": SESSION_IDLE_SECONDS})
+
+
 HOUSEHOLD_COMMANDS = (
     ws_household_subscribe,
     ws_member_save,
@@ -431,6 +652,12 @@ HOUSEHOLD_COMMANDS = (
     ws_settings_save,
     ws_setup_save,
     ws_config_save,
+    ws_pin_unlock,
+    ws_pin_set,
+    ws_pin_clear,
+    ws_pin_clear_lockout,
+    ws_pin_lock,
+    ws_pin_touch,
 )
 
 
