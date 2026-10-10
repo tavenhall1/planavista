@@ -3,7 +3,7 @@ import { property, state, query } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent, CreateEventData } from '../types';
-import { PlanaVistaController } from '../state/state-manager';
+import { CalendarStore, StoreSubscriber } from '../modules/calendar/calendar-store';
 import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../utils/ha-utils';
 import {
   EditRestoreError,
@@ -71,7 +71,10 @@ export class PVEventCreateDialog extends LitElement {
     onResults: suggestions => { this._locationSuggestions = suggestions; },
     onLoading: loading => { this._locationLoading = loading; },
   });
-  private _pv = new PlanaVistaController(this);
+  /** The calendar state of the card that opened this. */
+  @property({ attribute: false }) store!: CalendarStore;
+  /** Re-renders when that store changes (the controller registers itself with this element). */
+  private _storeSubscription = new StoreSubscriber(this, () => this.store);
 
   @query('#title-input') private _titleInput?: HTMLInputElement;
   @query('.location-input') private _locationInput?: HTMLInputElement;
@@ -1147,7 +1150,7 @@ export class PVEventCreateDialog extends LitElement {
     this._datePickerOpen = false;
     this._activeTimePicker = null;
     this._resetLocationSearch();
-    this._pv.state.closeDialog();
+    this.store.closeDialog();
   }
 
   private async _editFallback(
@@ -1165,7 +1168,7 @@ export class PVEventCreateDialog extends LitElement {
 
     if (primaryEntityId && kept.includes(primaryEntityId) && uid) {
       const plan = planEdit(this.prefill as CalendarEvent, primaryEntityId, baseData);
-      await this._pv.state.doEditEvent(this.hass, plan.deleteData, plan.createData, plan.restoreData);
+      await this.store.doEditEvent(this.hass, plan.deleteData, plan.createData, plan.restoreData);
     } else if (primaryEntityId && removed.includes(primaryEntityId) && uid) {
       await deleteEvent(this.hass, { entity_id: primaryEntityId, uid, recurrence_id: recurrenceId });
     }
@@ -1194,8 +1197,8 @@ export class PVEventCreateDialog extends LitElement {
     }
 
     await refreshPlanaVista(this.hass);
-    this._pv.state.selectedEvent = null;
-    this._pv.state.closeDialog();
+    this.store.selectedEvent = null;
+    this.store.closeDialog();
   }
 
   private async _save() {
@@ -1260,8 +1263,8 @@ export class PVEventCreateDialog extends LitElement {
           // Delayed refresh: give Google ~3s to propagate
           const calEntities = [...selected, ...original];
           const hass = this.hass;
-          this._pv.state.selectedEvent = null;
-          this._pv.state.closeDialog();
+          this.store.selectedEvent = null;
+          this.store.closeDialog();
           setTimeout(async () => {
             try {
               const unique = [...new Set(calEntities)];
@@ -1297,8 +1300,8 @@ export class PVEventCreateDialog extends LitElement {
           // Delayed refresh for Google propagation
           const calEntities = [...selected];
           const hass = this.hass;
-          this._pv.state.selectedEvent = null;
-          this._pv.state.closeDialog();
+          this.store.selectedEvent = null;
+          this.store.closeDialog();
           setTimeout(async () => {
             try {
               for (const eid of calEntities) {
@@ -1312,7 +1315,7 @@ export class PVEventCreateDialog extends LitElement {
           // state manager restores the original if the recreate fails
           const primaryEntityId = this.prefill?.calendar_entity_id || '';
           const plan = planEdit(this.prefill as CalendarEvent, primaryEntityId, baseData);
-          await this._pv.state.doEditEvent(this.hass, plan.deleteData, plan.createData, plan.restoreData);
+          await this.store.doEditEvent(this.hass, plan.deleteData, plan.createData, plan.restoreData);
         }
       } else {
         // Create mode
@@ -1329,7 +1332,7 @@ export class PVEventCreateDialog extends LitElement {
           } as CreateEventData & { attendee_entity_ids: string[] });
 
           // Close dialog immediately for snappy UX
-          this._pv.state.closeDialog();
+          this.store.closeDialog();
 
           // Delayed refresh: give Google ~3s to propagate, then force
           // HA to re-fetch calendar entities before refreshing PlanaVista
@@ -1348,7 +1351,7 @@ export class PVEventCreateDialog extends LitElement {
         } else {
           // Single calendar: use normal create
           const data: CreateEventData = { ...baseData, entity_id: entityIds[0] } as CreateEventData;
-          await this._pv.state.doCreateEvent(this.hass, data);
+          await this.store.doCreateEvent(this.hass, data);
         }
       }
     } catch (err: any) {

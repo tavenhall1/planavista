@@ -3,7 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, DisplayConfig, WeatherCondition, PlanaVistaCardConfig, PlanaVistaData, ThemeOverrides } from '../types';
-import { PlanaVistaController } from '../state/state-manager';
+import { CalendarStoreController } from '../modules/calendar/calendar-store';
 import { applyTheme, resolveTheme, clearThemeCache, applyThemeWithOverrides } from '../styles/themes';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { getPlanaVistaData, getPersonAvatar, getPersonName } from '../utils/ha-utils';
@@ -54,7 +54,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   @state() private _refreshing = false;
   @state() private _previewOverrides: ThemeOverrides | null = null;
 
-  private _pv = new PlanaVistaController(this);
+  private _pv = new CalendarStoreController(this);
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
@@ -831,7 +831,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     // Card-level `view` or `default_view` override
     const cardView = config?.view || config?.default_view;
     if (cardView) {
-      this._pv.state.setView(cardView);
+      this._pv.store.setView(cardView);
     }
   }
 
@@ -840,7 +840,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     if (!cardView) {
       const data = this.hass ? getPlanaVistaData(this.hass, this._config?.entity) : null;
       if (data?.display?.default_view) {
-        this._pv.state.setView(data.display.default_view);
+        this._pv.store.setView(data.display.default_view);
       }
     }
   }
@@ -915,7 +915,7 @@ export class PlanaVistaCalendarCard extends LitElement {
 
   private _derived(): CardDerived {
     const entity = this._config?.entity || 'sensor.planavista_config';
-    return this._derive(this.hass?.states?.[entity], this._config, this._pv.state.hiddenCalendars);
+    return this._derive(this.hass?.states?.[entity], this._config, this._pv.store.hiddenCalendars);
   }
 
   private _getData() {
@@ -1056,7 +1056,7 @@ export class PlanaVistaCalendarCard extends LitElement {
       `;
     }
 
-    const pvState = this._pv.state;
+    const pvState = this._pv.store;
     const currentView = pvState.currentView;
     const currentDate = pvState.currentDate;
     const hideHeader = !!(this._config as PlanaVistaCardConfig)?.hide_header;
@@ -1078,6 +1078,7 @@ export class PlanaVistaCalendarCard extends LitElement {
 
         ${pvState.selectedEvent ? html`
           <pv-event-popup
+            .store=${this._pv.store}
             .hass=${this.hass}
             .event=${pvState.selectedEvent}
             .timeFormat=${display?.time_format || '12h'}
@@ -1086,6 +1087,7 @@ export class PlanaVistaCalendarCard extends LitElement {
 
         ${pvState.dialogOpen ? html`
           <pv-event-create-dialog
+            .store=${this._pv.store}
             .hass=${this.hass}
             .calendars=${calendars}
             .open=${true}
@@ -1155,7 +1157,7 @@ export class PlanaVistaCalendarCard extends LitElement {
   // ====================================================================
 
   private _renderToolbar(calendars: CalendarConfig[], currentView: string) {
-    const hiddenCount = calendars.filter(c => this._pv.state.hiddenCalendars.has(c.entity_id)).length;
+    const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
 
     return html`
       <div class="pvc-toolbar">
@@ -1172,7 +1174,7 @@ export class PlanaVistaCalendarCard extends LitElement {
           ${this._filterOpen ? html`
             <div class="pvc-filter-panel">
               ${calendars.map(cal => {
-                const isActive = !this._pv.state.hiddenCalendars.has(cal.entity_id);
+                const isActive = !this._pv.store.hiddenCalendars.has(cal.entity_id);
                 const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
                 const name = cal.display_name || (cal.person_entity ? getPersonName(this.hass, cal.person_entity) : cal.entity_id);
                 const initial = (name || '?')[0].toUpperCase();
@@ -1181,7 +1183,7 @@ export class PlanaVistaCalendarCard extends LitElement {
                   <div
                     class="pvc-filter-item ${isActive ? 'active' : ''}"
                     style="--item-color: ${cal.color}"
-                    @click=${() => this._pv.state.toggleCalendar(cal.entity_id)}
+                    @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
                   >
                     <div class="pvc-filter-check">
                       ${isActive ? html`<span class="pvc-filter-check-icon">✓</span>` : nothing}
@@ -1203,7 +1205,7 @@ export class PlanaVistaCalendarCard extends LitElement {
         <!-- Mobile inline calendar chips (shown on xs/sm via CSS) -->
         <div class="pvc-cal-strip">
           ${calendars.map(cal => {
-            const isActive = !this._pv.state.hiddenCalendars.has(cal.entity_id);
+            const isActive = !this._pv.store.hiddenCalendars.has(cal.entity_id);
             const avatar = cal.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
             const name = cal.display_name || (cal.person_entity ? getPersonName(this.hass, cal.person_entity) : cal.entity_id);
             const initial = (name || '?')[0].toUpperCase();
@@ -1211,7 +1213,7 @@ export class PlanaVistaCalendarCard extends LitElement {
               <button
                 class="pvc-cal-chip ${isActive ? 'active' : ''}"
                 style="--chip-color: ${cal.color}"
-                @click=${() => this._pv.state.toggleCalendar(cal.entity_id)}
+                @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
               >
                 <div
                   class="pvc-cal-chip-avatar"
@@ -1226,18 +1228,18 @@ export class PlanaVistaCalendarCard extends LitElement {
         </div>
 
         <div class="pvc-controls">
-          <button class="pvc-new-btn" @click=${() => this._pv.state.openCreateDialog()}>
+          <button class="pvc-new-btn" @click=${() => this._pv.store.openCreateDialog()}>
             + New
           </button>
 
           <div class="pvc-nav">
-            <button class="pvc-nav-btn" @click=${() => this._pv.state.navigateDate('prev')}>
+            <button class="pvc-nav-btn" @click=${() => this._pv.store.navigateDate('prev')}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="pvc-today-btn" @click=${() => this._pv.state.navigateDate('today')}>
+            <button class="pvc-today-btn" @click=${() => this._pv.store.navigateDate('today')}>
               Today
             </button>
-            <button class="pvc-nav-btn" @click=${() => this._pv.state.navigateDate('next')}>
+            <button class="pvc-nav-btn" @click=${() => this._pv.store.navigateDate('next')}>
               <ha-icon icon="mdi:chevron-right"></ha-icon>
             </button>
           </div>
@@ -1246,7 +1248,7 @@ export class PlanaVistaCalendarCard extends LitElement {
             ${(['day', 'week', 'month', 'agenda'] as const).map(view => html`
               <button
                 class="pvc-view-tab ${currentView === view ? 'active' : ''}"
-                @click=${() => this._pv.state.setView(view)}
+                @click=${() => this._pv.store.setView(view)}
               >${view}</button>
             `)}
           </div>
@@ -1297,8 +1299,8 @@ export class PlanaVistaCalendarCard extends LitElement {
   private _renderView(view: string, events: CalendarEvent[], calendars: CalendarConfig[], display: DisplayConfig | undefined) {
     const timeFormat = display?.time_format || '12h';
     const firstDay = display?.first_day || 'sunday';
-    const currentDate = this._pv.state.currentDate;
-    const hiddenCalendars = this._pv.state.hiddenCalendars;
+    const currentDate = this._pv.store.currentDate;
+    const hiddenCalendars = this._pv.store.hiddenCalendars;
 
     // Merge preview overrides (live editing) over saved overrides
     const overrides = this._previewOverrides || display?.theme_overrides;
@@ -1406,12 +1408,12 @@ export class PlanaVistaCalendarCard extends LitElement {
           })),
         } as any;
 
-        this._pv.state.selectEvent(enriched);
+        this._pv.store.selectEvent(enriched);
         return;
       }
     }
 
-    this._pv.state.selectEvent(clicked);
+    this._pv.store.selectEvent(clicked);
   }
 
   private _onCreateEvent(e: CustomEvent) {
@@ -1424,12 +1426,12 @@ export class PlanaVistaCalendarCard extends LitElement {
       prefill.start = `${y}-${m}-${d}T09:00:00`;
       prefill.end = `${y}-${m}-${d}T10:00:00`;
     }
-    this._pv.state.openCreateDialog(prefill);
+    this._pv.store.openCreateDialog(prefill);
   }
 
   private _onDayClick(e: CustomEvent) {
-    this._pv.state.setDate(e.detail.date);
-    this._pv.state.setView('day');
+    this._pv.store.setDate(e.detail.date);
+    this._pv.store.setView('day');
   }
 
   private _onTouchStart(e: TouchEvent) {
@@ -1445,7 +1447,7 @@ export class PlanaVistaCalendarCard extends LitElement {
     if (!start || e.touches.length > 0 || e.changedTouches.length !== 1) return;
     const end = e.changedTouches[0];
     const direction = swipeDirection(end.clientX - start.x, end.clientY - start.y);
-    if (direction) this._pv.state.navigateDate(direction);
+    if (direction) this._pv.store.navigateDate(direction);
   }
 
   private _onTouchCancel() {
