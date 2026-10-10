@@ -54,3 +54,20 @@ async def test_only_the_bundle_folder_is_served(
     ):
         response = await client.get(path)
         assert response.status == 404, path
+
+
+async def test_the_heading_face_is_served_with_its_license(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    hass_client_no_auth: ClientSessionGenerator,
+) -> None:
+    """The rounded face ships next to the bundle, its license beside it (spec 11.2)."""
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    client = await hass_client_no_auth()
+
+    font = await client.get("/planavista_panel/dist/fonts/nunito-latin-wght.woff2")
+    assert font.status == 200
+    assert (await font.read())[:4] == b"wOF2"
+    license_text = await (await client.get("/planavista_panel/dist/fonts/OFL.txt")).text()
+    assert "SIL OPEN FONT LICENSE Version 1.1" in license_text

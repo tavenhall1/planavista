@@ -109,9 +109,10 @@ export class PvSetup extends LitElement {
       }
 
       .heading {
+        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 8px 0 8px;
         font-size: 2rem;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: -0.02em;
         line-height: 1.2;
       }

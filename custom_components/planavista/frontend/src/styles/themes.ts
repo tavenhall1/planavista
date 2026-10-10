@@ -1,6 +1,7 @@
 import { css, CSSResult } from 'lit';
 import { ThemeOverrides } from '../types';
 import { contrastText } from '../core/color';
+import { FONT_BODY, FONT_HEADING } from './theme-pairs';
 
 export { contrastText };
 
@@ -118,7 +119,8 @@ const themeVars: Record<ThemeName, Record<string, string>> = {
     '--pv-radius-lg': '16px',
     '--pv-radius-sm': '8px',
     '--pv-transition': '200ms cubic-bezier(0.4, 0, 0.2, 1)',
-    '--pv-font-family': "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    '--pv-font-family': FONT_BODY,
+    '--pv-font-heading': FONT_HEADING,
     '--pv-header-gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     '--pv-header-text': '#FFFFFF',
     '--pv-backdrop': 'rgba(0, 0, 0, 0.3)',
@@ -144,7 +146,8 @@ const themeVars: Record<ThemeName, Record<string, string>> = {
     '--pv-radius-lg': '16px',
     '--pv-radius-sm': '8px',
     '--pv-transition': '200ms cubic-bezier(0.4, 0, 0.2, 1)',
-    '--pv-font-family': "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    '--pv-font-family': FONT_BODY,
+    '--pv-font-heading': FONT_HEADING,
     '--pv-header-gradient': 'linear-gradient(135deg, #3730A3 0%, #581C87 100%)',
     '--pv-header-text': '#FFFFFF',
     '--pv-backdrop': 'rgba(0, 0, 0, 0.6)',
@@ -170,7 +173,8 @@ const themeVars: Record<ThemeName, Record<string, string>> = {
     '--pv-radius-lg': '12px',
     '--pv-radius-sm': '6px',
     '--pv-transition': '150ms ease',
-    '--pv-font-family': "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    '--pv-font-family': FONT_BODY,
+    '--pv-font-heading': FONT_HEADING,
     '--pv-header-gradient': '#111827',
     '--pv-header-text': '#FFFFFF',
     '--pv-backdrop': 'rgba(0, 0, 0, 0.2)',
@@ -196,7 +200,8 @@ const themeVars: Record<ThemeName, Record<string, string>> = {
     '--pv-radius-lg': '20px',
     '--pv-radius-sm': '10px',
     '--pv-transition': '250ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-    '--pv-font-family': "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    '--pv-font-family': FONT_BODY,
+    '--pv-font-heading': FONT_HEADING,
     '--pv-header-gradient': 'linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)',
     '--pv-header-text': '#FFFFFF',
     '--pv-backdrop': 'rgba(124, 58, 237, 0.2)',

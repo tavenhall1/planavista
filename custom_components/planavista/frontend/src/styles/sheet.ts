@@ -47,6 +47,7 @@ export const sheetStyles = css`
   }
 
   .heading {
+    font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
     margin: 0 0 6px;
     font-size: 1.25rem;
     font-weight: 700;

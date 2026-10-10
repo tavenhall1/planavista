@@ -91,9 +91,10 @@ export class PvSettings extends LitElement {
       }
 
       .title {
+        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 0;
         font-size: 1.25rem;
-        font-weight: 700;
+        font-weight: 800;
       }
 
       .done {
@@ -138,6 +139,7 @@ export class PvSettings extends LitElement {
       }
 
       .group-label {
+        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 8px 12px 4px;
         font-size: 0.8125rem;
         font-weight: 600;
@@ -203,9 +205,10 @@ export class PvSettings extends LitElement {
       }
 
       .page-heading {
+        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 6px 0 16px;
         font-size: 1.5rem;
-        font-weight: 700;
+        font-weight: 800;
       }
 
       .banner {

@@ -16,6 +16,7 @@ import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { registerShellSettings } from './definition';
 import { HouseholdController } from './household-controller';
 import { LayoutController } from './layout-controller';
+import { ensurePageStyles } from './page-styles';
 import { SessionController } from './session-controller';
 
 // The card editor, the setup and Settings wizard, and the header clock.
@@ -362,6 +363,12 @@ export class PlanaVistaCard extends LitElement {
 
   setConfig(config: PlanaVistaCardConfig) {
     this._config = { entity: DEFAULT_ENTITY, ...config };
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    // The heading face is declared on the page; shadow roots ignore @font-face (spec 11.2).
+    ensurePageStyles();
   }
 
   updated(changedProps: PropertyValues) {
