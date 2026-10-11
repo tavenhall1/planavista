@@ -114,6 +114,9 @@
     "unknown_request": {
       "message": "That request was already answered."
     },
+    "request_closed": {
+      "message": "That request closed when the chore's time ran out."
+    },
     "unknown_reward": {
       "message": "That reward isn't in PlanaVista's rewards."
     },

@@ -205,6 +205,28 @@ def test_requests_need_an_open_item() -> None:
     assert err.value.code == "not_open"
 
 
+def test_a_request_closes_when_its_chore_is_missed() -> None:
+    engine = sample_engine()
+    request = engine.request(SCENE, kind="more_time", key=FISH, by="dana", until=date(2026, 10, 15)).data["request"]
+    out = engine.catch_up(at(10, 14, 9))  # nobody answered before the day ended
+    assert [e.data["occurrence"] for e in out.events if e.type == "missed"].count(FISH) == 1
+    assert engine.open_requests() == []
+    with pytest.raises(ChoreError) as err:
+        engine.review(at(10, 14, 10), request_id=request, allow=True, by="alex")
+    assert err.value.code == "request_closed"
+    out = engine.catch_up(at(10, 16, 9))
+    assert FISH not in [e.data["occurrence"] for e in out.events if e.type == "missed"]
+
+
+def test_a_request_stays_open_while_its_chore_is_still_due() -> None:
+    engine = sample_engine()
+    engine.request(SCENE, kind="skip", key=YARD, by="casey")
+    engine.catch_up(at(10, 15, 9))
+    assert [r["occurrence"] for r in engine.open_requests()] == [YARD]
+    engine.catch_up(at(10, 19, 9))  # the week is over
+    assert engine.open_requests() == []
+
+
 def test_planning_a_day_stays_within_the_week() -> None:
     engine = sample_engine()
     for day in (date(2026, 10, 12), date(2026, 10, 19)):

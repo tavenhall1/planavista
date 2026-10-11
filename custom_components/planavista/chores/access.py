@@ -30,6 +30,7 @@ MESSAGES: dict[str, str] = {
     "unknown_member": "That person isn't in the household.",
     "unknown_chore": "That chore isn't in the plan.",
     "unknown_request": "That request was already answered.",
+    "request_closed": "That request closed when the chore's time ran out.",
     "unknown_reward": "That reward isn't in the catalog.",
     "invalid_on_board": "Show on the board is on or off.",
     "invalid_needs_ok": "Needs a parent's OK is on or off.",
@@ -70,7 +71,7 @@ MESSAGES: dict[str, str] = {
 # Mistakes with their own translated message in strings.json; every other rule
 # reads "{reason}" through invalid_chore.
 OWN_TRANSLATIONS = frozenset(
-    {"unknown_member", "unknown_chore", "unknown_request", "unknown_reward", "not_enough_stars"}
+    {"unknown_member", "unknown_chore", "unknown_request", "request_closed", "unknown_reward", "not_enough_stars"}
 )
 SCHEDULE_CODES = frozenset(
     {"invalid_schedule", "invalid_once", "invalid_repeats", "invalid_minimum", "invalid_days",

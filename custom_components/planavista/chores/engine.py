@@ -1080,6 +1080,8 @@ class ChoresEngine:
             out.data = {"occurrence": completion["occurrence"]}
             return out
         request = next((r for r in self.log["requests"] if r["id"] == request_id), None)
+        if request is not None and request.get("state") == "lapsed":
+            raise ChoreError("request_closed")
         if request is not None and request.get("state") == "open":
             request["state"] = "allowed" if allow else "declined"
             request["review"] = {"by": by, "at": self._stamp(now), "note": note, "source": source}
@@ -1476,6 +1478,7 @@ class ChoresEngine:
         week_ends = clock.week_end(day) == day + timedelta(days=1)
         week = clock.week_start(day)
         week_items = self._week_items(week, index) if week_ends else {}
+        closing: set[str] = set()
         for member_id in self.member_ids():
             found = by_member.get(member_id, [])
             missed: list[str] = []
@@ -1484,6 +1487,7 @@ class ChoresEngine:
                 due = item.occ.due
                 if item.section == "overdue" or due is None or clock.due_day(due) != day:
                     continue
+                closing.add(item.occ.key)
                 if item.status not in OPEN:
                     continue
                 if policy == "carry_over":
@@ -1497,6 +1501,7 @@ class ChoresEngine:
                 self.log["summaries"].append(
                     self._week_summary(member_id, week, day + timedelta(days=1), week_items.get(member_id, {}))
                 )
+        self._lapse(closing, end)
         self._tidy_carried(day, index)
         self._prune(end)
         for activity in self.plan["activities"]:
@@ -1566,6 +1571,13 @@ class ChoresEngine:
             "closed": bool(due) and not late,
             "contribution": self.contribution(member_id, week, end),
         }
+
+    def _lapse(self, keys: set[str], at: datetime) -> None:
+        """Requests nobody answered before their chore's time ran out close (spec 8.7)."""
+        for request in self.log["requests"]:
+            if request.get("state") == "open" and request["occurrence"] in keys:
+                request["state"] = "lapsed"
+                request["review"] = {"by": AUTO, "at": self._stamp(at), "note": None, "source": AUTO}
 
     def _tidy_carried(self, day: date, index: _Index) -> None:
         """Drop overdue records once they are done or excused, or their chore or person is gone."""
