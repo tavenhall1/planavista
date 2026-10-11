@@ -1,7 +1,7 @@
-import { LitElement, html, css, nothing } from 'lit';
-import { property } from 'lit/decorators.js';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
-import type { Layout } from '../core/layout';
+import { type Layout, barFits } from '../core/layout';
 import type { ModuleAction, ModuleView } from '../core/module-registry';
 
 /** A module as the switcher shows it. */
@@ -23,6 +23,9 @@ export interface BarModule {
  */
 export class PvNavBar extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** The controls don't fit on one row (a phone with two modules), so the views get their own. */
+  @state() private _wrapped = false;
+  private _observer?: ResizeObserver;
   @property({ attribute: false }) modules: BarModule[] = [];
   @property({ attribute: false }) activeModule = '';
   @property({ attribute: false }) views: ModuleView[] = [];
@@ -211,7 +214,54 @@ export class PvNavBar extends LitElement {
       color: var(--pv-text-secondary, #5F6670);
       --mdc-icon-size: 22px;
     }
+
+    /* Two rows when one won't hold everything: the switcher, buttons, and gear, then the views. */
+    :host([wrapped]) nav {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+
+    :host([wrapped]) .views {
+      order: 1;
+      flex: 1 0 100%;
+      justify-content: space-around;
+      overflow-x: visible;
+      margin-left: 0;
+    }
   `;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._observer = new ResizeObserver(() => this._measure());
+    this._observer.observe(this);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._observer?.disconnect();
+  }
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    if (!changed.has('_wrapped')) this._measure();
+    this.toggleAttribute('wrapped', this._wrapped);
+  }
+
+  /** Whether everything fits on one row at its natural width; the views' buttons never shrink, so this is stable. */
+  private _measure(): void {
+    const nav = this.renderRoot.querySelector('nav');
+    if (!nav || !nav.clientWidth) return;
+    const style = getComputedStyle(nav);
+    const available = nav.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+    const gap = parseFloat(style.columnGap) || 12;
+    const views = [...this.renderRoot.querySelectorAll<HTMLElement>('.views .view')];
+    const viewsWidth = views.reduce((sum, view) => sum + view.offsetWidth, 0) + 2 * Math.max(0, views.length - 1);
+    const others = [...nav.children]
+      .filter(child => !child.classList.contains('views'))
+      .map(child => (child as HTMLElement).offsetWidth);
+    const wrapped = !barFits([...others, viewsWidth], gap, available);
+    if (wrapped !== this._wrapped) this._wrapped = wrapped;
+  }
 
   render() {
     return html`

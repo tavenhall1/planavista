@@ -7,6 +7,16 @@ export interface Box {
 }
 
 export const PHONE_MAX_WIDTH = 600;
+
+/**
+ * Whether the bar's groups (the module switcher, the views, the buttons, the
+ * gear), at their natural widths and `gap` apart, fit in `available` pixels on
+ * one row (spec 12.2); when they don't, the views get a row of their own.
+ */
+export function barFits(widths: number[], gap: number, available: number): boolean {
+  const used = widths.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, widths.length - 1);
+  return used <= available;
+}
 const SQUARE_LOW = 0.95;
 const SQUARE_HIGH = 1.05;
 
