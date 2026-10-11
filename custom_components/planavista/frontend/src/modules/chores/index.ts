@@ -2,6 +2,10 @@
 import './pv-chores-module';
 import './settings/pv-chores-list-page';
 import './settings/pv-chore-editor';
+import './settings/pv-rewards-page';
+import './settings/pv-reward-editor';
+import './settings/pv-rules-page';
+import './settings/pv-reminders-page';
 import { registerChoresModule, registerChoresSettings } from './definition';
 
 registerChoresModule();

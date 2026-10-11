@@ -31,6 +31,15 @@ describe('the Chores group of Settings', () => {
     expect(page.summary!(context(true, null))).toBe('');
   });
 
+  it('sums up Rewards, Rules, and Reminders', () => {
+    const summary = (id: string, b: Board | null = sample) => choresSettingsPages.find(p => p.id === id)!.summary!(context(true, b));
+    expect(summary('rewards', { ...sample, rewards: [{ id: 'x', name: 'X', icon: null, cost: 5, needs_ok: true, who: [] }] })).toBe('1 reward');
+    expect(summary('rules')).toBe('Make it up');
+    expect(summary('reminders')).toBe('7:00 PM');
+    expect(summary('reminders', { ...sample, settings: { ...sample.settings, evening_check: null } })).toBe('Off');
+    expect(summary('rules', null)).toBe('');
+  });
+
   it('reads the board from the chores service', () => {
     expect(settingsBoard(context(true, sample))).toBe(sample);
     expect(settingsBoard({ services: {} })).toBeNull();

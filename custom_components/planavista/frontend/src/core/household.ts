@@ -47,7 +47,13 @@ export interface HouseholdView {
   setup: { completed: boolean; step: string | null };
 }
 
-/** The fields the person page and setup change. */
+/** What a person's phones get (spec 7.2): Waiting for OK requests (parents) and evening reminders. */
+export interface NotifyChoice {
+  requests: boolean;
+  reminders: boolean;
+}
+
+/** The fields the person page, setup, and Reminders change. */
 export interface MemberChanges {
   name?: string;
   color?: string;
@@ -55,6 +61,7 @@ export interface MemberChanges {
   age_group?: AgeGroup;
   parent?: boolean;
   person?: string | null;
+  notify?: NotifyChoice;
 }
 
 /** The part of a calendar row the people pages read. */

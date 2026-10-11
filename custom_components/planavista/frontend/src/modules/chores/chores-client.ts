@@ -1,7 +1,9 @@
 import { LiveStatus, LiveSubscription } from '../../core/live-subscription';
 import { WsApi } from '../../core/ws-api';
 import type { Member } from '../../core/household';
-import type { Activity, ChoreHistory, ChoresFeed, CompleteResult, DayView, Reward, WeekView } from './chores-types';
+import type {
+  Activity, ChoreHistory, ChoresFeed, ChoresSettings, CompleteResult, DayView, Reward, WeekView,
+} from './chores-types';
 
 /** Follows planavista/chores/subscribe: the board for today, sent again after every change. */
 export class ChoresSubscription extends LiveSubscription<ChoresFeed> {
@@ -56,6 +58,11 @@ export class ChoresApi extends WsApi {
 
   deleteActivity(activityId: string): Promise<void> {
     return this.call('planavista/chores/activity/delete', { activity_id: activityId });
+  }
+
+  /** Rules and Reminders: they apply as a parent taps (spec 14.1). */
+  saveSettings(settings: Partial<ChoresSettings>): Promise<{ settings: ChoresSettings }> {
+    return this.call('planavista/chores/settings/save', { settings });
   }
 
   saveReward(reward: Partial<Reward>, rewardId?: string): Promise<{ reward: Reward }> {

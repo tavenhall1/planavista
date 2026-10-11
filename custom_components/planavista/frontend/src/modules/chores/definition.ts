@@ -3,6 +3,8 @@ import { PageRegistry } from '../../core/page-registry';
 import { SettingsContext, SettingsPage, settingsRegistry } from '../../core/settings-registry';
 import { ChoresService, choresEnabled } from './chores-service';
 import type { Board } from './chores-types';
+import { remindersSummary } from './settings/reminders-derive';
+import { rulesSummary } from './settings/rules-derive';
 
 /** The views the Chores module offers in the bar (spec 12.2). */
 export const CHORES_VIEWS = [
@@ -52,6 +54,42 @@ export const choresSettingsPages: SettingsPage[] = [
     summary: ctx => {
       const board = settingsBoard(ctx);
       return board ? count(board.chores.filter(a => !a.finished_at).length, 'chore', 'chores') : '';
+    },
+  },
+  {
+    id: 'rewards',
+    label: 'Rewards',
+    group: 'chores',
+    order: 210,
+    tag: 'pv-rewards-page',
+    applies: ({ household }) => choresEnabled({ household }),
+    summary: ctx => {
+      const board = settingsBoard(ctx);
+      return board ? count(board.rewards.length, 'reward', 'rewards') : '';
+    },
+  },
+  {
+    id: 'rules',
+    label: 'Rules',
+    group: 'chores',
+    order: 220,
+    tag: 'pv-rules-page',
+    applies: ({ household }) => choresEnabled({ household }),
+    summary: ctx => {
+      const board = settingsBoard(ctx);
+      return board ? rulesSummary(board.settings) : '';
+    },
+  },
+  {
+    id: 'reminders',
+    label: 'Reminders',
+    group: 'chores',
+    order: 230,
+    tag: 'pv-reminders-page',
+    applies: ({ household }) => choresEnabled({ household }),
+    summary: ctx => {
+      const board = settingsBoard(ctx);
+      return board ? remindersSummary(board.settings, ctx.data?.display?.time_format) : '';
     },
   },
 ];
