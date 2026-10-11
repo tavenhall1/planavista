@@ -1,0 +1,19 @@
+{
+  "about": "Stars per check-off (spec 8.3): the chore's own number when set, otherwise 1 per minutes_per_star, rounded half up, at least 1. The card's copy of the formula is checked against this table too.",
+  "cases": [
+    {"minutes": 60, "minutes_per_star": 15, "stars": 4},
+    {"minutes": 15, "minutes_per_star": 15, "stars": 1},
+    {"minutes": 37.5, "minutes_per_star": 15, "stars": 3},
+    {"minutes": 22.5, "minutes_per_star": 15, "stars": 2},
+    {"minutes": 7.5, "minutes_per_star": 15, "stars": 1},
+    {"minutes": 5, "minutes_per_star": 15, "stars": 1},
+    {"minutes": 52.5, "minutes_per_star": 15, "stars": 4},
+    {"minutes": 40, "minutes_per_star": 15, "stars": 3},
+    {"minutes": 8.57, "minutes_per_star": 15, "stars": 1},
+    {"minutes": 120, "minutes_per_star": 30, "stars": 4},
+    {"minutes": 45, "minutes_per_star": 10, "stars": 5},
+    {"minutes": 240, "minutes_per_star": 15, "stars": 16},
+    {"minutes": 60, "minutes_per_star": 15, "override": 10, "stars": 10},
+    {"minutes": 60, "minutes_per_star": 15, "override": 0, "stars": 0}
+  ]
+}
