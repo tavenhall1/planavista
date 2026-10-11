@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import timedelta
 from typing import Any
 from unittest.mock import patch
 
@@ -14,11 +15,13 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util.file import WriteError
 
+from custom_components.planavista.chores.engine import ChoresEngine
 from custom_components.planavista.chores.model import default_log, default_rewards
 from custom_components.planavista.chores.runtime import DATA_CHORES
+from custom_components.planavista.chores.store import normalize_plan
 from custom_components.planavista.const import DOMAIN
 
-from .chores_sample import MEMBERS, built, sample_activities
+from .chores_sample import MEMBERS, SCENE, TZ, at, built, sample_activities
 from .conftest import FakeCalendar, ws_command
 
 
@@ -161,6 +164,49 @@ async def test_a_failed_write_raises_a_repair_and_tells_the_card(hass: HomeAssis
     await hass.async_block_till_done()
     assert chores.save_failed is False
     assert ir.async_get(hass).async_get_issue(DOMAIN, "chores_save_failed") is None
+
+
+async def test_a_failed_write_is_tried_again_every_few_minutes(
+    hass: HomeAssistant, chores: Any, freezer: Any, hass_storage: dict[str, Any]
+) -> None:
+    with patch("homeassistant.helpers.storage.Store._async_write_data", side_effect=WriteError("disk full")):
+        await chores.async_run(lambda e, now: e.save_settings(now, {"sound": True}))
+    assert chores.save_failed is True
+    freezer.tick(timedelta(minutes=5))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass_storage["planavista.chores_plan"]["data"]["settings"]["sound"] is True
+    assert chores.save_failed is False
+    assert ir.async_get(hass).async_get_issue(DOMAIN, "chores_save_failed") is None
+
+
+async def test_a_failed_log_write_is_tried_again_before_the_entry_unloads(
+    hass: HomeAssistant, chores: Any, freezer: Any, hass_storage: dict[str, Any], mock_config_entry: MockConfigEntry
+) -> None:
+    with patch("homeassistant.helpers.storage.Store._async_write_data", side_effect=WriteError("disk full")):
+        await _complete(chores, "yard_work")
+        freezer.tick(2)
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert chores.save_failed is True
+    assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    saved = hass_storage["planavista.chores_log"]["data"]["completions"]
+    assert [c["occurrence"] for c in saved] == ["yard_work|casey|week:2026-10-12|0"]
+
+
+def test_chores_of_a_kind_from_a_newer_release_are_kept_and_left_alone() -> None:
+    plan = normalize_plan({"activities": [
+        {"id": "dish_rotation", "name": "Dish rotation", "schedule": "rotation", "assignees": ["casey"]},
+    ]})
+    assert [a["id"] for a in plan["activities"]] == ["dish_rotation"]  # a step back keeps them (spec 7.8)
+    engine = ChoresEngine(plan, default_log(), default_rewards(), MEMBERS, tz=TZ)
+    engine.start(SCENE)
+    assert engine.items(SCENE) == {}
+    assert engine.board(SCENE)["members"]["casey"]["items"] == []
+    engine.week_view(SCENE)
+    engine.catch_up(at(10, 20, 9))
+    assert engine.activity("dish_rotation") is not None
 
 
 async def test_check_offs_are_saved_before_the_entry_unloads(

@@ -76,7 +76,7 @@ def normalize_plan(data: object) -> dict[str, Any]:
         [
             dict(a) for a in activities
             if isinstance(a, Mapping) and isinstance(a.get("id"), str) and isinstance(a.get("name"), str)
-            and a.get("schedule") in ("plan", "once", "repeats")
+            and isinstance(a.get("schedule"), str)
         ]
         if isinstance(activities, list)
         else []

@@ -245,10 +245,21 @@ class ChoresRuntime:
         self._check_writes()
 
     async def async_flush(self) -> None:
-        """Write a waiting log save now (Home Assistant is stopping, or the entry unloads)."""
+        """Write a waiting log save, and any failed write, now (Home Assistant is stopping, or the entry unloads)."""
         if self._log_save is not None:
             self._log_save()
             await self._async_save_log()
+        await self._async_retry_writes()
+
+    async def _async_retry_writes(self) -> None:
+        """Write again each file whose last write failed: its change is still in memory."""
+        if self.problem is not None:
+            return  # nothing is written over a damaged file or a newer release's
+        failed = [name for name, store in self.stores.files.items() if store.write_failed]
+        for name in failed:
+            await self.stores.async_save(name, getattr(self.engine, name))
+        if failed:
+            self._check_writes()
 
     @callback
     def _check_writes(self) -> None:
@@ -313,8 +324,8 @@ class ChoresRuntime:
             await self.async_apply(self.engine.catch_up(self.now()))
         self._schedule_boundary()
 
-    @callback
-    def _on_refresh(self, _now: datetime) -> None:
+    async def _on_refresh(self, _now: datetime) -> None:
+        await self._async_retry_writes()
         self.async_notify(changed=False)
 
     async def _on_final_write(self, _event: Event) -> None:
