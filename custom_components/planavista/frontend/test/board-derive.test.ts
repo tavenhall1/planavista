@@ -9,6 +9,7 @@ import {
   estimateText,
   eveningCheck,
   everyRingClosed,
+  ringsToCelebrate,
   type DeriveContext,
 } from '../src/modules/chores/board-derive';
 import type { DayEvent } from '../src/modules/chores/calendar-ties';
@@ -31,6 +32,19 @@ function ctx(fields: Partial<DeriveContext> = {}): DeriveContext {
 
 const keysOf = (entries: ReturnType<typeof columnFor>['entries']) =>
   entries.map(e => (e.kind === 'row' ? `${e.zone}:${e.row.key.split('|')[0]}` : `${e.kind}:${e.text}`));
+
+describe('ringsToCelebrate (spec 11.5: once a ring, once a day)', () => {
+  it('celebrates a ring when it closes, but not again after an undo and a redo that day', () => {
+    const items = [item('cat_care|casey|day:2026-10-13|1', { status: 'done' })];
+    const columns = boardColumns(board({ casey: column(items) }), ctx());
+    const celebrated = new Set<string>();
+    const open = new Map([['casey', false]]);
+    expect(ringsToCelebrate(columns, open, celebrated, TODAY)).toEqual(['casey']);
+    expect(ringsToCelebrate(columns, open, celebrated, TODAY)).toEqual([]);
+    expect(ringsToCelebrate(columns, open, celebrated, '2026-10-14')).toEqual(['casey']);
+    expect(ringsToCelebrate(columns, new Map(), new Set(), TODAY)).toEqual([]);
+  });
+});
 
 describe('bandAt (the engine\'s bands, spec 8.4)', () => {
   it('runs morning from the day\'s start to noon, afternoon to 5 PM, and evening past midnight', () => {

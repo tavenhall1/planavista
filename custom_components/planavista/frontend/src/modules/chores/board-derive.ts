@@ -328,6 +328,25 @@ export function boardRows(count: number, width: number, gap = 12, minWidth = 240
   return result;
 }
 
+/**
+ * The people whose ring just closed and hasn't been celebrated on `day` yet (spec 11.5:
+ * once a ring, once a day, so an undo and a redo don't play it again). `before` holds
+ * whether each ring was closed at the last look; `celebrated` remembers who was, and
+ * gets the ones returned.
+ */
+export function ringsToCelebrate(
+  columns: ColumnModel[], before: Map<string, boolean>, celebrated: Set<string>, day: string,
+): string[] {
+  const now: string[] = [];
+  for (const col of columns) {
+    const id = col.member.id;
+    if (before.get(id) !== false || !col.ring.closed || celebrated.has(`${id}|${day}`)) continue;
+    celebrated.add(`${id}|${day}`);
+    now.push(id);
+  }
+  return now;
+}
+
 /** Whether every ring that had something due today is closed (the family celebration). */
 export function everyRingClosed(columns: ColumnModel[]): boolean {
   const due = columns.filter(c => c.entry.today.due > 0);

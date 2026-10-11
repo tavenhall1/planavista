@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { keyed } from 'lit/directives/keyed.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import type { Layout } from '../../core/layout';
@@ -15,7 +16,7 @@ import '../../core/pv-ring';
 import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
 import type { Board } from './chores-types';
-import { ColumnModel, boardColumns, boardRows, eveningCheck, everyRingClosed } from './board-derive';
+import { ColumnModel, boardColumns, boardRows, eveningCheck, everyRingClosed, ringsToCelebrate } from './board-derive';
 import { eventsOn } from './calendar-ties';
 import { chime, haptic } from './effects';
 import './pv-chores-column';
@@ -56,7 +57,9 @@ export class PvChoresBoard extends LitElement {
   private _observer?: ResizeObserver;
   private _closed = new Map<string, boolean>();
   private _evening = false;
-  private _familyShown = false;
+  /** Who was celebrated on which chore day ("casey|2026-10-13"), and the day everyone was. */
+  private _celebrated = new Set<string>();
+  private _familyDay: string | null = null;
   private _touch: { x: number; y: number } | null = null;
 
   static styles = [
@@ -182,23 +185,18 @@ export class PvChoresBoard extends LitElement {
     const columns = this._columns();
     const live = changed.get('board') !== undefined || this._closed.size > 0;
     const celebrate = { ...this._celebrate };
-    let any = false;
-    for (const col of columns) {
-      const was = this._closed.get(col.member.id);
-      if (live && was === false && col.ring.closed) {
-        celebrate[col.member.id] = (celebrate[col.member.id] ?? 0) + 1;
-        any = true;
-      }
-      this._closed.set(col.member.id, col.ring.closed);
-    }
+    const day = this.board.today;
+    const closing = live ? ringsToCelebrate(columns, this._closed, this._celebrated, day) : [];
+    for (const id of closing) celebrate[id] = (celebrate[id] ?? 0) + 1;
+    const any = closing.length > 0;
+    for (const col of columns) this._closed.set(col.member.id, col.ring.closed);
     const family = everyRingClosed(columns);
-    if (family && live && !this._familyShown && any) {
-      this._familyShown = true;
+    if (family && live && any && this._familyDay !== day) {
+      this._familyDay = day;
       this._family = true;
       for (const col of columns) if (col.entry.today.due > 0) celebrate[col.member.id] = (celebrate[col.member.id] ?? 0) + 1;
       window.setTimeout(() => { this._family = false; }, 6000);
     }
-    if (!family) this._familyShown = false;
     if (any) {
       this._celebrate = celebrate;
       haptic('ring');
@@ -271,7 +269,7 @@ export class PvChoresBoard extends LitElement {
         `)}
       </div>
       <div class="phone" @touchstart=${this._touchStart} @touchend=${(e: TouchEvent) => this._touchEnd(e, columns.length)}>
-        ${this._column(current, true)}
+        ${keyed(current.member.id, this._column(current, true))}
       </div>
     `;
   }
