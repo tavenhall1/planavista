@@ -18,10 +18,13 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Supp
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from ..const import DOMAIN
+from homeassistant.util import dt as dt_util
+
+from ..const import CONF_CALENDARS, DOMAIN, VERSION
 from ..household.permissions import Account
-from .access import async_account, member_by, parent_by, resolve_member, service_error, source_of
+from .access import async_account, member_by, not_allowed, parent_by, resolve_member, service_error, source_of
 from .engine import ChoresEngine, Outcome, with_away, without_away
+from .importer import export_household
 from .model import ChoreError
 from .occurrences import parse_key
 from .runtime import DATA_CHORES, ChoresRuntime
@@ -92,6 +95,7 @@ AWARD_STARS_SCHEMA = vol.Schema({
     vol.Required("stars"): vol.Coerce(int),
     vol.Required("reason"): cv.string,
 })
+EXPORT_HOUSEHOLD_SCHEMA = vol.Schema({})
 
 
 def _runtime(hass: HomeAssistant) -> ChoresRuntime:
@@ -305,6 +309,17 @@ async def _award_stars(call: ServiceCall) -> ServiceResponse:
     return {"balance": out.data["balance"]}
 
 
+async def _export_household(call: ServiceCall) -> ServiceResponse:
+    runtime, account = await _caller(call)
+    if account.kind not in ("automation", "admin"):
+        raise not_allowed()
+    rows = runtime.entry.data.get(CONF_CALENDARS, []) if runtime.entry is not None else []
+    return export_household(
+        runtime.household.members, rows, runtime.engine.plan, runtime.engine.rewards,
+        version=VERSION, exported=dt_util.now().isoformat(timespec="seconds"),
+    )
+
+
 SERVICES: dict[str, tuple[Callable[[ServiceCall], Awaitable[ServiceResponse]], vol.Schema, SupportsResponse]] = {
     "complete_chore": (_complete_chore, COMPLETE_CHORE_SCHEMA, SupportsResponse.OPTIONAL),
     "undo_chore": (_undo_chore, UNDO_CHORE_SCHEMA, SupportsResponse.OPTIONAL),
@@ -318,6 +333,7 @@ SERVICES: dict[str, tuple[Callable[[ServiceCall], Awaitable[ServiceResponse]], v
     "pause_member": (_pause_member, PAUSE_MEMBER_SCHEMA, SupportsResponse.OPTIONAL),
     "resume_member": (_resume_member, RESUME_MEMBER_SCHEMA, SupportsResponse.OPTIONAL),
     "award_stars": (_award_stars, AWARD_STARS_SCHEMA, SupportsResponse.OPTIONAL),
+    "export_household": (_export_household, EXPORT_HOUSEHOLD_SCHEMA, SupportsResponse.ONLY),
 }
 
 

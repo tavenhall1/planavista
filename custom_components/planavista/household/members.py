@@ -285,13 +285,21 @@ def ordered(members: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 def add_member(
-    members: list[dict[str, Any]], changes: Mapping[str, Any]
+    members: list[dict[str, Any]], changes: Mapping[str, Any], member_id: str | None = None
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Add someone at the end; returns the new list and the new member."""
+    """Add someone at the end; returns the new list and the new member.
+
+    `member_id` keeps an id worked out beforehand (an import names people in
+    its chores before they are added); otherwise one is made from the name.
+    """
     if len(members) >= MAX_MEMBERS:
         raise MemberError("too_many")
     member = build_member(None, changes, members)
-    member["id"] = make_id(member["name"], (m["id"] for m in members))
+    taken = {m["id"] for m in members}
+    if member_id is not None and member_id not in taken and member_id not in RESERVED_IDS and slug(member_id) == member_id:
+        member["id"] = member_id
+    else:
+        member["id"] = make_id(member["name"], taken)
     member["order"] = max((int(m.get("order", 0)) for m in members), default=-1) + 1
     member["rev"] = 1
     return [*members, member], member

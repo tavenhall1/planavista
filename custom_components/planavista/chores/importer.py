@@ -464,7 +464,7 @@ def plan_import(
             try:
                 build_member(by_id[member_id], changes, others)
             except MemberError as err:
-                problems.append({"item": person["name"], "code": err.code})
+                problems.append({"item": person["name"], "code": err.code, "of": "member"})
             members_update[member_id] = changes
             after = [dict(m, **changes) if m["id"] == member_id else m for m in after]
         else:
@@ -486,7 +486,7 @@ def plan_import(
             try:
                 record = build_member(None, changes, after)
             except MemberError as err:
-                problems.append({"item": person["name"], "code": err.code})
+                problems.append({"item": person["name"], "code": err.code, "of": "member"})
                 continue
             record["id"] = new_id
             members_add.append(record)

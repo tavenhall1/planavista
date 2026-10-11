@@ -18,6 +18,7 @@ import time as wall_time
 from typing import Any
 
 from .model import (
+    ACTIVITY_FIELDS,
     MAX_ACTIVITIES,
     MAX_REWARDS,
     ChoreError,
@@ -1508,6 +1509,68 @@ class ChoresEngine:
             value = activity["once"].get(name)
             if value and value != before.get(name) and _day(value) < today:
                 raise ChoreError("invalid_once", "Pick today or a later day.")
+
+    def apply_import(self, now: datetime, changes: Mapping[str, Any], *, by: str, source: str) -> Outcome:
+        """Save an import's chores, rewards, and rules together (spec 7.9).
+
+        `changes` comes from importer.plan_import. Everything is checked again
+        first, so a rule broken since the preview saves nothing. Imported chores
+        keep the planner's fields and where they came from; nothing is deleted.
+        """
+        members = set(self.member_ids())
+        activities = list(self.plan["activities"])
+        at = {a["id"]: i for i, a in enumerate(activities)}
+        updated: list[tuple[int, dict[str, Any]]] = []
+        for chore_id, update in changes["activities_update"].items():
+            if chore_id not in at:
+                raise ChoreError("unknown_chore")
+            existing = activities[at[chore_id]]
+            activity = build_activity(existing, update["changes"], members)
+            activity.update(update.get("extra") or {})
+            activity["rev"] = int(existing.get("rev", 1)) + 1
+            self._note_joined(activity, existing, now)
+            updated.append((at[chore_id], activity))
+        taken = set(at)
+        added: list[dict[str, Any]] = []
+        for record in changes["activities_add"]:
+            activity = build_activity(None, record, members)
+            activity.update({k: v for k, v in record.items() if k not in ACTIVITY_FIELDS and k not in ("rev", "assigned_since")})
+            if activity.get("id") in taken or not activity.get("id"):
+                activity["id"] = make_id(activity["name"], taken)
+            taken.add(activity["id"])
+            activity["rev"] = 1
+            activity.setdefault("created", {"by": by, "source": source, "at": self._stamp(now)})
+            added.append(activity)
+        if len(activities) + len(added) > MAX_ACTIVITIES:
+            raise ChoreError("too_many")
+        rewards = list(self.rewards["rewards"])
+        reward_at = {r["id"]: i for i, r in enumerate(rewards)}
+        new_rewards = []
+        for reward_id, update in changes.get("rewards_update", {}).items():
+            if reward_id not in reward_at:
+                raise ChoreError("unknown_reward")
+            rewards[reward_at[reward_id]] = build_reward(rewards[reward_at[reward_id]], update, members)
+        reward_taken = set(reward_at)
+        for record in changes.get("rewards_add", []):
+            reward = build_reward(None, record, members)
+            reward["id"] = record["id"] if record.get("id") and record["id"] not in reward_taken else make_id(
+                reward["name"], reward_taken
+            )
+            reward_taken.add(reward["id"])
+            new_rewards.append(reward)
+        if len(rewards) + len(new_rewards) > MAX_REWARDS:
+            raise ChoreError("too_many")
+        settings = build_settings(self.settings, changes["settings"]) if changes.get("settings") else None
+        for index, activity in updated:
+            activities[index] = activity
+        self.plan["activities"] = activities + added
+        out = Outcome("imported", {"added": len(added), "updated": len(updated)}, changed={"plan"})
+        if changes.get("rewards_update") or new_rewards:
+            self.rewards["rewards"] = rewards + new_rewards
+            out.changed.add("rewards")
+        if settings is not None:
+            out.merge(self.save_settings(now, settings))
+        return out
 
     def delete_activity(self, chore_id: str) -> Outcome:
         """Delete a chore: it leaves the board at once; past weeks and earned stars stay."""
