@@ -14,6 +14,7 @@ import { CalendarStoreController } from './calendar-store';
 import { CalendarDerived, deriveCalendarData } from './calendar-derive';
 import { withModeColors } from './mode-colors';
 import { contrastText } from '../../core/color';
+import type { ModuleService } from '../../core/module-registry';
 
 import './components/view-day';
 import './components/view-week';
@@ -47,6 +48,10 @@ export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) view: ViewType | undefined;
   /** The card's layout (spec 12.1), passed on to the views. */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Other modules' card-wide state: the Day view's rings read Chores' progress (spec 13.9). */
+  @property({ attribute: false }) services: Record<string, ModuleService> = {};
+  /** Bumped by the card when a module's service has news. */
+  @property({ attribute: false }) revision = 0;
 
   /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
   @state() private _tick = Math.floor(Date.now() / 60000);
@@ -54,6 +59,8 @@ export class PvCalendarModule extends LitElement {
   @state() private _refreshing = false;
 
   private _pv = new CalendarStoreController(this);
+  /** Today's chore progress for the Day view's rings, from the Chores service. */
+  private _progressOf = (memberId: string) => this.services?.chores?.memberProgress?.(memberId) ?? null;
   /** What pv-overlay-change last said, so the card hears each change once. */
   private _overlayOpen = false;
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
@@ -732,6 +739,8 @@ export class PvCalendarModule extends LitElement {
           .avatarBorderMode=${avatarBorder}
           .sharedEventMap=${sharedEventMap}
           .tick=${tick}
+          .progress=${this.services?.chores?.memberProgress ? this._progressOf : null}
+          .revision=${this.revision}
         ></pv-view-day>`;
       }
       case 'week': {

@@ -19,9 +19,29 @@ import { contrastText } from '../../../core/color';
 import type { Layout } from '../../../core/layout';
 import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
 
+/** Today's chore progress for one person (spec 13.9: rings in the Day view). */
+export type ProgressOf = (memberId: string) => { done: number; pending: number; due: number } | null;
+
+/** The ring's fraction and its words for a screen reader. */
+export function dayRing(name: string, progress: { done: number; pending: number; due: number } | null): { fraction: number; closed: boolean; label: string } | null {
+  if (!progress || progress.due <= 0) return null;
+  const finished = Math.min(progress.due, progress.done + progress.pending);
+  const closed = finished >= progress.due;
+  return {
+    fraction: finished / progress.due,
+    closed,
+    label: closed ? `${name}, ring closed for today. Open ${name}'s day` : `${name}, ${finished} of ${progress.due} done today. Open ${name}'s day`,
+  };
+}
+
 const DAY_START_HOUR = 0;
 const DAY_END_HOUR = 24;
 
+/**
+ * pv-view-day: the calendar's Day view, a column per person.
+ *
+ * @fires pv-open - { module: 'chores', view: 'my_day', member } a person's ring was tapped
+ */
 export class PVViewDay extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) events: CalendarEvent[] = [];
@@ -35,6 +55,10 @@ export class PVViewDay extends LitElement {
   @property({ type: Number }) tick = 0;
   /** The card's layout: portrait fits about 14 hours on screen (spec 12.2). */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Today's chore progress per person, when Chores is on: each column header gets a ring. */
+  @property({ attribute: false }) progress: ProgressOf | null = null;
+  /** Bumped when chores change, so the rings redraw. */
+  @property({ attribute: false }) revision = 0;
 
   /** The hour height in px; the grid, the events, and the now-line all scale with it. */
   @state() private _hourPx = HOUR_PX;
@@ -133,6 +157,40 @@ export class PVViewDay extends LitElement {
         gap: 6px;
         padding: 0.75rem 0.5rem;
         min-width: 0;
+      }
+
+      .ring-wrap {
+        position: relative;
+        display: inline-flex;
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 50%;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .ring-wrap:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 8px;
+      }
+
+      .ring-wrap svg {
+        position: absolute;
+        inset: -7px;
+        width: calc(100% + 14px);
+        height: calc(100% + 14px);
+        transform: rotate(-90deg);
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      .ring-wrap .track {
+        stroke: var(--pv-track, #ECECE8);
+      }
+
+      .ring-wrap .done {
+        transition: stroke-dashoffset 600ms ease;
       }
 
       .person-avatar {
@@ -491,6 +549,11 @@ export class PVViewDay extends LitElement {
     if (this.hasUpdated) this._watchHours();
   }
 
+  /** A ring opens that person's My day (spec 13.9). */
+  private _openDay(member: string): void {
+    this.dispatchEvent(new CustomEvent('pv-open', { detail: { module: 'chores', view: 'my_day', member }, bubbles: true, composed: true }));
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._hoursObserver?.disconnect();
@@ -616,12 +679,24 @@ export class PVViewDay extends LitElement {
               const borderColor = this.avatarBorderMode === 'light' ? colorLight
                 : this.avatarBorderMode === 'primary' ? color
                 : this.avatarBorderMode;
+              const picture = avatar
+                ? html`<img class="person-avatar" src="${avatar}" alt="${name}"
+                    style="${borderColor ? `--pv-avatar-border: ${borderColor}` : ''}" />`
+                : html`<div class="person-initial" style="background: ${color}; color: ${contrastText(color)}">${name[0]?.toUpperCase() || '?'}</div>`;
+              const ring = isCurrentDay && cal?.member_id && this.progress ? dayRing(name, this.progress(cal.member_id)) : null;
               return html`
                 <div class="person-header">
-                  ${avatar
-                    ? html`<img class="person-avatar" src="${avatar}" alt="${name}"
-                        style="${borderColor ? `--pv-avatar-border: ${borderColor}` : ''}" />`
-                    : html`<div class="person-initial" style="background: ${color}; color: ${contrastText(color)}">${name[0]?.toUpperCase() || '?'}</div>`}
+                  ${ring ? html`
+                    <button class="ring-wrap" type="button" aria-label=${ring.label}
+                      @click=${() => this._openDay(cal!.member_id!)}>
+                      ${picture}
+                      <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="6"></circle>
+                        <circle class="done" cx="50" cy="50" r="46" fill="none" stroke=${color} stroke-width="6" stroke-linecap="round"
+                          stroke-dasharray=${2 * Math.PI * 46} stroke-dashoffset=${2 * Math.PI * 46 * (1 - ring.fraction)}></circle>
+                      </svg>
+                    </button>
+                  ` : picture}
                   <span class="person-name">${name}</span>
                 </div>
               `;
