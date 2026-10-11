@@ -112,6 +112,19 @@ export function pastBadge(status: string, note?: string | null): StatusBadge {
   }
 }
 
+/** Badges longer than this go under the chore's name, so the name keeps its room. */
+export const LONG_BADGE = 14;
+
+/**
+ * Whether a badge sits under the chore's name (spec 12.3): always in a narrow
+ * panel, and when its words are long (a sent-back note, "Overdue since Mon"),
+ * where it wraps instead of being cut off.
+ */
+export function badgeBelow(badge: StatusBadge | null, narrow: boolean): boolean {
+  if (!badge) return false;
+  return narrow || badge.words.length > LONG_BADGE;
+}
+
 /** "15 min", "1 h", "1.5 h", "2 h 40 min". */
 export function minutesText(minutes: number): string {
   const rounded = Math.round(minutes);

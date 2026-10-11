@@ -7,6 +7,7 @@ import { contrastText } from '../../core/color';
 import { choresStyles } from './chores-styles';
 import type { RowModel } from './board-derive';
 import { rowChange } from './hold-state';
+import { badgeBelow } from '../../core/status-map';
 
 /** What a finished hold asks of whoever handles it. */
 export interface HoldDetail {
@@ -177,6 +178,31 @@ export class PvChoreItem extends LitElement {
 
       :host([narrow]) .name {
         flex: none;
+      }
+
+      /* A long badge (a sent-back note) sits under the name and wraps, in any panel. */
+      .about.below {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 3px;
+      }
+
+      .about.below .name {
+        flex: none;
+      }
+
+      .about.below .end,
+      :host([narrow]) .end {
+        flex-shrink: 1;
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      .about.below .badge,
+      :host([narrow]) .badge {
+        white-space: normal;
+        text-align: left;
       }
 
       .name .text {
@@ -430,7 +456,8 @@ export class PvChoreItem extends LitElement {
             `}
           </svg>
         </button>
-        <button class="about" type="button" @click=${this._options} @contextmenu=${this._context}
+        <button class="about ${badgeBelow(row.badge, this.narrow) ? 'below' : ''}" type="button"
+          @click=${this._options} @contextmenu=${this._context}
           aria-label=${`${row.name}${row.badge ? `, ${row.badge.words}` : ''}. Options`}>
           <span class="name"><span class="text">${row.name}<span class="strike"></span></span>${row.label ? html`<span class="label">${row.label}</span>` : nothing}</span>
           <span class="end">${end}</span>

@@ -86,6 +86,11 @@ export class PvChoreOptions extends LitElement {
         font-size: 0.875rem;
       }
 
+      .note .badge {
+        white-space: normal;
+        text-align: left;
+      }
+
       .note {
         margin-top: 8px;
       }
