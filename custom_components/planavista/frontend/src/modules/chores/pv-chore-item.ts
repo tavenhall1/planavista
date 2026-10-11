@@ -42,6 +42,8 @@ export class PvChoreItem extends LitElement {
   @property({ type: Boolean, reflect: true }) narrow = false;
   /** This screen may not change this person's items (another child's, on a child's own login). */
   @property({ type: Boolean }) locked = false;
+  /** A later band's row: drawn a little quieter (spec 13.1). */
+  @property({ type: Boolean, reflect: true }) dim = false;
 
   @state() private _fill = 0;
   /** A hold finished and waits for its answer: the circle stays full. */
@@ -105,9 +107,14 @@ export class PvChoreItem extends LitElement {
         user-select: none;
       }
 
-      .circle[disabled] {
+      .circle[aria-disabled='true'] {
         cursor: default;
         opacity: 0.5;
+      }
+
+      :host([dim]) .name,
+      :host([dim]) .end {
+        opacity: 0.72;
       }
 
       .circle:focus-visible {
@@ -372,7 +379,7 @@ export class PvChoreItem extends LitElement {
     return html`
       <div class="row" style="--member:${color}">
         <div class="sweep" style="transform: scaleX(${done ? 0 : fill})"></div>
-        <button class="circle" type="button" aria-label=${action} ?disabled=${this.locked}
+        <button class="circle" type="button" aria-label=${action} aria-disabled=${this.locked ? 'true' : 'false'}
           @pointerdown=${this._down} @pointermove=${this._move} @pointerup=${this._up}
           @pointercancel=${this._cancel} @lostpointercapture=${this._up} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>

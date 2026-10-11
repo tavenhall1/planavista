@@ -150,10 +150,6 @@ export class PvChoresColumn extends LitElement {
         flex: 1;
       }
 
-      .head-row.later ~ pv-chore-item {
-        opacity: 0.92;
-      }
-
       .credit {
         margin: 10px 6px 0;
         font-size: 0.8125rem;
@@ -312,7 +308,7 @@ export class PvChoresColumn extends LitElement {
     if (entry.kind === 'credit') return html`<div class="credit" data-key=${entry.key}>${entry.text}</div>`;
     return html`
       <pv-chore-item data-key=${entry.key} .row=${entry.row} color=${this.color} ?narrow=${this.narrow}
-        ?highlight=${entry.zone === 'now'} ?locked=${this.locked}></pv-chore-item>
+        ?highlight=${entry.zone === 'now'} ?dim=${entry.zone === 'later'} ?locked=${this.locked}></pv-chore-item>
     `;
   }
 

@@ -60,6 +60,13 @@ type ChoresSheet =
   | { kind: 'day'; member: string; date: string; day: DayView | null; failed: boolean }
   | { kind: 'quick_add'; busy: boolean };
 
+/** The element with focus, looking inside shadow roots (the card's controls live in several). */
+function deepActiveElement(): HTMLElement | null {
+  let active: Element | null = document.activeElement;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  return active instanceof HTMLElement ? active : null;
+}
+
 /** What the last check-off toast can take back or hand to someone else. */
 interface LastCheckoff {
   row: RowModel;
@@ -106,6 +113,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   /** Requests being answered in the inbox. */
   @state() private _reviewing: ReadonlySet<string> = new Set();
   private _overlayOpen = false;
+  /** What had focus when a sheet opened; it gets focus back when the sheet closes (spec 11.8). */
+  private _opener: HTMLElement | null = null;
   private _last: LastCheckoff | null = null;
   private _clock: ReturnType<typeof setInterval> | undefined;
 
@@ -223,6 +232,10 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
+    if (changed.has('_sheet')) {
+      const before = changed.get('_sheet') as ChoresSheet | null | undefined;
+      if (!before && this._sheet) this._opener = deepActiveElement();
+    }
     // A ring in the calendar, or a column header, opened someone's day.
     if (changed.has('openTarget') && this.openTarget?.member) this._myDayMember = this.openTarget.member;
     const notices = this.service?.takeNotices() ?? [];
@@ -233,6 +246,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
     if (this.view === 'week') this._loadWeek();
+    if (changed.has('_sheet') && changed.get('_sheet') && !this._sheet) {
+      const opener = this._opener;
+      this._opener = null;
+      if (opener?.isConnected) opener.focus();
+    }
     const open = this._sheet !== null;
     if (open !== this._overlayOpen) {
       this._overlayOpen = open;
