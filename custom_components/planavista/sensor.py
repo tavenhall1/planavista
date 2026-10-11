@@ -11,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .chores.sensor import async_setup_chores_sensors
 from .const import SENSOR_PREFIX
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 
@@ -31,6 +32,7 @@ async def async_setup_entry(
     ]
 
     async_add_entities(entities)
+    await async_setup_chores_sensors(hass, entry, async_add_entities)
 
 
 class PlanaVistaConfigSensor(CoordinatorEntity, SensorEntity):

@@ -15,6 +15,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
 from .appearance import migrate_display
+from .chores.runtime import CHORES_PLATFORMS, DATA_CHORES, async_get_chores
 from .const import CONF_DISPLAY, DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .household.store import async_get_household, async_start_household
@@ -47,15 +48,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     entry.runtime_data = coordinator
 
     # People and calendars are linked once Home Assistant has started, when
-    # every person entity exists.
+    # every person entity exists; then chores catch up on missed days.
     household = await async_get_household(hass)
+    chores = await async_get_chores(hass, household)
+    chores.entry = entry
 
-    async def _async_start_household(_hass: HomeAssistant) -> None:
+    async def _async_started(_hass: HomeAssistant) -> None:
         await async_start_household(hass, household, entry)
+        await chores.async_start()
 
-    entry.async_on_unload(async_at_started(hass, _async_start_household))
+    entry.async_on_unload(async_at_started(hass, _async_started))
+    entry.async_on_unload(chores.async_stop)
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Chores entities exist only while the household has chores on (spec 10.1).
+    chores.platforms_loaded = chores.enabled
+    platforms = [*PLATFORMS, *CHORES_PLATFORMS] if chores.enabled else PLATFORMS
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
     return True
 
 
@@ -109,5 +117,12 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> bool:
-    """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    """Unload a config entry, saving any chores change still waiting to be written."""
+    chores = hass.data.get(DATA_CHORES)
+    loaded = chores is not None and chores.platforms_loaded
+    platforms = [*PLATFORMS, *CHORES_PLATFORMS] if loaded else PLATFORMS
+    unloaded = await hass.config_entries.async_unload_platforms(entry, platforms)
+    if unloaded and chores is not None:
+        chores.platforms_loaded = False
+        await chores.async_flush()
+    return unloaded

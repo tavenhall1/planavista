@@ -93,6 +93,9 @@ SENSOR_PREFIX: Final = "planavista"
 FRONTEND_URL_PATH: Final = "/planavista_panel/dist"
 FRONTEND_BUNDLE: Final = "planavista-cards.js"
 
+# Sent after settings are saved through async_apply_config (chores follow the first day).
+SIGNAL_CONFIG_APPLIED: Final = f"{DOMAIN}_config_applied"
+
 # Services
 SERVICE_SAVE_CONFIG: Final = "save_config"
 SERVICE_DELETE_EVENT: Final = "delete_event"

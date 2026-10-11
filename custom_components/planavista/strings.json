@@ -92,6 +92,48 @@
     },
     "household_unavailable": {
       "message": "People and PINs can't be changed until PlanaVista is updated."
+    },
+    "chores_off": {
+      "message": "Chores are turned off in PlanaVista."
+    },
+    "chores_unavailable": {
+      "message": "Chores can't change right now. A parent can check Chores in PlanaVista's Settings."
+    },
+    "chores_save_failed": {
+      "message": "PlanaVista couldn't save chores. Check that Home Assistant's disk has free space."
+    },
+    "unknown_member": {
+      "message": "There's no one by that name in PlanaVista's household."
+    },
+    "unknown_chore": {
+      "message": "That chore isn't in PlanaVista's chores."
+    },
+    "unknown_occurrence": {
+      "message": "That chore isn't on the list today."
+    },
+    "unknown_request": {
+      "message": "That request was already answered."
+    },
+    "unknown_reward": {
+      "message": "That reward isn't in PlanaVista's rewards."
+    },
+    "not_allowed": {
+      "message": "This account can't do that in PlanaVista. People with a PIN make changes on the family screen."
+    },
+    "invalid_schedule": {
+      "message": "That schedule can't be used: {reason}"
+    },
+    "invalid_chore": {
+      "message": "That change can't be saved: {reason}"
+    },
+    "not_enough_stars": {
+      "message": "Not enough stars yet."
+    },
+    "rename_not_supported": {
+      "message": "Rename chores in PlanaVista's Settings."
+    },
+    "delete_not_once": {
+      "message": "Only one-time chores can be removed from a to-do list."
     }
   },
   "entity": {
@@ -104,12 +146,71 @@
           "automatic": "Automatic"
         }
       }
+    },
+    "todo": {
+      "chores": {
+        "name": "Chores"
+      }
+    },
+    "sensor": {
+      "chores_left": {
+        "name": "Chores left"
+      },
+      "chores_this_week": {
+        "name": "Chores this week"
+      },
+      "chore_time": {
+        "name": "Chore time"
+      },
+      "stars": {
+        "name": "Stars"
+      },
+      "streak": {
+        "name": "Streak"
+      },
+      "approvals_waiting": {
+        "name": "Approvals waiting"
+      }
+    },
+    "binary_sensor": {
+      "chores_done": {
+        "name": "Chores done"
+      }
+    },
+    "event": {
+      "chores": {
+        "name": "Chores",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "completed": "Completed",
+              "approved": "Approved",
+              "sent_back": "Sent back",
+              "undone": "Undone",
+              "missed": "Missed",
+              "redeemed": "Redeemed"
+            }
+          }
+        }
+      }
     }
   },
   "issues": {
     "household_newer_version": {
       "title": "Update PlanaVista to change people and PINs",
       "description": "The household file was saved by a newer version of PlanaVista. The calendar keeps working, but people, PINs, and shared screens can't be changed until PlanaVista is updated."
+    },
+    "chores_newer_version": {
+      "title": "Update PlanaVista to use chores",
+      "description": "The chores files were saved by a newer version of PlanaVista. The calendar keeps working, but chores stay off until PlanaVista is updated."
+    },
+    "chores_data_missing": {
+      "title": "PlanaVista's chores need a look",
+      "description": "Chores were set up, but a chores file is missing or damaged, so chores are paused and nothing is written over it. Restore a Home Assistant backup from before it happened, or start chores over from PlanaVista's Settings on the family screen."
+    },
+    "chores_save_failed": {
+      "title": "PlanaVista couldn't save chores",
+      "description": "Home Assistant couldn't write a PlanaVista chores file. Check that the disk has free space. Recent changes are kept and are saved once writing works again."
     }
   }
 }
