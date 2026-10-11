@@ -61,6 +61,10 @@ export interface ServiceHost extends ReactiveControllerHost, HTMLElement {
   readonly householdView: HouseholdView | null;
   /** The PIN session on this screen. */
   readonly pinSession: Session | null;
+  /** The config sensor's data (calendars and their events). */
+  readonly planavistaData: PlanaVistaData | null;
+  /** A command was refused although it carried this session: the backend already ended it. */
+  sessionEnded(token: string): void;
 }
 
 /**
