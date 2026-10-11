@@ -349,6 +349,10 @@ def with_overrides(
         changes.update(planned=day, appears=max(occ.appears, day), dated=False)
     if (due := overrides.get("due")) is not None:
         changes["due"] = clock.day_end(date.fromisoformat(due))
+        if occ.planned is not None and "planned" not in changes:
+            # A chore set for its day that gets more time is due by the new day instead (spec 8.7),
+            # so the day it was set for no longer counts it; a plan someone chose stays.
+            changes.update(planned=None, dated=True)
     if (assignee := overrides.get("assignee")) is not None and assignee in members:
         changes["member"] = assignee
     if overrides.get("excused"):

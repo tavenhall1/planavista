@@ -107,6 +107,30 @@ def test_excusing_a_missed_check_off_mends_its_day_and_the_streak() -> None:
     assert err.value.code == "not_missed"
 
 
+BED_TUESDAY = "make_your_bed|dana|day:2026-10-13|0"
+
+
+def _item(engine: Any, member: str, key: str, now: Any) -> dict[str, Any]:
+    day = engine.today(now)
+    return next(engine.item_view(i, day) for i in engine.items(now)[member] if i.occ.key == key)
+
+
+def test_more_time_on_a_chore_for_today_lets_todays_ring_close() -> None:
+    engine = sample_engine(at(10, 13, 7))
+    request = engine.request(
+        at(10, 13, 7), kind="more_time", key=BED_TUESDAY, by="dana", until=date(2026, 10, 14)
+    ).data["request"]
+    engine.review(at(10, 13, 8), request_id=request, allow=True, by="blair")
+    bed = _item(engine, "dana", BED_TUESDAY, at(10, 13, 9))
+    assert (bed["due_day"], bed["planned"], bed["dated"], bed["counted"]) == ("2026-10-14", None, True, False)
+    for item in [i for i in engine.items(at(10, 13, 9))["dana"] if i.counted]:
+        engine.complete(at(10, 13, 9), key=item.occ.key, by="blair", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = engine.day_view(at(10, 14, 9), date(2026, 10, 13))["members"]["dana"]
+    assert tuesday["summary"]["closed"] is True
+    assert _item(engine, "dana", BED_TUESDAY, at(10, 14, 9))["counted"] is True
+
+
 def test_the_board_tells_this_weeks_stars_and_recent_rewards() -> None:
     engine = sample_engine()
     engine.complete(at(10, 11, 8), chore="cat_care", member="casey", by="casey", source="tablet")  # last week
