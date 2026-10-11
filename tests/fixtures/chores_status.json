@@ -1,0 +1,26 @@
+{
+  "about": "What an item's status says (spec 11.4): `todo` is the to-do item's description (chores/status.py describe), `card` is the badge the card shows beside the name (core/status-map.ts itemBadge), null when the estimate shows instead. Both read the same item view. today is Tuesday, October 13, 2026; days_left counts today; remaining is how many of the chore's floating check-offs are still open this week.",
+  "today": "2026-10-13",
+  "cases": [
+    {"name": "to do today", "view": {"status": "open", "section": "today", "window": "day"}, "todo": null, "card": null},
+    {"name": "waiting for OK", "view": {"status": "pending", "section": "today", "window": "day"}, "todo": "Waiting for a parent's OK", "card": {"words": "Waiting for OK", "tone": "act", "glyph": "⏳"}},
+    {"name": "waiting for OK beats From", "view": {"status": "pending", "section": "week", "window": "week", "from": "2026-10-12"}, "todo": "Waiting for a parent's OK", "card": {"words": "Waiting for OK", "tone": "act", "glyph": "⏳"}},
+    {"name": "sent back with a note", "view": {"status": "sent_back", "section": "week", "window": "week", "note": "edges"}, "todo": "Sent back: edges", "card": {"words": "Sent back: edges", "tone": "bad", "glyph": "↩"}},
+    {"name": "sent back without a note", "view": {"status": "sent_back", "section": "today", "window": "day", "note": null}, "todo": "Sent back", "card": {"words": "Sent back", "tone": "bad", "glyph": "↩"}},
+    {"name": "sent back beats overdue", "view": {"status": "sent_back", "section": "overdue", "window": "day", "note": "do it again", "overdue_since": "2026-10-12"}, "todo": "Sent back: do it again", "card": {"words": "Sent back: do it again", "tone": "bad", "glyph": "↩"}},
+    {"name": "overdue", "view": {"status": "open", "section": "overdue", "window": "day", "overdue_since": "2026-10-12"}, "todo": "Overdue since Mon", "card": {"words": "Overdue since Mon", "tone": "bad", "glyph": "•"}},
+    {"name": "overdue a while", "view": {"status": "open", "section": "overdue", "window": "week", "overdue_since": "2026-09-28"}, "todo": "Overdue since Sep 28", "card": {"words": "Overdue since Sep 28", "tone": "bad", "glyph": "•"}},
+    {"name": "make-up", "view": {"status": "open", "section": "week", "window": "week", "from": "2026-10-12"}, "todo": "From Mon", "card": {"words": "From Mon", "tone": "neutral"}},
+    {"name": "due later this week", "view": {"status": "open", "section": "today", "window": "once", "dated": true, "due_day": "2026-10-17"}, "todo": "Due Sat", "card": {"words": "Due Sat", "tone": "neutral"}},
+    {"name": "due today", "view": {"status": "open", "section": "today", "window": "once", "dated": true, "due_day": "2026-10-13"}, "todo": "Due Tue", "card": {"words": "Due today", "tone": "time"}},
+    {"name": "due in a few weeks", "view": {"status": "open", "section": "today", "window": "once", "dated": true, "due_day": "2026-10-31"}, "todo": "Due Oct 31", "card": {"words": "Due Oct 31", "tone": "neutral"}},
+    {"name": "floating, plenty of days", "view": {"status": "open", "section": "week", "window": "week"}, "days_left": 6, "remaining": 1, "todo": "This week", "card": null},
+    {"name": "floating, running out of days", "view": {"status": "open", "section": "week", "window": "week"}, "days_left": 2, "remaining": 2, "todo": "This week", "card": {"words": "2 days left", "tone": "time", "glyph": "•"}},
+    {"name": "floating, last day", "view": {"status": "open", "section": "week", "window": "week"}, "days_left": 1, "remaining": 1, "todo": "This week", "card": {"words": "Last day", "tone": "bad", "glyph": "•"}},
+    {"name": "this month", "view": {"status": "open", "section": "week", "window": "month"}, "days_left": 6, "remaining": 1, "todo": "This month", "card": null},
+    {"name": "any time", "view": {"status": "open", "section": "week", "window": "once", "dated": false}, "days_left": 6, "remaining": 1, "todo": "This week", "card": null},
+    {"name": "done", "view": {"status": "done", "section": "today", "window": "day"}, "todo": null, "card": null},
+    {"name": "excused", "view": {"status": "excused", "section": "today", "window": "day"}, "todo": null, "card": {"words": "Excused", "tone": "muted"}},
+    {"name": "away", "view": {"status": "away", "section": "today", "window": "day"}, "todo": null, "card": {"words": "Away", "tone": "neutral", "glyph": "🧳"}}
+  ]
+}

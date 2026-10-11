@@ -244,6 +244,32 @@ def update_member(
     return updated, member
 
 
+GOAL_MAX_LENGTH = 60
+
+
+def set_prefs(
+    members: list[dict[str, Any]], member_id: str, changes: Mapping[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """A person's own choices: their My day style and the reward they're saving up for (spec 13.4, 8.15)."""
+    index = next((i for i, m in enumerate(members) if m["id"] == member_id), None)
+    if index is None:
+        raise MemberError("unknown_member")
+    member = dict(members[index])
+    if "my_day" in changes:
+        if changes["my_day"] not in MY_DAY_STYLES:
+            raise MemberError("invalid_my_day")
+        member["my_day"] = changes["my_day"]
+    if "goal" in changes:
+        goal = changes["goal"]
+        if goal is not None and (not isinstance(goal, str) or not 0 < len(goal) <= GOAL_MAX_LENGTH):
+            raise MemberError("invalid_goal")
+        member["goal"] = goal
+    member["rev"] = int(member.get("rev", 1)) + 1
+    updated = list(members)
+    updated[index] = member
+    return updated, member
+
+
 def remove_member(members: list[dict[str, Any]], member_id: str) -> list[dict[str, Any]]:
     """Everyone except `member_id`."""
     if not any(m["id"] == member_id for m in members):
