@@ -66,6 +66,7 @@ ERROR_MESSAGES = {
     "invalid_order": "The list changed on another screen. Try again.",
     "last_parent_pin": "A shared screen needs at least one parent with a PIN.",
     "needs_parent_pin": "Set a PIN for a parent first, so someone can open Settings here.",
+    "invalid_away": "Pick the first and last days away.",
 }
 
 MEMBER_FIELDS = vol.Schema(
@@ -79,6 +80,7 @@ MEMBER_FIELDS = vol.Schema(
         vol.Optional("my_day"): str,
         vol.Optional("needs_ok_for"): str,
         vol.Optional("stars"): bool,
+        vol.Optional("away"): vol.Any(None, [dict]),
     }
 )
 

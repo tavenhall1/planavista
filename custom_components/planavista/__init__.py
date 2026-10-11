@@ -16,6 +16,7 @@ from homeassistant.loader import async_get_integration
 
 from .appearance import migrate_display
 from .chores.runtime import CHORES_PLATFORMS, DATA_CHORES, async_get_chores
+from .chores.services import async_setup_chores_services
 from .const import CONF_DISPLAY, DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .household.store import async_get_household, async_start_household
@@ -35,6 +36,7 @@ FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register services, WebSocket commands, and the card bundle once."""
     async_setup_services(hass)
+    async_setup_chores_services(hass)
     async_setup_household_websocket(hass)
     await async_register_frontend(hass)
     return True

@@ -11,6 +11,7 @@ import yaml
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
+from custom_components.planavista.chores.services import SERVICES as CHORES_SERVICES
 from custom_components.planavista.const import DOMAIN
 from custom_components.planavista.services import (
     CREATE_EVENT_SCHEMA,
@@ -47,6 +48,7 @@ async def test_services_yaml_documents_exactly_the_registered_services(
         ("save_config", SAVE_CONFIG_SCHEMA),
         ("delete_event", DELETE_EVENT_SCHEMA),
         ("create_event_with_attendees", CREATE_EVENT_SCHEMA),
+        *((name, schema) for name, (_handler, schema, _response) in CHORES_SERVICES.items()),
     ):
         assert set(documented[service]["fields"]) == _schema_fields(schema), service
 

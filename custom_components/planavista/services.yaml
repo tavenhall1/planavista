@@ -124,3 +124,349 @@ save_config:
       required: false
       selector:
         boolean:
+
+complete_chore:
+  name: Complete chore
+  description: >
+    Check off a chore for a member, as if they held it on the family screen.
+    Without an occurrence, their oldest open one is checked off. A repeat, or
+    a chore with nothing open, answers already_done or nothing_open and is
+    never an error. Approval rules still apply.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      example: person.casey
+      selector:
+        text:
+    chore:
+      name: Chore
+      description: The chore's id (Settings, Chores, Use in automations).
+      required: true
+      example: take_out_the_trash
+      selector:
+        text:
+    occurrence:
+      name: Occurrence
+      description: One exact check-off, by its key. Leave it out to take the oldest open one.
+      selector:
+        text:
+    done_by:
+      name: Done by
+      description: Someone else who did it, to get the credit and stars.
+      selector:
+        text:
+    approve:
+      name: Approve
+      description: Skip the parent's OK. Only automations and admins can use this.
+      default: false
+      selector:
+        boolean:
+
+undo_chore:
+  name: Undo chore
+  description: Uncheck today's check-off of a chore. The stars it earned are taken back.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    chore:
+      name: Chore
+      description: The chore's id.
+      required: true
+      selector:
+        text:
+    occurrence:
+      name: Occurrence
+      description: One exact check-off. Leave it out to undo the latest one.
+      selector:
+        text:
+
+get_chores:
+  name: Get chores
+  description: A member's chores for a day and how each one stands, as response data.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    date:
+      name: Date
+      description: The chore day to read. Leave it out for today.
+      selector:
+        date:
+
+redeem_reward:
+  name: Redeem reward
+  description: Spend a member's stars on a reward. It waits for a parent's OK unless the reward needs none.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    reward:
+      name: Reward
+      description: The reward's id.
+      required: true
+      selector:
+        text:
+
+approve_chore:
+  name: Approve chore
+  description: Approve a check-off that is waiting for OK, so it counts and earns its stars.
+  fields:
+    request:
+      name: Request
+      description: The request's id. Or give the member and the chore.
+      selector:
+        text:
+    member:
+      name: Member
+      description: The member whose check-off is waiting.
+      selector:
+        text:
+    chore:
+      name: Chore
+      description: The chore's id.
+      selector:
+        text:
+
+send_back_chore:
+  name: Send back chore
+  description: Send a check-off that is waiting for OK back to the member, with a note.
+  fields:
+    request:
+      name: Request
+      description: The request's id. Or give the member and the chore.
+      selector:
+        text:
+    member:
+      name: Member
+      description: The member whose check-off is waiting.
+      selector:
+        text:
+    chore:
+      name: Chore
+      description: The chore's id.
+      selector:
+        text:
+    note:
+      name: Note
+      description: What to fix, shown as "Sent back" with the note.
+      example: Missed a spot
+      selector:
+        text:
+
+add_chore:
+  name: Add chore
+  description: >
+    Add a one-time chore, or a repeating one when a rule is given. Plan chores
+    are made in PlanaVista's Settings.
+  fields:
+    name:
+      name: Name
+      description: What needs doing.
+      required: true
+      example: Clean out the garage
+      selector:
+        text:
+    assignees:
+      name: Assignees
+      description: Member ids or Home Assistant persons. Each gets their own check-off.
+      required: true
+      selector:
+        text:
+          multiple: true
+    icon:
+      name: Picture
+      description: An emoji or an mdi icon.
+      selector:
+        text:
+    "on":
+      name: On a day
+      description: A one-time chore that shows on this day.
+      selector:
+        date:
+    by:
+      name: By a date
+      description: A one-time chore that shows every day until this date.
+      selector:
+        date:
+    by_time:
+      name: By a time
+      description: A time on that date, such as 17:00.
+      selector:
+        text:
+    sessions:
+      name: Sessions
+      description: How many check-offs a one-time chore takes.
+      selector:
+        number:
+          min: 1
+          max: 20
+    rrule:
+      name: Repeats
+      description: A repeating rule, such as FREQ=WEEKLY;BYDAY=SA. Daily, weekly, and monthly rules work.
+      example: FREQ=WEEKLY;BYDAY=SA;UNTIL=20261130
+      selector:
+        text:
+    start:
+      name: Starts
+      description: The day a repeating chore starts. Leave it out for today.
+      selector:
+        date:
+    window:
+      name: Each time
+      description: On its day, or any time that week or month.
+      selector:
+        select:
+          options:
+            - day
+            - period
+    estimate_minutes:
+      name: About how long
+      description: Minutes, for the whole one-time chore or each repeat.
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+    needs_ok:
+      name: Needs a parent's OK
+      description: Check-offs wait for a parent before they count.
+      selector:
+        boolean:
+    stars:
+      name: Stars
+      description: Stars for each check-off. Leave it out for 1 per 15 minutes.
+      selector:
+        number:
+          min: 0
+          max: 100
+
+remove_chore:
+  name: Remove chore
+  description: Delete a chore. It leaves the board at once; past weeks and earned stars stay.
+  fields:
+    chore:
+      name: Chore
+      description: The chore's id.
+      required: true
+      selector:
+        text:
+
+excuse_chore:
+  name: Excuse chore
+  description: Excuse a member's chore for a day, such as a sick day. Nothing is missed and streaks hold.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    chore:
+      name: Chore
+      description: The chore's id.
+      required: true
+      selector:
+        text:
+    occurrence:
+      name: Occurrence
+      description: One exact check-off. Or give a date.
+      selector:
+        text:
+    date:
+      name: Date
+      description: The chore day. Leave it out for today.
+      selector:
+        date:
+    note:
+      name: Note
+      description: Why, for the history.
+      example: Sick day
+      selector:
+        text:
+
+pause_member:
+  name: Mark away
+  description: Mark a member away for some days. Nothing is due or missed while they are away, and streaks hold.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    from:
+      name: From
+      description: The first day away.
+      required: true
+      selector:
+        date:
+    to:
+      name: To
+      description: The last day away.
+      required: true
+      selector:
+        date:
+    note:
+      name: Note
+      description: Shown with Away, such as At Grandma's.
+      selector:
+        text:
+
+resume_member:
+  name: End away
+  description: A member is back. Days from the first given day on are no longer away.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    from:
+      name: From
+      description: The first day back. Leave it out for today.
+      selector:
+        date:
+    to:
+      name: To
+      description: The last day to clear. Leave it out to clear every later day.
+      selector:
+        date:
+
+award_stars:
+  name: Give or take stars
+  description: Give a member stars, or take some away, with a reason. The balance never goes below zero.
+  fields:
+    member:
+      name: Member
+      description: The member's id, or their Home Assistant person.
+      required: true
+      selector:
+        text:
+    stars:
+      name: Stars
+      description: How many to give; a negative number takes stars away.
+      required: true
+      selector:
+        number:
+          min: -1000
+          max: 1000
+    reason:
+      name: Reason
+      description: Why, shown in their stars history.
+      required: true
+      example: Helped a neighbor
+      selector:
+        text:

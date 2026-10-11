@@ -231,3 +231,22 @@ def test_clear_missing_persons_drops_links_to_deleted_people() -> None:
     assert cleared[0]["picture"] == {"initial": True}
     assert cleared[0]["rev"] == 2
     assert clear_missing_persons(cleared, PERSONS) == cleared
+
+
+def test_away_ranges_are_checked_and_kept_in_order() -> None:
+    members = _household("Dana")
+    _, dana = update_member(members, "dana", {"away": [
+        {"from": "2026-10-20", "to": "2026-10-21", "note": None},
+        {"from": "2026-10-14", "to": "2026-10-15", "note": "At Grandma's"},
+    ]}, None)
+    assert dana["away"] == [
+        {"from": "2026-10-14", "to": "2026-10-15", "note": "At Grandma's"},
+        {"from": "2026-10-20", "to": "2026-10-21", "note": None},
+    ]
+    for away in ([{"from": "2026-10-15", "to": "2026-10-14"}], [{"from": "soon", "to": "2026-10-14"}],
+                 "2026-10-14", [{"from": "2026-10-14", "to": "2026-10-14", "note": "x" * 61}]):
+        with pytest.raises(MemberError) as err:
+            update_member(members, "dana", {"away": away}, None)
+        assert err.value.code == "invalid_away"
+    # Members saved before Away existed get no new field.
+    assert "away" not in update_member(members, "dana", {"name": "Dana"}, None)[1]
