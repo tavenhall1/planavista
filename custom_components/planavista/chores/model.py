@@ -324,6 +324,7 @@ def default_log() -> dict[str, Any]:
     return {
         "last_day": None,
         "last_boundary": None,
+        "active_from": None,
         "weeks": None,
         "policy": None,
         "completions": [],

@@ -120,7 +120,7 @@ async def test_asking_for_more_time(hass: HomeAssistant, chores: Any, accounts: 
 async def test_editing_chores_and_rules(hass: HomeAssistant, chores: Any, hass_ws_client: Any) -> None:
     admin = await hass_ws_client(hass)
     saved = await ws_command(admin, {"type": "planavista/chores/activity/save", "activity": {
-        "name": "Vacuum", "schedule": "plan", "assignees": ["blair"], "minimum": {"hours": 1, "per": "week"}}})
+        "name": "Vacuum", "schedule": "plan", "assignees": ["blair"], "minimum": {"hours": 0.25, "per": "day"}}})
     activity = saved["result"]["activity"]
     assert (activity["id"], activity["rev"], activity["created"]["by"]) == ("vacuum", 1, "admin")
     assert hass.states.get("todo.blair_chores").state == "3"

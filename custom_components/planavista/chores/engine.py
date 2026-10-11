@@ -213,7 +213,16 @@ class ChoresEngine:
 
     def generator(self) -> Generator:
         """What turns the plan into occurrences."""
-        return Generator(self.clock, int(self.settings.get("minutes_per_star", 15)), self.policy_on)
+        return Generator(
+            self.clock, int(self.settings.get("minutes_per_star", 15)), self.policy_on, self._active_from()
+        )
+
+    def _active_from(self) -> date:
+        """The first chore day since chores were last turned on (nothing earlier is owed)."""
+        try:
+            return _day(self.log["active_from"]) if self.log.get("active_from") else date.min
+        except (TypeError, ValueError):
+            return date.min
 
     def policy_on(self, day: date) -> str:
         """The missed policy for chore day `day`: a change takes effect at the next day boundary."""
@@ -1224,6 +1233,7 @@ class ChoresEngine:
             activity = build_activity(existing, changes, members)
             activity["rev"] = int(existing.get("rev", 1)) + 1
             self._check_dates(activity, existing, today)
+            self._note_joined(activity, existing, now)
             activities[index] = activity
         else:
             if len(activities) >= MAX_ACTIVITIES:
@@ -1235,6 +1245,17 @@ class ChoresEngine:
             activity["created"] = {"by": by, "source": source, "at": self._stamp(now)}
             activities.append(activity)
         return Outcome("saved", {"activity": dict(activity)}, changed={"plan"})
+
+    def _note_joined(self, activity: dict[str, Any], existing: Mapping[str, Any], now: datetime) -> None:
+        """When each person an edit adds joined the chore: they owe nothing from before."""
+        before = existing.get("assignees") or []
+        since = existing.get("assigned_since")
+        joined = {m: at for m, at in since.items() if m in activity["assignees"]} if isinstance(since, Mapping) else {}
+        joined.update({m: self._stamp(now) for m in activity["assignees"] if m not in before})
+        if joined:
+            activity["assigned_since"] = joined
+        else:
+            activity.pop("assigned_since", None)
 
     @staticmethod
     def _check_dates(activity: Mapping[str, Any], existing: Mapping[str, Any] | None, today: date) -> None:
@@ -1419,12 +1440,14 @@ class ChoresEngine:
     # Rollover (spec 8.9) ----------------------------------------------------------------
 
     def start(self, now: datetime) -> Outcome:
-        """Chores start, or start again after being off: nothing before today is replayed."""
-        yesterday = (self.today(now) - timedelta(days=1)).isoformat()
+        """Chores start, or start again after being off: nothing before today is replayed or owed."""
+        today = self.today(now)
+        yesterday = (today - timedelta(days=1)).isoformat()
         if self.log.get("last_day") is not None and self.log["last_day"] >= yesterday:
             return Outcome()
         self.log["last_day"] = yesterday
-        self.log["last_boundary"] = self.clock.day_start(self.today(now)).isoformat()
+        self.log["last_boundary"] = self.clock.day_start(today).isoformat()
+        self.log["active_from"] = today.isoformat()
         return Outcome(changed={"log"})
 
     def catch_up(self, now: datetime) -> Outcome:

@@ -242,3 +242,51 @@ def test_plan_only_and_unassigned_chores_never_reach_the_board() -> None:
     ])
     assert keys(engine, "casey", SCENE) == []
     assert engine.needs_a_look() == [{"kind": "unassigned", "chore": "wash_the_car", "name": "Wash the car"}]
+
+
+def test_a_chore_added_mid_week_starts_with_the_days_still_to_come() -> None:
+    engine = sample_engine(at(10, 14, 9), activities=[])  # Wednesday
+    for chore in (
+        {"name": "Laundry", "schedule": "plan", "assignees": ["blair"], "minimum": {"hours": 2, "per": "week"},
+         "days": ["mon", "thu"]},
+        {"name": "Feed the fish", "schedule": "plan", "assignees": ["dana"], "minimum": {"hours": 5 / 60, "per": "day"}},
+        {"name": "Yard work", "schedule": "plan", "assignees": ["casey"], "minimum": {"hours": 1, "per": "week"}},
+    ):
+        engine.save_activity(at(10, 14, 16), chore, by="alex", source="tablet")
+    wednesday = at(10, 14, 16, 30)
+    assert keys(engine, "blair", wednesday) == []  # Monday's load came before the chore did
+    assert keys(engine, "dana", wednesday) == ["feed_the_fish|dana|day:2026-10-14|0"]  # today's counts
+    assert keys(engine, "casey", wednesday) == []  # with no set days, it starts with the next week
+    assert keys(engine, "dana", at(10, 13, 16)) == []
+    assert keys(engine, "blair", at(10, 15, 9)) == ["laundry|blair|week:2026-10-12|1"]
+    engine.catch_up(at(10, 19, 9))
+    week = {s["member"]: s for s in engine.log["summaries"] if s["period"] == "week:2026-10-12"}
+    assert week["blair"]["missed"] == ["laundry|blair|week:2026-10-12|1"]
+    assert week["dana"]["due"] == 5  # Wednesday to Sunday
+    assert week["casey"]["due"] == 0
+    assert keys(engine, "casey", at(10, 19, 16)) == ["yard_work|casey|week:2026-10-19|0"]
+
+
+def test_a_weekly_chore_with_no_set_days_added_on_the_first_day_counts_that_week() -> None:
+    engine = sample_engine(at(10, 12, 9), activities=[])  # Monday
+    engine.save_activity(
+        at(10, 12, 20),
+        {"name": "Yard work", "schedule": "plan", "assignees": ["casey"], "minimum": {"hours": 1, "per": "week"}},
+        by="alex", source="tablet",
+    )
+    assert keys(engine, "casey", at(10, 12, 21)) == ["yard_work|casey|week:2026-10-12|0"]
+
+
+def test_a_repeating_chore_owes_nothing_from_before_it_was_added() -> None:
+    engine = sample_engine(at(10, 14, 9), activities=[])  # Wednesday
+    for chore in (
+        {"name": "Water the plants", "schedule": "repeats", "assignees": ["casey"],
+         "repeats": {"rrule": "FREQ=WEEKLY;BYDAY=MO,FR", "start": "2026-09-07", "window": "day"}},
+        {"name": "Change the filter", "schedule": "repeats", "assignees": ["alex"],
+         "repeats": {"rrule": "FREQ=MONTHLY;BYMONTHDAY=1", "start": "2026-09-01", "window": "period"}},
+    ):
+        engine.save_activity(at(10, 14, 16), chore, by="alex", source="tablet")
+    assert keys(engine, "casey", at(10, 14, 17)) == []  # Monday's watering came before the chore did
+    assert keys(engine, "casey", at(10, 16, 9)) == ["water_the_plants|casey|rep:2026-10-16|0"]
+    assert keys(engine, "alex", at(10, 14, 17)) == []  # so did October's filter
+    assert keys(engine, "alex", at(11, 2, 9)) == ["change_the_filter|alex|rep:2026-11-01|0"]

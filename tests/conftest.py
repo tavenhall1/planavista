@@ -273,12 +273,14 @@ async def chores(hass: HomeAssistant, household: Any, freezer: Any, chores_start
     """
     from custom_components.planavista.chores.runtime import DATA_CHORES
 
-    from .chores_sample import built, sample_activities
+    from .chores_sample import IN_USE_SINCE, built, sample_activities
 
     freezer.move_to(chores_start)
     await hass.config.async_update(time_zone="America/Chicago")
     runtime = hass.data[DATA_CHORES]
     await runtime.async_set_enabled(True)
+    runtime.engine.log["active_from"] = IN_USE_SINCE  # the household has used chores since June
+    await runtime.stores.async_save("log", runtime.engine.log)
     runtime.engine.plan["activities"] = [built(a, household.members) for a in sample_activities()]
     await runtime.stores.async_save("plan", runtime.engine.plan)
     runtime.async_notify()

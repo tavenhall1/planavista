@@ -20,7 +20,9 @@ from custom_components.planavista.chores.model import (
 )
 
 TZ = ZoneInfo("America/Chicago")
-CREATED = "2026-10-10T19:05:00-05:00"
+# The household has used chores, and these chores, since June.
+IN_USE_SINCE = "2026-06-01"
+CREATED = "2026-06-01T19:05:00-05:00"
 
 
 def at(month: int, day: int, hour: int = 16, minute: int = 10, *, year: int = 2026) -> datetime:
@@ -106,8 +108,12 @@ def sample_engine(
     activities: list[dict[str, Any]] | None = None,
     members: list[dict[str, Any]] | None = None,
     settings: dict[str, Any] | None = None,
+    in_use_since: str | None = IN_USE_SINCE,
 ) -> ChoresEngine:
-    """An engine with the sample household and chores, started on the morning of `now`'s chore day."""
+    """An engine with the sample household and chores, started on the morning of `now`'s chore day.
+
+    Chores count from `in_use_since`; None means they were turned on just now.
+    """
     members = [dict(m) for m in (members or MEMBERS)]
     document = default_plan()
     document["settings"].update(settings or {})
@@ -115,6 +121,8 @@ def sample_engine(
     engine = ChoresEngine(document, default_log(), default_rewards(), members, tz=TZ, new_id=counter_ids())
     engine.set_first_day("monday", now)
     engine.start(now)
+    if in_use_since is not None:
+        engine.log["active_from"] = in_use_since
     return engine
 
 

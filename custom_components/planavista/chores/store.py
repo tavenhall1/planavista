@@ -91,7 +91,7 @@ def normalize_log(data: object) -> dict[str, Any]:
         doc[name] = _records(doc.get(name), name)
     if not isinstance(doc.get("totals"), Mapping):
         doc["totals"] = {}
-    for name in ("last_day", "last_boundary"):
+    for name in ("last_day", "last_boundary", "active_from"):
         if not isinstance(doc.get(name), str):
             doc[name] = None
     for name in ("weeks", "policy"):

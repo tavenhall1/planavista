@@ -62,6 +62,13 @@ class Generator:
     clock: Clock
     minutes_per_star: int
     policy_on: Callable[[date], str]
+    active_from: date = date.min
+
+    def begins(self, activity: Mapping[str, Any], member: str) -> date:
+        """The first chore day `member` owes `activity`: the chore, their place on it, and chores were all on."""
+        since = activity.get("assigned_since")
+        joined = since.get(member) if isinstance(since, Mapping) else None
+        return max(_created_day(activity, self.clock), _chore_day(joined, self.clock), self.active_from)
 
     def _occurrence(
         self,
@@ -124,7 +131,9 @@ class Generator:
             for n in range(times)
         ]
 
-    def _plan_week(self, activity: Mapping[str, Any], member: str, week: date) -> list[Occurrence]:
+    def _plan_week(
+        self, activity: Mapping[str, Any], member: str, week: date, begins: date = date.min
+    ) -> list[Occurrence]:
         clock = self.clock
         end = clock.week_end(week)
         times = int(activity.get("times", 1))
@@ -133,6 +142,8 @@ class Generator:
         week_due = clock.day_start(end)
         days = activity.get("days") or []
         if not days:
+            if week < begins:
+                return []  # the week was under way when it began: it starts with the next one
             return [
                 self._occurrence(
                     activity, member, period, n,
@@ -149,6 +160,8 @@ class Generator:
         each = share / (len(days) * times)
         result = []
         for index, day in enumerate(picked):
+            if day < begins:
+                continue  # a day of this week from before it began (the numbering stays)
             strict = self.policy_on(day) == "strict"
             for t in range(times):
                 result.append(
@@ -182,6 +195,8 @@ class Generator:
             timing = {"appears": created, "planned": None, "due": due, "dated": True}
         else:
             timing = {"appears": created, "planned": None, "due": None, "dated": False}
+        if timing["due"] is not None and self.clock.due_day(timing["due"]) < self.begins(activity, member):
+            return []
         return [
             self._occurrence(
                 activity, member, "once", n, band=None, minutes=each, window="once", **timing
@@ -249,17 +264,23 @@ class Generator:
     def period_occurrences(
         self, activity: Mapping[str, Any], member: str, kind: str, start: date | None
     ) -> list[Occurrence]:
-        """Every occurrence of one period for one assignee (before overrides)."""
+        """Every occurrence of one period for one assignee (before overrides).
+
+        Nothing is owed for a day before the assignee `begins` the chore.
+        """
         schedule = activity.get("schedule")
         per = activity.get("minimum", {}).get("per") if schedule == "plan" else None
-        if kind == "day" and start is not None and per == "day":
-            return self._plan_day(activity, member, start)
-        if kind == "week" and start is not None and per == "week":
-            return self._plan_week(activity, member, start)
         if kind == "once" and schedule == "once":
             return self._once(activity, member)
-        if kind == "rep" and start is not None and schedule == "repeats":
-            return [self._repeat(activity, member, start)]
+        if start is None:
+            return []
+        begins = self.begins(activity, member)
+        if kind == "day" and per == "day":
+            return self._plan_day(activity, member, start) if start >= begins else []
+        if kind == "week" and per == "week":
+            return self._plan_week(activity, member, start, begins)
+        if kind == "rep" and schedule == "repeats":
+            return [self._repeat(activity, member, start)] if start >= begins else []
         return []
 
     def from_key(self, activity: Mapping[str, Any], key: str) -> Occurrence | None:
@@ -290,13 +311,17 @@ class Generator:
         )
 
 
-def _created_day(activity: Mapping[str, Any], clock: Clock) -> date:
-    created = activity.get("created")
-    at = created.get("at") if isinstance(created, Mapping) else None
+def _chore_day(stamp: object, clock: Clock) -> date:
+    """The chore day a stored time falls in (date.min when there is none)."""
     try:
-        return clock.chore_date(datetime.fromisoformat(at)) if at else date.min
+        return clock.chore_date(datetime.fromisoformat(stamp)) if isinstance(stamp, str) and stamp else date.min
     except (TypeError, ValueError):
         return date.min
+
+
+def _created_day(activity: Mapping[str, Any], clock: Clock) -> date:
+    created = activity.get("created")
+    return _chore_day(created.get("at") if isinstance(created, Mapping) else None, clock)
 
 
 def visible_on(occ: Occurrence, day: date, clock: Clock) -> bool:

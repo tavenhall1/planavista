@@ -1,7 +1,7 @@
 """The day boundary: auto-approve, missed policies, summaries, catching up, streaks (spec 8.9 to 8.14)."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from custom_components.planavista.chores.engine import ChoresEngine
@@ -244,7 +244,7 @@ def test_weeks_off_are_caught_up_once_each(  # Review Focus 2
     days = [s["period"] for s in engine.log["summaries"] if s["member"] == "dana" and s["period"].startswith("day:")]
     assert len(days) == len(set(days)) == 42
     missed = [e.data["occurrence"] for e in out.events if e.type == "missed"]
-    assert len(missed) == len(set(missed))
+    assert missed and len(missed) == len(set(missed))
     assert engine.catch_up(at(10, 13, 9)).events == []
 
 
@@ -259,3 +259,34 @@ def test_an_earlier_day_start_ends_the_day_at_once_and_only_once(  # Review Focu
     engine.save_settings(at(10, 13, 2, 40), {"day_starts": "04:00"})
     engine.catch_up(at(10, 13, 4, 30))
     assert [s["period"] for s in engine.log["summaries"] if s["member"] == "dana"] == ["day:2026-10-12"]
+
+
+def test_someone_added_to_a_chore_mid_week_owes_only_what_comes_after() -> None:
+    engine = sample_engine(at(10, 14, 9))  # Wednesday
+    engine.save_activity(at(10, 14, 16), {"assignees": ["blair", "alex"]}, by="alex", source="tablet", activity_id="laundry")
+
+    def laundry(member: str, now: datetime) -> list[str]:
+        return [k for k in keys(engine, member, now) if k.startswith("laundry")]
+
+    assert laundry("alex", at(10, 14, 17)) == []  # Monday's load wasn't Alex's
+    assert laundry("blair", at(10, 14, 17)) == ["laundry|blair|week:2026-10-12|0"]  # Blair still owes it
+    assert laundry("alex", at(10, 15, 9)) == ["laundry|alex|week:2026-10-12|1"]
+    engine.catch_up(at(10, 19, 9))
+    missed = _summary(engine, "alex", "week:2026-10-12")["missed"]
+    assert [k for k in missed if k.startswith("laundry")] == ["laundry|alex|week:2026-10-12|1"]
+
+
+def test_chores_turned_on_mid_week_owe_nothing_from_before() -> None:
+    engine = sample_engine(at(10, 17, 9), in_use_since=None)  # chores turned on Saturday morning
+    saturday = at(10, 17, 16)
+    assert keys(engine, "blair", saturday) == []  # Monday's and Thursday's loads came before chores did
+    casey = keys(engine, "casey", saturday)
+    assert not [k for k in casey if k.startswith(("take_out_the_trash", "clean_the_bathroom", "yard_work"))]
+    assert "rake_the_leaves|casey|rep:2026-10-17|0" in casey
+    out = engine.catch_up(at(10, 19, 9))
+    missed = [e.data["occurrence"] for e in out.events if e.type == "missed"]
+    earlier = ("laundry", "take_out_the_trash", "clean_the_bathroom", "yard_work", "finance_and_budget")
+    assert not [k for k in missed if k.startswith(earlier)]
+    assert "groceries|alex|week:2026-10-12|0" in missed  # Saturday's shopping was owed
+    assert _summary(engine, "dana", "week:2026-10-12")["due"] == 8  # Saturday and Sunday only
+    assert "yard_work|casey|week:2026-10-19|0" in keys(engine, "casey", at(10, 19, 16))
