@@ -7,6 +7,7 @@ import { contrastText } from '../../core/color';
 import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
+import { rowChange } from './hold-state';
 
 /** The picture for a chore: its emoji, or a star when it has none (spec 7.3: the icon is also the picture tile). */
 export function pictureOf(icon: string | null | undefined): string {
@@ -194,12 +195,12 @@ export class PvChoreTile extends LitElement {
 
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('row')) {
-      const before = changed.get('row') as RowModel | undefined;
-      if (before && before.state !== this.row.state) {
+      const change = rowChange(changed.get('row') as RowModel | undefined, this.row);
+      if (change !== 'none') {
         this._held = false;
         this._fill = 0;
-        if (this.row.state === 'done' || this.row.state === 'pending') this._celebrate = true;
       }
+      if (change === 'answered' && (this.row.state === 'done' || this.row.state === 'pending')) this._celebrate = true;
     }
   }
 

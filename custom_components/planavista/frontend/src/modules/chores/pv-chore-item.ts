@@ -6,6 +6,7 @@ import { BOUNCY, motionOf, springEasing } from '../../core/motion';
 import { contrastText } from '../../core/color';
 import { choresStyles } from './chores-styles';
 import type { RowModel } from './board-derive';
+import { rowChange } from './hold-state';
 
 /** What a finished hold asks of whoever handles it. */
 export interface HoldDetail {
@@ -230,13 +231,13 @@ export class PvChoreItem extends LitElement {
 
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('row')) {
-      const before = changed.get('row') as RowModel | undefined;
+      const change = rowChange(changed.get('row') as RowModel | undefined, this.row);
       this.dataset.state = this.row.state;
-      if (before && before.state !== this.row.state) {
+      if (change !== 'none') {
         this._held = false;
         this._fill = 0;
-        if (this.row.state === 'done' || this.row.state === 'pending') this._celebrate = true;
       }
+      if (change === 'answered' && (this.row.state === 'done' || this.row.state === 'pending')) this._celebrate = true;
     }
   }
 

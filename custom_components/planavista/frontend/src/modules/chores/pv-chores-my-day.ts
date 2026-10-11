@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { keyed } from 'lit/directives/keyed.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import type { Layout } from '../../core/layout';
@@ -520,7 +521,7 @@ export class PvChoresMyDay extends LitElement {
     if (week.length === 0) return nothing;
     return html`
       <div class="section-head"><span>This week</span><span class="right">${this.board.week.days_left} days left</span></div>
-      ${week.map(row => this._row(row, 'week'))}
+      ${repeat(week, row => row.key, row => this._row(row, 'week'))}
     `;
   }
 
@@ -564,15 +565,15 @@ export class PvChoresMyDay extends LitElement {
       ${model.now ? html`
         <div class="now-tile">
           <div class="label" style="text-align:center;margin-top:0;color:${color}">NOW</div>
-          <pv-chore-tile large now .row=${model.now} color=${color} ?locked=${this.locked}
-            .stars=${this.column.member.stars ? model.now.item.stars : 0}></pv-chore-tile>
+          ${keyed(model.now.key, html`<pv-chore-tile large now .row=${model.now} color=${color} ?locked=${this.locked}
+            .stars=${this.column.member.stars ? model.now.item.stars : 0}></pv-chore-tile>`)}
         </div>
       ` : html`<div class="label" style="text-align:center">All done for now 🎉</div>`}
       ${model.next.length ? html`
         <div class="pictures-next">
         <div class="label">Next</div>
         <div class="steps">
-          ${model.next.map(step => step.kind === 'event'
+          ${repeat(model.next, step => (step.kind === 'event' ? `event:${step.text}` : step.row.key), step => step.kind === 'event'
             ? html`<div class="step"><span class="picture" aria-hidden="true">${step.picture}</span>${step.text}</div>`
             : html`<pv-chore-tile .row=${step.row} color=${color} ?locked=${this.locked}></pv-chore-tile>`)}
         </div>
