@@ -4,21 +4,39 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { buttonStyles } from '../../styles/shared';
 import type { Layout } from '../../core/layout';
-import type { HouseholdView } from '../../core/household';
+import { HouseholdView, Member, inOrder, memberColor } from '../../core/household';
 import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module-registry';
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
-import { parentAccess } from '../../core/access';
+import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import type { Mode } from '../../styles/theme-pairs';
 import type { DisplayConfig, PlanaVistaData } from '../../types';
 import { choresStyles } from './chores-styles';
 import type { ChoresService } from './chores-service';
+import type { Board } from './chores-types';
+import type { RowModel } from './board-derive';
+import type { HoldDetail } from './pv-chore-item';
+import { needsOk } from './overlay';
+import { chime, haptic } from './effects';
+import type { PvChoresBoard } from './pv-chores-board';
 import '../../core/pv-toast';
 import '../../shell/pv-notice-sheet';
+import './pv-chores-board';
+import './pv-chores-people-sheet';
 
 /** A sheet the chores screens show over themselves. */
-type ChoresSheet = { kind: 'start_over' } | { kind: 'no_pin'; heading: string };
+type ChoresSheet =
+  | { kind: 'start_over' }
+  | { kind: 'no_pin'; heading: string }
+  | { kind: 'people'; heading: string; body?: string; people: Member[]; pick: (member: Member | null) => void };
+
+/** What the last check-off toast can take back or hand to someone else. */
+interface LastCheckoff {
+  row: RowModel;
+  member: string;
+  toast: string;
+}
 
 /**
  * pv-chores-module: the Chores module (spec 13). It shows the view the bar
@@ -46,7 +64,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   @state() protected _sheet: ChoresSheet | null = null;
   @state() protected _toast: Toast | null = null;
+  /** Minutes since the epoch, so bands and the evening check move with the clock. */
+  @state() private _minute = Math.floor(Date.now() / 60000);
   private _overlayOpen = false;
+  private _last: LastCheckoff | null = null;
+  private _clock: ReturnType<typeof setInterval> | undefined;
 
   static styles = [
     buttonStyles,
@@ -121,8 +143,17 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     }
   }
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._clock = setInterval(() => {
+      const minute = Math.floor(Date.now() / 60000);
+      if (minute !== this._minute) this._minute = minute;
+    }, 5000);
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    clearInterval(this._clock);
     if (this._overlayOpen) {
       this._overlayOpen = false;
       this.dispatchEvent(new CustomEvent('pv-overlay-change', { detail: { open: false }, bubbles: true, composed: true }));
@@ -182,7 +213,136 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** The view the bar picked. */
   protected renderView(): unknown {
-    return nothing;
+    const board = this.service?.board();
+    if (!board) return nothing;
+    const empty = board.chores.length === 0;
+    if (empty) return this._empty();
+    return html`
+      <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
+        .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} layout=${this.layout}
+        .minute=${this._minute}
+        @pv-hold-done=${(e: CustomEvent<HoldDetail>) => this._complete(e.detail)}
+        @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
+        @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}></pv-chores-board>
+    `;
+  }
+
+  private _empty() {
+    const access = parentAccess(this.household, this.session);
+    return html`
+      <div class="state">
+        <div class="art" aria-hidden="true">🧺</div>
+        <h2>No chores yet</h2>
+        <p>Add your family's chores, and they'll show up here for everyone.</p>
+        ${access !== 'no' ? html`
+          <div class="buttons">
+            <button class="pv-btn pv-btn-primary" type="button" @click=${() => this.moduleAction('add')}>Add chores</button>
+          </div>
+        ` : nothing}
+      </div>
+    `;
+  }
+
+  private _member(id: string): Member | undefined {
+    return this.household?.members.find(m => m.id === id);
+  }
+
+  private _colorOf = (member: Member): string => memberColor(member, this.mode);
+
+  /**
+   * Whether this screen may change `memberId`'s items now: straight away, or
+   * after their PIN (or a parent's) on a shared screen (spec 13.2).
+   */
+  protected async asMember(memberId: string, heading: string): Promise<boolean> {
+    const access = memberAccess(this.household, this.session, memberId);
+    if (access === 'yes') return true;
+    if (access === 'no' || !this.pinGate) return false;
+    return this.pinGate.ask(pinChoicesFor(this.household, memberId), heading);
+  }
+
+  private async _complete(detail: HoldDetail): Promise<void> {
+    const { row } = detail;
+    const service = this.service;
+    const board = service?.board();
+    if (!service || !board) {
+      detail.settle(false);
+      return;
+    }
+    const member = row.item.member;
+    if (!(await this.asMember(member, `Who's checking off ${row.name}?`))) {
+      detail.settle(false);
+      return;
+    }
+    this._checkOff(row, member, board, undefined, detail.from);
+    detail.settle(true);
+  }
+
+  /** Queue the check-off, show it at once, and offer Undo (spec 13.2). */
+  private _checkOff(row: RowModel, member: string, board: Board, doneBy?: string, from?: DOMRect): void {
+    const service = this.service!;
+    const doer = this._member(doneBy ?? member);
+    const activity = board.chores.find(a => a.id === row.item.chore);
+    const waits = needsOk(doer, activity);
+    service.enqueue({ op: 'complete', occurrence: row.key, member, name: row.name, doneBy, shows: waits ? 'pending' : 'done' });
+    haptic('tick');
+    if (board.settings.sound) chime();
+    const id = `done-${row.key}-${Date.now()}`;
+    this._last = { row, member, toast: id };
+    const name = doneBy && doneBy !== member ? this._member(doneBy)?.name : null;
+    this.showToast({
+      id,
+      text: waits ? `${row.name}: waiting for OK` : name ? `Done by ${name}` : 'Done',
+      actions: [{ id: 'undo', label: 'Undo' }, ...(doneBy ? [] : [{ id: 'someone', label: 'Someone else did it?' }])],
+      ms: 6000,
+    });
+    const owner = this._member(doneBy ?? member);
+    if (from && owner?.stars && !waits) {
+      void this.updateComplete.then(() => {
+        this.renderRoot.querySelector<PvChoresBoard>('pv-chores-board')?.flyStars(member, from, row.item.stars);
+      });
+    }
+  }
+
+  private async _uncheck(detail: HoldDetail): Promise<void> {
+    const { row } = detail;
+    const member = row.item.member;
+    if (!this.service || !(await this.asMember(member, `Who's unchecking ${row.name}?`))) {
+      detail.settle(false);
+      return;
+    }
+    this.service.enqueue({ op: 'undo', occurrence: row.key, member, name: row.name });
+    detail.settle(true);
+    this.showToast({ id: `undo-${row.key}-${Date.now()}`, text: `${row.name} is open again.` });
+  }
+
+  private _hint(row: RowModel): void {
+    const locked = memberAccess(this.household, this.session, row.item.member) === 'no';
+    const owner = this._member(row.item.member)?.name ?? 'its owner';
+    const text = locked
+      ? `Only ${owner} or a parent can check this off here.`
+      : row.state === 'done'
+        ? 'Hold the check to uncheck it.'
+        : row.state === 'pending'
+          ? 'This is waiting for a parent\'s OK.'
+          : 'Hold the circle to finish a chore. Let go early and nothing happens.';
+    this.showToast({ id: `hint-${Date.now()}`, text, ms: 3500 });
+  }
+
+  /** "Someone else did it?": pick who, then credit them instead (spec 13.2). */
+  private _someoneElse(last: LastCheckoff): void {
+    const people = inOrder(this.household?.members ?? []).filter(m => m.id !== last.member);
+    this._sheet = {
+      kind: 'people',
+      heading: 'Who did it?',
+      body: `They get the credit${people.some(p => p.stars) ? ' and the stars' : ''} for ${last.row.name}.`,
+      people,
+      pick: member => {
+        const board = this.service?.board();
+        if (!member || !board || !this.service) return;
+        this.service.enqueue({ op: 'undo', occurrence: last.row.key, member: last.member, name: last.row.name });
+        this._checkOff(last.row, last.member, board, member.id);
+      },
+    };
   }
 
   private _skeleton() {
@@ -260,8 +420,15 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._toast = toast;
   }
 
-  protected onToastAction(_toast: Toast, _action: string): void {
-    // Undo and Someone else did it? arrive with the board.
+  protected onToastAction(toast: Toast, action: string): void {
+    const last = this._last;
+    if (!last || last.toast !== toast.id || !this.service) return;
+    if (action === 'undo') {
+      this.service.enqueue({ op: 'undo', occurrence: last.row.key, member: last.member, name: last.row.name });
+      this._last = null;
+    } else if (action === 'someone') {
+      this._someoneElse(last);
+    }
   }
 
   private _onToastAction = (event: CustomEvent<{ toast: Toast; action: string }>): void => {
@@ -276,6 +443,14 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _renderSheet() {
     const sheet = this._sheet;
     if (!sheet) return this.renderSheet();
+    if (sheet.kind === 'people') {
+      return html`
+        <pv-chores-people-sheet .layout=${this.layout} heading=${sheet.heading} body=${sheet.body ?? ''}
+          .people=${sheet.people} .hass=${this.hass} .colorOf=${this._colorOf}
+          @pv-person-pick=${(e: CustomEvent<{ member: Member | null }>) => { this._sheet = null; sheet.pick(e.detail.member); }}>
+        </pv-chores-people-sheet>
+      `;
+    }
     if (sheet.kind === 'no_pin') {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading=${sheet.heading}
