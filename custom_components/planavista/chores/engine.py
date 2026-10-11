@@ -126,9 +126,11 @@ def short_day(day: date, today: date) -> str:
 
 
 def needs_ok(doer: Mapping[str, Any], activity: Mapping[str, Any] | None) -> bool:
-    """Whether a check-off by `doer` waits for a parent's OK (spec 8.5 step 3)."""
+    """Whether a check-off by `doer` waits for a parent's OK (spec 8.5 step 3, 10.3)."""
     if doer.get("parent"):
         return False
+    if activity and activity.get("needs_ok_always"):
+        return True
     setting = doer.get("needs_ok_for", "none")
     return setting == "all" or (setting == "marked" and bool(activity and activity.get("needs_ok")))
 
@@ -686,7 +688,7 @@ class ChoresEngine:
             "stars": occ.stars,
             "from": item.moved_from.isoformat() if item.moved_from else None,
             "overdue_since": item.overdue_since.isoformat() if item.overdue_since else None,
-            "needs_ok": bool(activity and activity.get("needs_ok")),
+            "needs_ok": bool(activity and (activity.get("needs_ok") or activity.get("needs_ok_always"))),
             "completion": (
                 {k: completion.get(k) for k in ("id", "done_by", "by", "at", "source", "state", "review", "stars")}
                 if completion
@@ -973,6 +975,8 @@ class ChoresEngine:
             "done_by": doer_id, "by": by, "at": self._stamp(now), "source": source, "user": user,
             "state": state, "review": None, "credit_minutes": occ.credit_minutes, "stars": stars,
         }
+        if state == "pending" and activity and activity.get("needs_ok_always"):
+            completion["auto_approve"] = False  # a parent looks at it, even after the day ends
         self.log["completions"].append(completion)
         self._credit(doer_id, occ.credit_minutes)
         out = Outcome(state, {"occurrence": occ.key, "stars": stars, "completion": completion["id"]}, changed={"log"})
@@ -1470,7 +1474,11 @@ class ChoresEngine:
         out = Outcome(changed={"log"})
         if self.settings.get("auto_approve") == "day_end":
             for completion in self.log["completions"]:
-                if completion.get("state") == "pending" and clock.chore_date(_at(completion["at"])) == day:
+                if (
+                    completion.get("state") == "pending"
+                    and completion.get("auto_approve", True)
+                    and clock.chore_date(_at(completion["at"])) == day
+                ):
                     self._approve(completion, end, AUTO, None, AUTO, out)
         index = self._index()
         by_member = self._items_on(day, index)

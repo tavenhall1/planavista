@@ -119,6 +119,7 @@ async def test_adding_an_item_makes_a_once_chore(hass: HomeAssistant, chores: An
     await hass.async_block_till_done()
     chore = chores.engine.activity("brush_teeth")
     assert (chore["schedule"], chore["assignees"], chore["needs_ok"]) == ("once", ["casey"], True)
+    assert chore["needs_ok_always"] is True  # its stars wait for a parent
     assert chore["once"] | {} == {"on": None, "by": "2026-10-14", "by_time": None, "sessions": 1, "estimate_minutes": 15}
     assert chore["created"]["by"] == "casey" and chore["created"]["source"] == "phone"
     await hass.services.async_call(
@@ -126,6 +127,7 @@ async def test_adding_an_item_makes_a_once_chore(hass: HomeAssistant, chores: An
         target={"entity_id": "todo.casey_chores"}, blocking=True, context=Context(user_id=accounts["alex"].id),
     )
     assert chores.engine.activity("return_library_books")["needs_ok"] is False
+    assert "needs_ok_always" not in chores.engine.activity("return_library_books")
 
 
 async def test_only_once_chores_can_be_removed(hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser]) -> None:
@@ -162,6 +164,7 @@ async def test_assist_adds_to_a_list_and_it_waits_for_an_ok(hass: HomeAssistant,
     await hass.async_block_till_done()
     chore = chores.engine.activity("clean_the_closet")
     assert (chore["name"], chore["needs_ok"], chore["created"]["source"]) == ("Clean the closet", True, "voice")
+    assert chore["needs_ok_always"] is True
 
 
 async def test_two_items_with_one_name_check_off_the_open_one(hass: HomeAssistant, chores: Any) -> None:  # Review Focus 3

@@ -160,6 +160,8 @@ class ChoresTodoList(ChoresEntity, TodoListEntity):
             "needs_ok": not trusted,
             "once": once,
         }
+        if not trusted:
+            changes["needs_ok_always"] = True
         await self._run(lambda engine, now: engine.save_activity(now, changes, by=by, source=source))
 
     async def async_delete_todo_items(self, uids: list[str]) -> None:

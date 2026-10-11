@@ -38,8 +38,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 
 # Fields a chore save may change. Anything else on a stored chore is kept.
 ACTIVITY_FIELDS = (
-    "name", "icon", "category", "schedule", "assignees", "on_board", "needs_ok", "stars", "label",
-    "minimum", "split", "shares", "days", "time_of_day", "times", "set_time", "once", "repeats",
+    "name", "icon", "category", "schedule", "assignees", "on_board", "needs_ok", "needs_ok_always", "stars",
+    "label", "minimum", "split", "shares", "days", "time_of_day", "times", "set_time", "once", "repeats",
 )
 REWARD_FIELDS = ("name", "icon", "cost", "needs_ok", "who")
 
@@ -246,6 +246,9 @@ def build_activity(
         activity.setdefault(flag, default)
         if not isinstance(activity[flag], bool):
             raise ChoreError(f"invalid_{flag}")
+    # Added by someone who isn't a parent: every check-off waits for a parent (spec 10.3).
+    if not isinstance(activity.get("needs_ok_always", False), bool):
+        raise ChoreError("invalid_needs_ok")
     if activity.get("stars") is not None:
         activity["stars"] = _whole(activity["stars"], "invalid_stars", 0, MAX_STARS)
     else:

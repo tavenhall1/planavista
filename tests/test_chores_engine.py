@@ -8,7 +8,7 @@ import pytest
 from custom_components.planavista.chores.engine import ChoresEngine, with_away, without_away
 from custom_components.planavista.chores.model import ChoreError
 
-from .chores_sample import SCENE, at, keys, once, plan, sample_engine
+from .chores_sample import MEMBERS, SCENE, at, keys, once, plan, sample_engine
 
 TRASH = "take_out_the_trash|casey|week:2026-10-12|0"
 FISH = "feed_the_fish|dana|day:2026-10-13|0"
@@ -426,3 +426,17 @@ def test_a_busy_household_stays_quick() -> None:  # Review Focus 1
     engine.board(SCENE)
     assert time.perf_counter() - started < 2.0
     assert sum(len(m["items"]) for m in board["members"].values()) > 100
+
+
+def test_a_chore_someone_who_isnt_a_parent_added_waits_for_a_parent() -> None:
+    members = [dict(m, needs_ok_for="none") if m["id"] == "casey" else m for m in MEMBERS]
+    engine = sample_engine(activities=[], members=members)
+    engine.save_activity(SCENE, {"name": "Brush teeth", "schedule": "once", "assignees": ["casey"], "needs_ok": True,
+                                 "needs_ok_always": True, "once": {}}, by="casey", source="phone")
+    out = engine.complete(SCENE, chore="brush_teeth", member="casey", by="casey", source="phone")
+    assert out.result == "pending"  # though Casey's own check-offs need no OK
+    engine.catch_up(at(10, 14, 9))
+    assert engine.log["completions"][-1]["state"] == "pending"  # the day's end leaves it for a parent
+    assert engine.balance("casey") == 0
+    engine.review(at(10, 14, 9), request_id=out.data["completion"], allow=True, by="alex")
+    assert engine.balance("casey") == 1
