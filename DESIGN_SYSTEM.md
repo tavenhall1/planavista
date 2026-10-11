@@ -1,385 +1,360 @@
 # PlanaVista Design System
 
-The authoritative reference for all visual and interaction design decisions in PlanaVista. Every UI change must comply with these standards. No exceptions without documented rationale.
+The reference for how PlanaVista looks, moves, and reads, in every module. The calendar follows it today, and chores is built on it. When a change needs to break a rule here, change the rule here first and say why.
 
 ---
 
-## 1. Design Principles
+## 1. Principles
 
-### 1.1 Calm Premium
-The UI should feel like a high-end appliance, not a software tool. Generous whitespace, restrained color, no visual noise. If a border, shadow, or element doesn't serve a clear purpose, remove it.
-
-### 1.2 Content Over Chrome
-Events, times, and people are the content. Everything else (gridlines, borders, toolbars) recedes. The calendar color and typography do the heavy lifting.
-
-### 1.3 Pastel Palette, Not Saturated
-Calendar colors live in a curated pastel range. Every primary color has a paired light variant. Event blocks use the light variant as background with the primary as a left-edge accent. Never solid saturated blocks.
-
-### 1.4 Touch-First, Keyboard-Accessible
-Minimum 44px touch targets (Apple HIG standard). Every interactive element must have visible focus states for keyboard navigation.
-
-### 1.5 Responsive Is Mandatory
-Every component must render correctly from 320px (phone) to 2560px (ultrawide). No component ships without responsive behavior defined.
-
-### 1.6 Motion With Purpose
-Animations signal state changes: view transitions, dialog open/close, hover feedback. No decorative animation. Duration: 150–250ms. Easing: ease-out for entrances, ease-in for exits.
+- **Warm, calm, encouraging.** It reads from across a kitchen, and it feels friendly to a 6-year-old without boring a teenager.
+- **The signature is closing rings and rounded headings.** Each person's ring fills as their day gets done and closes with a check (rings arrive with chores). All the boldness is spent there; everything else stays quiet.
+- **Content over chrome.** Events, times, and people are the content. Gridlines, borders, and toolbars recede; people's colors and the type do the work.
+- **Apple-like, calm, and functional.** Design directives are guidance, not limits. When a directive would remove something useful, function wins and the design resolves the tension.
 
 ---
 
-## 2. Color Palette
+## 2. Layout
 
-### 2.1 Curated Presets
+### 2.1 The card measures itself
 
-Ten named color pairs. Primary is used for accent borders, avatar rings, and calendar identity marks. Light is used for event block backgrounds, all-day banners, and month view pills.
+The shell watches the card's own box, not the window or the device, and sets a `layout` attribute that every part styles against. The same card works full screen on a wall, in a dashboard column, or on a phone.
 
-| #  | Name         | Primary   | Light     |
-|----|--------------|-----------|-----------|
-| 1  | **Ocean**    | `#4A90D9` | `#DCE8F5` |
-| 2  | **Fire**     | `#FC6A05` | `#FEE6D1` |
-| 3  | **Sage**     | `#6BA368` | `#E2F0E1` |
-| 4  | **Lavender** | `#9B8EC4` | `#EDEBF5` |
-| 5  | **Amber**    | `#D9A52B` | `#F7EDCF` |
-| 6  | **Honey**    | `#CDCB2E` | `#F3F3DA` |
-| 7  | **Rose**     | `#D4728C` | `#F5E4EA` |
-| 8  | **Teal**     | `#4A9E9E` | `#DDF0F0` |
-| 9  | **Slate**    | `#6B7A8D` | `#E8EAED` |
-| 10 | **Graphite** | `#505050` | `#E8E8E8` |
+| Layout | Rule |
+|---|---|
+| Phone | narrower than 600 px |
+| Portrait | 600 px or wider, and taller than wide |
+| Landscape | 600 px or wider, and wider than tall |
 
-### 2.2 Custom Colors
+- **Dead band:** while the aspect ratio is between 0.95 and 1.05, the previous layout is kept (the first measurement picks landscape), so split-screen sizes don't flip back and forth.
+- **Keyboards:** while a text field in the card has focus, height-only shrinks are ignored. Kiosk browsers shrink the page when the keyboard opens, which would otherwise flip portrait to landscape mid-word.
+- **Rotating keeps your place:** the view, the person, and the time at the top of the Day view stay put. The header, the module, and the bar are the same elements in every layout; only their order changes.
+- **Reference sizes:** 1280 × 800 (landscape), 800 × 1280 (portrait, a typical 10-inch tablet), and 390 × 844 (phone).
+- The calendar views still have a few window-width media queries for type sizes; they move to the card's own size in milestone 7.
 
-Users may choose a custom color via RGB picker. The "Custom..." option appears after the preset swatches in the config UI.
+### 2.2 Header and bar
 
-- Presets store both `color` and `color_light` explicitly (hand-tuned pairs).
-- Custom colors auto-generate `color_light` via `color-mix(in srgb, [color] 12%, white)`.
-- Dark theme adjusts to 15% mix for sufficient contrast on dark backgrounds.
+| | Header | Bar |
+|---|---|---|
+| Landscape | One row: weather at the left, the date in the middle, the time at the right | Under the header: the module switcher, the module's views, and the gear |
+| Portrait | A lock-screen clock and the date at the left; the weather with today's high and low at the right | Along the bottom edge, where hands already are |
+| Phone | One compact row: the time, a short date, the temperature | Along the bottom edge |
 
-### 2.3 Color Usage Rules
+- Switching modules never moves the controls. With only one module there is no switcher.
+- `hide_header` hides the clock and weather header; the bar stays, because it holds the views and Settings.
+- The header's type scales with the card's width (container query units), not the window's.
 
-- All color references in CSS must use `--event-color` and `--event-color-light` variables. Never raw hex in component styles.
-- Primary is used for: left accent border (3px), avatar ring, calendar dot in filter, event text contrast when needed.
-- Light is used for: event block background fill, all-day banner fill, month view pill background.
+### 2.3 The calendar in each layout
+
+- **Day:** person lanes in every layout. Landscape and phones keep 80 px an hour; portrait fits about 14 hours on screen (48 to 80 px an hour, from the view's own height). On a phone, the person chips at the top choose who shows.
+- **Week:** days across: four in landscape, two in portrait, one on a phone.
+- **Month:** each day shows as many whole events as its cell holds, measured from what the grid draws, then "+N more". Taller portrait cells show more.
+- **Agenda** is already a portrait shape.
+
+### 2.4 Sheets
+
+- In portrait and on phones a sheet rises from the bottom, only as tall as its content, with a grab handle. A finger drags it down; letting go past 90 px, or flicking faster than 0.6 px per ms, closes it, and anything less springs back.
+- In landscape a sheet is a centered card that pops in.
+- A sheet leaves before it reports why it closed, so whatever happens next never fights the exit.
+- The same sheets take both shapes; no screen gets a portrait-only version.
 
 ---
 
-## 3. Component Standards
+## 3. Type
 
-### 3.1 Event Blocks
+- **Headings and numbers** use a rounded face: `ui-rounded` (SF Pro Rounded) on Apple devices, and everywhere else Nunito, bundled as a Latin-subset variable `woff2` in `frontend/dist/fonts` under the SIL Open Font License 1.1 (`OFL.txt` beside it). The face is declared once on the page, because a shadow root ignores `@font-face`. No web fonts are fetched.
+- **Body text** uses the system font stack: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif`.
+- Clocks, temperatures, and counters use tabular figures.
+- Correction: earlier versions of this document named Inter, but no Inter file was ever bundled, so the card always rendered in the system font.
 
-**Visual treatment (all views):**
-- Left accent border: 3px, primary color, the calendar identity mark.
-- Background fill: light variant, never the primary at full saturation.
-- Text: `--pv-text` (dark), not the primary color. Readability first.
-- No outer border or box shadow on event blocks.
-- Border radius: 4px (subtle rounding, not pill-shaped).
-- Hover: light variant darkens to 16% mix, subtle `translateY(-1px)`.
-- Active: `scale(0.98)`.
+| Level | Use |
+|---|---|
+| Display | The portrait header's clock (scales with the card, 40 to 60 px) |
+| Heading | Page titles, the date in the header, sheet headings (rounded, 700 to 800) |
+| Body | Event titles, rows, descriptions (system, 0.9375rem) |
+| Caption | Event times, summaries, help text (system, 0.8125 to 0.875rem) |
+| Overline | Weekday names and hour labels (system, small, muted) |
 
-**Event block anatomy:**
+---
+
+## 4. Color
+
+### 4.1 Every color has one job
+
+| Color | Job |
+|---|---|
+| A person's color | who |
+| Indigo (the accent) | something to act on: the chosen view, the main button, items waiting for an OK |
+| Amber | time pressure |
+| Red | overdue, missed, or sent back; destructive actions |
+
+- **Color is never alone.** Every state also has words or a glyph, so the card still reads in grayscale.
+- **Chroma shrinks as area grows.** Full color on avatars, the edge of an event, rings, and checks; rows, event fills, and done states use a pale tint.
+- **Neutrals do most of the work:** plain surfaces, hairline borders, few shadows.
+
+### 4.2 People's colors
+
+Twenty presets in two palettes. Each has a color and a light fill for its events.
+
+| Name | Color | Fill | Name | Color | Fill |
+|---|---|---|---|---|---|
+| Ink Black | `#001219` | `#A6ACAF` | Strawberry Red | `#F94144` | `#FDBDBE` |
+| Dark Teal | `#005F73` | `#A6C7CE` | Pumpkin Spice | `#F3722C` | `#FBCEB5` |
+| Dark Cyan | `#0A9396` | `#A9D9DA` | Carrot Orange | `#F8961E` | `#FDDAB0` |
+| Pearl Aqua | `#94D2BD` | `#DAEFE8` | Atomic Tangerine | `#F9844A` | `#FDD4C0` |
+| Wheat | `#E9D8A6` | `#F7F1E0` | Tuscan Sun | `#F9C74F` | `#FDEBC1` |
+| Golden Orange | `#EE9B00` | `#F9DCA6` | Willow Green | `#90BE6D` | `#D8E8CC` |
+| Burnt Caramel | `#CA6702` | `#ECCAA6` | Seaweed | `#43AA8B` | `#BDE1D6` |
+| Rusty Spice | `#BB3E03` | `#E7BBA7` | Ocean Cyan | `#4D908E` | `#C1D8D7` |
+| Oxidized Iron | `#AE2012` | `#E3B1AC` | Blue Slate | `#577590` | `#C4CFD8` |
+| Brown Red | `#9B2226` | `#DCB2B3` | Cerulean | `#277DA1` | `#B3D2DE` |
+
+A custom color gets its fill computed for it. In dark mode both are derived in OKLCH (section 5.3), so contrast is measured rather than eyeballed.
+
+### 4.3 Text on color
+
+`contrastText()` measures the WCAG contrast of white and of near-black `#1A1B1E` against the color and picks the higher one. The crossover sits near a relative luminance of 0.2. Letters on a person's color (initials, check marks, selected chips), on event fills, and on accent buttons all use it. Some mid-tone colors can't reach 4.5:1 with either; they get the better of the two.
+
+### 4.4 Tokens
+
+Every theme version sets the same custom properties on the card (`styles/theme-pairs.ts`); components use them and never raw colors.
+
+| Token | Job |
+|---|---|
+| `--pv-bg`, `--pv-card-bg`, `--pv-card-bg-elevated` | The page, the card, and surfaces that come forward |
+| `--pv-text`, `--pv-text-secondary`, `--pv-text-muted` | Text, quieter text, labels |
+| `--pv-border`, `--pv-border-subtle` | Hairlines |
+| `--pv-track`, `--pv-chip`, `--pv-seg`, `--pv-seg-on` | Ring tracks, chips, a segmented control and its chosen segment |
+| `--pv-accent` | The accent as a fill (the chosen view, the main button) |
+| `--pv-accent-text` | Text on an accent fill |
+| `--pv-accent-ink` | The accent as text or a mark (links, back controls, focus rings): the same color in light, brighter in dark |
+| `--pv-accent-tint`, `--pv-accent-tint-ink` | A pale accent fill and its text |
+| `--pv-warn-bg`, `--pv-warn-ink` | Amber: time pressure, hard-to-read warnings |
+| `--pv-bad-bg`, `--pv-bad-ink`, `--pv-danger` | Red: overdue, sent back, destructive |
+| `--pv-star` | Stars |
+| `--pv-today-bg`, `--pv-now-color`, `--pv-event-hover` | Today's highlight, the now line, an event under the pointer |
+| `--pv-header-gradient`, `--pv-header-text`, `--pv-header-muted` | The header's fill and its text |
+| `--pv-shadow`, `--pv-shadow-lg`, `--pv-shadow-xl` | Shadows, from the shape settings |
+| `--pv-radius`, `--pv-radius-lg`, `--pv-radius-sm` | Corners, from the shape settings |
+| `--pv-font-family`, `--pv-font-heading` | Body and heading faces |
+| `--pv-backdrop`, `--pv-transition` | Sheet backdrops, the default transition |
+| `--pv-motion` | `full` or `reduced` (section 7) |
+
+---
+
+## 5. Day and night
+
+### 5.1 Light, Dark, and Automatic
+
+Appearance is Light, Dark, or Automatic. Automatic switches:
+
+- **At sunset and sunrise,** from Home Assistant's `sun.sun`, so every screen in the house changes at the same moment ("Dark at 6:31 PM tonight, light again at 7:12 AM"). Without the Sun integration it uses the schedule's times until Sun is set up, and says so.
+- **On a schedule** ("Light from 7:00 AM", "Dark from 9:00 PM"), either way round midnight.
+- **Matching Home Assistant:** each screen follows its own Home Assistant theme setting. Handy for phones.
+
+`select.planavista_appearance` (Light, Dark, Automatic) lets an automation or a voice assistant change it.
+
+### 5.2 The change itself
+
+It uses the browser's View Transitions on the page itself. Home Assistant draws every card inside shadow roots, where a `view-transition-name` is never captured; only the cards change, so only they visibly move. A tiny page-level stylesheet, scoped by an attribute that exists only while a change runs, styles the transition's pseudo-elements, and the animations are taken away when it ends.
+
+| Change | What you see |
+|---|---|
+| Automatic, toward night | Night falls from the top like the sky darkening, in about 2 seconds |
+| Automatic, toward day | Day rises from the bottom like a sunrise, in about 2 seconds |
+| By hand | The new look spreads out from the finger, in about half a second |
+| Reduced motion | A quick fade (250 ms) |
+| A hidden page, a page that just loaded or woke, a browser without View Transitions | It just switches |
+
+- The sweep's mask is 210% tall with its edge between 47.6% and 52.4%, so the edge stays on screen for the whole sweep.
+- **Never mid-touch:** an automatic change waits until nobody has touched the card for 10 seconds and no sheet, dialog, Settings, or setup is open.
+- **Asleep screens just switch:** a screen that was dark at sunset wakes up already changed, and a page loaded after sunset starts dark with no replay.
+
+### 5.3 Dark is designed, not inverted
+
+- Surfaces get lighter as they come forward, instead of relying on shadows.
+- People's colors keep their hue and brighten a little (OKLCH lightness at least 0.69), and the letters on them turn dark.
+- Event fills become dark tints of the person's color (lightness 0.255, low chroma), with light text.
+- Text drawn in the accent uses `--pv-accent-ink`, a brighter version that reads on dark surfaces.
+- Tints, chips, warnings, and badges all have dark versions.
+
+### 5.4 Themes come in pairs
+
+- **PlanaVista** (1.1.0's Clean Light and Deep Dark as one theme), **Minimal**, and **Vibrant**, each with a light and a dark version. Each theme's picture shows both halves.
+- **Customize** has a Light and a Dark color for the accent, the background, the header, and the now line. A dark color starts as **Matched**: derived from the light one in OKLCH, so it follows it. Setting it by hand overrides that; choosing Matched again goes back.
+- **The contrast guard** flags a chosen color that would be hard to read, with a one-tap fix that brightens or darkens it just enough: 3:1 for lines and controls (the accent, the now line), 4.5:1 for text (on the background, on a solid header). The 1.1.0 header gradients were drawn for their white text and aren't judged.
+- **Shape** is shared by both versions: corners (Sharp, Rounded, Pill), shadows (None, Subtle, Bold), events (Stripes, Solid), avatar border (Their color, White, Custom). Left unset, corners and shadows are the theme's own. "Reset to its original colors" restores a theme's colors and keeps the shape.
+
+### 5.5 Upgrading from 1.1.0
+
+| 1.1.0 | Becomes |
+|---|---|
+| Clean Light (`planavista`) | PlanaVista, Light |
+| Deep Dark (`dark`) | PlanaVista, Dark |
+| Minimal (`minimal`) | Minimal, Light |
+| Vibrant (`modern`) | Vibrant, Light |
+
+Customizations move to the version they were made for. The 1.1.0 keys (`theme`, `theme_overrides`) are rewritten beside the new ones on every save, so going back to 1.1.0 still draws a sensible card.
+
+---
+
+## 6. Status map
+
+One map, used by every view, sensor description, and notification:
+
+| State | Glyph | Words | Color |
+|---|---|---|---|
+| To do | empty circle | the estimate ("15 min") | neutral |
+| Done | check in the member's color; title struck through | moves to "Done today" | member color |
+| Waiting for OK | ⏳ | "Waiting for OK" (everywhere, even on picture tiles) | indigo |
+| Sent back | ↩ | "Sent back: {note}" | red |
+| Running out of days | dot | "2 days left" | amber |
+| Last day, overdue | dot | "Last day", "Overdue since Mon" | red |
+| Make-up | none | "From Mon" | neutral |
+| Due date | none | "Due Sat" | neutral; amber on the day |
+| Missed (history) | × | "Missed" | muted red |
+| Excused | none | "Excused" | muted |
+| Away | 🧳 | "Away · At Grandma's" | neutral |
+| Ring closed | check badge on the ring | "Ring closed for today" | member color |
+
+---
+
+## 7. Motion
+
+Motion is part of the product, Apple style, in every module.
+
+- **It tracks the finger.** Hold to complete fills at a steady rate over 550 ms while the finger stays down, and rewinds on release or on a move of more than 12 px; a press shorter than 200 ms is a tap. Pointer capture keeps a gesture alive if a finger drifts off a small target, and the movement rule hands an intended scroll back to the page. The calendar's date swipe uses the same rule, so the gestures never fight.
+- **Springs, not timers.** `spring(response, damping)` solves the damped-spring equation and samples it into CSS `linear()` easing, with SwiftUI's parameters:
+
+| Preset | Spring | Settles in | For |
+|---|---|---|---|
+| Smooth | `spring(0.5, 0.86)` | 639 ms | glides: sheets rising, the reveal |
+| Bouncy | `spring(0.45, 0.55)` | 900 ms | pops: a sheet springing back |
+| Gentle | `spring(0.6, 0.9)` | 733 ms | large moves |
+
+  Browsers without `linear()` get a plain ease of the same length.
+- **Every animation answers "what just happened?"** A check draws itself, a title strikes through, numbers roll, rows glide to where they went.
+- **Celebrations are earned.** The glow and burst play once, when a person's ring closes for the day, plus a family celebration when every ring closes.
+- **Haptics** where the device allows (a light tick on completion, a richer one when a ring closes). **Sound** is an optional setting, off by default.
+- **Reduced motion keeps the meaning.** A ring still fills, because it is the feedback, but pops, flights, glides, and sweeps become quick fades, and a wrong PIN fades instead of shaking. It follows PlanaVista's Motion setting (Follow the device, Full, Reduced), because kiosk tablets often hide the system setting. The card sets `--pv-motion`, which reaches into every shadow root.
+- **Cheap to run.** Only transform, opacity, clip paths, masks, and stroke offsets animate, so older wall tablets stay smooth.
+- **Keyboard.** Space or Enter does what a hold does, with the same feedback.
+
+---
+
+## 8. States
+
+- **Skeletons, not spinners,** in the shape of what is loading.
+- **Optimistic changes.** A check-off or an appearance change shows at once; if saving fails, it goes back, with a message that says what to do.
+- **Designed empty and error states** that say what to do next.
+
+---
+
+## 9. Copy
+
+- Sentence case. One name per thing ("Waiting for OK" is the only name for pending).
+- No em dashes in product copy or public docs. The CI copy check (`scripts/check_copy.py`) enforces it.
+- Destructive actions are confirmed by name ("Remove Casey's PIN?", "Reset PlanaVista to its original colors?").
+- Every sub-screen has a back control naming its parent ("‹ Settings", "‹ Appearance"). A kiosk has no browser back button.
+- Errors say what happened and what to do next, in plain words.
+
+---
+
+## 10. Accessibility
+
+- Touch targets are at least 48 px, even where the drawn control is smaller.
+- Rings and progress have text labels for screen readers ("Casey, 1 of 3 done today").
+- Sheets are dialogs with a focus trap, Escape to close, and focus returned to where it came from.
+- Choices are real radio groups: Tab reaches the chosen one, the arrow keys move the choice, and focus follows.
+- Every hold has a keyboard equivalent, and reduced motion is respected.
+- Text aims for WCAG AA against its own background (4.5:1, or 3:1 for large text and controls); `contrastText()` and the contrast guard measure it rather than guess. Muted labels (hours, weekday names) sit near 3:1 today and are the known exception.
+
+---
+
+## 11. Components
+
+### 11.1 The glance header
+
+`pv-glance-header`: the clock, the date, and the weather, laid out per section 2.2. Tapping the weather opens Home Assistant's own details for the weather entity. The minute changes without re-rendering anything else. Glance chips ("9 of 17 chores done today") arrive with chores.
+
+### 11.2 The bar
+
+`pv-nav-bar`: the module switcher (when there is more than one module), the module's views, and the gear. Every control is at least 48 px to the touch, with a smaller pill drawn inside. The gear fires from itself, so focus returns to it when a sheet it opened closes.
+
+### 11.3 Sheets
+
+`pv-pin-sheet` (the keypad: tap your face, then your PIN; digits never reach the page) and `pv-notice-sheet` (a short message with buttons). Both move per section 2.4 and section 7, and fire their events after they've left.
+
+### 11.4 Event blocks
+
 ```
 ┌─────────────────────────────┐
-│▌ Event Title                │   ▌ = 3px primary color accent
-│▌ 2:00 PM – 3:00 PM         │   Background = light variant
-│▌                    👤👤    │   Avatars for shared events (week only)
+│▌ Event title                │   ▌ = a 3 px edge in the person's color
+│▌ 2:00 PM – 3:00 PM          │   fill = the person's tint
+│▌                    👤👤    │   avatars for shared events
 └─────────────────────────────┘
 ```
 
-- Title: `--pv-text`, Body size (0.9375rem), weight 500.
-- Time: `--pv-text-secondary`, Caption size (0.8125rem), weight 400.
-- Padding: 6px 10px.
+- The edge is the person's color; the fill is their tint, never the full color; the text is `contrastText()` of the fill.
+- Shared events (Stripes) fill with each person's tint in turn; Solid draws the card's surface with the edge.
+- No outer border or shadow. Hover lifts by 1 px; pressing scales to 0.98.
+- In Month, titles are one line with an ellipsis, so every row is the same height and a day can count how many fit.
 
-### 3.2 Grid and Visual Structure
+### 11.5 The Day view's person lanes
 
-- **No visible gridlines** in day or week view.
-- Hour orientation: alternating subtle background tint on odd hours, `rgba(0,0,0,0.015)` on light themes, `rgba(255,255,255,0.02)` on dark.
-- Now indicator: 2px line in `--pv-now-color` (`#EF4444`) with 10px circle at left edge, pulse animation (3s infinite).
-- Column separators: 4px transparent gap, no border lines.
-- Month view: thin 1px `--pv-border-subtle` cell borders are acceptable (grid structure is the content).
-- Agenda view: no gridlines; date group headers with sticky positioning provide structure.
+- Each visible calendar gets its own lane. Events stay inside their lane; overlapping events share the lane's width.
+- Lanes are separated by a gap, not a border. No gridlines: odd hours get a faint band.
+- Column headers show the avatar (or an initial in the person's color) above the name.
+- The now line is 2 px in `--pv-now-color`.
+- A date banner shows when the view isn't today.
 
-**Time gutter:**
-- 60px width, fixed.
-- Labels at hour marks only, right-aligned.
-- Font: Overline size (0.6875rem), `--pv-text-muted`.
-- No half-hour labels.
+### 11.6 Week's shared events
 
-### 3.3 Typography Hierarchy
+- The same event on several visible calendars (the same title, start, and end) renders once, with the organizer's color on the edge.
+- Small stacked avatars show every PlanaVista participant; past four, a "+N" badge.
+- Tapping it opens the details with every linked calendar. Hiding one person's calendar removes their avatar but keeps the event while another linked calendar shows.
 
-| Level    | Size      | Weight | Line Height | Use                                      |
-|----------|-----------|--------|-------------|------------------------------------------|
-| Display  | 3.5rem    | 300    | 1.1         | Clock only                               |
-| H1       | 1.5rem    | 600    | 1.3         | Current date in header                   |
-| H2       | 1.125rem  | 600    | 1.4         | Dialog titles, section headers           |
-| Body     | 0.9375rem | 400    | 1.5         | Event titles, descriptions               |
-| Caption  | 0.8125rem | 400    | 1.4         | Event times, secondary info              |
-| Overline | 0.6875rem | 600    | 1.2         | Time gutter labels, weekday headers (uppercase, letterspaced) |
+### 11.7 The weather
 
-**Rules:**
-- Never use more than 3 type levels in a single view.
-- Use font weight for emphasis, not font size. Avoid size-based hierarchy within the same context.
-- Font family: `Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif`.
+- From `hass.states[weather_entity]`: the condition and the temperature; the forecast (today's high and low, the days in Week and Agenda) from one subscription per card, which comes back after Home Assistant restarts.
+- Fifteen animated icons. The condition text is capitalized, with hyphens as spaces.
+- Without a weather entity the space collapses, with no placeholder.
 
-### 3.4 Touch Targets and Spacing
+### 11.8 Card options
 
-- Minimum touch target: 44x44px (Apple HIG).
-- Minimum spacing between interactive targets: 8px.
-- Button padding: min 8px vertical, 16px horizontal.
-- Input fields: 48px min-height.
-- Icon buttons: 40x40px minimum (acceptable for secondary actions).
-- Spacing scale: 4, 8, 12, 16, 24px. All gaps and padding should use these values.
-
-### 3.5 Design Review Gate
-
-Every UI change passes through three layers before committing.
-
-**Layer 1 (Automated Checks):**
-A design review agent scans changed files against measurable standards:
-- Color tokens: Is every color using a `--pv-*` variable or palette preset? Flag raw hex.
-- Touch targets: Are all interactive elements >= 44px?
-- Typography: Is every font-size using one of the 6 defined levels? Flag arbitrary sizes.
-- Responsive: Does every new/changed component have breakpoint rules?
-- Event blocks: Is `color-mix` or `color_light` used for backgrounds? Flag raw primary fills.
-- Spacing: Are gaps/padding using the spacing scale (4, 8, 12, 16, 24px)?
-
-Pass/fail: failures block the commit with specific fix instructions.
-
-**Layer 2 (Devil's Advocate Review):**
-A separate agent reviews visual design decisions with a hostile eye:
-- "Does this change add visual noise? Could it be simpler?"
-- "Is this consistent with how the same pattern is handled elsewhere?"
-- "Would this look good next to 5 other calendars in different colors?"
-- "Does removing gridlines here make the view harder to scan?"
-- "Is there sufficient contrast for accessibility (WCAG AA minimum)?"
-- "On a 320px screen, does this still work?"
-
-Verdict: **Approved**, **Approved with notes**, or **Needs revision** with specific reasons. Must find at least one concern or explicitly state why there are none.
-
-**Layer 3 (Design Changelog):**
-Every UI change gets an entry appended to `docs/design/CHANGELOG.md`:
-```
-## YYYY-MM-DD
-### Changed: [component or area]
-- Description of what changed and why
-- Standards checked: [list]
-- Review: [verdict]
-```
-
----
-
-## 4. Responsive Design
-
-### 4.1 Width Breakpoints
-
-| Name   | Width        | Typical Device                 |
-|--------|--------------|--------------------------------|
-| **xs** | 0–479px      | Phone portrait                 |
-| **sm** | 480–767px    | Phone landscape, small tablet  |
-| **md** | 768–1023px   | Tablet portrait                |
-| **lg** | 1024–1439px  | Tablet landscape, small desktop|
-| **xl** | 1440px+      | Desktop, ultrawide, wall display|
-
-### 4.2 Height Breakpoints
-
-| Name       | Height   | Behavior                                                                 |
-|------------|----------|--------------------------------------------------------------------------|
-| **short**  | 0–500px  | Collapse header to single compact row, time labels every 2 hours, 32px avatars |
-| **medium** | 501–900px| Standard header, full hour labels, default avatar size                   |
-| **tall**   | 901px+   | More time slots visible, larger event blocks, potential side panels      |
-
-### 4.3 Combined Scenarios
-
-| Scenario             | Width × Height | Example      | Adaptation                                                              |
-|----------------------|---------------|--------------|-------------------------------------------------------------------------|
-| Phone portrait       | xs + medium   | 390×844      | Single column, stacked list, icon-only tabs                             |
-| Phone landscape      | sm + short    | 844×390      | Compact header (one row, no weather), max calendar space, swipe nav     |
-| Tablet portrait      | md + tall     | 834×1194     | Full person lanes, expanded time view, more hours visible without scroll|
-| Tablet landscape     | lg + medium   | 1194×834     | Full lanes, wider time gutter, standard header                          |
-| Desktop              | xl + medium   | 1920×1080    | Full layout, generous spacing                                           |
-| Wall display portrait| lg + tall     | 1080×1920    | Full lanes, show 16+ hours without scrolling, larger event blocks       |
-| Wall display landscape| xl + short   | 2560×1080    | Use horizontal space for side-by-side panels (calendar + agenda)        |
-
-### 4.4 View Behavior by Width
-
-| View       | xs                                | sm                          | md                    | lg                       | xl                          |
-|------------|-----------------------------------|-----------------------------|-----------------------|--------------------------|-----------------------------|
-| **Day**    | Single column, no lanes: stacked list with color accent | Single column, swipe between people | Full person lanes with avatars | Full lanes, wider gutter | Full lanes, comfortable spacing |
-| **Week**   | 3-day view, swipeable             | 5-day work week             | Full 7-day grid       | Full 7-day, larger blocks| Full 7-day, generous spacing|
-| **Month**  | Dots for events, tap to expand    | Count + first event title   | Full pills with titles| Full pills, +N overflow  | Full pills, all visible     |
-| **Agenda** | Full width, compact padding       | Full width                  | Max-width 720px centered | 720px centered         | 720px centered              |
-
-### 4.5 Component Scaling
-
-**Header:**
-- xs/sm: Stack vertically, weather on top, date + nav below, tabs as icons only.
-- xs + short / sm + short: Single compact row, no weather, icon-only tabs.
-- md: Single row, compressed, 32px weather icon, abbreviated date.
-- lg/xl: Full row, 48px weather icon, full date, labeled tabs.
-
-**Event blocks:**
-- xs: Title only, no time shown in block.
-- sm: Title + time on same line if space allows.
-- md+: Title on first line, time on second line.
-- tall: Blocks can expand to show description preview.
-
-**Typography scaling:**
-- xs: Body 0.8125rem, H1 1.25rem, Display 2.5rem.
-- sm: Body 0.875rem, H1 1.375rem, Display 3rem.
-- md+: Standard scale per Section 3.3.
-
-**Touch targets:**
-- xs/sm: 48px minimum (phone fat-finger safety).
-- md+: 44px minimum.
-
-**Avatars:**
-- short: 32px.
-- medium: 48px.
-- tall: 64px.
-
-### 4.6 Mandatory Rules
-
-1. **No horizontal scroll**: ever, at any breakpoint.
-2. **No fixed-width containers**: flex and grid with relative units. The time gutter (60px) is the sole exception.
-3. **Test at boundaries**: must look correct at exact breakpoint values (479px, 480px, 767px, 768px, etc.).
-4. **Content over chrome**: at smaller breakpoints, remove UI elements before content. Hide labels before events. Collapse toolbars before shrinking the calendar.
-5. **Height-aware layouts**: never assume viewport height. Use `dvh` (dynamic viewport height) where available, fall back to `vh`. Account for HA's 56px header.
-6. **Orientation changes**: layout must reflow smoothly on device rotation without requiring a page reload.
-
----
-
-## 5. PlanaVista-Specific Rules
-
-### 5.1 Day View: Person Lanes
-
-- Each visible calendar gets its own lane (column).
-- Events are strictly contained within their lane: zero bleed into adjacent columns.
-- Lanes separated by a 4px transparent gap, not a border.
-- Overlapping events within the same lane stack side-by-side using fractional width of that lane only.
-- Lane minimum width: 120px. Below this threshold, the view switches to single-column mode with swipe navigation between people.
-- Column headers: avatar (or initial circle in calendar color) above person name.
-- If a calendar has no `person_entity`, the header shows the calendar icon + display name.
-
-### 5.2 Week View: Shared Events
-
-- When the same event exists on multiple visible calendars (matched by `summary` + `start` + `end`), render it once.
-- The single event block uses the source calendar's color for the accent.
-- Small stacked avatars (24px, overlapping by 8px) in the bottom-right corner show all PlanaVista participants.
-- More than 3 participants: show 2 avatars + a "+N" badge.
-- Clicking the shared event opens the detail popup showing all linked calendars.
-- If the user hides a participant's calendar via the filter, the avatar disappears but the event stays (as long as at least one linked calendar is visible).
-
-### 5.3 Dialogs and Overlays
-
-- All dropdowns and pickers use `position: fixed` to escape parent overflow.
-- Smart placement: measure available space, flip above/below as needed.
-- Modal overlay: `backdrop-filter: blur(4px)` with semi-transparent background.
-- Dialog max-width: 480px, centered.
-- Dialog entrance: `scale(0.95)` + fade in, 200ms.
-- Dialogs must be fully usable at xs breakpoint (full-width, bottom-sheet style on phones).
-
-### 5.4 Weather Widget
-
-- Reads from `hass.states[weather_entity]`: `state`, `attributes.temperature`, `attributes.temperature_unit`.
-- Animated SVG icons sized per breakpoint: 32px at md, 48px at lg+, hidden at xs+short.
-- Condition text: capitalize, replace hyphens with spaces.
-- If no weather entity configured, the space collapses: no placeholder or error shown.
-
-### 5.5 State and Navigation
-
-- View transitions: horizontal slide (left/right for day/week navigation), fade for view type changes.
-- "Today" button always visible in toolbar: one tap to return to current date.
-- Date banner appears when viewing any day other than today (non-clickable, informational).
-- Auto-advance: at midnight, the view rolls forward to the new day.
-- Swipe gestures: left/right for day navigation (xs/sm only), with momentum and snap.
-
-### 5.6 Onboarding and Setup Flow
-
-**HA Integration Step (minimal):**
-The HA config flow performs zero configuration. A single confirmation step displays clear instructions:
-
-```
-PlanaVista has been installed successfully.
-
-To complete setup:
-
-1. Navigate to the dashboard where you want your calendar
-2. Click the pencil icon (Edit Dashboard) in the top right
-3. Click "+ Add Card" at the bottom
-4. Search for "PlanaVista" and select it
-5. Save the dashboard
-
-The first time the card loads, a setup wizard will walk you through
-choosing your calendars, colors, theme, and preferences.
-
-That's it: click Submit to finish installation.
-```
-
-No form fields, no dropdowns. Click Submit → config entry created with empty defaults.
-
-**First-Launch Onboarding Wizard (LitElement, in-card):**
-The card detects `onboarding_complete !== true` and opens the wizard automatically.
-
-- **Page 0, Reuse Config (conditional):** If existing PlanaVista configs are detected, offer a choice: "Start fresh" or "Use existing config" with a dropdown of available configs. Selecting an existing config skips the wizard entirely, card renders immediately. If no existing configs exist, this page is skipped.
-- **Page 1 (Preferences):** Time format (12h/24h), weather entity, first day of week, default calendar view.
-- **Page 2 (Calendars):** Auto-discovers all `calendar.*` entities. User selects which to include, assigns color from swatch grid (10 presets + "Custom..." picker), links to a person entity.
-- **Page 3 (Theme):** Visual previews of each theme. Click to select, live preview updates behind the wizard.
-- **Finish:** Config saved, wizard closes, card renders.
-
-**Wizard UX rules:**
-- Progress indicator at top (dots or step labels: 1 · 2 · 3).
-- Back button on every page except the first.
-- Each page validates before allowing Next (e.g., at least one calendar selected on Page 2).
-- Smooth slide transitions between pages.
-- Must be fully usable at xs breakpoint (phone).
-- Follows all design standards in this document: typography, touch targets, spacing, colors.
-
-### 5.7 Settings Access
-
-**Gear icon in the card header** opens a settings panel built with the same LitElement components as onboarding:
-- Pre-populated with current settings.
-- Same pages: Preferences, Calendars, Theme.
-- Changes save on close.
-- Accessible at all breakpoints.
-
-### 5.8 Card-Level Overrides
-
-Global config is set during onboarding and accessible via the gear icon. Per-card overrides are optional and set in the card's YAML config:
+Settings are saved for the whole household; a card's YAML can override some for that card:
 
 ```yaml
-type: custom:planavista-calendar-card
-# Overrides (optional, falls back to global config)
-theme: dark
+type: custom:planavista-card
 default_view: day
-calendars:
-  - calendar.work
+modules: [calendar]
+theme: minimal
 hide_weather: true
 hide_header: false
 ```
 
-**Override behavior:**
-- Any setting not specified in YAML falls back to global config.
-- Gear icon shows which settings are overridden vs inherited.
-- "Reset to default" option per setting.
+- `planavista-card` is the card's newer name; `planavista-calendar-card` keeps working.
+- `theme`: `light` or `dark` fixes the card to PlanaVista Light or Dark; a theme name (`planavista`, `minimal`, `vibrant`) picks the theme and follows the household's Light, Dark, or Automatic.
+- `hide_header` hides the clock and weather header; the bar stays.
+- Anything not set in YAML follows the household's settings.
 
 ---
 
-## 6. Design Changelog
+## 12. Design changelog
 
-All UI changes are logged in `docs/design/CHANGELOG.md` with the following format:
+### 2026-10-10: Changed: the new look (1.2.0)
 
-```markdown
-## YYYY-MM-DD
-### [Added|Changed|Removed|Fixed]: [component or area]
-- Description of what changed and why
-- Standards checked: [list of relevant sections]
-- Review verdict: [Approved | Approved with notes | Needs revision]
-- Notes: [any reviewer comments]
-```
+- The header and the bar: one row in landscape; a lock-screen clock and a bottom bar in portrait and on phones; the card lays itself out by its own size.
+- Day and night: Light, Dark, and Automatic (sun, schedule, or Home Assistant), with night falling from the top, day rising from the bottom, and a reveal from the finger; themes in pairs with Customize, Matched dark colors, and the contrast guard; `select.planavista_appearance`.
+- The rounded face: Nunito bundled for headings and numbers where SF Pro Rounded isn't available.
+- The `contrastText()` fix: it measures contrast instead of switching at a luminance of 0.4.
+- Sheet motion: springs, drag to dismiss, and Reduced motion.
+- The calendar in portrait: Day fits about 14 hours, Month fits what its cells hold, Week shows two days across.
 
 ---
 
 ## References
 
 - [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/)
-- [Fantastical](https://flexibits.com/fantastical): Premium calendar design inspiration
-- [Linear](https://linear.app): Modern SaaS design reference
-- [Notion Calendar](https://www.notion.so/product/calendar): Minimal calendar design reference
-- [WCAG 2.1 AA](https://www.w3.org/WAI/WCAG21/quickref/): Accessibility contrast requirements
+- [WCAG 2.2](https://www.w3.org/WAI/WCAG22/quickref/): contrast and target-size requirements
+- [View Transitions](https://developer.mozilla.org/docs/Web/API/View_Transition_API)
+- [OKLCH and OKLab](https://bottosson.github.io/posts/oklab/)

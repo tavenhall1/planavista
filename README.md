@@ -26,10 +26,10 @@
 - **Past Event Dimming**: Finished events automatically fade so you can focus on what's next
 - **20-Color Palette**: Earth, ocean, warm, and vivid tones for calendar personalization
 - **Built-in Onboarding Wizard**: Auto-discovers your calendars, weather, and people entities
-- **Theme Customizer**: 4 base themes + accent color, background, header gradient, corners, and shadows
+- **Day and Night**: Light, Dark, or Automatic (at sunset and sunrise, on a schedule, or with Home Assistant), with three themes that each have a light and a dark version
 - **Animated Weather**: 15 custom SVG icons with condition-based gradients and forecasts
 - **Per-Person Day View**: Skylight-inspired columns with large person avatars
-- **Fully Responsive**: Optimized for phones, tablets, wall displays, and large screens
+- **Fits Any Screen**: The card lays itself out for its own size, with the controls along the bottom in portrait and on phones
 - **Easy Install via HACS**: No YAML or code required, just point-and-click setup
 - **Local by Default**: Your calendar data stays on your network; the only optional lookup is address suggestions, which is off until you turn it on
 
@@ -78,16 +78,16 @@ Make sure you have at least one calendar integration configured:
 1. Open your dashboard and click **Edit**
 2. Click **Add Card**
 3. Search for **PlanaVista**
-4. Save: the onboarding wizard will appear on first load
+4. Save: setup appears on first load
 
-The wizard walks you through preferences, calendar personalization (name, color, avatar), and theme selection. No YAML required.
+Setup walks you through who lives here, your calendars, and the look. No YAML required.
 
 ### 5. Card YAML Options (Optional)
 
 The card works with zero configuration, but you can override settings per-card:
 
 ```yaml
-type: custom:planavista-calendar-card
+type: custom:planavista-card
 entity: sensor.planavista_config
 
 # Optional overrides
@@ -95,12 +95,20 @@ default_view: week          # day | week | month | agenda
 calendars:                  # show only specific calendars
   - calendar.alice
   - calendar.bob
-hide_weather: false         # hide the weather widget
-hide_header: false          # hide the entire header bar
+modules: [calendar]         # the modules this card shows, in order
+module: calendar            # the module it opens on
+theme: minimal              # planavista | minimal | vibrant, or light | dark
+hide_weather: false         # hide the weather
+hide_header: false          # hide the clock and weather header
 weather_entity: weather.home
 time_format: 12h            # 12h | 24h
 first_day: sunday           # sunday | monday
 ```
+
+- `planavista-card` is the card's other name, for new dashboards. Cards made as `planavista-calendar-card` keep working.
+- `modules` and `module` choose what a card shows and where it starts. Today the calendar is the only module; chores comes next.
+- `theme` with a theme's name picks the theme and still follows the household's Light, Dark, or Automatic. `light` or `dark` fixes the card to PlanaVista's light or dark version.
+- `hide_header` hides the clock and weather header. The bar with the views and Settings stays.
 
 ---
 
@@ -118,6 +126,53 @@ PlanaVista keeps a list of the people in your household. Anyone whose calendar i
 
 ---
 
+## Appearance
+
+In Settings, Appearance shows Light, Dark, and Automatic as small pictures of the card. Changes show as you tap.
+
+**Automatic** switches between them:
+
+- **At sunset and sunrise**, from Home Assistant's Sun integration, so every screen in the house changes at the same moment.
+- **On a schedule**, with a time for light and a time for dark.
+- **Matching Home Assistant**: each screen follows its own Home Assistant theme setting. Handy for phones.
+
+Night falls from the top of the screen and day rises from the bottom. A change never happens while someone is touching the screen or has a sheet open, and a screen that was asleep wakes up already changed.
+
+**Themes.** PlanaVista, Minimal, and Vibrant each have a light and a dark version. Dark is designed rather than inverted: people's colors brighten a little, and their events sit on dark tints.
+
+**Customize** sets a light and a dark color for the accent, the background, the header, and the now line. A dark color starts as **Matched**, a dark color PlanaVista picks to go with your light one, until you set it yourself; choosing Matched again goes back. A color that would be hard to read is flagged, with **Fix it** to brighten or darken it just enough. Corners, shadows, the event style, and the avatar border are shared by both versions. **Reset** returns a theme to its original colors and keeps the shape settings.
+
+**Motion** follows the device, or is set to Full or Reduced. Reduced swaps movement for quick fades, which helps on kiosk tablets that hide the system setting.
+
+Coming from 1.1.0: Clean Light and Deep Dark become PlanaVista's light and dark versions, Minimal and Vibrant keep their look in light, and customizations move to the version they were made for.
+
+---
+
+## Automations
+
+`select.planavista_appearance` (Light, Dark, Automatic) lets an automation or a voice assistant change the appearance. For example, Dark when a movie starts:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: media_player.living_room_tv
+    to: playing
+actions:
+  - action: select.select_option
+    target:
+      entity_id: select.planavista_appearance
+    data:
+      option: dark
+```
+
+---
+
+## Layouts
+
+The card lays itself out for its own size, not the device's, so the same card works full screen on a wall tablet, in a dashboard column, or on a phone. In landscape the views and Settings sit in a bar under the clock; in portrait and on phones the bar runs along the bottom, where hands already are, under a big lock-screen clock. Turning a tablet keeps your place.
+
+---
+
 ## Calendar Views
 
 ### Day View
@@ -128,6 +183,7 @@ Per-person columns showing each family member's schedule side-by-side, inspired 
 - All-day event banner pills spanning the top
 - Timed event blocks with overlap detection
 - Now indicator line with auto-scroll to current time
+- In portrait, about 14 hours fit on screen at once
 - Shared event participant avatars on event blocks
 - Next-day footer navigation at the bottom of the time grid
 - Past events automatically dimmed
@@ -136,7 +192,7 @@ Per-person columns showing each family member's schedule side-by-side, inspired 
 
 A card-based grid showing the full week at a glance.
 
-- Day cards in a responsive grid (4 columns on desktop, 2 on tablet, 1 on phone)
+- Day cards side by side: 4 across in landscape, 2 in portrait, 1 on a phone
 - Event chips with multi-participant stripe gradients for shared events
 - Weather forecast per day with hi/lo temps and animated icons
 - Today's card highlighted with accent border
@@ -149,7 +205,7 @@ A card-based grid showing the full week at a glance.
 Traditional calendar grid for long-range planning.
 
 - 6-week grid with compact event pills
-- "+N more" overflow for busy days
+- Each day shows as many events as fit, then "+N more"
 - Today indicator circle
 - Click any day to jump to its day view
 - Compact event chips with stripe support for shared events
@@ -177,24 +233,6 @@ PlanaVista goes beyond Home Assistant's built-in calendar services to provide de
 - **Shared Event Deduplication**: When the same event appears on multiple family members' calendars, PlanaVista detects and displays it once with participant indicators
 - **Smart Delete**: The organizer sees "Delete Event" (removes for everyone); attendees see "Remove Me" (removes only their copy)
 - **Graceful Fallback**: Non-Google calendars (Local Calendar, CalDAV, etc.) work normally using standard Home Assistant services
-
----
-
-## Themes
-
-PlanaVista ships with four built-in themes: **Light**, **Dark**, **Minimal**, and **Vibrant**.
-
-On top of any base theme, you can customize:
-
-| Setting | Options |
-|---------|---------|
-| **Accent Color** | Any color from the 20-swatch palette or custom picker |
-| **Background** | Base default or custom hex color |
-| **Header Style** | Purple, Teal, Sunset, Solid Accent, Solid Dark, or custom color |
-| **Corners** | Sharp (4px), Rounded (12px), Pill (20px) |
-| **Shadows** | None, Subtle, Bold |
-
-Open the gear icon on the card header to access the settings panel and theme customizer. Changes preview live on the calendar behind the panel.
 
 ---
 
