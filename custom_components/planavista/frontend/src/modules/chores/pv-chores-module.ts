@@ -15,7 +15,11 @@ import type { DisplayConfig, PlanaVistaData } from '../../types';
 import { choresStyles } from './chores-styles';
 import type { ChoresService } from './chores-service';
 import type { Board } from './chores-types';
-import type { RowModel } from './board-derive';
+import { ColumnModel, RowModel, boardColumns } from './board-derive';
+import { eventsOn } from './calendar-ties';
+import { bedtimeOn, fairShares, goalFor } from './my-day-derive';
+import type { MyDayStyle } from './pv-chores-my-day';
+import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
 import { dayWords, historyLines, itemOptions } from './options-derive';
@@ -33,6 +37,7 @@ import './pv-chores-people-sheet';
 import './pv-chore-options';
 import './pv-chores-inbox';
 import './pv-chores-quick-add';
+import './pv-chores-my-day';
 
 /** A sheet the chores screens show over themselves. */
 type ChoresSheet =
@@ -79,6 +84,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @state() protected _toast: Toast | null = null;
   /** Minutes since the epoch, so bands and the evening check move with the clock. */
   @state() private _minute = Math.floor(Date.now() / 60000);
+  /** Whose My day is showing. */
+  @state() private _myDayMember: string | null = null;
   /** Requests being answered in the inbox. */
   @state() private _reviewing: ReadonlySet<string> = new Set();
   private _overlayOpen = false;
@@ -199,6 +206,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
+    // A ring in the calendar, or a column header, opened someone's day.
+    if (changed.has('openTarget') && this.openTarget?.member) this._myDayMember = this.openTarget.member;
     const notices = this.service?.takeNotices() ?? [];
     const last = notices[notices.length - 1];
     if (last) this._toast = { id: last.id, text: last.text, tone: 'bad', ms: 7000 };
@@ -281,12 +290,66 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     `;
   }
 
+  private _columnsFor = memoizeOne((board: Board, household: HouseholdView | null, data: PlanaVistaData | null, timeFormat: '12h' | '24h', _minute: number) =>
+    boardColumns(board, {
+      today: board.today,
+      now: new Date(),
+      events: eventsOn(data, new Date(board.day.start), new Date(board.day.end)),
+      timeFormat,
+      activities: new Map(board.chores.map(a => [a.id, a])),
+      members: household ? inOrder(household.members) : [],
+    }));
+
+  /** Whose day My day shows: the one picked, else this account's own person, else the first. */
+  private _myDayColumn(columns: ColumnModel[]): ColumnModel | undefined {
+    const wanted = this._myDayMember ?? this.household?.account.member_id ?? null;
+    return columns.find(c => c.member.id === wanted) ?? columns[0];
+  }
+
+  private _openMyDay(memberId: string): void {
+    this._myDayMember = memberId;
+    this.dispatchEvent(new CustomEvent('pv-view-change', { detail: { view: 'my_day' }, bubbles: true, composed: true }));
+  }
+
+  private async _setStyle(memberId: string, style: MyDayStyle): Promise<void> {
+    const api = this.service?.api;
+    if (!api || !(await this.asMember(memberId, 'Whose day is this?'))) return;
+    try {
+      await api.savePrefs(memberId, { my_day: style });
+    } catch (err) {
+      this.showToast({ id: `style-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
+  }
+
+  private _renderMyDay(board: Board) {
+    const timeFormat = this.display?.time_format ?? '12h';
+    const columns = this._columnsFor(board, this.household, this.data, timeFormat, this._minute);
+    const column = this._myDayColumn(columns);
+    if (!column) return nothing;
+    const member = column.member;
+    return html`
+      <pv-chores-my-day .column=${column} .columns=${columns} .board=${board} .hass=${this.hass} layout=${this.layout}
+        .events=${eventsOn(this.data, new Date(board.day.start), new Date(board.day.end))}
+        .colorOf=${this._colorOf} .timeFormat=${timeFormat} .minute=${this._minute}
+        .goal=${goalFor(member, column.entry, board.rewards)} .shares=${fairShares(board, inOrder(this.household?.members ?? []))}
+        .bedtime=${bedtimeOn(member, new Date())}
+        ?locked=${memberAccess(this.household, this.session, member.id) === 'no'}
+        @pv-my-day-member=${(e: CustomEvent<{ member: string }>) => { this._myDayMember = e.detail.member; }}
+        @pv-my-day-style=${(e: CustomEvent<{ member: string; style: MyDayStyle }>) => void this._setStyle(e.detail.member, e.detail.style)}
+        @pv-hold-done=${(e: CustomEvent<HoldDetail>) => this._complete(e.detail)}
+        @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
+        @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}
+        @pv-row-options=${(e: CustomEvent<{ row: RowModel }>) => this._openOptions(e.detail.row)}></pv-chores-my-day>
+    `;
+  }
+
   /** The view the bar picked. */
   protected renderView(): unknown {
     const board = this.service?.board();
     if (!board) return nothing;
     const empty = board.chores.length === 0;
     if (empty) return this._empty();
+    if (this.view === 'my_day') return this._renderMyDay(board);
     return html`
       <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
         .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} layout=${this.layout}
@@ -294,7 +357,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         @pv-hold-done=${(e: CustomEvent<HoldDetail>) => this._complete(e.detail)}
         @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
         @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}
-        @pv-row-options=${(e: CustomEvent<{ row: RowModel }>) => this._openOptions(e.detail.row)}></pv-chores-board>
+        @pv-row-options=${(e: CustomEvent<{ row: RowModel }>) => this._openOptions(e.detail.row)}
+        @pv-member-open=${(e: CustomEvent<{ member: string }>) => this._openMyDay(e.detail.member)}></pv-chores-board>
     `;
   }
 

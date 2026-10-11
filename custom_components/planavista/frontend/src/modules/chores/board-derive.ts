@@ -50,6 +50,8 @@ export interface ColumnModel {
   entries: ColumnEntry[];
   /** Open check-offs still due today, for the evening check. */
   left: number;
+  /** Everything checked off today, earlier bands' too (My day lists them at their times). */
+  doneToday: RowModel[];
   /** Nothing at all on their board today. */
   empty: boolean;
 }
@@ -145,6 +147,7 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
   const overdue: RowModel[] = [];
   const week: RowModel[] = [];
   const groups = new Map<string, ItemView[]>();
+  const earlier: RowModel[] = [];
 
   for (const item of items) {
     const group = groupKey(item);
@@ -160,8 +163,10 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     if (item.section === 'today') {
       const band = bandOf(item, current);
       if (item.status === 'done') {
-        if (bandState(band, current) === 'past') bandDone[band] += 1;
-        else done.push(rowFor(item, ctx, board, earnsStars));
+        if (bandState(band, current) === 'past') {
+          bandDone[band] += 1;
+          earlier.push(rowFor(item, ctx, board, earnsStars));
+        } else done.push(rowFor(item, ctx, board, earnsStars));
         continue;
       }
       if (item.status === 'excused' || item.status === 'away') continue;
@@ -185,8 +190,10 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     for (const item of live) {
       if (item.status !== 'done' || !doneToday(item, board)) continue;
       const band = bandOf(item, current);
-      if (today && bandState(band, current) === 'past') bandDone[band] += 1;
-      else done.push(rowFor(item, ctx, board, earnsStars));
+      if (today && bandState(band, current) === 'past') {
+        bandDone[band] += 1;
+        earlier.push(rowFor(item, ctx, board, earnsStars));
+      } else done.push(rowFor(item, ctx, board, earnsStars));
     }
     const next = live.find(i => OPEN.has(i.status)) ?? live.find(i => i.status === 'pending');
     if (!next) continue;
@@ -261,6 +268,7 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     away: entry.away ? { note: entry.away.note ?? null } : null,
     pictures: member.age_group === 'young_child',
     entries,
+    doneToday: [...earlier, ...done].sort((a, b) => (a.item.completion?.at ?? '').localeCompare(b.item.completion?.at ?? '')),
     left,
     empty: items.length === 0,
   };
