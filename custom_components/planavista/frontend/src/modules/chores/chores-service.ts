@@ -209,7 +209,7 @@ export class ChoresService implements ModuleService {
     if (!board) return chips;
     const data = this._host.planavistaData;
     const now = new Date();
-    const events = eventsOn(data, new Date(board.day.start), new Date(board.day.end));
+    const events = eventsOn(data, new Date(board.day.start), new Date(board.day.end), ctx.config);
     const next = nextForHousehold(events, ctx.household?.members ?? [], now, data?.display?.time_format ?? '12h',
       entityId => calendarNameOf(data, entityId));
     return [...chips, ...nextEventChip(next)];

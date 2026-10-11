@@ -35,6 +35,14 @@ describe('eventsOn', () => {
       ['School', 'casey'], ['Dentist', 'alex'], ['Soccer practice', 'casey'], ['Pizza night', null],
     ]);
   });
+
+  it('leaves out the calendars this card hides, as the calendar does', () => {
+    const hidden = data();
+    hidden.calendars[0].visible = false;
+    expect(eventsOn(hidden, dayStart, dayEnd).map(e => e.title)).toEqual(['School', 'Soccer practice', 'Pizza night']);
+    const familyOnly = { type: 'custom:planavista-card', calendars: ['calendar.family'] };
+    expect(eventsOn(data(), dayStart, dayEnd, familyOnly).map(e => e.title)).toEqual(['Pizza night']);
+  });
 });
 
 describe('nextOnCalendar (spec 13.1)', () => {

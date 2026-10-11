@@ -10,7 +10,7 @@ import { memberAccess } from '../../core/access';
 import { motionOf } from '../../core/motion';
 import { swipeDirection } from '../../utils/gestures';
 import { memoizeOne } from '../../utils/render-cache';
-import type { PlanaVistaData } from '../../types';
+import type { PlanaVistaCardConfig, PlanaVistaData } from '../../types';
 import '../../core/pv-ring';
 import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
@@ -39,6 +39,8 @@ export class PvChoresBoard extends LitElement {
   @property({ attribute: false }) household: HouseholdView | null = null;
   @property({ attribute: false }) session: Session | null = null;
   @property({ attribute: false }) data: PlanaVistaData | null = null;
+  /** The card's options: its `calendars` list narrows the events shown (as the calendar does). */
+  @property({ attribute: false }) cardConfig?: PlanaVistaCardConfig;
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ attribute: false }) mode: 'light' | 'dark' = 'light';
@@ -156,13 +158,14 @@ export class PvChoresBoard extends LitElement {
   }
 
   private _columnsFor = memoizeOne(
-    (board: Board, household: HouseholdView | null, data: PlanaVistaData | null, timeFormat: '12h' | '24h', _minute: number) => {
+    (board: Board, household: HouseholdView | null, data: PlanaVistaData | null, config: PlanaVistaCardConfig | undefined,
+      timeFormat: '12h' | '24h', _minute: number) => {
       const members = household ? inOrder(household.members) : [];
       const now = new Date();
       return boardColumns(board, {
         today: board.today,
         now,
-        events: eventsOn(data, new Date(board.day.start), new Date(board.day.end)),
+        events: eventsOn(data, new Date(board.day.start), new Date(board.day.end), config),
         timeFormat,
         activities: new Map(board.chores.map(a => [a.id, a])),
         members,
@@ -171,7 +174,7 @@ export class PvChoresBoard extends LitElement {
   );
 
   private _columns(): ColumnModel[] {
-    return this._columnsFor(this.board, this.household, this.data, this.timeFormat, this.minute);
+    return this._columnsFor(this.board, this.household, this.data, this.cardConfig, this.timeFormat, this.minute);
   }
 
   protected willUpdate(changed: PropertyValues): void {

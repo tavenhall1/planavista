@@ -1,4 +1,5 @@
-import type { CalendarEvent, PlanaVistaData } from '../../types';
+import type { CalendarEvent, PlanaVistaCardConfig, PlanaVistaData } from '../../types';
+import { selectCalendars } from '../../core/calendars';
 import type { Member } from '../../core/household';
 import { isDateOnly, parseEventDate } from '../../utils/date-utils';
 
@@ -20,12 +21,19 @@ export function clockTime(date: Date, format: '12h' | '24h' = '12h', ampm = fals
   return ampm ? `${hour}:${minutes} ${date.getHours() >= 12 ? 'PM' : 'AM'}` : `${hour}:${minutes}`;
 }
 
-/** Today's timed events (all-day ones are left out), soonest first, with whose calendar each is. */
-export function eventsOn(data: PlanaVistaData | null, dayStart: Date, dayEnd: Date): DayEvent[] {
+/**
+ * Today's timed events (all-day ones are left out), soonest first, with whose calendar each is;
+ * only from the calendars this card shows, as the calendar module does.
+ */
+export function eventsOn(
+  data: PlanaVistaData | null, dayStart: Date, dayEnd: Date, config?: PlanaVistaCardConfig,
+): DayEvent[] {
   if (!data) return [];
-  const owners = new Map((data.calendars ?? []).map(cal => [cal.entity_id, cal.member_id ?? null]));
+  const shown = selectCalendars(data, config);
+  const owners = new Map(shown.map(cal => [cal.entity_id, cal.member_id ?? null]));
   const found: DayEvent[] = [];
   for (const event of data.events ?? []) {
+    if (!owners.has(event.calendar_entity_id)) continue;
     if (!event.start || isDateOnly(event.start)) continue;
     const start = parseEventDate(event.start);
     const end = event.end ? parseEventDate(event.end) : start;

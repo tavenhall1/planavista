@@ -1,4 +1,5 @@
 import type { CalendarConfig, CalendarEvent, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
+import { selectCalendars } from '../../core/calendars';
 import { filterVisibleEvents } from './utils/event-utils';
 
 /** A calendar that shares an event (same UID), for Day-view participant avatars. */
@@ -16,14 +17,7 @@ export interface CalendarDerived {
   sharedEventMap: Map<string, SharedParticipant[]>;
 }
 
-/** Calendars this card shows: visible in Settings, narrowed by the card's `calendars` list. */
-export function selectCalendars(data: PlanaVistaData | null, config: PlanaVistaCardConfig | undefined): CalendarConfig[] {
-  const all = (data?.calendars || []).filter(c => c.visible !== false);
-  const cardFilter = config?.calendars;
-  return Array.isArray(cardFilter) && cardFilter.length > 0
-    ? all.filter(c => cardFilter.includes(c.entity_id))
-    : all;
-}
+export { selectCalendars };
 
 /** The calendars, the events the filter leaves visible, and the shared-event map. */
 export function deriveCalendarData(

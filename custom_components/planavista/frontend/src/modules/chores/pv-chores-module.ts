@@ -11,7 +11,7 @@ import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import type { Mode } from '../../styles/theme-pairs';
-import type { DisplayConfig, PlanaVistaData } from '../../types';
+import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../../types';
 import { choresStyles } from './chores-styles';
 import type { ChoresService } from './chores-service';
 import type { Board } from './chores-types';
@@ -86,6 +86,8 @@ interface LastCheckoff {
 export class PvChoresModule extends LitElement implements ModuleElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data: PlanaVistaData | null = null;
+  /** The card's options: its `calendars` list narrows the events the chores screens show. */
+  @property({ attribute: false }) cardConfig?: PlanaVistaCardConfig;
   @property({ attribute: false }) display!: DisplayConfig;
   @property({ attribute: false }) mode: Mode = 'light';
   @property({ attribute: false }) view: string | undefined;
@@ -326,11 +328,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     `;
   }
 
-  private _columnsFor = memoizeOne((board: Board, household: HouseholdView | null, data: PlanaVistaData | null, timeFormat: '12h' | '24h', _minute: number) =>
+  private _columnsFor = memoizeOne((board: Board, household: HouseholdView | null, data: PlanaVistaData | null,
+    config: PlanaVistaCardConfig | undefined, timeFormat: '12h' | '24h', _minute: number) =>
     boardColumns(board, {
       today: board.today,
       now: new Date(),
-      events: eventsOn(data, new Date(board.day.start), new Date(board.day.end)),
+      events: eventsOn(data, new Date(board.day.start), new Date(board.day.end), config),
       timeFormat,
       activities: new Map(board.chores.map(a => [a.id, a])),
       members: household ? inOrder(household.members) : [],
@@ -359,13 +362,13 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   private _renderMyDay(board: Board) {
     const timeFormat = this.display?.time_format ?? '12h';
-    const columns = this._columnsFor(board, this.household, this.data, timeFormat, this._minute);
+    const columns = this._columnsFor(board, this.household, this.data, this.cardConfig, timeFormat, this._minute);
     const column = this._myDayColumn(columns);
     if (!column) return nothing;
     const member = column.member;
     return html`
       <pv-chores-my-day .column=${column} .columns=${columns} .board=${board} .hass=${this.hass} layout=${this.layout}
-        .events=${eventsOn(this.data, new Date(board.day.start), new Date(board.day.end))}
+        .events=${eventsOn(this.data, new Date(board.day.start), new Date(board.day.end), this.cardConfig)}
         .colorOf=${this._colorOf} .timeFormat=${timeFormat} .minute=${this._minute}
         .goal=${goalFor(member, column.entry, board.rewards)} .shares=${fairShares(board, inOrder(this.household?.members ?? []))}
         .bedtime=${bedtimeOn(member, new Date())}
@@ -535,6 +538,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (this.view === 'rewards') return this._renderRewards(board);
     return html`
       <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
+        .cardConfig=${this.cardConfig}
         .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} layout=${this.layout}
         .minute=${this._minute}
         @pv-hold-done=${(e: CustomEvent<HoldDetail>) => this._complete(e.detail)}
