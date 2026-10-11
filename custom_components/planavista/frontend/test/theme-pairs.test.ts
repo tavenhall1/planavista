@@ -7,6 +7,12 @@ const look = (changes: Partial<Look>): Look => ({ ...PLAIN, ...changes });
 const PAIRS: ThemePair[] = ['planavista', 'minimal', 'vibrant'];
 const MODES: Mode[] = ['light', 'dark'];
 
+/** The 20 colors the swatch picker offers, which households choose accents and backgrounds from. */
+const PRESETS = [
+  '#001219', '#005F73', '#0A9396', '#94D2BD', '#E9D8A6', '#EE9B00', '#CA6702', '#BB3E03', '#AE2012', '#9B2226',
+  '#F94144', '#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#90BE6D', '#43AA8B', '#4D908E', '#577590', '#277DA1',
+];
+
 function hueDistance(a: number, b: number): number {
   const d = Math.abs(a - b) % 360;
   return d > 180 ? 360 - d : d;
@@ -53,7 +59,7 @@ describe('themeTokens: the approved versions', () => {
     expect(contrastRatio(t['--pv-text-secondary'], card)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(t['--pv-text-muted'], card)).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(t['--pv-accent-text'], t['--pv-accent'])).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(t['--pv-accent-ink'], card)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(t['--pv-accent-ink'], card)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(t['--pv-accent-tint-ink'], t['--pv-accent-tint'])).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(t['--pv-now-color'], card)).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(t['--pv-warn-ink'], t['--pv-warn-bg'])).toBeGreaterThanOrEqual(4.5);
@@ -116,6 +122,26 @@ describe('themeTokens: customizing', () => {
       expect(t['--pv-avatar-border']).toBe('#FFFFFF');
     }
   });
+});
+
+describe('themeTokens: text stays readable on the colors a household picks', () => {
+  it.each(PRESETS.flatMap(hex => MODES.map(mode => [hex, mode] as const)))(
+    'text drawn in a %s accent reads in %s (4.5:1)', (hex, mode) => {
+      const t = themeTokens(look({ [mode]: { accent: hex } }), mode);
+      expect(contrastRatio(t['--pv-accent-ink'], t['--pv-card-bg'])).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  it.each(PRESETS.flatMap(hex => MODES.map(mode => [hex, mode] as const)))(
+    'secondary and muted text read on a %s background in %s', (hex, mode) => {
+      const t = themeTokens(look({ [mode]: { background: hex } }), mode);
+      const card = t['--pv-card-bg'];
+      const best = contrastRatio(t['--pv-text'], card);
+      // Where the main text can't reach 4.5:1 the contrast guard flags the background; otherwise every level reads.
+      expect(contrastRatio(t['--pv-text-secondary'], card)).toBeGreaterThanOrEqual(Math.min(4.5, best));
+      expect(contrastRatio(t['--pv-text-muted'], card)).toBeGreaterThanOrEqual(Math.min(3, best));
+    },
+  );
 });
 
 describe('personColors', () => {

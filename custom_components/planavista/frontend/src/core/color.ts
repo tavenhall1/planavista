@@ -145,12 +145,18 @@ export function shiftLightness(hex: string, delta: number): string {
  * (the contrast guard's one-tap fix, spec 12.4). `fg` itself (as #RRGGBB)
  * when it already passes; null when no lightness gets there.
  */
-export function adjustForContrast(fg: string, bg: string, min: number): string | null {
+export function adjustForContrast(
+  fg: string,
+  bg: string,
+  min: number,
+  toward?: 'lighter' | 'darker',
+): string | null {
   const rgb = parseHex(fg);
   if (!rgb) return null;
   if (contrastRatio(fg, bg) >= min) return toHex(...rgb);
   const start = toOklch(fg);
-  const target = toOklch(bg).l < 0.5 ? 1 : 0;
+  // Away from the background, unless the caller says which way (text that must stay light or dark).
+  const target = toward ? (toward === 'lighter' ? 1 : 0) : toOklch(bg).l < 0.5 ? 1 : 0;
   const at = (t: number) => fromOklch({ ...start, l: start.l + (target - start.l) * t });
   if (contrastRatio(at(1), bg) < min) return null;
   let low = 0;

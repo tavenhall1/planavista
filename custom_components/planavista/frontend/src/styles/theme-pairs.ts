@@ -288,6 +288,19 @@ function tintInk(hex: string, mode: Mode): string {
   return mode === 'light' ? fromOklch({ l: 0.43, c, h }) : fromOklch({ l: 0.84, c: Math.min(c, 0.09), h });
 }
 
+/**
+ * Quieter text for a custom background's cards, as close to the theme's
+ * grays as reads (4.5:1 for secondary text, 3:1 for muted labels), moving
+ * the same way as the main text; the main text itself where nothing else reads.
+ */
+function quieterText(card: string, text: string, secondary: string, muted: string, toward: 'lighter' | 'darker') {
+  const second = adjustForContrast(secondary, card, 4.5, toward) ?? text;
+  return {
+    '--pv-text-secondary': second,
+    '--pv-text-muted': adjustForContrast(muted, card, 3, toward) ?? second,
+  };
+}
+
 /** Surfaces, lines, and text for a custom background, light or dark by its own lightness. */
 function surfaceTokens(bg: string): Tokens {
   if (toOklch(bg).l >= 0.6) {
@@ -298,8 +311,7 @@ function surfaceTokens(bg: string): Tokens {
       '--pv-card-bg': card,
       '--pv-card-bg-elevated': card,
       '--pv-text': '#1A1B1E',
-      '--pv-text-secondary': '#5F6670',
-      '--pv-text-muted': '#8E949C',
+      ...quieterText(card, '#1A1B1E', '#5F6670', '#8E949C', 'darker'),
       '--pv-border': shiftLightness(bg, -0.07),
       '--pv-border-subtle': shiftLightness(bg, -0.035),
       '--pv-track': shiftLightness(bg, -0.06),
@@ -310,14 +322,14 @@ function surfaceTokens(bg: string): Tokens {
       '--pv-backdrop': 'rgba(0, 0, 0, 0.3)',
     };
   }
+  const card = shiftLightness(bg, 0.045);
   return {
     'color-scheme': 'dark',
     '--pv-bg': bg,
-    '--pv-card-bg': shiftLightness(bg, 0.045),
+    '--pv-card-bg': card,
     '--pv-card-bg-elevated': shiftLightness(bg, 0.075),
     '--pv-text': '#E9E9E6',
-    '--pv-text-secondary': '#A3A7AE',
-    '--pv-text-muted': '#6F747C',
+    ...quieterText(card, '#E9E9E6', '#A3A7AE', '#6F747C', 'lighter'),
     '--pv-border': shiftLightness(bg, 0.115),
     '--pv-border-subtle': shiftLightness(bg, 0.07),
     '--pv-track': shiftLightness(bg, 0.12),
@@ -334,7 +346,8 @@ function accentTokens(hex: string, card: string, mode: Mode): Tokens {
   return {
     '--pv-accent': hex,
     '--pv-accent-text': contrastText(hex),
-    '--pv-accent-ink': adjustForContrast(hex, card, 3) ?? hex,
+    // Text drawn in the accent (links, back controls, today's labels) reads at 4.5:1.
+    '--pv-accent-ink': adjustForContrast(hex, card, 4.5) ?? contrastText(card),
     '--pv-accent-tint': mode === 'light' ? lightTint(hex) : darkTint(hex),
     '--pv-accent-tint-ink': tintInk(hex, mode),
     '--pv-today-bg': rgba(hex, mode === 'light' ? 0.06 : 0.1),
