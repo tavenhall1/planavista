@@ -183,6 +183,10 @@ export const choresSettingsStyles = css`
     background: color-mix(in srgb, var(--pv-text, #1A1B1E) 6%, transparent);
   }
 
+  .row > .segmented {
+    flex: 1;
+  }
+
   .segmented button {
     flex: 1;
     min-height: 44px;

@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+import json
+from pathlib import Path
 import random
+from typing import Any
 
 from dateutil import rrule as du
 import pytest
@@ -176,3 +179,14 @@ def test_skipping_ahead_matches_starting_from_the_beginning(seed: int) -> None:
     assert list(instances(rule, start, last, first=first)) == [
         day for day in instances(rule, start, last) if day >= first
     ]
+
+
+CASES = json.loads((Path(__file__).parent / "fixtures" / "recurrence_cases.json").read_text("utf-8"))
+
+
+@pytest.mark.parametrize("case", CASES["cases"], ids=lambda case: case["name"])
+def test_the_shared_table_of_rules(case: dict[str, Any]) -> None:
+    """The chore editor's picker reads the same table (test/recurrence.test.ts)."""
+    rule = parse_rule(case["rrule"])
+    found = list(instances(rule, date.fromisoformat(case["start"]), date(2030, 1, 1)))
+    assert [d.isoformat() for d in found] == case["dates"]

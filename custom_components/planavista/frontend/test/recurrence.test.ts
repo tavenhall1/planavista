@@ -1,5 +1,12 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ordinal, parseRule, ruleText, weekdaysText } from '../src/core/recurrence';
+import {
+  happens, instanceDates, ordinal, parseRule, recurrenceSummary, recurrenceValue, ruleText, toRRule, weekdaysText,
+} from '../src/core/recurrence';
+
+const TABLE = JSON.parse(readFileSync(new URL('../../../../tests/fixtures/recurrence_cases.json', import.meta.url), 'utf-8')) as {
+  cases: Array<{ name: string; rrule: string; start: string; dates: string[] }>;
+};
 
 describe('parseRule', () => {
   it('reads the subset the engine follows', () => {
@@ -41,5 +48,54 @@ describe('ruleText', () => {
     expect(['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '31st']).toEqual(
       [1, 2, 3, 4, 11, 12, 13, 21, 22, 31].map(ordinal),
     );
+  });
+});
+
+describe('instanceDates', () => {
+  it.each(TABLE.cases)('$name', c => {
+    expect(instanceDates(parseRule(c.rrule)!, c.start, '2030-01-01')).toEqual(c.dates);
+  });
+
+  it('stops at the last day asked for, and at a limit', () => {
+    expect(instanceDates(parseRule('FREQ=DAILY')!, '2026-10-13', '2026-10-15')).toEqual(['2026-10-13', '2026-10-14', '2026-10-15']);
+    expect(instanceDates(parseRule('FREQ=DAILY')!, '2026-10-13', '2030-01-01', 2)).toHaveLength(2);
+  });
+});
+
+describe('the picker value', () => {
+  it.each(TABLE.cases)('$name comes back as the same rule', c => {
+    expect(parseRule(toRRule(recurrenceValue(c.rrule, c.start)))).toEqual(parseRule(c.rrule));
+  });
+
+  it('starts a new rule weekly on the start day, never ending', () => {
+    const value = recurrenceValue(null, '2026-10-17');
+    expect(toRRule(value)).toBe('FREQ=WEEKLY;BYDAY=SA');
+    expect(value.ends).toBe('never');
+  });
+
+  it('keeps a count and an end date while another ending is picked', () => {
+    const value = { ...recurrenceValue('FREQ=WEEKLY;BYDAY=SA;UNTIL=20261130', '2026-10-17'), ends: 'never' as const };
+    expect(toRRule(value)).toBe('FREQ=WEEKLY;BYDAY=SA');
+    expect(toRRule({ ...value, ends: 'until' })).toBe('FREQ=WEEKLY;BYDAY=SA;UNTIL=20261130');
+  });
+});
+
+describe('recurrenceSummary', () => {
+  const summary = (rrule: string, start: string) => recurrenceSummary(recurrenceValue(rrule, start));
+
+  it('says the rule, its end, and how many times (spec 14.4)', () => {
+    expect(summary('FREQ=WEEKLY;BYDAY=SA;UNTIL=20261130', '2026-10-17')).toBe('Every Saturday until November 30: 7 times.');
+    expect(summary('FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH;COUNT=5', '2026-10-14')).toBe(
+      'Every 2 weeks on Monday and Thursday, 5 times, ending November 12.',
+    );
+    expect(summary('FREQ=MONTHLY;BYMONTHDAY=1', '2026-10-01')).toBe('Every month on the 1st, from October 1.');
+    expect(summary('FREQ=DAILY;INTERVAL=3', '2026-10-13')).toBe('Every 3 days, from October 13.');
+  });
+
+  it('notices a rule that never happens', () => {
+    const never = recurrenceValue('FREQ=WEEKLY;BYDAY=SA;UNTIL=20261016', '2026-10-17');
+    expect(recurrenceSummary(never)).toBe('This never happens. Pick a later end date.');
+    expect(happens(never)).toBe(false);
+    expect(happens(recurrenceValue('FREQ=MONTHLY;BYMONTHDAY=31', '2026-10-01'))).toBe(true);
   });
 });
