@@ -52,6 +52,61 @@ export function deriveCalendarData(
 }
 
 /** People whose avatars the calendar shows; their state changes re-render it. */
+/** One person on an event, as the event popup reads them. */
+export interface PopupParticipant {
+  entity_id: string;
+  calendar_name: string;
+  calendar_color: string;
+}
+
+/** A calendar a view merged into one chip (deduplicateSharedEvents' shape). */
+interface MergedParticipant {
+  entity_id: string;
+  display_name?: string;
+  color?: string;
+  calendar_name?: string;
+  calendar_color?: string;
+}
+
+/**
+ * The event the popup opens with, its people always in the shape the popup
+ * reads. A shared event (the same uid on several calendars) lists each
+ * calendar once; the clicked copy stays the main event (HA doesn't expose
+ * who organized it). A chip a view merged (the same title and times on
+ * several calendars, each copy with its own uid) lists the calendars it
+ * was merged from.
+ */
+export function eventForPopup(clicked: CalendarEvent, allEvents: CalendarEvent[]): CalendarEvent {
+  if (clicked.uid) {
+    const siblings = allEvents.filter(ev => ev.uid === clicked.uid && ev.uid !== '');
+    // Recurring events share one uid across instances: one chip per calendar.
+    const seen = new Set<string>();
+    const unique = siblings.filter(s => {
+      if (seen.has(s.calendar_entity_id)) return false;
+      seen.add(s.calendar_entity_id);
+      return true;
+    });
+    if (unique.length > 1) {
+      const shared: PopupParticipant[] = unique.map(s => ({
+        entity_id: s.calendar_entity_id,
+        calendar_name: s.calendar_name,
+        calendar_color: s.calendar_color,
+      }));
+      return { ...clicked, shared_calendars: shared } as CalendarEvent;
+    }
+  }
+  const merged = (clicked as { shared_calendars?: MergedParticipant[] }).shared_calendars;
+  if (merged?.length) {
+    const shared: PopupParticipant[] = merged.map(p => ({
+      entity_id: p.entity_id,
+      calendar_name: p.calendar_name ?? p.display_name ?? '',
+      calendar_color: p.calendar_color ?? p.color ?? clicked.calendar_color,
+    }));
+    return { ...clicked, shared_calendars: shared } as CalendarEvent;
+  }
+  return clicked;
+}
+
 export function calendarWatchedEntities(calendars: CalendarConfig[]): string[] {
   return calendars.map(c => c.person_entity).filter(id => !!id);
 }

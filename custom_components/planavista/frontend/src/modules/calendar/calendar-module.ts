@@ -11,7 +11,7 @@ import { swipeDirection } from '../../utils/gestures';
 import { memoizeOne } from '../../utils/render-cache';
 import { ForecastEntry } from '../../utils/weather-subscription';
 import { CalendarStoreController } from './calendar-store';
-import { CalendarDerived, deriveCalendarData } from './calendar-derive';
+import { CalendarDerived, deriveCalendarData, eventForPopup } from './calendar-derive';
 import { withModeColors } from './mode-colors';
 import { contrastText } from '../../core/color';
 import type { ModuleService } from '../../core/module-registry';
@@ -796,42 +796,9 @@ export class PvCalendarModule extends LitElement {
 
   private _onEventClick(e: CustomEvent) {
     const clicked: CalendarEvent = e.detail.event;
-
-    // For shared events (same UID on multiple calendars), enrich with
-    // all participants. The clicked copy stays the "main" event: we don't
-    // guess organizer since HA doesn't expose that field from Google Calendar.
-    if (clicked.uid) {
-      // The mode's colors, so the popup's people match the views.
-      const allEvents = withModeColors(this.data, this.mode)?.events || [];
-      const siblings = allEvents.filter(
-        (ev: any) => ev.uid === clicked.uid && ev.uid !== '',
-      );
-
-      // Deduplicate by calendar: recurring events share the same UID across
-      // all instances, so without this we'd get N chips per participant.
-      const seen = new Set<string>();
-      const uniqueParticipants = siblings.filter((s: any) => {
-        if (seen.has(s.calendar_entity_id)) return false;
-        seen.add(s.calendar_entity_id);
-        return true;
-      });
-
-      if (uniqueParticipants.length > 1) {
-        const enriched: CalendarEvent = {
-          ...clicked,
-          shared_calendars: uniqueParticipants.map((s: any) => ({
-            entity_id: s.calendar_entity_id,
-            calendar_name: s.calendar_name,
-            calendar_color: s.calendar_color,
-          })),
-        } as any;
-
-        this._pv.store.selectEvent(enriched);
-        return;
-      }
-    }
-
-    this._pv.store.selectEvent(clicked);
+    // The mode's colors, so the popup's people match the views.
+    const allEvents = withModeColors(this.data, this.mode)?.events || [];
+    this._pv.store.selectEvent(eventForPopup(clicked, allEvents));
   }
 
   private _onCreateEvent(e: CustomEvent) {
