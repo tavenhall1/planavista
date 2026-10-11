@@ -8,6 +8,7 @@ import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
 import { rowChange } from './hold-state';
+import { chorePicture } from './picture-words';
 
 /** The picture for a chore: its emoji, or a star when it has none (spec 7.3: the icon is also the picture tile). */
 export function pictureOf(icon: string | null | undefined): string {
@@ -310,7 +311,7 @@ export class PvChoreTile extends LitElement {
           </span>
         ` : nothing}
         <pv-ring size=${ring} .progress=${fill} color=${this.color}>
-          <span class="picture" aria-hidden="true">${pictureOf(row.icon)}</span>
+          <span class="picture" aria-hidden="true">${chorePicture(row.icon, row.name)}</span>
         </pv-ring>
         <span class="name">${row.name}</span>
         ${pending

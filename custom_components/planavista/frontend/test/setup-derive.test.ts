@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { previewColumns, previewTotal } from '../src/modules/chores/setup/setup-derive';
+import { pinBeforeSharing, previewColumns, previewTotal } from '../src/modules/chores/setup/setup-derive';
+import type { HouseholdView } from '../src/core/household';
+import type { Session } from '../src/core/session';
 import { MEMBERS, board, column, item } from './chores-fixtures';
 
 describe('the board as setup shows it', () => {
@@ -30,5 +32,21 @@ describe('the board as setup shows it', () => {
     expect(previewTotal(previewColumns(MEMBERS, sample, [{ member: 'dana', name: 'Tidy toys', week: false }]), sample)).toBe(
       '0 of 2 chores done today',
     );
+  });
+});
+
+describe('marking this screen as shared during setup (spec 9.7, 14.7)', () => {
+  const view = (kind: string, shared: boolean) => ({ account: { kind, shared } } as unknown as HouseholdView);
+  const parent = { memberId: 'blair', parent: true } as unknown as Session;
+
+  it("asks for a parent's PIN first, so the rest of setup still saves", () => {
+    expect(pinBeforeSharing(view('admin', false), true, null)).toBe(true);
+    expect(pinBeforeSharing(view('parent', false), true, null)).toBe(true);
+  });
+
+  it('needs nothing more in parent mode, for a screen already shared, or for No', () => {
+    expect(pinBeforeSharing(view('admin', false), true, parent)).toBe(false);
+    expect(pinBeforeSharing(view('shared', true), true, null)).toBe(false);
+    expect(pinBeforeSharing(view('admin', false), false, null)).toBe(false);
   });
 });

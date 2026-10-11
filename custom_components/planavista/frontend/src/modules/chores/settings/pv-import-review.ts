@@ -43,7 +43,6 @@ export class PvImportReview extends LitElement {
     css`
       :host {
         display: block;
-        padding-bottom: 96px;
       }
 
       .file {
@@ -68,7 +67,8 @@ export class PvImportReview extends LitElement {
 
       .bar {
         position: sticky;
-        bottom: 0;
+        /* Flush with the bottom: a sticky box keeps clear of the Settings page's 40 px bottom padding otherwise. */
+        bottom: -40px;
         display: flex;
         align-items: center;
         flex-wrap: wrap;

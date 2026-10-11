@@ -23,7 +23,7 @@ import {
   moduleRegistry,
   resolveModules,
 } from '../core/module-registry';
-import { HouseholdView, Member, SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
+import { HouseholdView, Member, SettingsAccess, parentsWithPins, settingsAccess, setupNeedsPin } from '../core/household';
 import type { PinGate } from '../core/pin-gate';
 import type { Session } from '../core/session';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
@@ -50,7 +50,7 @@ import './setup/pv-setup';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
-  | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue'; heading: string }
+  | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue' | 'keep_setup'; heading: string }
   | { kind: 'pin'; purpose: 'module'; heading: string; members: Member[]; resolve: (unlocked: boolean) => void }
   | { kind: 'no_pin' };
 
@@ -399,6 +399,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
     this._guardSettings();
+    this._guardSetup();
   }
 
   private _onOnboardingComplete(event?: CustomEvent<{ module?: string }>) {
@@ -497,6 +498,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (sheet?.kind === 'pin' && sheet.purpose === 'module') sheet.resolve(false);
     // Without parent mode, Settings can't stay open on this screen.
     if (sheet?.kind === 'pin' && sheet.purpose === 'continue') this._onSettingsClose();
+    // Setup can't save without parent mode here; it picks up at the same step next time.
+    if (sheet?.kind === 'pin' && sheet.purpose === 'keep_setup') {
+      this._wizardOpen = false;
+      this._flow = null;
+    }
   }
 
   /** Settings stays open only while this account may use it, or parent mode is on. */
@@ -510,6 +516,17 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       return;
     }
     this._onSettingsClose();
+  }
+
+  /**
+   * Setup on a screen that needs a parent's PIN runs in parent mode. When
+   * parent mode ends halfway (two quiet minutes), ask for a PIN to keep going
+   * rather than let every save fail.
+   */
+  private _guardSetup() {
+    if (!(this._wizardOpen || this._flow) || this._sheet || !this._household.ready) return;
+    if (!setupNeedsPin(this._household.view, !!this._session.session?.parent)) return;
+    this._sheet = { kind: 'pin', purpose: 'keep_setup', heading: "Enter a parent's PIN to keep setting up" };
   }
 
   private _closeSheet() {
@@ -636,6 +653,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .drafts=${this._drafts}
               .services=${this._services}
               .revision=${this._serviceRevision}
+              .pinGate=${this._pinGate}
+              .session=${this._session.session}
               @onboarding-complete=${this._onOnboardingComplete}
             ></pv-setup>
           ` : this._renderSetupCard()}
@@ -686,6 +705,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .drafts=${this._drafts}
               .services=${this._services}
               .revision=${this._serviceRevision}
+              .pinGate=${this._pinGate}
+              .session=${this._session.session}
               .only=${this._flow}
               cancelLabel="Settings"
               @onboarding-complete=${this._onFlowComplete}

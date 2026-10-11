@@ -171,6 +171,16 @@ export function settingsAccess(view: HouseholdView | null, isAdmin: boolean): Se
   return 'none';
 }
 
+/**
+ * Whether setup, open on this screen, has to ask for a parent's PIN to keep
+ * saving (spec 9.4, 14.7): on a shared screen setup runs in parent mode, and
+ * parent mode ends after two quiet minutes. Without a parent's PIN to ask
+ * for, there's nothing to ask.
+ */
+export function setupNeedsPin(view: HouseholdView | null, parentSession: boolean): boolean {
+  return !parentSession && settingsAccess(view, false) === 'pin';
+}
+
 export function calendarsOf(memberId: string, calendars: CalendarLink[]): CalendarLink[] {
   return calendars.filter(cal => cal.member_id === memberId);
 }

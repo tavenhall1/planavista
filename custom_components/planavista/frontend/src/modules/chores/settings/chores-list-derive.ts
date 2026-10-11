@@ -1,7 +1,7 @@
 import type { Member } from '../../../core/household';
 import { parseRule, ruleText, shortDate } from '../../../core/recurrence';
 import type { Activity, Band, ChoresSettings } from '../chores-types';
-import { pictureFor } from '../picture-words';
+import { chorePicture } from '../picture-words';
 import { checkoffStars } from '../worth';
 
 /** The Chores list's groups, by rhythm (spec 14.3). */
@@ -135,7 +135,7 @@ export function choreRow(
   return {
     id: activity.id,
     name: activity.name,
-    picture: activity.icon || pictureFor(activity.name),
+    picture: chorePicture(activity.icon, activity.name),
     rhythm: rhythmText(activity, today, timeFormat),
     tags,
     stars: planOnly(activity) ? null : checkoffStars(activity, settings.minutes_per_star),

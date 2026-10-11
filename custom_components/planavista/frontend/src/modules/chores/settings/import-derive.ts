@@ -57,6 +57,12 @@ export interface ImportChoices {
 
 export const RESTORE_FORMAT = 'planavista.household/v1';
 
+/** The line under People: how matching works, and where bedtimes and sleep came from. */
+export function peopleHint(format: string): string {
+  const from = format === RESTORE_FORMAT ? 'the file' : 'the plan';
+  return `Matched by name; pick someone else to change it. Bedtimes and sleep come from ${from}.`;
+}
+
 function list(names: string[]): string {
   if (names.length <= 2) return names.join(' and ');
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;

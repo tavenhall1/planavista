@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  ImportPreview, activityLine, byCategory, emptyChoices, fileLine, importSummary, importedText, lookLines, matchOf, missingAges,
-  onBoardOf, personLine, sections, tiles,
+  activityLine, byCategory, emptyChoices, fileLine, importedText, ImportPreview, importSummary, lookLines, matchOf, missingAges, onBoardOf, peopleHint, personLine, sections, tiles,
 } from '../src/modules/chores/settings/import-derive';
 import { MEMBERS } from './chores-fixtures';
 
@@ -79,5 +78,12 @@ describe('the review page', () => {
       .toBe('Imported: Dana and 14 activities added, 9 updated.');
     expect(importedText({ people_added: [], activities_added: 0, activities_updated: 0, rewards_added: 0 }))
       .toBe('Imported. Nothing needed changing.');
+  });
+});
+
+describe('the people hint', () => {
+  it('says where bedtimes and sleep came from: the plan, or the PlanaVista file', () => {
+    expect(peopleHint('household-hours/v1')).toBe('Matched by name; pick someone else to change it. Bedtimes and sleep come from the plan.');
+    expect(peopleHint('planavista.household/v1')).toBe('Matched by name; pick someone else to change it. Bedtimes and sleep come from the file.');
   });
 });

@@ -9,6 +9,8 @@ import type { HouseholdView } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import type { ModuleService } from '../../core/module-registry';
+import type { PinGate } from '../../core/pin-gate';
+import type { Session } from '../../core/session';
 import { saveErrorMessage } from '../../core/page-host';
 import { STEP_CHANGE, SetupContext, SetupPatch, SetupStep, resumeIndex, setupRegistry } from '../../core/settings-registry';
 import { mergePatch, onlySteps, stepAfter, withPatch } from '../../core/setup-flow';
@@ -62,6 +64,9 @@ export class PvSetup extends LitElement {
   /** The card's module services (chores steps read the chores feed and call its commands). */
   @property({ attribute: false }) services: Record<string, ModuleService> = {};
   @property({ type: Number }) revision = 0;
+  /** The card's PIN sheet and parent mode (a step that makes this a shared screen asks for a parent's PIN). */
+  @property({ attribute: false }) pinGate?: PinGate;
+  @property({ attribute: false }) session: Session | null = null;
   /** A short setup: only these steps (their ids). */
   @property({ attribute: false }) only: string[] | null = null;
   /** Where Back on a short setup's first step goes ("Settings"). */
@@ -308,6 +313,8 @@ export class PvSetup extends LitElement {
               .drafts=${this.drafts}
               .services=${this.services}
               .revision=${this.revision}
+              .pinGate=${this.pinGate}
+              .session=${this.session}
               mode="setup"
             ></${tag}>
           `)}

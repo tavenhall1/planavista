@@ -6,7 +6,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { AGE_GROUP_CHOICES, AgeGroup, Member } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import {
-  CATEGORY_ICONS, ImportChoices, ImportPreview, PreviewActivity, RESTORE_FORMAT, activityLine, ageOf, byCategory,
+  CATEGORY_ICONS, ImportChoices, ImportPreview, PreviewActivity, RESTORE_FORMAT, activityLine, ageOf, byCategory, peopleHint,
   emptyChoices, lookLines, matchOf, onBoardOf, personLine, sections, tiles,
 } from './import-derive';
 import { pictureFor } from '../picture-words';
@@ -239,7 +239,7 @@ export class PvImportPreview extends LitElement {
           `;
         })}
       </div>
-      <p class="hint">Matched by name; pick someone else to change it. Bedtimes and sleep come from the plan.</p>
+      <p class="hint">${peopleHint(this.preview.file.format)}</p>
     `;
   }
 

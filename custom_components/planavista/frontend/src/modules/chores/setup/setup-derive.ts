@@ -1,4 +1,5 @@
-import { Member, inOrder } from '../../../core/household';
+import { HouseholdView, Member, inOrder } from '../../../core/household';
+import type { Session } from '../../../core/session';
 import type { Board } from '../chores-types';
 
 /** A chore that isn't saved yet, shown in the preview as the parent picks it. */
@@ -41,4 +42,13 @@ export function previewTotal(columns: PreviewColumn[], board: Board | null): str
   const due = columns.reduce((sum, c) => sum + c.today.length, 0);
   const done = board?.household.done ?? 0;
   return `${Math.min(done, due)} of ${due} ${due === 1 ? 'chore' : 'chores'} done today`;
+}
+
+/**
+ * Whether Continue on "Is this a shared family screen?" asks for a parent's
+ * PIN first (spec 9.7): marking this account shared takes away its own say
+ * in Settings, so setup's remaining saves need parent mode.
+ */
+export function pinBeforeSharing(view: HouseholdView, shared: boolean, session: Session | null): boolean {
+  return shared && !view.account.shared && !session?.parent;
 }

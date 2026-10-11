@@ -10,7 +10,7 @@ import { StatusBadge, itemBadge, pastBadge } from '../../core/status-map';
 import { SheetMotion } from '../../shell/sheet-motion';
 import { choresStyles } from './chores-styles';
 import type { DayView, ItemView, PastItem } from './chores-types';
-import { pictureOf } from './pv-chore-tile';
+import { chorePicture } from './picture-words';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -154,7 +154,7 @@ export class PvChoresDaySheet extends LitElement {
               const badge = this._badge(item);
               return html`
                 <li>
-                  <span class="pic" aria-hidden="true">${pictureOf(item.icon)}</span>
+                  <span class="pic" aria-hidden="true">${chorePicture(item.icon, item.name)}</span>
                   <span class="name">${item.name}</span>
                   ${badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing}
                   ${isPast(item) && item.status === 'missed' && this.canExcuse ? html`

@@ -12,6 +12,7 @@ import {
   roleFields,
   roleOf,
   settingsAccess,
+  setupNeedsPin,
   takenColors,
 } from '../src/core/household';
 
@@ -65,6 +66,21 @@ describe('settingsAccess', () => {
     expect(settingsAccess(null, true)).toBe('open');
     expect(settingsAccess(null, false)).toBe('none');
     expect(settingsAccess(view('shared', false, EVERYONE, false), true)).toBe('open');
+  });
+});
+
+describe('setupNeedsPin (spec 9.4, 14.7)', () => {
+  it("asks for a parent's PIN to keep setting up when parent mode ends on a shared screen", () => {
+    expect(setupNeedsPin(view('shared', false), false)).toBe(true);
+    expect(setupNeedsPin(view('other', false), false)).toBe(true);
+  });
+
+  it("doesn't ask in parent mode, on an admin's or a parent's own screen, or without a usable household", () => {
+    expect(setupNeedsPin(view('shared', false), true)).toBe(false);
+    expect(setupNeedsPin(view('admin', true), false)).toBe(false);
+    expect(setupNeedsPin(view('parent', true), false)).toBe(false);
+    expect(setupNeedsPin(null, false)).toBe(false);
+    expect(setupNeedsPin(view('shared', false, [BLAIR, CASEY]), false)).toBe(false);
   });
 });
 

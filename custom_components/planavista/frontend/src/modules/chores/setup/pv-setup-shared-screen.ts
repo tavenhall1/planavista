@@ -6,20 +6,28 @@ import { baseStyles, buttonStyles } from '../../../styles/shared';
 import { HouseholdView, inOrder } from '../../../core/household';
 import type { HouseholdApi } from '../../../core/household-client';
 import type { Layout } from '../../../core/layout';
+import type { PinGate } from '../../../core/pin-gate';
+import type { Session } from '../../../core/session';
 import { errorMessage } from '../../../core/ws-api';
+import { pinBeforeSharing } from './setup-derive';
 import '../../../core/pv-member-avatar';
 import '../../../shell/settings/pin-actions';
 
 /**
  * pv-setup-shared-screen: Is this a shared family screen? (spec 14.7, 9.7).
  * On yes, parents set their PINs here, and an admin account is flagged
- * (not blocked): a non-admin account is safer on a shared screen.
+ * (not blocked): a non-admin account is safer on a shared screen. Marking
+ * this account shared asks for a parent's PIN first, so the rest of setup
+ * saves in parent mode.
  */
 export class PvSetupSharedScreen extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) household: HouseholdView | null = null;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String }) layout: Layout = 'landscape';
+  /** The card's PIN sheet, and the parent mode it starts. */
+  @property({ attribute: false }) pinGate?: PinGate;
+  @property({ attribute: false }) session: Session | null = null;
 
   @state() private _shared: boolean | null = null;
   @state() private _message = '';
@@ -40,6 +48,10 @@ export class PvSetupSharedScreen extends LitElement {
     if (shared && !view.members.some(m => m.parent && m.has_pin)) {
       this._message = "Set a PIN for a parent first, so someone can open Settings here.";
       return false;
+    }
+    if (pinBeforeSharing(view, shared, this.session)) {
+      const parents = view.members.filter(m => m.parent && m.has_pin);
+      if (!this.pinGate || !(await this.pinGate.ask(parents, "Who's finishing setup?"))) return false;
     }
     try {
       if (shared !== view.account.shared) await this.api.setSharedScreen(shared);
