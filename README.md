@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A panoramic view of your family's life</strong><br>
-  A beautiful, privacy-first wall calendar for Home Assistant that rivals Skylight and Hearth, with no monthly fees.
+  A beautiful, privacy-first family calendar and chore board for Home Assistant that rivals Skylight and Hearth, with no monthly fees.
 </p>
 
 <p align="center">
@@ -20,12 +20,14 @@
 ## Features
 
 - **4 Calendar Views**: Day (per-person columns), Week, Month, and Agenda
+- **Chores**: One board for the whole family, with a ring for each person's day, stars, rewards, and a parent's OK when you want one
+- **Start from Your Plan**: Import a Household Hours plan, pick from common chores, or start empty
 - **Deep Google Calendar Integration**: Attendee invitations, in-place PATCH edits, real organizer detection via API
 - **Shared Event Awareness**: Multi-participant detection, organizer badges, stripe gradients, participant avatars
 - **Full Event Management**: Create, edit, and delete events with optional address suggestions and multi-calendar support
 - **Past Event Dimming**: Finished events automatically fade so you can focus on what's next
 - **20-Color Palette**: Earth, ocean, warm, and vivid tones for calendar personalization
-- **Built-in Onboarding Wizard**: Auto-discovers your calendars, weather, and people entities
+- **Built-in Setup**: Auto-discovers your calendars, weather, and people entities
 - **Day and Night**: Light, Dark, or Automatic (at sunset and sunrise, on a schedule, or with Home Assistant), with three themes that each have a light and a dark version
 - **Animated Weather**: 15 custom SVG icons with condition-based gradients and forecasts
 - **Per-Person Day View**: Skylight-inspired columns with large person avatars
@@ -80,14 +82,14 @@ Make sure you have at least one calendar integration configured:
 3. Search for **PlanaVista**
 4. Save: setup appears on first load
 
-Setup walks you through who lives here, your calendars, and the look. No YAML required.
+Setup walks you through who lives here, your calendars, chores if you want them, and the look. No YAML required.
 
 ### 5. Card YAML Options (Optional)
 
 The card works with zero configuration, but you can override settings per-card:
 
 ```yaml
-type: custom:planavista-calendar-card
+type: custom:planavista-card
 entity: sensor.planavista_config
 
 # Optional overrides
@@ -95,8 +97,8 @@ default_view: week          # day | week | month | agenda
 calendars:                  # show only specific calendars
   - calendar.alice
   - calendar.bob
-modules: [calendar]         # the modules this card shows, in order
-module: calendar            # the module it opens on
+modules: [calendar, chores] # the modules this card shows, in order
+module: calendar            # the module it opens on: calendar | chores
 theme: minimal              # planavista | minimal | vibrant, or light | dark
 hide_weather: false         # hide the weather
 hide_header: false          # hide the clock and weather header
@@ -105,8 +107,8 @@ time_format: 12h            # 12h | 24h
 first_day: sunday           # sunday | monday
 ```
 
-- `planavista-card` is the card's newer name and works from 1.2.0 on. The example uses `planavista-calendar-card`, which every version knows, so a dashboard keeps working if you ever go back to 1.1.0.
-- `modules` and `module` choose what a card shows and where it starts. Today the calendar is the only module; chores comes next.
+- `planavista-card` is the card's name for new dashboards and works from 1.2.0 on. Cards added before as `planavista-calendar-card` keep working.
+- `modules` and `module` choose what a card shows and where it starts. A chores tablet can open on the board with `module: chores`. Chores shows once the household turns it on.
 - `theme` with a theme's name picks the theme and still follows the household's Light, Dark, or Automatic. `light` or `dark` fixes the card to PlanaVista's light or dark version.
 - `hide_header` hides the clock and weather header. The bar with the views and Settings stays.
 
@@ -123,6 +125,30 @@ PlanaVista keeps a list of the people in your household. Anyone whose calendar i
 **PINs and parent mode.** Anyone can have a PIN of 4 to 6 digits. A parent's PIN starts parent mode on that screen: the top of the card shows whose it is, with a countdown and a Lock button. Parent mode ends after two quiet minutes, when the screen sleeps, when the page reloads, or when someone taps Lock. After 5 wrong tries a PIN pauses for 30 seconds, and each pause after that is twice as long, up to 15 minutes. A parent can clear a pause. PlanaVista keeps PINs only as salted hashes, and never puts them in actions, events, or its logs.
 
 **Forgot every parent's PIN?** Sign in to Home Assistant with a parent's or an admin's own account and set new ones in Settings, under PINs and parent mode.
+
+---
+
+## Chores
+
+Chores sit next to the calendar. The board shows everyone's today at once: a column for each person, their chores in the morning, afternoon, and evening, and a ring that closes when everything due today is done. Kids hold a chore's circle to finish it and earn stars. Let go early and nothing happens.
+
+**Setting up.** First-run setup asks "Do you want chores too?" Start from your household plan (a Household Hours file), pick from a short list of common chores, or start empty. Already using PlanaVista for the calendar? Settings has a Chores row that asks the same few questions. Afterwards, Settings, Chores lists every chore; tap one to change who does it, when, about how long, and whether it needs a parent's OK. On the board, a parent can also tap a chore and choose Edit.
+
+**Three kinds of chores.**
+
+- **Plan**: a share of time each day or week, as your household agreed (Kitchen cleanup, 30 minutes a day).
+- **Once**: one job on a day or by a date (Fix the gate latch by Friday).
+- **Repeats**: every day, week, or month, on the days you pick (Take out the trash on Tuesday and Friday).
+
+**Views.** Board; Week, with each person's days and anything missed; My day, one person's day as a timeline, a list, or big pictures for young children; and Rewards, with stars saved up and what they can buy.
+
+**Waiting for OK.** A chore or a reward can wait for a parent's OK. Parents answer under Waiting for OK on the screen, or from their phones. Settings, Rules decides what happens to check-offs nobody answers by the end of the day, what a missed chore does, when the chore day starts (3:00 AM), and how many minutes earn a star.
+
+**Phones.** On a person's page in Settings, pick their phones (from the Home Assistant Companion app). Parents' phones get Waiting for OK requests with buttons to answer them. Under Reminders, anyone with a phone can get a reminder at the evening check (7:00 PM unless you change it), only when they have chores left; the board shows the evening check at the same time. If Home Assistant no longer has a phone, Settings lists it under Needs a look.
+
+**Import and export.** Settings, Import and export brings in a Household Hours plan (choose the file or paste its text), saves a PlanaVista file, and restores one. A review shows where everything goes before anything is saved. Importing again updates what's there instead of adding copies, and nothing is deleted. A PlanaVista file holds people, chores, rewards, and rules, but no PINs, stars, or history; Home Assistant backups keep those. Its format is described in [docs/schemas/planavista.household.v1.json](docs/schemas/planavista.household.v1.json).
+
+**Voice.** Each person's chores are also a Home Assistant to-do list (for example, Casey Chores), so Assist and other voice assistants can read them, add to them, and check them off. A chore added to a to-do list by voice, or by someone who isn't a parent, waits for a parent's OK each time it's checked off.
 
 ---
 
@@ -163,6 +189,36 @@ actions:
       entity_id: select.planavista_appearance
     data:
       option: dark
+```
+
+### Chores in automations
+
+Each person gets a device in Home Assistant:
+
+| Entity | What it says |
+|--------|--------------|
+| `todo.<name>_chores` | Their chores; checking one off completes it |
+| `sensor.<name>_chores_left` | Chores still to do today |
+| `sensor.<name>_chores_this_week` | How much of this week's chores is done, in percent |
+| `sensor.<name>_chore_time` | Every minute of chores they've done |
+| `sensor.<name>_stars` | Stars to spend |
+| `sensor.<name>_streak` | Days in a row with every chore done |
+| `binary_sensor.<name>_chores_done` | On once everything due today is done |
+| `event.<name>_chores` | Completed, approved, sent back, undone, missed, or redeemed |
+
+The Household device adds `sensor.household_chores_left` and `sensor.household_approvals_waiting`, next to `select.planavista_appearance`.
+
+Actions: `planavista.complete_chore`, `undo_chore`, `get_chores`, `add_chore`, `remove_chore`, `excuse_chore`, `approve_chore`, `send_back_chore`, `redeem_reward`, `award_stars`, `pause_member`, `resume_member`, and `export_household`. A chore's id is in Settings, Chores, under Use in automations. For example, a tag by the fish tank checks off Casey's chore:
+
+```yaml
+triggers:
+  - trigger: tag
+    tag_id: fish-tank
+actions:
+  - action: planavista.complete_chore
+    data:
+      member: person.casey
+      chore: feed_the_fish
 ```
 
 ---
@@ -245,7 +301,7 @@ PlanaVista goes beyond Home Assistant's built-in calendar services to provide de
 3. Optionally add a location or description. Locations are plain text unless you turn on **Address suggestions** (see below)
 4. Click **Add**. For multi-calendar events on Google Calendar, attendees are automatically invited via the API
 
-**Address suggestions** are **off by default**. An admin can turn them on under the card's **Settings > Preferences**. When on, the location text you type (and nothing else) is sent to [Photon](https://photon.komoot.io) (OpenStreetMap data) to suggest addresses. When off, locations are plain text and nothing is sent.
+**Address suggestions** are **off by default**. A parent can turn them on in the card's **Settings, Calendar options**. When on, the location text you type (and nothing else) is sent to [Photon](https://photon.komoot.io) (OpenStreetMap data) to suggest addresses. When off, locations are plain text and nothing is sent.
 
 ### Editing Events
 

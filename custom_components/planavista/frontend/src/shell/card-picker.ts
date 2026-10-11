@@ -7,15 +7,15 @@ export interface CardPickerEntry {
 }
 
 /**
- * The picker keeps the 1.1.0 element name for now. A card added as
- * `custom:planavista-card` would break if the household stepped back to
- * 1.1.0, which doesn't know the alias. The picker switches to the alias once
- * the release that introduced it is the oldest one people step back to.
+ * New cards get the short name, `custom:planavista-card` (spec 6.4). 1.2.0
+ * introduced it and is the release a household steps back to from 1.3.0, so a
+ * card added now keeps working after a step back. Cards added as
+ * `custom:planavista-calendar-card` keep working too.
  */
 export const CARD_PICKER_ENTRY: CardPickerEntry = {
-  type: 'planavista-calendar-card',
+  type: 'planavista-card',
   name: 'PlanaVista',
-  description: 'All-in-one calendar with clock, weather, toggles, and views',
+  description: "Your family's calendar and chores, together on one screen.",
   preview: true,
 };
 
