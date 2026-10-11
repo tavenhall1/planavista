@@ -457,6 +457,21 @@ async def ws_stars_award(hass: HomeAssistant, connection: websocket_api.ActiveCo
         connection.send_result(msg["id"], out.data)
 
 
+@websocket_api.websocket_command({vol.Required("type"): "planavista/stars/history", vol.Required("member"): str})
+@callback
+def ws_stars_history(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """A member's latest stars, newest first (a person's page: Stars)."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None:
+        return
+    try:
+        history = runtime.engine.star_history(msg["member"])
+    except ChoreError as err:
+        connection.send_error(msg["id"], err.code, message(err))
+        return
+    connection.send_result(msg["id"], {"balance": runtime.engine.balance(msg["member"]), "history": history})
+
+
 CHORES_COMMANDS = (
     ws_chores_subscribe,
     ws_chores_week,
@@ -477,6 +492,7 @@ CHORES_COMMANDS = (
     ws_reward_delete,
     ws_reward_redeem,
     ws_stars_award,
+    ws_stars_history,
 )
 
 

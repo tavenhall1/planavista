@@ -612,6 +612,32 @@ class ChoresEngine:
         """A member's stars (spec 7.5: the ledger is append-only)."""
         return sum(int(e["delta"]) for e in self.rewards["ledger"] if e.get("member") == member_id)
 
+    def star_history(self, member_id: str, limit: int = 30) -> list[dict[str, Any]]:
+        """A member's latest stars, newest first: chores (by name), undos, rewards, and a parent's give or take."""
+        if self.member(member_id) is None:
+            raise ChoreError("unknown_member")
+        completions = {c["id"]: c for c in self.log["completions"]}
+        redemptions = {r["id"]: r for r in self.rewards["redemptions"]}
+        found: list[dict[str, Any]] = []
+        for entry in reversed(self.rewards["ledger"]):
+            if entry["member"] != member_id:
+                continue
+            reason, name = entry["reason"], None
+            if reason in ("chore", "undo"):
+                completion = completions.get(entry.get("ref"))
+                activity = self.activity(completion["chore"]) if completion else None
+                name = activity["name"] if activity else None
+            elif reason == "redeemed":
+                redemption = redemptions.get(entry.get("ref"))
+                reward = self.reward(redemption["reward"]) if redemption else None
+                name = reward["name"] if reward else None
+            found.append({
+                "at": entry["at"], "delta": entry["delta"], "reason": reason, "name": name, "by": entry.get("by"),
+            })
+            if len(found) >= limit:
+                break
+        return found
+
     def chore_minutes(self, member_id: str) -> float:
         """Every minute ever credited to a member as the doer (sensor.<member>_chore_time)."""
         return round(float((self.log.get("totals") or {}).get(member_id, 0)), 2)

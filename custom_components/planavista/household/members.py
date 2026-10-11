@@ -38,6 +38,11 @@ EDITABLE_FIELDS = (
     "needs_ok_for",
     "stars",
     "away",
+    "goal",
+    "bedtime",
+    "sleep_hours",
+    "phones",
+    "notify",
 )
 
 # Records name who acted with a member id or one of these words (spec 7.6).
@@ -50,6 +55,13 @@ NAME_MAX_LENGTH = 40
 EMOJI_MAX_LENGTH = 16
 AWAY_NOTE_MAX_LENGTH = 60
 MAX_AWAY_RANGES = 50
+GOAL_MAX_LENGTH = 60
+MAX_PHONES = 5
+SLEEP_HOURS = (1.0, 16.0)
+# Phone requests go to parents; reminders are each person's choice (spec 7.2, 10.5).
+NOTIFY_DEFAULTS = {"requests": True, "reminders": False}
+_CLOCK = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")
+_NOTIFY_SERVICE = re.compile(r"notify\.[a-z0-9_]+")
 
 
 class MemberError(ValueError):
@@ -136,6 +148,60 @@ def _checked_away(away: object) -> list[dict[str, Any]]:
     return sorted(ranges, key=lambda span: span["from"])
 
 
+def _checked_goal(goal: object) -> str | None:
+    """The reward someone is saving up for (spec 8.15), by its id."""
+    if goal is not None and (not isinstance(goal, str) or not 0 < len(goal) <= GOAL_MAX_LENGTH):
+        raise MemberError("invalid_goal")
+    return goal
+
+
+def _checked_bedtime(bedtime: object) -> dict[str, str] | None:
+    """Bedtimes on weeknights and on Friday and Saturday nights (spec 7.2), as HH:MM."""
+    if bedtime is None:
+        return None
+    if not isinstance(bedtime, Mapping):
+        raise MemberError("invalid_bedtime")
+    weeknight = bedtime.get("weeknight")
+    weekend = bedtime.get("weekend", weeknight)
+    for value in (weeknight, weekend):
+        if not isinstance(value, str) or not _CLOCK.fullmatch(value):
+            raise MemberError("invalid_bedtime")
+    return {"weeknight": weeknight, "weekend": weekend}
+
+
+def _checked_sleep(hours: object) -> float | None:
+    """Hours of sleep a night, to the quarter hour."""
+    if hours is None:
+        return None
+    low, high = SLEEP_HOURS
+    if isinstance(hours, bool) or not isinstance(hours, (int, float)) or not low <= hours <= high:
+        raise MemberError("invalid_sleep")
+    return round(float(hours) * 4) / 4
+
+
+def _checked_phones(phones: object) -> list[str]:
+    """The notify services of someone's phones, such as notify.mobile_app_caseys_phone (spec 10.5)."""
+    if phones is None:
+        return []
+    if not isinstance(phones, list) or len(phones) > MAX_PHONES or len(set(phones)) != len(phones):
+        raise MemberError("invalid_phones")
+    if any(not isinstance(p, str) or not _NOTIFY_SERVICE.fullmatch(p) for p in phones):
+        raise MemberError("invalid_phones")
+    return list(phones)
+
+
+def _checked_notify(notify: object) -> dict[str, bool]:
+    """What someone's phones get: Waiting for OK requests (parents) and reminders."""
+    if notify is None:
+        return dict(NOTIFY_DEFAULTS)
+    if not isinstance(notify, Mapping):
+        raise MemberError("invalid_notify")
+    checked = {**NOTIFY_DEFAULTS, **{k: v for k, v in notify.items() if k in NOTIFY_DEFAULTS}}
+    if any(not isinstance(v, bool) for v in checked.values()):
+        raise MemberError("invalid_notify")
+    return checked
+
+
 def build_member(
     existing: Mapping[str, Any] | None,
     changes: Mapping[str, Any],
@@ -200,6 +266,16 @@ def build_member(
     member["picture"] = _checked_picture(member.get("picture"), person)
     if "away" in member:
         member["away"] = _checked_away(member["away"])
+    # Checked when changed; a stored value is kept as it is (spec 7.8).
+    for key, check in (
+        ("goal", _checked_goal),
+        ("bedtime", _checked_bedtime),
+        ("sleep_hours", _checked_sleep),
+        ("phones", _checked_phones),
+        ("notify", _checked_notify),
+    ):
+        if key in changes:
+            member[key] = check(changes[key])
     return member
 
 
@@ -244,9 +320,6 @@ def update_member(
     return updated, member
 
 
-GOAL_MAX_LENGTH = 60
-
-
 def set_prefs(
     members: list[dict[str, Any]], member_id: str, changes: Mapping[str, Any]
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -260,10 +333,7 @@ def set_prefs(
             raise MemberError("invalid_my_day")
         member["my_day"] = changes["my_day"]
     if "goal" in changes:
-        goal = changes["goal"]
-        if goal is not None and (not isinstance(goal, str) or not 0 < len(goal) <= GOAL_MAX_LENGTH):
-            raise MemberError("invalid_goal")
-        member["goal"] = goal
+        member["goal"] = _checked_goal(changes["goal"])
     member["rev"] = int(member.get("rev", 1)) + 1
     updated = list(members)
     updated[index] = member
