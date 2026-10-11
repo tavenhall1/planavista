@@ -54,6 +54,16 @@ describe('resolveModules', () => {
   it('has nothing to show when no modules are registered', () => {
     expect(resolveModules([], {})).toEqual({ shown: [], initial: undefined });
   });
+
+  it('leaves out a module the household does not use', () => {
+    const optIn: ModuleDefinition = { ...chores, enabled: ctx => !!(ctx.household?.modules as { chores?: unknown } | undefined)?.chores };
+    const ctx = (on: boolean) => ({ config: undefined, data: null, household: { modules: on ? { chores: { enabled: true } } : {} } as never });
+    expect(resolveModules([calendar, optIn], {}, ctx(false)).shown.map(m => m.id)).toEqual(['calendar']);
+    expect(resolveModules([calendar, optIn], { module: 'chores' }, ctx(false)).initial?.id).toBe('calendar');
+    expect(resolveModules([calendar, optIn], { modules: ['chores'] }, ctx(false)).shown.map(m => m.id)).toEqual(['calendar']);
+    expect(resolveModules([calendar, optIn], { module: 'chores' }, ctx(true)).initial?.id).toBe('chores');
+    expect(resolveModules([calendar, optIn], {}).shown.map(m => m.id)).toEqual(['calendar']);
+  });
 });
 
 describe('initialModuleView', () => {
