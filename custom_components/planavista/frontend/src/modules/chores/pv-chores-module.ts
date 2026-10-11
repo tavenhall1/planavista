@@ -172,6 +172,16 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return this.services?.chores as ChoresService | undefined;
   }
 
+  /** The service whose notices this element shows (so a refusal is told here, spec 15.1). */
+  private _watching: { service: ChoresService; stop: () => void } | null = null;
+
+  private _watch(): void {
+    const service = this.isConnected ? this.service : undefined;
+    if (this._watching?.service === service) return;
+    this._watching?.stop();
+    this._watching = service ? { service, stop: service.watch() } : null;
+  }
+
   /** The bar's and the parent-mode strip's buttons: Waiting for OK and Add chore. */
   moduleAction(id: string): void {
     if (id === 'inbox') void this._openInbox();
@@ -240,6 +250,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     }
     // A ring in the calendar, or a column header, opened someone's day.
     if (changed.has('openTarget') && this.openTarget?.member) this._myDayMember = this.openTarget.member;
+    this._watch();
     const notices = this.service?.takeNotices() ?? [];
     const last = notices[notices.length - 1];
     if (last) this._toast = { id: last.id, text: last.text, tone: 'bad', ms: 7000 };
@@ -271,6 +282,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     clearInterval(this._clock);
+    this._watching?.stop();
+    this._watching = null;
     if (this._overlayOpen) {
       this._overlayOpen = false;
       this.dispatchEvent(new CustomEvent('pv-overlay-change', { detail: { open: false }, bubbles: true, composed: true }));

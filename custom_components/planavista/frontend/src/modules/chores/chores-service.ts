@@ -42,6 +42,10 @@ export function refusalText(entry: QueuedCheckoff, code: string): string {
 const live = new Set<ChoresService>();
 let pageQueue: CheckoffQueue | null = null;
 let services = 0;
+/** Card ids carry this page's mark, so an entry left by an earlier page never names a card on this one. */
+const PAGE = Math.random().toString(36).slice(2, 8);
+/** Refusals that came while no card showed chores; the next card that does tells them. */
+let unshown: ChoresNotice[] = [];
 
 function sharedQueue(): CheckoffQueue {
   if (!pageQueue) {
@@ -54,8 +58,18 @@ function sharedQueue(): CheckoffQueue {
       {
         changed: () => live.forEach(service => service.requestUpdate()),
         refused: (entry, code) => {
-          const owner = [...live].find(service => service.id === entry.card) ?? [...live][0];
-          owner?.notify({ id: entry.id, text: refusalText(entry, code), entry });
+          // Told where someone sees it: the card that made it if it shows chores, else one that does,
+          // else the next one that shows chores (a calendar-only card never would).
+          const cards = [...live];
+          const owner = cards.find(service => service.id === entry.card);
+          const shown = (owner?.watched ? owner : undefined) ?? cards.find(service => service.watched);
+          const notice = { id: entry.id, text: refusalText(entry, code), entry };
+          if (shown) {
+            shown.notify(notice);
+          } else {
+            unshown = [...unshown, notice];
+            cards.forEach(service => service.requestUpdate());
+          }
         },
       },
     );
@@ -67,6 +81,7 @@ function sharedQueue(): CheckoffQueue {
 export function resetSharedQueue(): void {
   pageQueue = null;
   live.clear();
+  unshown = [];
 }
 
 const RESEND_MS = 15_000;
@@ -78,7 +93,7 @@ const RESEND_MS = 15_000;
  * household has chores on.
  */
 export class ChoresService implements ModuleService {
-  readonly id = `card${++services}`;
+  readonly id = `card${++services}-${PAGE}`;
   feed: ChoresFeed | null = null;
   status: LiveStatus = 'idle';
   notices: ChoresNotice[] = [];
@@ -86,6 +101,7 @@ export class ChoresService implements ModuleService {
   readonly queue: CheckoffQueue;
   private readonly _subscription: ChoresSubscription;
   private _following = false;
+  private _watchers = 0;
   private _resend: ReturnType<typeof setInterval> | undefined;
   private _boardFor: { feed: ChoresFeed | null; entries: readonly unknown[]; board: Board | null } = {
     feed: null, entries: [], board: null,
@@ -190,15 +206,32 @@ export class ChoresService implements ModuleService {
     }
   }
 
+  /** A chores module shows this card's notices from now on; call what it returns when it stops. */
+  watch(): () => void {
+    this._watchers += 1;
+    let stopped = false;
+    return () => {
+      if (stopped) return;
+      stopped = true;
+      this._watchers -= 1;
+    };
+  }
+
+  /** Whether a chores module on this card shows its notices. */
+  get watched(): boolean {
+    return this._watchers > 0;
+  }
+
   notify(notice: ChoresNotice): void {
     this.notices = [...this.notices, notice];
     this.requestUpdate();
   }
 
-  /** The notices not yet shown; whoever shows them takes them. */
+  /** The notices not yet shown, with any the page kept for a card that shows chores; whoever shows them takes them. */
   takeNotices(): ChoresNotice[] {
-    const notices = this.notices;
-    if (notices.length) this.notices = [];
+    const notices = this.watched && unshown.length ? [...this.notices, ...unshown] : this.notices;
+    if (this.watched) unshown = [];
+    if (this.notices.length) this.notices = [];
     return notices;
   }
 
