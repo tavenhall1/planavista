@@ -18,18 +18,24 @@ import type { Board } from './chores-types';
 import type { RowModel } from './board-derive';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
+import { dayWords, historyLines, itemOptions } from './options-derive';
+import type { OptionChoice } from './pv-chore-options';
+import { errorMessage } from '../../core/ws-api';
 import { chime, haptic } from './effects';
 import type { PvChoresBoard } from './pv-chores-board';
 import '../../core/pv-toast';
 import '../../shell/pv-notice-sheet';
 import './pv-chores-board';
 import './pv-chores-people-sheet';
+import './pv-chore-options';
 
 /** A sheet the chores screens show over themselves. */
 type ChoresSheet =
   | { kind: 'start_over' }
   | { kind: 'no_pin'; heading: string }
-  | { kind: 'people'; heading: string; body?: string; people: Member[]; pick: (member: Member | null) => void };
+  | { kind: 'people'; heading: string; body?: string; people: Member[]; pick: (member: Member | null) => void }
+  | { kind: 'options'; key: string; history: string[] | null; busy: boolean }
+  | { kind: 'delete'; row: RowModel };
 
 /** What the last check-off toast can take back or hand to someone else. */
 interface LastCheckoff {
@@ -223,7 +229,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         .minute=${this._minute}
         @pv-hold-done=${(e: CustomEvent<HoldDetail>) => this._complete(e.detail)}
         @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
-        @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}></pv-chores-board>
+        @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}
+        @pv-row-options=${(e: CustomEvent<{ row: RowModel }>) => this._openOptions(e.detail.row)}></pv-chores-board>
     `;
   }
 
@@ -326,6 +333,157 @@ export class PvChoresModule extends LitElement implements ModuleElement {
           ? 'This is waiting for a parent\'s OK.'
           : 'Hold the circle to finish a chore. Let go early and nothing happens.';
     this.showToast({ id: `hint-${Date.now()}`, text, ms: 3500 });
+  }
+
+  /** The board item with this key now (the feed may have changed it since a sheet opened). */
+  private _itemRow(key: string): RowModel | null {
+    const board = this.service?.board();
+    if (!board) return null;
+    for (const entry of Object.values(board.members)) {
+      const item = entry.items.find(i => i.key === key);
+      if (item) return { key, item, name: item.name, icon: item.icon, label: null, badge: null, meta: '', state: item.status };
+    }
+    return null;
+  }
+
+  private _openOptions(row: RowModel): void {
+    this._sheet = { kind: 'options', key: row.key, history: null, busy: false };
+  }
+
+  private _optionsModel(key: string) {
+    const board = this.service?.board();
+    const row = this._itemRow(key);
+    const owner = row ? this._member(row.item.member) : undefined;
+    if (!board || !row || !owner) return null;
+    return {
+      row,
+      owner,
+      model: itemOptions({
+        item: row.item,
+        activity: board.chores.find(a => a.id === row.item.chore),
+        owner,
+        members: inOrder(this.household?.members ?? []),
+        today: board.today,
+        member: memberAccess(this.household, this.session, owner.id),
+        parent: parentAccess(this.household, this.session),
+      }),
+    };
+  }
+
+  /** Run one change from a sheet: close it and say what happened, or say what went wrong (spec 11.7). */
+  private async _run(action: () => Promise<unknown>, done: string): Promise<boolean> {
+    try {
+      await action();
+      this._sheet = null;
+      this.showToast({ id: `ok-${Date.now()}`, text: done });
+      return true;
+    } catch (err) {
+      this.showToast({ id: `err-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad', ms: 6000 });
+      if (this._sheet?.kind === 'options') this._sheet = { ...this._sheet, busy: false };
+      return false;
+    }
+  }
+
+  private async _option(key: string, choice: OptionChoice): Promise<void> {
+    const service = this.service;
+    const found = this._optionsModel(key);
+    const board = service?.board();
+    if (!service || !found || !board) return;
+    const { row, owner } = found;
+    const item = row.item;
+    const api = service.api;
+    const today = board.today;
+    const name = row.name;
+    switch (choice.id) {
+      case 'history': {
+        try {
+          const history = await api.history(item.chore, item.member);
+          if (this._sheet?.kind === 'options' && this._sheet.key === key) {
+            this._sheet = { ...this._sheet, history: historyLines(history, today, this.household?.members ?? [], this.display?.time_format ?? '12h') };
+          }
+        } catch {
+          if (this._sheet?.kind === 'options') this._sheet = { ...this._sheet, history: ['History isn\'t available right now.'] };
+        }
+        return;
+      }
+      case 'plan_day': {
+        if (!choice.value || !(await this.asMember(owner.id, `Who's planning ${name}?`))) return;
+        const due = item.due_day ? ` It's still due ${dayWords(item.due_day, today)}.` : '';
+        await this._run(() => api.override(key, { planned_day: choice.value }), `${name} shows on ${dayWords(choice.value, today)}.${due}`);
+        return;
+      }
+      case 'more_time': {
+        if (!choice.value || !(await this.asMember(owner.id, `Who's asking for more time?`))) return;
+        await this._run(() => api.request('more_time', key, choice.value), 'Asked for more time. A parent will answer.');
+        return;
+      }
+      case 'skip': {
+        if (!(await this.asMember(owner.id, `Who's asking to skip ${name}?`))) return;
+        await this._run(() => api.request('skip', key), 'Asked to skip this week. A parent will answer.');
+        return;
+      }
+      case 'undo': {
+        if (!(await this.asMember(owner.id, `Who's unchecking ${name}?`))) return;
+        service.enqueue({ op: 'undo', occurrence: key, member: owner.id, name });
+        this._sheet = null;
+        this.showToast({ id: `undo-${key}-${Date.now()}`, text: `${name} is open again.` });
+        return;
+      }
+      case 'done_by': {
+        const people = inOrder(this.household?.members ?? []).filter(m => m.id !== owner.id);
+        this._sheet = {
+          kind: 'people', heading: 'Who did it?', people,
+          body: `They get the credit for ${name}.`,
+          pick: async member => {
+            if (!member || !(await this.asMember(owner.id, `Who's checking off ${name}?`))) return;
+            const fresh = this.service?.board();
+            if (!fresh) return;
+            if (item.status === 'done' || item.status === 'pending') {
+              service.enqueue({ op: 'undo', occurrence: key, member: owner.id, name });
+            }
+            this._checkOff(row, owner.id, fresh, member.id);
+          },
+        };
+        return;
+      }
+      case 'change_due': {
+        if (!choice.value || !(await this.asParent(`Who's changing ${name}?`))) return;
+        await this._run(() => api.override(key, { due: choice.value }), `${name} is due ${dayWords(choice.value!, today)} now.`);
+        return;
+      }
+      case 'hand_off': {
+        const people = inOrder(this.household?.members ?? []).filter(m => m.id !== owner.id);
+        this._sheet = {
+          kind: 'people', heading: `Who's doing ${name}?`, people, body: 'Just this time. It comes back next time.',
+          pick: async member => {
+            if (!member || !(await this.asParent(`Who's handing ${name} over?`))) return;
+            await this._run(() => api.override(key, { assignee: member.id }), `${name} is ${member.name}'s this time.`);
+          },
+        };
+        return;
+      }
+      case 'excuse': {
+        if (!(await this.asParent(`Who's excusing ${name}?`))) return;
+        await this._run(() => api.override(key, { excused: true }), `${name} is excused. Nothing is missed.`);
+        return;
+      }
+      case 'approve':
+      case 'send_back': {
+        const request = item.completion?.id;
+        if (!request || !(await this.asParent(choice.id === 'approve' ? "Who's approving?" : "Who's sending it back?"))) return;
+        const allow = choice.id === 'approve';
+        await this._run(
+          () => api.review(request, allow ? 'allow' : 'decline', allow ? null : choice.value ?? null),
+          allow ? `${name}: looks good.` : `${name} went back${choice.value ? `: ${choice.value}` : ''}.`,
+        );
+        return;
+      }
+      case 'delete': {
+        if (!(await this.asParent(`Who's deleting ${name}?`))) return;
+        this._sheet = { kind: 'delete', row };
+        return;
+      }
+    }
   }
 
   /** "Someone else did it?": pick who, then credit them instead (spec 13.2). */
@@ -443,6 +601,28 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _renderSheet() {
     const sheet = this._sheet;
     if (!sheet) return this.renderSheet();
+    if (sheet.kind === 'options') {
+      const found = this._optionsModel(sheet.key);
+      if (!found) {
+        queueMicrotask(() => { if (this._sheet === sheet) this._sheet = null; });
+        return nothing;
+      }
+      return html`
+        <pv-chore-options .layout=${this.layout} .model=${found.model} color=${memberColor(found.owner, this.mode)}
+          .history=${sheet.history} ?busy=${sheet.busy}
+          @pv-option=${(e: CustomEvent<OptionChoice>) => void this._option(sheet.key, e.detail)}
+          @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chore-options>
+      `;
+    }
+    if (sheet.kind === 'delete') {
+      const name = sheet.row.name;
+      return html`
+        <pv-notice-sheet .layout=${this.layout} heading=${`Delete ${name}?`}
+          body="It leaves the board for everyone now. Past weeks still show what was done, and stars stay earned."
+          .actions=${[{ id: 'delete', label: `Delete ${name}`, kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+          @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => void this._confirmDelete(sheet.row, e.detail.id)}></pv-notice-sheet>
+      `;
+    }
     if (sheet.kind === 'people') {
       return html`
         <pv-chores-people-sheet .layout=${this.layout} heading=${sheet.heading} body=${sheet.body ?? ''}
@@ -465,6 +645,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         .actions=${[{ id: 'start_over', label: 'Start over', kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
         @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onStartOver(e.detail.id)}></pv-notice-sheet>
     `;
+  }
+
+  private async _confirmDelete(row: RowModel, id: string): Promise<void> {
+    this._sheet = null;
+    if (id !== 'delete' || !this.service) return;
+    await this._run(() => this.service!.api.deleteActivity(row.item.chore), `Deleted ${row.name}.`);
   }
 
   private async _onStartOver(id: string): Promise<void> {
