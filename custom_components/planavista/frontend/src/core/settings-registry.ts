@@ -1,5 +1,7 @@
+import type { HomeAssistant } from 'custom-card-helpers';
 import { HouseholdView } from './household';
 import type { ModuleService } from './module-registry';
+import type { PushPageDetail } from './page-host';
 import { PageRegistry, WizardPage } from './page-registry';
 import { PlanaVistaData } from '../types';
 
@@ -9,6 +11,24 @@ export interface SettingsContext {
   data: PlanaVistaData;
   /** The card's module services (the chores pages read the chores feed). */
   services?: Record<string, ModuleService>;
+  /** Home Assistant, for what Settings reads from its states (sun.sun, for Needs a look). */
+  hass?: HomeAssistant;
+}
+
+/** Where Settings opens: a page, and the pages pushed on it (the board's Edit opens a chore's editor). */
+export interface SettingsTarget {
+  page: string;
+  stack?: PushPageDetail[];
+}
+
+/** Something that needs a person (spec 15.4), listed under Needs a look at the top of Settings. */
+export interface LookItem {
+  id: string;
+  text: string;
+  /** The page that fixes it, when it isn't the page that reports it. */
+  page?: string;
+  /** Pages opened on top of that page, such as the editor of a chore no one is assigned to. */
+  stack?: PushPageDetail[];
 }
 
 export interface SettingsGroup {
@@ -35,6 +55,22 @@ export interface SettingsPage extends WizardPage<SettingsContext> {
   tag: string;
   /** The row's current value, such as "4 people". */
   summary?: (ctx: SettingsContext) => string;
+  /** What this page can fix that needs a person now (spec 15.4). */
+  needsALook?: (ctx: SettingsContext) => LookItem[];
+}
+
+/** Everything under Needs a look, from the pages that apply, each with the page that fixes it. */
+export function needsALook(pages: SettingsPage[], ctx: SettingsContext): Array<LookItem & { page: string }> {
+  return pages.flatMap(page => (page.needsALook?.(ctx) ?? []).map(item => ({ ...item, page: item.page ?? page.id })));
+}
+
+/** Where Settings starts for a target: its page and the pages on it, or the list when that page doesn't apply. */
+export function settingsAt(
+  pages: SettingsPage[],
+  target: SettingsTarget | null,
+): { selected: string | null; stack: PushPageDetail[] } {
+  if (!target || !pages.some(page => page.id === target.page)) return { selected: null, stack: [] };
+  return { selected: target.page, stack: target.stack ?? [] };
 }
 
 /** Pages under their groups, in order; a page of an unknown group gets a group of its own at the end. */
@@ -73,6 +109,17 @@ export interface SetupStep extends WizardPage<SetupContext> {
   skip?: boolean;
   /** A wider column (a step with a board preview beside its choices). */
   wide?: boolean;
+  /** The main button's label when this step ends a short setup (Settings' Chores row): "Open the board". */
+  finish?: string;
+  /** The module the card opens when setup ends on this step. */
+  module?: string;
+}
+
+/** A Settings page asks the card to run some of setup's steps (the Chores row runs the chores steps, spec 14.7). */
+export const RUN_SETUP = 'pv-run-setup';
+
+export interface RunSetupDetail {
+  steps: string[];
 }
 
 /** A step asks its host to draw again (its button's label or readiness changed). */

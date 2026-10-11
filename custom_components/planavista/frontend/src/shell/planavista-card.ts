@@ -31,6 +31,7 @@ import { AppearanceEdits } from '../core/appearance-edits';
 import { appearanceDependencies, sunOf } from '../core/appearance-deps';
 import { AppearanceController } from './appearance-controller';
 import { registerShellSettings } from './definition';
+import type { RunSetupDetail, SettingsTarget } from '../core/settings-registry';
 import { HouseholdController } from './household-controller';
 import { ForecastController } from './forecast-controller';
 import { LayoutController } from './layout-controller';
@@ -66,6 +67,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
   @state() private _settingsOpen = false;
+  /** Where Settings opens this time (the board's Edit, Import a plan); the list when null. */
+  @state() private _settingsTarget: SettingsTarget | null = null;
+  /** Setup's steps that Settings asked to run (the Chores row's short setup, spec 14.7); null when none run. */
+  @state() private _flow: string[] | null = null;
   @state() private _sheet: CardSheet | null = null;
   private _sheetOpener: HTMLElement | null = null;
   /** Drafts of person edits; they outlive Settings until the page reloads (spec 9.4). */
@@ -99,7 +104,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       cardTheme: this._config?.theme,
       sun: sunOf(this.hass?.states as never),
       haDark: !!(this.hass as unknown as { themes?: { darkMode?: boolean } } | undefined)?.themes?.darkMode,
-      overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || this._moduleOverlay,
+      overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || !!this._flow || this._moduleOverlay,
     }),
     async () => {
       await this.updateComplete;
@@ -411,8 +416,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return settingsAccess(this._household.view, isAdmin);
   }
 
+  /** The gear, or a module asking for Settings at a page (its event's detail), perhaps after a parent's PIN. */
   private _openSettings(event?: Event) {
     this._sheetOpener = (event?.composedPath?.()[0] as HTMLElement | undefined) ?? null;
+    const detail = (event as CustomEvent<SettingsTarget | undefined> | undefined)?.detail;
+    this._settingsTarget = detail && typeof detail.page === 'string' ? detail : null;
     const access = this._access();
     if (access === 'open' || this._session.session?.parent) {
       this._settingsVia = access === 'open' ? 'access' : 'session';
@@ -485,6 +493,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   private _onSheetCancel() {
     const sheet = this._sheet;
     this._closeSheet();
+    if (sheet?.kind === 'pin' && sheet.purpose === 'settings') this._settingsTarget = null;
     if (sheet?.kind === 'pin' && sheet.purpose === 'module') sheet.resolve(false);
     // Without parent mode, Settings can't stay open on this screen.
     if (sheet?.kind === 'pin' && sheet.purpose === 'continue') this._onSettingsClose();
@@ -564,6 +573,28 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   private _onSettingsClose() {
     this._settingsOpen = false;
     this._settingsVia = null;
+    this._settingsTarget = null;
+  }
+
+  /** Settings' Chores row: close Settings and run the chores steps of setup (spec 14.7). */
+  private _onRunSetup(event: CustomEvent<RunSetupDetail>) {
+    event.stopPropagation();
+    this._flow = [...event.detail.steps];
+    this._settingsOpen = false;
+    this._settingsTarget = null;
+  }
+
+  /** The short setup finished: open the module its last step names (Open the board). */
+  private _onFlowComplete(event: CustomEvent<{ module?: string }>) {
+    event.stopPropagation();
+    this._flow = null;
+    if (event.detail?.module) this._moduleId = event.detail.module;
+  }
+
+  /** Back from the short setup's first step: Settings again, where it started. */
+  private _onFlowCancel() {
+    this._flow = null;
+    this._openSettings(new CustomEvent('pv-open-settings', { detail: { page: 'chores-off' } }));
   }
 
   private _onSettingsLock() {
@@ -636,10 +667,30 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .drafts=${this._drafts}
               .services=${this._services}
               .revision=${this._serviceRevision}
+              .target=${this._settingsTarget}
               @pv-settings-close=${this._onSettingsClose}
+              @pv-run-setup=${this._onRunSetup}
               @pv-settings-open-target=${(e: CustomEvent<OpenTarget>) => { this._onSettingsClose(); this._open(e.detail); }}
               @pv-lock=${this._onSettingsLock}
             ></pv-settings>
+          </div>
+        ` : nothing}
+        ${this._flow ? html`
+          <div class="pvc-settings-overlay">
+            <pv-setup
+              .hass=${this.hass}
+              .data=${data}
+              .household=${this._household.view}
+              .api=${this._api}
+              .layout=${this._layout.layout}
+              .drafts=${this._drafts}
+              .services=${this._services}
+              .revision=${this._serviceRevision}
+              .only=${this._flow}
+              cancelLabel="Settings"
+              @onboarding-complete=${this._onFlowComplete}
+              @pv-setup-cancel=${this._onFlowCancel}
+            ></pv-setup>
           </div>
         ` : nothing}
         ${this._renderSheet()}
@@ -672,6 +723,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         @pv-view-change=${(e: CustomEvent<{ view: string }>) => this._setView(e.detail.view)}
         @pv-overlay-change=${(e: CustomEvent<{ open: boolean }>) => { this._moduleOverlay = e.detail.open; }}
         @pv-open=${(e: CustomEvent<OpenTarget>) => this._open(e.detail)}
+        @pv-open-settings=${this._openSettings}
       ></${tag}>
     `;
   }

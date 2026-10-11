@@ -176,6 +176,8 @@ export interface ChoresFeed {
   state: ChoresState;
   save_failed: boolean;
   board: Board | null;
+  /** Phones Home Assistant doesn't have anymore (Needs a look, spec 15.4). */
+  notify_problems?: Array<{ member: string; phone: string }>;
 }
 
 export interface WeekDay {

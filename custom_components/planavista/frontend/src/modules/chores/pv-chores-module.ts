@@ -10,6 +10,8 @@ import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
+import { OPEN_SETTINGS } from '../../core/page-host';
+import type { SettingsTarget } from '../../core/settings-registry';
 import type { Mode } from '../../styles/theme-pairs';
 import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../../types';
 import { choresStyles } from './chores-styles';
@@ -34,6 +36,7 @@ import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorMessage } from '../../core/ws-api';
 import { chime, haptic } from './effects';
 import type { PvChoresBoard } from './pv-chores-board';
+import { IMPORT_EXPORT, editChore } from './settings/targets';
 import '../../core/pv-toast';
 import '../../shell/pv-notice-sheet';
 import './pv-chores-board';
@@ -568,10 +571,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       <div class="state">
         <div class="art" aria-hidden="true">🧺</div>
         <h2>No chores yet</h2>
-        <p>Add your family's chores, and they'll show up here for everyone.</p>
+        <p>Add your family's chores, or import a plan you already agreed on.</p>
         ${access !== 'no' ? html`
           <div class="buttons">
             <button class="pv-btn pv-btn-primary" type="button" @click=${() => this.moduleAction('add')}>Add chores</button>
+            <button class="pv-btn pv-btn-secondary" type="button" @click=${() => this._openSettings(IMPORT_EXPORT)}>Import a plan</button>
           </div>
         ` : nothing}
       </div>
@@ -806,12 +810,23 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         );
         return;
       }
+      case 'edit': {
+        if (!(await this.asParent(`Who's changing ${name}?`))) return;
+        this._sheet = null;
+        this._openSettings(editChore({ id: item.chore, name: board.chores.find(a => a.id === item.chore)?.name ?? name }));
+        return;
+      }
       case 'delete': {
         if (!(await this.asParent(`Who's deleting ${name}?`))) return;
         this._sheet = { kind: 'delete', row };
         return;
       }
     }
+  }
+
+  /** Settings at a page (Edit, Import a plan); the card asks for a parent's PIN when it must. */
+  private _openSettings(target: SettingsTarget): void {
+    this.dispatchEvent(new CustomEvent(OPEN_SETTINGS, { detail: target, bubbles: true, composed: true }));
   }
 
   /** "Someone else did it?": pick who, then credit them instead (spec 13.2). */
@@ -871,10 +886,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         <div class="art" aria-hidden="true">🧰</div>
         <h2>Chores need a look</h2>
         <p>Some chores data couldn't be read, so nothing is shown or saved until a parent decides. To get it back,
-          restore a Home Assistant backup from before it went missing (Settings, System, Backups). Or start over
-          with no chores.</p>
+          restore a Home Assistant backup from before it went missing (Settings, System, Backups), or a PlanaVista
+          file you exported. Or start over with no chores.</p>
         ${access !== 'no' ? html`
           <div class="buttons">
+            <button class="pv-btn pv-btn-primary" type="button" @click=${() => this._openSettings(IMPORT_EXPORT)}>Restore from a file</button>
             <button class="pv-btn pv-btn-secondary" type="button" @click=${this._askStartOver}>Start over</button>
           </div>
         ` : nothing}

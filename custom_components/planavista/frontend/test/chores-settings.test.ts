@@ -40,10 +40,10 @@ describe('the Chores group of Settings', () => {
     expect(summary('rules', null)).toBe('');
   });
 
-  it('offers Import and export with chores off too', () => {
+  it('offers the Chores row and Import and export with chores off', () => {
     const registry = new PageRegistry<SettingsContext, SettingsPage>();
     registerChoresSettings(registry);
-    expect(registry.pages(context(false, null)).map(p => p.id)).toEqual(['import-export']);
+    expect(registry.pages(context(false, null)).map(p => p.id)).toEqual(['chores-off', 'import-export']);
     expect(registry.pages({ household: null, data: {} as never }).map(p => p.id)).toEqual([]);
   });
 

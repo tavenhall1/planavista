@@ -11,7 +11,7 @@ import type { Layout } from '../../core/layout';
 import type { ModuleService } from '../../core/module-registry';
 import { saveErrorMessage } from '../../core/page-host';
 import { STEP_CHANGE, SetupContext, SetupPatch, SetupStep, resumeIndex, setupRegistry } from '../../core/settings-registry';
-import { mergePatch, stepAfter, withPatch } from '../../core/setup-flow';
+import { mergePatch, onlySteps, stepAfter, withPatch } from '../../core/setup-flow';
 import type { PlanaVistaData } from '../../types';
 import './welcome-step';
 import './people-step';
@@ -42,7 +42,14 @@ const TOAST_MS = 4000;
  * bottom, progress dots, and Back at the top left. Setup picks up where it
  * stopped.
  *
- * @fires onboarding-complete - after the last step's commit
+ * Settings can run a short setup (`only`: the chores steps for a
+ * calendar-only home, spec 14.7). It starts at its first step, doesn't move
+ * the household's setup bookmark, offers Back to where it came from on its
+ * first step, and drops second ways on: Back is the way out, and runs the
+ * first step's own (Not now turns chores off again).
+ *
+ * @fires onboarding-complete - after the last step's commit; { module } to open
+ * @fires pv-setup-cancel - Back on a short setup's first step
  */
 export class PvSetup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -55,6 +62,10 @@ export class PvSetup extends LitElement {
   /** The card's module services (chores steps read the chores feed and call its commands). */
   @property({ attribute: false }) services: Record<string, ModuleService> = {};
   @property({ type: Number }) revision = 0;
+  /** A short setup: only these steps (their ids). */
+  @property({ attribute: false }) only: string[] | null = null;
+  /** Where Back on a short setup's first step goes ("Settings"). */
+  @property({ type: String }) cancelLabel = '';
 
   @state() private _index = 0;
   @state() private _busy = false;
@@ -82,7 +93,9 @@ export class PvSetup extends LitElement {
 
   protected willUpdate(): void {
     if (!this._started && this.data) {
-      this._index = resumeIndex(this._steps(), this.household?.setup.step ?? null);
+      // A short setup asks its first question afresh, whatever setup chose before.
+      if (this.only) this._patch = { setup: { start: null } };
+      this._index = this.only ? 0 : resumeIndex(this._steps(), this.household?.setup.step ?? null);
       this._started = true;
     }
   }
@@ -243,7 +256,7 @@ export class PvSetup extends LitElement {
   }
 
   private _steps(): SetupStep[] {
-    return setupRegistry.pages(this._context());
+    return onlySteps(setupRegistry.pages(this._context()), this.only);
   }
 
   private get _element(): StepElement | null {
@@ -262,15 +275,19 @@ export class PvSetup extends LitElement {
     const last = index === steps.length - 1;
     const tag = unsafeStatic(step.tag);
     const element = this._element;
-    const label = element?.primaryLabel ?? step.primary ?? (last ? 'Finish' : 'Next');
+    const short = !!this.only;
+    const label = element?.primaryLabel ?? (short && last ? step.finish : undefined) ?? step.primary ?? (last ? 'Finish' : 'Next');
     const ready = element?.ready !== false;
     const context = this._context();
+    const leave = index === 0 && short && !!this.cancelLabel;
+    const noBack = index === 0 && !leave;
+    const secondary = short ? undefined : step.secondary;
     return html`
       <div class="top">
-        <button class="back ${index === 0 ? 'hidden' : ''}" type="button"
-          ?disabled=${index === 0 || this._busy}
-          aria-hidden=${index === 0 ? 'true' : 'false'}
-          @click=${this._back}>‹ Back</button>
+        <button class="back ${noBack ? 'hidden' : ''}" type="button"
+          ?disabled=${noBack || this._busy}
+          aria-hidden=${noBack ? 'true' : 'false'}
+          @click=${leave ? this._leave : this._back}>‹ ${leave ? this.cancelLabel : 'Back'}</button>
         <div class="progress-dots" role="img" aria-label="Step ${index + 1} of ${steps.length}">
           ${steps.map((_, i) => html`<div class="dot ${i === index ? 'dot--active' : ''}"></div>`)}
         </div>
@@ -300,8 +317,8 @@ export class PvSetup extends LitElement {
         <button class="pv-btn pv-btn-primary main" type="button" ?disabled=${this._busy || !ready} @click=${this._next}>
           ${label}
         </button>
-        ${step.secondary ? html`
-          <button class="second" type="button" ?disabled=${this._busy} @click=${this._secondary}>${step.secondary}</button>
+        ${secondary ? html`
+          <button class="second" type="button" ?disabled=${this._busy} @click=${this._secondary}>${secondary}</button>
         ` : nothing}
       </div>
       ${this._toast ? html`<div class="toast" role="status">${this._toast}</div>` : nothing}
@@ -346,14 +363,28 @@ export class PvSetup extends LitElement {
     const steps = this._steps();
     const next = stepAfter(steps, current);
     if (next === null) {
+      const module = element?.openModule ?? steps.find(step => step.id === current)?.module;
       this.dispatchEvent(new CustomEvent('onboarding-complete', {
-        detail: { module: element?.openModule }, bubbles: true, composed: true,
+        detail: { module }, bubbles: true, composed: true,
       }));
       return;
     }
     this._index = next;
     this._remember(steps[next].id);
   }
+
+  /** Back on a short setup's first step: the step's own way out (Not now), then back where it came from. */
+  private _leave = async (): Promise<void> => {
+    if (this._busy) return;
+    const element = this._element;
+    this._busy = true;
+    try {
+      if (element?.secondary && !(await element.secondary())) return;
+    } finally {
+      this._busy = false;
+    }
+    this.dispatchEvent(new CustomEvent('pv-setup-cancel', { bubbles: true, composed: true }));
+  };
 
   private _secondary = async (): Promise<void> => {
     if (this._busy) return;
@@ -381,8 +412,9 @@ export class PvSetup extends LitElement {
     this._remember(this._steps()[this._index].id);
   };
 
-  /** Where setup picks up next time (leaving halfway keeps what's done). */
+  /** Where setup picks up next time (leaving halfway keeps what's done); a short setup leaves it alone. */
   private _remember(stepId: string): void {
+    if (this.only) return;
     this.api.saveSetup({ step: stepId }).catch(err => {
       this._toast = saveErrorMessage(errorCode(err));
       window.clearTimeout(this._toastTimer);

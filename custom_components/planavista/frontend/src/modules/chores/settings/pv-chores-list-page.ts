@@ -7,6 +7,7 @@ import { HouseholdView, Member, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
 import { OPEN_TARGET, PUSH_PAGE, PushPageDetail } from '../../../core/page-host';
+import { choreEditor } from './targets';
 import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
 import { ChoreRow, choresList } from './chores-list-derive';
@@ -225,7 +226,7 @@ export class PvChoresListPage extends LitElement {
 
   private _open(row: ChoreRow | null): void {
     const detail: PushPageDetail = row
-      ? { tag: 'pv-chore-editor', title: row.name, back: 'Chores', props: { choreId: row.id } }
+      ? choreEditor(row)
       : { tag: 'pv-chore-editor', title: 'New chore', back: 'Chores', props: { choreId: null, assignees: this._member ? [this._member] : [] } };
     this.dispatchEvent(new CustomEvent(PUSH_PAGE, { detail, bubbles: true, composed: true }));
   }

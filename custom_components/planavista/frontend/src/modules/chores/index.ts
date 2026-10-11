@@ -1,6 +1,7 @@
 // The Chores module: its elements, its Settings pages, and its entry in the module registry.
 import './pv-chores-module';
 import './settings/pv-chores-list-page';
+import './settings/pv-chores-off-page';
 import './settings/pv-chore-editor';
 import './settings/pv-rewards-page';
 import './settings/pv-reward-editor';

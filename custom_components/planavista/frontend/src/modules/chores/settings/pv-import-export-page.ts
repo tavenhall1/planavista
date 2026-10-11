@@ -6,13 +6,14 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import type { HouseholdView } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { PUSH_PAGE } from '../../../core/page-host';
+import { PAGE_ERROR, PUSH_PAGE } from '../../../core/page-host';
 import { copyText } from '../../../core/clipboard';
 import { errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
 import type { ImportProblem } from '../chores-client';
 import type { ChoresService } from '../chores-service';
 import { choresSettingsStyles } from './settings-styles';
+import '../../../shell/pv-notice-sheet';
 
 type Mode = 'import' | 'restore';
 const PASTED = 'Pasted text';
@@ -21,7 +22,8 @@ const PASTED = 'Pasted text';
  * pv-import-export-page: Import and export (spec 14.5, 14.6, 7.9). Import a
  * plan by choosing a file or pasting its text (wall tablets rarely have
  * files), export a PlanaVista file, and restore one. Reading a file opens
- * the review page; nothing is saved until Import there.
+ * the review page; nothing is saved until Import there. While chores data
+ * needs a look (spec 15.3), it says so first and offers Start over too.
  */
 export class PvImportExportPage extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -37,6 +39,8 @@ export class PvImportExportPage extends LitElement {
   @state() private _problem: { name: string; problem: ImportProblem; mode: Mode } | null = null;
   @state() private _exported: { text: string; name: string } | null = null;
   @state() private _copied = false;
+  /** Start over is asking to be confirmed. */
+  @state() private _confirming = false;
   private _mode: Mode = 'import';
 
   static styles = [
@@ -109,6 +113,19 @@ export class PvImportExportPage extends LitElement {
       input[type='file'] {
         display: none;
       }
+
+      .look {
+        margin: 0 0 8px;
+      }
+
+      .look p {
+        margin: 0;
+        line-height: 1.45;
+      }
+
+      .look .actions {
+        padding: 12px 0 0;
+      }
     `,
   ];
 
@@ -117,7 +134,25 @@ export class PvImportExportPage extends LitElement {
   }
 
   render() {
+    const damaged = this._chores?.feed?.state === 'needs_a_look';
     return html`
+      ${damaged ? html`
+        <div class="error look" role="alert">
+          <h3><span class="mark" aria-hidden="true">!</span>Chores need a look</h3>
+          <p class="row-sub">Some chores data couldn't be read, so the board waits for a parent. Restore a PlanaVista file you
+            exported (under Restore), or a Home Assistant backup from before it went missing (Settings, System, Backups).
+            Or start over with no chores.</p>
+          <div class="actions">
+            <button class="pv-btn pv-btn-secondary" type="button" @click=${() => { this._confirming = true; }}>Start over…</button>
+          </div>
+        </div>
+      ` : nothing}
+      ${this._confirming ? html`
+        <pv-notice-sheet .layout=${this.layout} heading="Start over with no chores?"
+          body="Chores, rewards, stars, and their history are emptied. People, PINs, and calendars stay as they are."
+          .actions=${[{ id: 'start_over', label: 'Start over', kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+          @pv-sheet-action=${this._onStartOver}></pv-notice-sheet>
+      ` : nothing}
       <input type="file" accept=".json,application/json,text/plain" @change=${this._onFile} />
       <h2 class="section-label">Import a plan</h2>
       <div class="group">
@@ -145,6 +180,18 @@ export class PvImportExportPage extends LitElement {
       ${this._problem?.mode === 'restore' ? this._renderProblem() : nothing}
     `;
   }
+
+  private _onStartOver = async (event: CustomEvent<{ id: string }>): Promise<void> => {
+    event.stopPropagation();
+    this._confirming = false;
+    if (event.detail.id !== 'start_over' || !this._chores) return;
+    try {
+      await this._chores.api.startOver();
+    } catch (err) {
+      const message = errorMessage(err) ?? "Couldn't start over. Try again.";
+      this.dispatchEvent(new CustomEvent(PAGE_ERROR, { detail: { message }, bubbles: true, composed: true }));
+    }
+  };
 
   private _renderActions(mode: Mode) {
     return html`

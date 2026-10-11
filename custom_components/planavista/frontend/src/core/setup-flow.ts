@@ -31,3 +31,8 @@ export function stepAfter(steps: Array<{ id: string }>, current: string | undefi
   const at = Math.max(0, steps.findIndex(step => step.id === current));
   return at >= steps.length - 1 ? null : at + 1;
 }
+
+/** A short setup: only the steps named, in setup's order; every step without a list. */
+export function onlySteps<S extends { id: string }>(steps: S[], only: readonly string[] | null | undefined): S[] {
+  return only ? steps.filter(step => only.includes(step.id)) : steps;
+}

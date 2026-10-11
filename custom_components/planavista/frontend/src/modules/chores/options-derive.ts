@@ -10,7 +10,7 @@ const CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export type OptionId =
   | 'plan_day' | 'more_time' | 'skip' | 'done_by' | 'history' | 'undo'
-  | 'change_due' | 'hand_off' | 'excuse' | 'delete' | 'approve' | 'send_back';
+  | 'change_due' | 'hand_off' | 'excuse' | 'edit' | 'delete' | 'approve' | 'send_back';
 
 /** A day to pick in a sheet ("Tomorrow", "Sat", "Next Sat"). */
 export interface DayChip {
@@ -202,6 +202,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       parent.push({ id: 'hand_off', label: 'Hand it to someone else', tag: parentTag, hint: 'Just this time.' });
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }
+    parent.push({ id: 'edit', label: 'Edit the chore', tag: parentTag, hint: 'Opens it in Settings.' });
     parent.push({ id: 'delete', label: 'Delete the chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
   }
 

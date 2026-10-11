@@ -49,7 +49,8 @@ describe('itemOptions (spec 13.3)', () => {
 
   it('marks the parent options with a lock on a shared screen, and hides them on a child\'s own login', () => {
     const shared = itemOptions(ctx({}));
-    expect(ids(shared.parent)).toEqual(['change_due', 'hand_off', 'excuse', 'delete']);
+    expect(ids(shared.parent)).toEqual(['change_due', 'hand_off', 'excuse', 'edit', 'delete']);
+    expect(shared.parent.find(o => o.id === 'edit')!.hint).toBe('Opens it in Settings.');
     expect(shared.parent.every(o => o.tag === '🔒 parent')).toBe(true);
     expect(itemOptions(ctx({ parent: 'no' })).parent).toEqual([]);
     expect(itemOptions(ctx({ parent: 'yes' })).parent[0].tag).toBeUndefined();
@@ -70,7 +71,7 @@ describe('itemOptions (spec 13.3)', () => {
     expect(ids(itemOptions(ctx({ item: { ...YARD, status: 'done' } })).member)).toEqual(['undo', 'done_by', 'history']);
     const pending = itemOptions(ctx({ item: { ...YARD, status: 'pending' }, parent: 'yes' }));
     expect(ids(pending.member)).toEqual(['undo', 'history']);
-    expect(ids(pending.parent)).toEqual(['approve', 'send_back', 'delete']);
+    expect(ids(pending.parent)).toEqual(['approve', 'send_back', 'edit', 'delete']);
   });
 
   it('says why a sent back one came back, and that a request is waiting', () => {

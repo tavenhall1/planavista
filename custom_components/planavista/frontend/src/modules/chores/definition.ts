@@ -5,7 +5,8 @@ import {
   settingsRegistry, setupRegistry,
 } from '../../core/settings-registry';
 import { ChoresService, choresEnabled } from './chores-service';
-import type { Board } from './chores-types';
+import type { Board, ChoresFeed } from './chores-types';
+import { choresLooks, phoneLooks } from './settings/looks-derive';
 import { remindersSummary } from './settings/reminders-derive';
 import { rulesSummary } from './settings/rules-derive';
 
@@ -41,11 +42,20 @@ export function settingsBoard(ctx: Pick<SettingsContext, 'services'>): Board | n
   return (ctx.services?.chores as ChoresService | undefined)?.board() ?? null;
 }
 
+/** The chores feed as it came (its state and phone problems too), or null before it arrives. */
+export function settingsFeed(ctx: Pick<SettingsContext, 'services'>): ChoresFeed | null {
+  return (ctx.services?.chores as ChoresService | undefined)?.feed ?? null;
+}
+
 function count(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The Chores group of Settings (spec 14.1): Chores, Rewards, Rules, and Reminders, while chores are on. */
+/**
+ * The Chores group of Settings (spec 14.1): Chores, Rewards, Rules, and
+ * Reminders while chores are on; while they're off, one Chores row that runs
+ * a short version of setup (spec 14.7).
+ */
 export const choresSettingsPages: SettingsPage[] = [
   {
     id: 'chores',
@@ -58,6 +68,16 @@ export const choresSettingsPages: SettingsPage[] = [
       const board = settingsBoard(ctx);
       return board ? count(board.chores.filter(a => !a.finished_at).length, 'chore', 'chores') : '';
     },
+    needsALook: ctx => choresLooks(settingsFeed(ctx), settingsBoard(ctx)),
+  },
+  {
+    id: 'chores-off',
+    label: 'Chores',
+    group: 'chores',
+    order: 200,
+    tag: 'pv-chores-off-page',
+    applies: ({ household }) => !!household?.available && !choresEnabled({ household }),
+    summary: () => 'Off',
   },
   {
     id: 'rewards',
@@ -94,6 +114,7 @@ export const choresSettingsPages: SettingsPage[] = [
       const board = settingsBoard(ctx);
       return board ? remindersSummary(board.settings, ctx.data?.display?.time_format) : '';
     },
+    needsALook: ctx => phoneLooks(settingsFeed(ctx), ctx.household?.members ?? []),
   },
   {
     // People, chores, rewards, and rules travel together, so this works with chores off too.
@@ -170,9 +191,14 @@ export const choresSetupSteps: SetupStep[] = [
     heading: 'Is this a shared family screen?',
     lead: 'On a shared screen, parents use a PIN for grown-up things like approving chores and changing settings.',
     primary: 'Continue',
+    finish: 'Open the board',
+    module: 'chores',
     applies: ({ household }) => choresEnabled({ household }),
   },
 ];
+
+/** The short setup that Settings' Chores row runs for a calendar-only home (spec 14.7). */
+export const CHORES_SETUP_FLOW = ['chores', 'chores-common', 'chores-plan', 'shared-screen'];
 
 /** What chores add to setup's last step: the board, two tips, and Open the board. */
 export const choresDoneParts: DonePart[] = [
