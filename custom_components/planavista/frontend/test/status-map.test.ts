@@ -40,6 +40,10 @@ describe('pastBadge', () => {
     expect(pastBadge('excused', 'Sick day')).toEqual({ words: 'Excused: Sick day', tone: 'muted' });
     expect(pastBadge('done').words).toBe('Done');
   });
+
+  it('says a make-up chore that slipped its day was not done that day', () => {
+    expect(pastBadge('open')).toEqual({ words: 'Not done that day', tone: 'time', glyph: '•' });
+  });
 });
 
 describe('minutesText', () => {

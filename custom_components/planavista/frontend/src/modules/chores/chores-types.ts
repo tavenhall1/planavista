@@ -217,7 +217,8 @@ export interface PastItem {
   chore: string;
   name: string;
   icon: string | null;
-  status: 'done' | 'pending' | 'missed' | 'carried' | 'excused';
+  /** `open`: counted that day and not done by its end, without being missed then (a make-up chore). */
+  status: 'done' | 'pending' | 'missed' | 'carried' | 'excused' | 'open';
   done_by?: string;
   at?: string;
 }

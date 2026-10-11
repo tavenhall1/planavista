@@ -991,6 +991,7 @@ class ChoresEngine:
                     "away": away_on(self.member(member_id) or {}, day) is not None,
                 }
             return {"date": day.isoformat(), "kind": "today" if day == today else "future", "members": members}
+        missed_later = {k for s in self.log["summaries"] for k in s.get("missed") or []}
         for member_id in self.member_ids():
             summary = self._summaries(member_id, "day").get(day)
             items: list[dict[str, Any]] = []
@@ -1004,6 +1005,9 @@ class ChoresEngine:
                     items.append(self._past_item(key, "carried"))
                 for key in summary.get("excused") or []:
                     items.append(self._past_item(key, "excused"))
+                # A chore that slipped its day: missed once its week ended, or not done that day.
+                for key in summary.get("open") or []:
+                    items.append(self._past_item(key, "missed" if key in missed_later else "open"))
             members[member_id] = {
                 "items": items,
                 "summary": (
@@ -1362,42 +1366,62 @@ class ChoresEngine:
     def excuse_missed(self, now: datetime, *, key: str, by: str, note: str | None = None) -> Outcome:
         """Excuse a check-off already counted as missed (a sick day noticed later, spec 13.5).
 
-        Its day and week stop counting it, so the ring and the streak hold.
+        Every summary that lists it as missed, or as still open on a day that counted it (a
+        make-up chore that slipped its day), stops counting it, so that day's ring, the week,
+        and the streak hold. A day that never counted it (a weekly chore missed at the week's
+        end) only lists it as excused.
         """
-        found = [s for s in self.log["summaries"] if key in (s.get("missed") or [])]
-        if not found:
+        if not any(key in (s.get("missed") or []) for s in self.log["summaries"]):
             raise ChoreError("not_missed")
+        occ = self._past_occurrence(key)
         parsed = parse_key(key)
         chore = parsed[0] if parsed else None
-        minutes = self._missed_minutes(key)
-        for summary in found:
-            summary["missed"] = [k for k in summary["missed"] if k != key]
+        for summary in self.log["summaries"]:
+            missed = summary.get("missed") or []
+            still_open = summary.get("open") or []
+            if key not in missed and key not in still_open:
+                continue
+            period = str(summary.get("period", ""))
+            counted = (
+                not period.startswith("day:")
+                or key in still_open
+                or (occ is not None and counted_on(occ, _day(period[4:]), self.clock))
+            )
+            summary["missed"] = [k for k in missed if k != key]
+            if "open" in summary:
+                summary["open"] = [k for k in still_open if k != key]
             summary["excused"] = [*(summary.get("excused") or []), key]
-            summary["due"] = max(0, int(summary.get("due", 0)) - 1)
-            if minutes is not None:
-                summary["minutes_due"] = round(max(0.0, float(summary.get("minutes_due", 0)) - minutes), 2)
-            tally = (summary.get("chores") or {}).get(chore)
-            if tally:
-                tally["due"] = max(0, tally["due"] - 1)
-            credited = int(summary.get("done", 0)) + int(summary.get("pending", 0))
-            summary["closed"] = summary["due"] > 0 and credited >= summary["due"]
+            if counted:
+                self._uncount(summary, chore, occ.credit_minutes if occ else None)
         self.log["overrides"].append(
             {"occurrence": key, "excused": True, "note": note, "late": True, "by": by, "at": self._stamp(now)}
         )
         return Outcome("excused", {"occurrence": key}, changed={"log"})
 
-    def _missed_minutes(self, key: str) -> float | None:
-        """What a missed occurrence was worth, worked out again from its chore (None once the chore is gone)."""
+    @staticmethod
+    def _uncount(summary: dict[str, Any], chore: str | None, minutes: float | None) -> None:
+        """Take one excused occurrence out of a summary's counts, and work out again whether it closed."""
+        summary["due"] = max(0, int(summary.get("due", 0)) - 1)
+        if minutes is not None:
+            summary["minutes_due"] = round(max(0.0, float(summary.get("minutes_due", 0)) - minutes), 2)
+        tally = (summary.get("chores") or {}).get(chore)
+        if tally:
+            tally["due"] = max(0, tally["due"] - 1)
+        if str(summary.get("period", "")).startswith("week:"):
+            summary["closed"] = summary["due"] > 0 and not summary.get("missed") and not summary.get("carried")
+        else:
+            credited = int(summary.get("done", 0)) + int(summary.get("pending", 0))
+            summary["closed"] = summary["due"] > 0 and credited >= summary["due"]
+
+    def _past_occurrence(self, key: str) -> Occurrence | None:
+        """An occurrence worked out again from its key, with its overrides (None once its chore is gone)."""
         parsed = parse_key(key)
         activity = self.activity(parsed[0]) if parsed else None
-        if parsed is None or activity is None:
+        gen = self.generator()
+        occ = gen.from_key(activity, key) if activity else None
+        if occ is None:
             return None
-        _chore, member, period, _n = parsed
-        kind, _, start = period.partition(":")
-        for occ in self.generator().period_occurrences(activity, member, kind, _day(start) if start else None):
-            if occ.key == key:
-                return occ.credit_minutes
-        return None
+        return with_overrides(occ, self._index().overrides.get(key, {}), set(self.member_ids()), gen.clock)
 
     # Writing: the plan ---------------------------------------------------------------
 
@@ -1743,6 +1767,12 @@ class ChoresEngine:
             "missed": missed,
             "carried": carried,
             "excused": [i.occ.key for i in counted if i.status == "excused"],
+            # Counted that day and still to do when it ended, without being missed or carried that day
+            # (a make-up chore that slipped its day): what else kept the ring open.
+            "open": [
+                i.occ.key for i in counted
+                if i.status in OPEN and i.occ.key not in missed and i.occ.key not in carried
+            ],
             "away": away_on(member, day) is not None,
             "closed": bool(due) and all(i.status in CREDITED for i in due),
             "chores": chores,

@@ -107,6 +107,45 @@ def test_excusing_a_missed_check_off_mends_its_day_and_the_streak() -> None:
     assert err.value.code == "not_missed"
 
 
+YARD = "yard_work|casey|week:2026-10-12|0"
+
+
+def _rows(view: dict[str, Any], member: str) -> set[tuple[str, str]]:
+    return {(i["key"], i["status"]) for i in view["members"][member]["items"]}
+
+
+def test_excusing_a_weekly_chore_missed_at_the_week_end_leaves_that_days_ring_alone() -> None:
+    engine = sample_engine(at(10, 18, 7))
+    engine.complete(at(10, 18, 7), key="cat_care|casey|day:2026-10-18|0", by="casey", source="tablet")
+    engine.catch_up(at(10, 19, 9))
+    before = engine.day_view(at(10, 19, 9), date(2026, 10, 18))["members"]["casey"]["summary"]
+    streak = engine.streak("casey", at(10, 19, 9))
+    assert before["closed"] is False
+    engine.excuse_missed(at(10, 19, 9), key=YARD, by="blair")
+    sunday = engine.day_view(at(10, 19, 9), date(2026, 10, 18))
+    assert sunday["members"]["casey"]["summary"] == before
+    assert {(YARD, "excused"), ("cat_care|casey|day:2026-10-18|1", "missed")} <= _rows(sunday, "casey")
+    assert engine.streak("casey", at(10, 19, 9)) == streak
+
+
+def test_a_make_up_chore_shows_on_its_day_and_excusing_it_mends_that_day() -> None:
+    engine = sample_engine(at(10, 13, 7))
+    for n in (0, 1):
+        engine.complete(at(10, 13, 8), key=f"cat_care|casey|day:2026-10-13|{n}", by="casey", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = engine.day_view(at(10, 14, 9), date(2026, 10, 13))
+    assert tuesday["members"]["casey"]["summary"] == {"due": 3, "done": 2, "pending": 0, "closed": False}
+    assert (TRASH, "open") in _rows(tuesday, "casey")
+    engine.catch_up(at(10, 19, 9))
+    assert (TRASH, "missed") in _rows(engine.day_view(at(10, 19, 9), date(2026, 10, 13)), "casey")
+    engine.excuse_missed(at(10, 19, 9), key=TRASH, by="blair", note="Sick day")
+    tuesday = engine.day_view(at(10, 19, 9), date(2026, 10, 13))
+    assert tuesday["members"]["casey"]["summary"] == {"due": 2, "done": 2, "pending": 0, "closed": True}
+    assert (TRASH, "excused") in _rows(tuesday, "casey")
+    sunday = engine.day_view(at(10, 19, 9), date(2026, 10, 18))
+    assert (TRASH, "excused") in _rows(sunday, "casey")
+
+
 BED_TUESDAY = "make_your_bed|dana|day:2026-10-13|0"
 
 
