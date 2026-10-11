@@ -63,12 +63,21 @@ class Generator:
     minutes_per_star: int
     policy_on: Callable[[date], str]
     active_from: date = date.min
+    day_of: Callable[[object], date] | None = None  # the chore day of a stored time (the engine remembers them)
+
+    def _stamp_day(self, stamp: object) -> date:
+        return self.day_of(stamp) if self.day_of is not None else _chore_day(stamp, self.clock)
+
+    def created_day(self, activity: Mapping[str, Any]) -> date:
+        """The chore day a chore was added (date.min when it doesn't say)."""
+        created = activity.get("created")
+        return self._stamp_day(created.get("at") if isinstance(created, Mapping) else None)
 
     def begins(self, activity: Mapping[str, Any], member: str) -> date:
         """The first chore day `member` owes `activity`: the chore, their place on it, and chores were all on."""
         since = activity.get("assigned_since")
         joined = since.get(member) if isinstance(since, Mapping) else None
-        return max(_created_day(activity, self.clock), _chore_day(joined, self.clock), self.active_from)
+        return max(self.created_day(activity), self._stamp_day(joined), self.active_from)
 
     def _occurrence(
         self,
@@ -180,7 +189,7 @@ class Generator:
         once = activity["once"]
         sessions = int(once.get("sessions", 1))
         each = float(once.get("estimate_minutes", 15)) / sessions
-        created = _created_day(activity, self.clock)
+        created = self.created_day(activity)
         if once.get("on"):
             day = date.fromisoformat(once["on"])
             timing = {"appears": day, "planned": day, "due": self.clock.day_end(day), "dated": False}
@@ -317,11 +326,6 @@ def _chore_day(stamp: object, clock: Clock) -> date:
         return clock.chore_date(datetime.fromisoformat(stamp)) if isinstance(stamp, str) and stamp else date.min
     except (TypeError, ValueError):
         return date.min
-
-
-def _created_day(activity: Mapping[str, Any], clock: Clock) -> date:
-    created = activity.get("created")
-    return _chore_day(created.get("at") if isinstance(created, Mapping) else None, clock)
 
 
 def visible_on(occ: Occurrence, day: date, clock: Clock) -> bool:

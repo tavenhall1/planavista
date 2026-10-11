@@ -1,14 +1,16 @@
 """Check-offs, approvals, requests, overrides, plan edits, and stars (spec 8.3 to 8.8, 8.12, 8.15)."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
+from unittest.mock import patch
 
 import pytest
 
+from custom_components.planavista.chores import engine as engine_module
 from custom_components.planavista.chores.engine import ChoresEngine, with_away, without_away
 from custom_components.planavista.chores.model import ChoreError
 
-from .chores_sample import MEMBERS, SCENE, at, keys, once, plan, sample_engine
+from .chores_sample import MEMBERS, SCENE, TZ, at, keys, once, plan, sample_engine
 
 TRASH = "take_out_the_trash|casey|week:2026-10-12|0"
 FISH = "feed_the_fish|dana|day:2026-10-13|0"
@@ -409,22 +411,62 @@ def test_a_household_without_chores_is_quiet() -> None:
     assert board["members"]["casey"]["week"]["percent"] is None
 
 
-def test_a_busy_household_stays_quick() -> None:  # Review Focus 1
-    import time
-
+def _busy_household() -> tuple[ChoresEngine, list[str]]:
+    """Eight people and forty chores, with 90 days of everyone doing everything (about 10,500 check-offs)."""
     members = [{"id": f"p{n}", "name": f"Person {n}", "parent": n < 2, "age_group": "teen", "needs_ok_for": "marked",
                 "stars": True, "order": n} for n in range(8)]
     ids = [m["id"] for m in members]
-    activities = [plan(f"daily_{n}", f"Daily {n}", ids[n % 8: n % 8 + 2], 0.5, "day", times=2, time_of_day=["morning", "evening"])
-                  for n in range(25)]
-    activities += [plan(f"weekly_{n}", f"Weekly {n}", ids[:4], 2, "week", split="shared",
-                        shares={i: 0.5 for i in ids[:4]}, days=["mon", "thu"]) for n in range(15)]
-    engine = sample_engine(activities=activities, members=members)
-    started = time.perf_counter()
-    board = engine.board(SCENE)
-    engine.complete(SCENE, chore="daily_0", member="p0", by="p0", source="tablet")
-    engine.board(SCENE)
-    assert time.perf_counter() - started < 2.0
+    daily = [plan(f"daily_{n}", f"Daily {n}", ids[n % 8: n % 8 + 2], 0.5, "day", times=2, time_of_day=["morning", "evening"])
+             for n in range(25)]
+    weekly = [plan(f"weekly_{n}", f"Weekly {n}", ids[:4], 2, "week", split="shared",
+                   shares={i: 0.5 for i in ids[:4]}, days=["mon", "thu"]) for n in range(15)]
+    engine = sample_engine(activities=daily + weekly, members=members)
+    history = engine.log["completions"]
+    for back in range(90, 0, -1):
+        day = SCENE.date() - timedelta(days=back)
+        week = day - timedelta(days=day.weekday())
+        done = [(a, m, f"day:{day}|{t}") for a in daily for m in a["assignees"] for t in range(2)]
+        if day.weekday() in (0, 3):
+            done += [(a, m, f"week:{week}|{day.weekday() // 3}") for a in weekly for m in a["assignees"]]
+        stamp = datetime.combine(day, time(18), tzinfo=TZ).isoformat()
+        for activity, member, period in done:
+            history.append({
+                "id": f"h{len(history)}", "occurrence": f"{activity['id']}|{member}|{period}", "chore": activity["id"],
+                "member": member, "done_by": member, "by": member, "at": stamp, "source": "tablet", "user": None,
+                "state": "done", "review": None, "credit_minutes": 15.0, "stars": 1,
+            })
+    return engine, ids
+
+
+def test_a_busy_household_stays_quick() -> None:  # Review Focus 1
+    import time as wall
+
+    engine, ids = _busy_household()
+    assert len(engine.log["completions"]) > 10_000
+    engine.items(SCENE)  # Home Assistant has been running a while
+    with patch.object(engine_module, "_at", wraps=engine_module._at) as parsed:
+        engine.items(SCENE)
+    assert parsed.call_count < 50  # working out a day doesn't read every check-off again
+    runs = 0
+    items_on = ChoresEngine._items_on
+
+    def counted(self: ChoresEngine, day: date, index: object) -> object:
+        nonlocal runs
+        runs += 1
+        return items_on(self, day, index)
+
+    started = wall.perf_counter()
+    with patch.object(ChoresEngine, "_items_on", counted):
+        engine.complete(SCENE, chore="daily_0", member="p0", by="p0", source="tablet")
+        items = engine.items(SCENE)
+        board = engine.board(SCENE, items=items)
+        lists = {member: engine.todo_items(member, SCENE, items=items) for member in ids}
+    assert wall.perf_counter() - started < 1.0
+    assert runs <= 8  # the check-off, today once, and the week's other days
+    for member in ids:
+        shown = [i["key"] for i in board["members"][member]["items"]]
+        listed = [i.occ.key for i in lists[member]]
+        assert len(shown) == len(set(shown)) and len(listed) == len(set(listed))
     assert sum(len(m["items"]) for m in board["members"].values()) > 100
 
 

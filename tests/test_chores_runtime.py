@@ -209,6 +209,23 @@ def test_chores_of_a_kind_from_a_newer_release_are_kept_and_left_alone() -> None
     assert engine.activity("dish_rotation") is not None
 
 
+async def test_a_check_off_works_out_the_day_only_a_few_times(hass: HomeAssistant, chores: Any) -> None:  # Review Focus 1
+    runs = 0
+    items_on = ChoresEngine._items_on
+
+    def counted(self: ChoresEngine, day: Any, index: Any) -> Any:
+        nonlocal runs
+        runs += 1
+        return items_on(self, day, index)
+
+    with patch.object(ChoresEngine, "_items_on", counted):
+        await hass.services.async_call(DOMAIN, "complete_chore", {"member": "casey", "chore": "yard_work"},
+                                       blocking=True, return_response=True)
+        await hass.async_block_till_done()
+    assert hass.states.get("todo.casey_chores").state == "6"  # every list and sensor read the change (7 open before)
+    assert runs <= 9  # the check-off, today once, and the week's other days
+
+
 async def test_check_offs_are_saved_before_the_entry_unloads(
     hass: HomeAssistant, chores: Any, hass_storage: dict[str, Any], mock_config_entry: MockConfigEntry
 ) -> None:

@@ -107,6 +107,7 @@ class ChoresRuntime:
         self._entity_listeners: list[Callable[[], None]] = []
         self._event_listeners: list[Callable[[ChoreEvent], None]] = []
         self._board: dict[str, Any] | None = None
+        self._items: dict[str, list[Item]] | None = None
         self._unsubs: list[CALLBACK_TYPE] = []
         self._boundary: CALLBACK_TYPE | None = None
         self._log_save: CALLBACK_TYPE | None = None
@@ -153,10 +154,16 @@ class ChoresRuntime:
 
     # Views ------------------------------------------------------------------------
 
+    def items(self) -> dict[str, list[Item]]:
+        """Everyone's items today, worked out once per change."""
+        if self._items is None:
+            self._items = self.engine.items(self.now())
+        return self._items
+
     def board(self) -> dict[str, Any]:
         """Today's board, computed once per change."""
         if self._board is None:
-            self._board = self.engine.board(self.now())
+            self._board = self.engine.board(self.now(), items=self.items())
         return self._board
 
     def member_view(self, member_id: str) -> dict[str, Any] | None:
@@ -165,7 +172,7 @@ class ChoresRuntime:
 
     def todo_items(self, member_id: str) -> list[Item]:
         """A member's to-do list right now."""
-        return self.engine.todo_items(member_id, self.now())
+        return self.engine.todo_items(member_id, self.now(), items=self.items())
 
     def feed(self) -> dict[str, Any]:
         """What planavista/chores/subscribe sends."""
@@ -205,6 +212,7 @@ class ChoresRuntime:
     def async_notify(self, *, changed: bool = True) -> None:
         """Tell entities (and, after a change, the card) to read again."""
         self._board = None
+        self._items = None
         for listener in list(self._entity_listeners):
             listener()
         if changed:

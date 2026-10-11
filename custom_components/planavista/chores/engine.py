@@ -108,6 +108,7 @@ class _Index:
     overrides: dict[str, dict[str, Any]]
     requests: dict[str, dict[str, Any]]
     carried: dict[str, dict[str, Any]]
+    by_day: dict[date, list[dict[str, Any]]]  # credited check-offs by the chore day they were made
 
 
 def _day(value: str) -> date:
@@ -196,6 +197,8 @@ class ChoresEngine:
         self.members: list[dict[str, Any]] = [dict(m) for m in members]
         self._tz = tz
         self._new_id = new_id
+        self._days: dict[str, date] = {}
+        self._days_key: tuple[Any, Any] | None = None
 
     # Configuration ------------------------------------------------------------
 
@@ -216,7 +219,8 @@ class ChoresEngine:
     def generator(self) -> Generator:
         """What turns the plan into occurrences."""
         return Generator(
-            self.clock, int(self.settings.get("minutes_per_star", 15)), self.policy_on, self._active_from()
+            self.clock, int(self.settings.get("minutes_per_star", 15)), self.policy_on, self._active_from(),
+            self._day_of,
         )
 
     def _active_from(self) -> date:
@@ -262,6 +266,22 @@ class ChoresEngine:
         """The chore day `now` falls in."""
         return self.clock.chore_date(now)
 
+    def _day_of(self, stamp: object) -> date:
+        """The chore day a stored time falls in, worked out once per time (records keep their times)."""
+        key = (self._tz, self.settings.get("day_starts"))
+        if key != self._days_key:
+            self._days, self._days_key = {}, key
+        if not isinstance(stamp, str) or not stamp:
+            return date.min
+        day = self._days.get(stamp)
+        if day is None:
+            try:
+                day = self.clock.chore_date(_at(stamp))
+            except (TypeError, ValueError):
+                day = date.min
+            self._days[stamp] = day
+        return day
+
     def member(self, member_id: str | None) -> dict[str, Any] | None:
         """The member with this id."""
         return next((m for m in self.members if m["id"] == member_id), None)
@@ -282,9 +302,12 @@ class ChoresEngine:
 
     def _index(self) -> _Index:
         latest: dict[str, dict[str, Any]] = {}
+        by_day: dict[date, list[dict[str, Any]]] = defaultdict(list)
         for completion in self.log["completions"]:
             if completion.get("state") != "undone":
                 latest[completion["occurrence"]] = completion
+                if completion.get("state") in CREDITED:
+                    by_day[self._day_of(completion["at"])].append(completion)
         overrides: dict[str, dict[str, Any]] = defaultdict(dict)
         for record in self.log["overrides"]:
             for name in ("planned_day", "due", "assignee", "excused", "note"):
@@ -294,7 +317,7 @@ class ChoresEngine:
             r["occurrence"]: r for r in self.log["requests"] if r.get("state") == "open"
         }
         carried = {c["key"]: c for c in self.log["carried"]}
-        return _Index(latest, dict(overrides), requests, carried)
+        return _Index(latest, dict(overrides), requests, carried, dict(by_day))
 
     def _occurrences_on(self, day: date, index: _Index) -> list[Occurrence]:
         gen = self.generator()
@@ -394,7 +417,7 @@ class ChoresEngine:
             done_earlier = (
                 completion is not None
                 and completion.get("state") in CREDITED
-                and clock.chore_date(_at(completion["at"])) < day
+                and self._day_of(completion["at"]) < day
             )
             if done_earlier:
                 continue
@@ -416,14 +439,9 @@ class ChoresEngine:
             )
             present.add(key)
         # Check-offs from today whose occurrence the plan no longer makes (an edit since).
-        for completion in self.log["completions"]:
+        for completion in index.by_day.get(day, ()):
             key = completion["occurrence"]
-            if (
-                key in present
-                or completion.get("state") not in CREDITED
-                or completion["member"] not in members
-                or clock.chore_date(_at(completion["at"])) != day
-            ):
+            if key in present or completion["member"] not in members:
                 continue
             parsed = parse_key(key)
             if parsed is None:
@@ -488,14 +506,20 @@ class ChoresEngine:
             result[key] = round(result[key], 2)
         return result
 
-    def _week_items(self, week: date, index: _Index) -> dict[str, dict[str, Item]]:
-        """Each member's occurrences due within a chore week, by key (latest state)."""
+    def _week_items(
+        self, week: date, index: _Index, known: Mapping[date, Mapping[str, list[Item]]] | None = None
+    ) -> dict[str, dict[str, Item]]:
+        """Each member's occurrences due within a chore week, by key (latest state).
+
+        `known` holds days already worked out from the same index.
+        """
         clock = self.clock
         end = clock.week_end(week)
         result: dict[str, dict[str, Item]] = defaultdict(dict)
         day = week
         while day < end:
-            for member, found in self._items_on(day, index).items():
+            on_day = known.get(day) if known else None
+            for member, found in (on_day if on_day is not None else self._items_on(day, index)).items():
                 for item in found:
                     due = item.occ.due
                     if item.section == "overdue" or due is None:
@@ -505,14 +529,19 @@ class ChoresEngine:
             day += timedelta(days=1)
         return result
 
-    def contribution(self, member_id: str, first: date, end: date) -> dict[str, float]:
+    def contribution(self, member_id: str, first: date, end: date, index: _Index | None = None) -> dict[str, float]:
         """Minutes credited to `member_id` as the doer from `first` to before `end` (spec 8.14)."""
-        clock = self.clock
         total = shared = 0.0
-        for completion in self.log["completions"]:
-            if completion.get("done_by") != member_id or completion.get("state") not in CREDITED:
-                continue
-            if not first <= clock.chore_date(_at(completion["at"])) < end:
+        if index is not None:
+            days = (first + timedelta(days=n) for n in range((end - first).days))
+            found: Iterable[dict[str, Any]] = (c for day in days for c in index.by_day.get(day, ()))
+        else:
+            found = (
+                c for c in self.log["completions"]
+                if c.get("state") in CREDITED and first <= self._day_of(c["at"]) < end
+            )
+        for completion in found:
+            if completion.get("done_by") != member_id:
                 continue
             minutes = float(completion.get("credit_minutes", 0))
             total += minutes
@@ -722,15 +751,17 @@ class ChoresEngine:
             return "This month" if occ.window == "month" else "This week"
         return None
 
-    def todo_items(self, member_id: str, now: datetime) -> list[Item]:
+    def todo_items(
+        self, member_id: str, now: datetime, items: Mapping[str, list[Item]] | None = None
+    ) -> list[Item]:
         """A member's to-do list: open items, then today's check-offs (spec 10.3).
 
         Today's items first, then this week's floating ones, then make-up and
         overdue ones. Today's completed items stay checked until rollover.
+        `items` is today's `items(now)` when the caller already has them.
         """
         today = self.today(now)
-        clock = self.clock
-        found = self.items(now).get(member_id, [])
+        found = (items if items is not None else self.items(now)).get(member_id, [])
         open_items = [i for i in found if i.status in OPEN and self._still_open(i, now)]
 
         def tier(item: Item) -> int:
@@ -742,21 +773,26 @@ class ChoresEngine:
 
         done = [
             i for i in found
-            if i.status in CREDITED and i.completion and clock.chore_date(_at(i.completion["at"])) == today
+            if i.status in CREDITED and i.completion and self._day_of(i.completion["at"]) == today
         ]
         return sorted(open_items, key=tier) + done
 
-    def board(self, now: datetime, day: date | None = None) -> dict[str, Any]:
-        """The board for a chore day: everyone's items, progress, streaks, stars, requests (spec 10.7)."""
+    def board(
+        self, now: datetime, day: date | None = None, *, items: Mapping[str, list[Item]] | None = None
+    ) -> dict[str, Any]:
+        """The board for a chore day: everyone's items, progress, streaks, stars, requests (spec 10.7).
+
+        `items` is today's `items(now)` when the caller already has them.
+        """
         clock = self.clock
         today = self.today(now)
         day = day or today
         index = self._index()
         band = clock.band(now)
-        by_member = self._items_on(day, index)
+        by_member = items if items is not None and day == today else self._items_on(day, index)
         week = clock.week_start(day)
         week_end = clock.week_end(day)
-        week_items = self._week_items(week, index)
+        week_items = self._week_items(week, index, {day: by_member})
         members: dict[str, Any] = {}
         household = {"due": 0, "done": 0, "pending": 0}
         for member_id in self.member_ids():
@@ -777,7 +813,7 @@ class ChoresEngine:
                 "items": [self.item_view(i, day) for i in found],
                 "today": today_stats,
                 "week": week_stats,
-                "contribution": self.contribution(member_id, week, week_end),
+                "contribution": self.contribution(member_id, week, week_end, index),
                 "streak": self.streak(member_id, now, found if day == today else None),
                 "week_streak": self.week_streak(member_id, now),
                 "stars": self.balance(member_id),
@@ -817,7 +853,7 @@ class ChoresEngine:
         index = self._index()
         dates = [week + timedelta(days=n) for n in range((end - week).days)]
         live = {d: self._items_on(d, index) for d in dates if d >= today}
-        week_items = self._week_items(week, index)
+        week_items = self._week_items(week, index, live)
         members: dict[str, Any] = {}
         for member_id in self.member_ids():
             summaries = self._summaries(member_id, "day")
@@ -869,7 +905,7 @@ class ChoresEngine:
             members[member_id] = {
                 "days": days,
                 "weekly": list(weekly.values()),
-                "contribution": self.contribution(member_id, week, end),
+                "contribution": self.contribution(member_id, week, end, index),
                 "away": [dict(span) for span in member.get("away") or []
                          if _day(span["to"]) >= week and _day(span["from"]) < end],
             }
@@ -998,10 +1034,9 @@ class ChoresEngine:
         return None
 
     def _todays_completion(self, now: datetime, key: str | None, chore: str | None, member: str | None) -> dict[str, Any] | None:
-        clock = self.clock
         today = self.today(now)
         for completion in reversed(self.log["completions"]):
-            if completion.get("state") not in CREDITED or clock.chore_date(_at(completion["at"])) != today:
+            if completion.get("state") not in CREDITED or self._day_of(completion["at"]) != today:
                 continue
             if key is not None and completion["occurrence"] == key:
                 if member is not None and completion["member"] != member:
@@ -1477,7 +1512,7 @@ class ChoresEngine:
                 if (
                     completion.get("state") == "pending"
                     and completion.get("auto_approve", True)
-                    and clock.chore_date(_at(completion["at"])) == day
+                    and self._day_of(completion["at"]) == day
                 ):
                     self._approve(completion, end, AUTO, None, AUTO, out)
         index = self._index()
@@ -1485,7 +1520,7 @@ class ChoresEngine:
         policy = self.policy_on(day)
         week_ends = clock.week_end(day) == day + timedelta(days=1)
         week = clock.week_start(day)
-        week_items = self._week_items(week, index) if week_ends else {}
+        week_items = self._week_items(week, index, {day: by_member}) if week_ends else {}
         closing: set[str] = set()
         for member_id in self.member_ids():
             found = by_member.get(member_id, [])
@@ -1507,7 +1542,7 @@ class ChoresEngine:
             self.log["summaries"].append(self._day_summary(member_id, day, found, missed, carried))
             if week_ends:
                 self.log["summaries"].append(
-                    self._week_summary(member_id, week, day + timedelta(days=1), week_items.get(member_id, {}))
+                    self._week_summary(member_id, week, day + timedelta(days=1), week_items.get(member_id, {}), index)
                 )
         self._lapse(closing, end)
         self._tidy_carried(day, index)
@@ -1562,7 +1597,9 @@ class ChoresEngine:
             "chores": chores,
         }
 
-    def _week_summary(self, member_id: str, week: date, end: date, items: Mapping[str, Item]) -> dict[str, Any]:
+    def _week_summary(
+        self, member_id: str, week: date, end: date, items: Mapping[str, Item], index: _Index
+    ) -> dict[str, Any]:
         found = list(items.values())
         due = [i for i in found if i.status not in ("away", "excused")]
         late = [i.occ.key for i in due if i.status in OPEN]
@@ -1577,7 +1614,7 @@ class ChoresEngine:
             "excused": [i.occ.key for i in found if i.status == "excused"],
             "away": bool(days) and all(away_on(member, d) is not None for d in days),
             "closed": bool(due) and not late,
-            "contribution": self.contribution(member_id, week, end),
+            "contribution": self.contribution(member_id, week, end, index),
         }
 
     def _lapse(self, keys: set[str], at: datetime) -> None:
@@ -1598,6 +1635,7 @@ class ChoresEngine:
     def _prune(self, end: datetime) -> None:
         """Completions, overrides, and resolved requests older than 90 days go (spec 7.7)."""
         cutoff = end - RETENTION
+        self._days.clear()  # times of pruned records needn't be remembered
         log = self.log
         log["completions"] = [c for c in log["completions"] if _at(c["at"]) >= cutoff]
         log["overrides"] = [o for o in log["overrides"] if _at(o["at"]) >= cutoff]
