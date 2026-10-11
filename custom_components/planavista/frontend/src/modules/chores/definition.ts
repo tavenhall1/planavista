@@ -1,6 +1,8 @@
 import { ModuleDefinition, ModuleRegistry, moduleRegistry } from '../../core/module-registry';
 import { PageRegistry } from '../../core/page-registry';
-import { SettingsContext, SettingsPage, settingsRegistry } from '../../core/settings-registry';
+import {
+  PersonSection, SettingsContext, SettingsPage, personSections, settingsRegistry,
+} from '../../core/settings-registry';
 import { ChoresService, choresEnabled } from './chores-service';
 import type { Board } from './chores-types';
 import { remindersSummary } from './settings/reminders-derive';
@@ -94,7 +96,18 @@ export const choresSettingsPages: SettingsPage[] = [
   },
 ];
 
-/** Add the chores pages to Settings. */
-export function registerChoresSettings(settings: PageRegistry<SettingsContext, SettingsPage> = settingsRegistry): void {
+/** The person page's chores parts (spec 14.2): the chores rows, sleep, and phones with Use in automations. */
+export const choresPersonSections: PersonSection[] = [
+  { id: 'chores', label: 'Chores', order: 100, slot: 'role', tag: 'pv-person-chores', applies: ({ household }) => choresEnabled({ household }) },
+  { id: 'sleep', label: 'Sleep', order: 200, slot: 'pin', tag: 'pv-person-sleep', applies: ({ household }) => choresEnabled({ household }) },
+  { id: 'phones', label: 'Phones', order: 300, slot: 'links', tag: 'pv-person-phones', applies: ({ household }) => choresEnabled({ household }) },
+];
+
+/** Add the chores pages to Settings, and their parts to the person page. */
+export function registerChoresSettings(
+  settings: PageRegistry<SettingsContext, SettingsPage> = settingsRegistry,
+  sections: PageRegistry<SettingsContext, PersonSection> = personSections,
+): void {
   for (const page of choresSettingsPages) settings.register(page);
+  for (const section of choresPersonSections) sections.register(section);
 }

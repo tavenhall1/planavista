@@ -1,6 +1,7 @@
 import { LiveStatus, LiveSubscription } from '../../core/live-subscription';
 import { WsApi } from '../../core/ws-api';
 import type { Member } from '../../core/household';
+import type { StarEntry } from './settings/person-derive';
 import type {
   Activity, ChoreHistory, ChoresFeed, ChoresSettings, CompleteResult, DayView, Reward, WeekView,
 } from './chores-types';
@@ -79,6 +80,11 @@ export class ChoresApi extends WsApi {
 
   awardStars(member: string, stars: number, reason: string): Promise<{ balance: number }> {
     return this.call('planavista/stars/award', { member, stars, reason });
+  }
+
+  /** A person's latest stars, newest first (their page: Stars). */
+  starHistory(member: string): Promise<{ balance: number; history: StarEntry[] }> {
+    return this.call('planavista/stars/history', { member }, false);
   }
 
   week(date?: string): Promise<WeekView> {

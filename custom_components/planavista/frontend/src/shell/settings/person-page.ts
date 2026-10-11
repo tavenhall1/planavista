@@ -1,10 +1,12 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../styles/shared';
 import {
   AGE_GROUP_CHOICES,
+  AGE_GROUP_CHORES_HINTS,
   HouseholdView,
   Member,
   Picture,
@@ -15,7 +17,11 @@ import {
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import { POP_PAGE, saveErrorMessage } from '../../core/page-host';
-import { DraftRecord, PersonDraft, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft } from '../../core/person-draft';
+import {
+  DraftRecord, PersonDraft, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft, withAgeGroup,
+} from '../../core/person-draft';
+import type { ModuleService } from '../../core/module-registry';
+import { PERSON_CHANGE, PersonSection, personSections } from '../../core/settings-registry';
 import { PvColorSwatchPicker } from '../../core/color-swatch-picker';
 import type { PlanaVistaData } from '../../types';
 import '../../core/pv-member-avatar';
@@ -27,9 +33,10 @@ const PALETTE = PvColorSwatchPicker.PRESETS.map(preset => preset.color);
 type Notice = 'discard' | 'remove' | 'changed';
 
 /**
- * pv-settings-person: one person's page (spec 14.2, without the chores rows).
- * An editor: Cancel and Save, so a half-made change never reaches anyone.
- * The draft lives in the card's memory, so it survives the end of parent mode.
+ * pv-settings-person: one person's page (spec 14.2). An editor: Cancel and
+ * Save, so a half-made change never reaches anyone. The draft lives in the
+ * card's memory, so it survives the end of parent mode. Modules add their
+ * own parts (the chores rows, sleep, phones) through personSections.
  */
 export class PvSettingsPerson extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -40,6 +47,8 @@ export class PvSettingsPerson extends LitElement {
   @property({ type: String }) mode: 'settings' | 'setup' = 'settings';
   @property({ attribute: false }) pageProps: Record<string, unknown> = {};
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
+  @property({ attribute: false }) services: Record<string, ModuleService> = {};
+  @property({ type: Number }) revision = 0;
 
   @state() private _draft!: PersonDraft;
   @state() private _start!: PersonDraft;
@@ -80,6 +89,21 @@ export class PvSettingsPerson extends LitElement {
   private get _record(): DraftRecord {
     return { draft: this._draft, start: this._start, rev: this._rev };
   }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.addEventListener(PERSON_CHANGE, this._onSectionChange as EventListener);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.removeEventListener(PERSON_CHANGE, this._onSectionChange as EventListener);
+  }
+
+  private _onSectionChange = (event: CustomEvent<Partial<PersonDraft>>): void => {
+    event.stopPropagation();
+    this._change(event.detail);
+  };
 
   /** Settings asks before leaving a page with changes (spec 14.1). */
   confirmLeave(): Promise<boolean> {
@@ -291,8 +315,11 @@ export class PvSettingsPerson extends LitElement {
       ${this._renderPicture()}
       ${this._renderAgeGroup()}
       ${this._renderParent()}
+      ${this._renderSections('role', member)}
       ${this._renderPin(member)}
+      ${this._renderSections('pin', member)}
       ${this._renderHomeAssistant()}
+      ${this._renderSections('links', member)}
       ${member ? html`
         <button class="pv-btn remove" type="button" @click=${() => { this._notice = 'remove'; }}>Remove ${member.name}</button>
       ` : nothing}
@@ -381,22 +408,50 @@ export class PvSettingsPerson extends LitElement {
     `;
   }
 
+  private get _choresOn(): boolean {
+    const chores = (this.household?.modules as { chores?: { enabled?: boolean } } | undefined)?.chores;
+    return chores?.enabled === true;
+  }
+
   private _renderAgeGroup() {
     return html`
       <fieldset class="field">
         <legend>Age group</legend>
         <div class="radios">
-          ${AGE_GROUP_CHOICES.map(choice => html`
-            <label class="radio">
-              <input type="radio" name="age-group" .checked=${this._draft.age_group === choice.id}
-                @change=${() => this._change({ age_group: choice.id })} />
-              <span>${choice.label}</span>
-              ${choice.hint ? html`<span class="age-hint">${choice.hint}</span>` : nothing}
-            </label>
-          `)}
+          ${AGE_GROUP_CHOICES.map(choice => {
+            const hint = this._choresOn ? AGE_GROUP_CHORES_HINTS[choice.id] : choice.hint;
+            return html`
+              <label class="radio">
+                <input type="radio" name="age-group" .checked=${this._draft.age_group === choice.id}
+                  @change=${() => this._changeDraft(withAgeGroup(this._draft, choice.id))} />
+                <span>${choice.label}</span>
+                ${hint ? html`<span class="age-hint">${hint}</span>` : nothing}
+              </label>
+            `;
+          })}
         </div>
       </fieldset>
     `;
+  }
+
+  /** The parts modules add at one slot of the page, such as the chores rows. */
+  private _renderSections(slot: PersonSection['slot'], member: Member | null) {
+    const context = { household: this.household, data: this.data, services: this.services };
+    return personSections.pages(context).filter(section => section.slot === slot).map(section => {
+      const tag = unsafeStatic(section.tag);
+      return staticHtml`
+        <${tag}
+          .hass=${this.hass}
+          .data=${this.data}
+          .household=${this.household}
+          .member=${member}
+          .draft=${this._draft}
+          .services=${this.services}
+          .revision=${this.revision}
+          .layout=${this.layout}
+        ></${tag}>
+      `;
+    });
   }
 
   private _renderParent() {
@@ -508,7 +563,11 @@ export class PvSettingsPerson extends LitElement {
   }
 
   private _change(patch: Partial<PersonDraft>): void {
-    this._draft = { ...this._draft, ...patch };
+    this._changeDraft({ ...this._draft, ...patch });
+  }
+
+  private _changeDraft(draft: PersonDraft): void {
+    this._draft = draft;
     this._problem = '';
     this.drafts.set(this._draftKey, this._record);
   }

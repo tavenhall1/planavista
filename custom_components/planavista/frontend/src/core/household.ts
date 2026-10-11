@@ -53,7 +53,20 @@ export interface NotifyChoice {
   reminders: boolean;
 }
 
-/** The fields the person page, setup, and Reminders change. */
+/** A time away (spec 8.11): first and last chore days, inclusive. */
+export interface AwayRange {
+  from: string;
+  to: string;
+  note?: string | null;
+}
+
+/** Bedtimes on weeknights, and on Friday and Saturday nights (HH:MM). */
+export interface Bedtime {
+  weeknight: string;
+  weekend: string;
+}
+
+/** The fields the person page, setup, Reminders, and imports change. */
 export interface MemberChanges {
   name?: string;
   color?: string;
@@ -61,6 +74,14 @@ export interface MemberChanges {
   age_group?: AgeGroup;
   parent?: boolean;
   person?: string | null;
+  needs_ok_for?: string;
+  my_day?: string;
+  stars?: boolean;
+  goal?: string | null;
+  away?: AwayRange[];
+  bedtime?: Bedtime | null;
+  sleep_hours?: number | null;
+  phones?: string[];
   notify?: NotifyChoice;
 }
 
@@ -92,6 +113,14 @@ export const AGE_GROUP_CHOICES: Array<{ id: AgeGroup; label: string; hint: strin
   { id: 'teen', label: 'Teen', hint: '' },
   { id: 'adult', label: 'Adult', hint: '' },
 ];
+
+/** What each age group means once chores are on (the approved person page). */
+export const AGE_GROUP_CHORES_HINTS: Record<AgeGroup, string> = {
+  young_child: 'Pictures and big buttons. Every chore needs an OK.',
+  older_child: 'A list with pictures. Chores marked Needs an OK wait for one.',
+  teen: 'The full list and a timeline. Chores marked Needs an OK wait for one.',
+  adult: 'The full list and a timeline. No OKs needed.',
+};
 
 /** The role chips of setup's "Who lives here?" (spec 14.7). */
 export const ROLES: Array<{ id: Role; label: string }> = [

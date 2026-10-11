@@ -75,8 +75,26 @@ export function resumeIndex(steps: SetupStep[], saved: string | null): number {
   return index >= 0 ? index : 0;
 }
 
+/**
+ * A part of a person's page that a module adds (spec 14.2: the chores rows,
+ * sleep, phones, and Use in automations). The page shows it at its slot:
+ * after the age group and Parent, after the PIN, or after the Home Assistant
+ * links. The element gets the page's draft and sends changes back with
+ * pv-person-change.
+ */
+export interface PersonSection extends WizardPage<SettingsContext> {
+  slot: 'role' | 'pin' | 'links';
+  tag: string;
+}
+
+/** A section asks the person page to change its draft. */
+export const PERSON_CHANGE = 'pv-person-change';
+
 /** Settings pages that the shell and modules contribute. */
 export const settingsRegistry = new PageRegistry<SettingsContext, SettingsPage>();
+
+/** Parts of the person page that modules contribute. */
+export const personSections = new PageRegistry<SettingsContext, PersonSection>();
 
 /** First-run setup steps that the shell and modules contribute. */
 export const setupRegistry = new PageRegistry<SetupContext, SetupStep>();

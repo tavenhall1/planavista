@@ -250,3 +250,14 @@ def test_away_ranges_are_checked_and_kept_in_order() -> None:
         assert err.value.code == "invalid_away"
     # Members saved before Away existed get no new field.
     assert "away" not in update_member(members, "dana", {"name": "Dana"}, None)[1]
+
+
+def test_age_group_defaults_follow_the_shared_table() -> None:
+    """The person page starts people from the same table (test/person-draft.test.ts)."""
+    import json
+    from pathlib import Path
+
+    from custom_components.planavista.household.members import AGE_GROUP_DEFAULTS
+
+    table = json.loads((Path(__file__).parent / "fixtures" / "age_group_defaults.json").read_text("utf-8"))
+    assert table["defaults"] == AGE_GROUP_DEFAULTS
