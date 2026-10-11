@@ -50,6 +50,8 @@ export class PvChoreItem extends LitElement {
   /** A hold finished and waits for its answer: the circle stays full. */
   @state() private _held = false;
   private _frame = 0;
+  /** The rewind's own frame, so the browser's lostpointercapture after a release can't stop it. */
+  private _rewindFrame = 0;
   private _gesture = new HoldGesture({
     progress: fill => {
       this._fill = fill;
@@ -267,6 +269,7 @@ export class PvChoreItem extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     cancelAnimationFrame(this._frame);
+    cancelAnimationFrame(this._rewindFrame);
   }
 
   private get _done(): boolean {
@@ -279,6 +282,7 @@ export class PvChoreItem extends LitElement {
 
   private _down = (event: PointerEvent): void => {
     if (!this._holdable || this._held || event.button > 0) return;
+    cancelAnimationFrame(this._rewindFrame);
     const target = event.currentTarget as HTMLElement;
     try {
       target.setPointerCapture(event.pointerId);
@@ -305,6 +309,11 @@ export class PvChoreItem extends LitElement {
   private _cancel = (): void => {
     cancelAnimationFrame(this._frame);
     this._gesture.cancel();
+  };
+
+  /** The browser fires this right after pointerup and pointercancel too; only a capture lost mid-hold ends one. */
+  private _lost = (): void => {
+    if (this._gesture.holding) this._up();
   };
 
   private _key = (event: KeyboardEvent): void => {
@@ -343,9 +352,10 @@ export class PvChoreItem extends LitElement {
     const step = (t: number) => {
       const k = Math.min(1, (t - start) / ms);
       this._fill = fill * (1 - k);
-      if (k < 1 && !this._gesture.holding) this._frame = requestAnimationFrame(step);
+      if (k < 1 && !this._gesture.holding) this._rewindFrame = requestAnimationFrame(step);
     };
-    this._frame = requestAnimationFrame(step);
+    cancelAnimationFrame(this._rewindFrame);
+    this._rewindFrame = requestAnimationFrame(step);
   }
 
   private _fire(name: string, detail: unknown): void {
@@ -382,7 +392,7 @@ export class PvChoreItem extends LitElement {
         <div class="sweep" style="transform: scaleX(${done ? 0 : fill})"></div>
         <button class="circle" type="button" aria-label=${action} aria-disabled=${this.locked ? 'true' : 'false'}
           @pointerdown=${this._down} @pointermove=${this._move} @pointerup=${this._up}
-          @pointercancel=${this._cancel} @lostpointercapture=${this._up} @keydown=${this._key}
+          @pointercancel=${this._cancel} @lostpointercapture=${this._lost} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>
           <svg width=${CIRCLE} height=${CIRCLE} viewBox="0 0 26 26" aria-hidden="true">
             ${done ? svg`
