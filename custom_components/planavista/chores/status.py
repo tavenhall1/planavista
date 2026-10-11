@@ -43,3 +43,11 @@ def describe(view: Mapping[str, Any], today: date) -> str | None:
     if view.get("section") == "week":
         return "This month" if view.get("window") == "month" else "This week"
     return None
+
+
+OPEN = ("open", "sent_back")
+
+
+def left_today(view: dict[str, Any]) -> list[dict[str, Any]]:
+    """Items still due today: in today's ring and not done or waiting for OK."""
+    return [i for i in view["items"] if i["counted"] and i["status"] in OPEN]

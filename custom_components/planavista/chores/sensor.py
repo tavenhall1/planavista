@@ -20,14 +20,9 @@ from homeassistant.helpers.typing import StateType
 from ..coordinator import PlanaVistaConfigEntry
 from .entity import ChoresEntity
 from .runtime import DATA_CHORES, ChoresRuntime
+from .status import left_today
 
 MAX_ITEMS = 20
-OPEN = ("open", "sent_back")
-
-
-def left_today(view: dict[str, Any]) -> list[dict[str, Any]]:
-    """Items still due today: in today's ring and not done or waiting for OK."""
-    return [i for i in view["items"] if i["counted"] and i["status"] in OPEN]
 
 
 @dataclass(frozen=True, kw_only=True)

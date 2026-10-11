@@ -32,6 +32,7 @@ from ..const import CONF_DISPLAY, CONF_FIRST_DAY, DOMAIN, SIGNAL_CONFIG_APPLIED
 from ..household.store import Household
 from .engine import ChoreEvent, ChoresEngine, Item, Outcome
 from .model import default_log, default_plan, default_rewards
+from .notify import ChoresNotifier
 from .store import NORMALIZERS, STORE_KEYS, ChoresStores
 
 if TYPE_CHECKING:
@@ -112,6 +113,7 @@ class ChoresRuntime:
         self._boundary: CALLBACK_TYPE | None = None
         self._log_save: CALLBACK_TYPE | None = None
         self._started = False
+        self.notifier = ChoresNotifier(hass, self)
 
     # State ------------------------------------------------------------------------
 
@@ -180,6 +182,7 @@ class ChoresRuntime:
             "state": self.state,
             "save_failed": self.save_failed,
             "board": self.board() if self.available else None,
+            "notify_problems": self.notifier.problems(),
         }
 
     @callback
@@ -303,11 +306,13 @@ class ChoresRuntime:
                 self._schedule_log_save()
             await self.async_apply(self.engine.catch_up(self.now()))
         self._schedule_boundary()
+        self.notifier.async_start()
 
     @callback
     def async_stop(self) -> None:
         """The entry unloaded: stop every timer and listener."""
         self._started = False
+        self.notifier.async_stop()
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
