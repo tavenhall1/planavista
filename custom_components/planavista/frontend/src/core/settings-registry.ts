@@ -65,8 +65,32 @@ export interface SetupStep extends WizardPage<SetupContext> {
   heading: string;
   /** A short line under the heading. */
   lead?: string;
-  /** The main button's label; Next (or Finish on the last step) when left out. */
+  /** The main button's label; Next (or Finish on the last step) when left out. The step element may change it. */
   primary?: string;
+  /** A second way on under the main button, such as "Not now, just the calendar"; the element's secondary() runs it. */
+  secondary?: string;
+  /** Skip at the top right: on to the next step without the step's commit. */
+  skip?: boolean;
+  /** A wider column (a step with a board preview beside its choices). */
+  wide?: boolean;
+}
+
+/** A step asks its host to draw again (its button's label or readiness changed). */
+export const STEP_CHANGE = 'pv-step-change';
+
+/** How a step changes what the steps after it see, before the household's next update arrives. */
+export interface SetupPatch {
+  setup?: Record<string, unknown>;
+  modules?: Record<string, Record<string, unknown>>;
+}
+
+/** Something a module adds to setup's last step (spec 14.7: a preview of the board, two tips). */
+export interface DonePart extends WizardPage<SetupContext> {
+  tag: string;
+  /** The main button's label while this part shows, such as "Open the board". */
+  primary?: string;
+  /** The module the card opens when setup finishes. */
+  module?: string;
 }
 
 /** Where setup starts: the saved step while it still applies, else the first. */
@@ -95,6 +119,9 @@ export const settingsRegistry = new PageRegistry<SettingsContext, SettingsPage>(
 
 /** Parts of the person page that modules contribute. */
 export const personSections = new PageRegistry<SettingsContext, PersonSection>();
+
+/** Parts of setup's last step that modules contribute. */
+export const doneParts = new PageRegistry<SetupContext, DonePart>();
 
 /** First-run setup steps that the shell and modules contribute. */
 export const setupRegistry = new PageRegistry<SetupContext, SetupStep>();

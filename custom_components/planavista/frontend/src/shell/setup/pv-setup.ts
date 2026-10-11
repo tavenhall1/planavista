@@ -8,17 +8,31 @@ import { baseStyles, buttonStyles } from '../../styles/shared';
 import type { HouseholdView } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
+import type { ModuleService } from '../../core/module-registry';
 import { saveErrorMessage } from '../../core/page-host';
-import { SetupStep, resumeIndex, setupRegistry } from '../../core/settings-registry';
+import { STEP_CHANGE, SetupContext, SetupPatch, SetupStep, resumeIndex, setupRegistry } from '../../core/settings-registry';
+import { mergePatch, stepAfter, withPatch } from '../../core/setup-flow';
 import type { PlanaVistaData } from '../../types';
 import './welcome-step';
 import './people-step';
 import './look-step';
 import './done-step';
 
+/** What a step element may offer its host; every part is optional. */
 interface StepElement extends HTMLElement {
   commit?: () => Promise<boolean>;
+  /** The main button's label now ("Add 8 chores"), instead of the step's. */
+  primaryLabel?: string;
+  /** False keeps the main button off (nothing picked yet, an age group missing). */
+  ready?: boolean;
+  /** The step's second way on; true goes on to the next step. */
+  secondary?: () => Promise<boolean>;
+  /** What the step just changed, for the steps after it, until the household's update arrives. */
+  setupPatch?: SetupPatch;
+  /** The module the card opens when setup finishes. */
+  openModule?: string;
 }
+
 
 const TOAST_MS = 4000;
 
@@ -38,17 +52,33 @@ export class PvSetup extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Edits the card keeps while steps come and go (the appearance changes, spec 14.7). */
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
+  /** The card's module services (chores steps read the chores feed and call its commands). */
+  @property({ attribute: false }) services: Record<string, ModuleService> = {};
+  @property({ type: Number }) revision = 0;
 
   @state() private _index = 0;
   @state() private _busy = false;
   @state() private _toast = '';
+  /** What steps changed that the household doesn't show yet (how it started, chores on). */
+  @state() private _patch: SetupPatch = {};
   private _started = false;
   private _toastTimer: number | undefined;
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.addEventListener(STEP_CHANGE, this._onStepChange);
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.removeEventListener(STEP_CHANGE, this._onStepChange);
     window.clearTimeout(this._toastTimer);
   }
+
+  private _onStepChange = (event: Event): void => {
+    event.stopPropagation();
+    this.requestUpdate();
+  };
 
   protected willUpdate(): void {
     if (!this._started && this.data) {
@@ -140,6 +170,37 @@ export class PvSetup extends LitElement {
         font-size: 1.0625rem;
       }
 
+      .column.wide {
+        max-width: 1040px;
+      }
+
+      .bottom {
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .second {
+        min-height: 44px;
+        border: none;
+        background: transparent;
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .skip {
+        justify-self: end;
+        min-height: 48px;
+        padding: 0 8px;
+        border: none;
+        background: transparent;
+        color: var(--pv-text-secondary, #6B7280);
+        font: inherit;
+        cursor: pointer;
+      }
+
       .toast {
         position: absolute;
         left: 16px;
@@ -176,8 +237,21 @@ export class PvSetup extends LitElement {
     `,
   ];
 
+  /** The household as steps see it: with what earlier steps just changed. */
+  private _context(): SetupContext {
+    return { household: withPatch(this.household, this._patch), data: this.data, services: this.services };
+  }
+
   private _steps(): SetupStep[] {
-    return setupRegistry.pages({ household: this.household, data: this.data });
+    return setupRegistry.pages(this._context());
+  }
+
+  private get _element(): StepElement | null {
+    return this.renderRoot?.querySelector<StepElement>('.step-el') ?? null;
+  }
+
+  private _take(element: StepElement | null): void {
+    if (element?.setupPatch) this._patch = mergePatch(this._patch, element.setupPatch);
   }
 
   render() {
@@ -187,6 +261,10 @@ export class PvSetup extends LitElement {
     const step = steps[index];
     const last = index === steps.length - 1;
     const tag = unsafeStatic(step.tag);
+    const element = this._element;
+    const label = element?.primaryLabel ?? step.primary ?? (last ? 'Finish' : 'Next');
+    const ready = element?.ready !== false;
+    const context = this._context();
     return html`
       <div class="top">
         <button class="back ${index === 0 ? 'hidden' : ''}" type="button"
@@ -196,10 +274,10 @@ export class PvSetup extends LitElement {
         <div class="progress-dots" role="img" aria-label="Step ${index + 1} of ${steps.length}">
           ${steps.map((_, i) => html`<div class="dot ${i === index ? 'dot--active' : ''}"></div>`)}
         </div>
-        <span></span>
+        ${step.skip ? html`<button class="skip" type="button" ?disabled=${this._busy} @click=${this._skip}>Skip</button>` : html`<span></span>`}
       </div>
       <div class="content">
-        <div class="column">
+        <div class="column ${step.wide ? 'wide' : ''}">
           <h1 class="heading">${step.heading}</h1>
           ${step.lead ? html`<p class="lead">${step.lead}</p>` : nothing}
           ${keyed(step.id, staticHtml`
@@ -207,41 +285,94 @@ export class PvSetup extends LitElement {
               class="step-el"
               .hass=${this.hass}
               .data=${this.data}
-              .household=${this.household}
+              .household=${context.household}
               .api=${this.api}
               .layout=${this.layout}
               .drafts=${this.drafts}
+              .services=${this.services}
+              .revision=${this.revision}
               mode="setup"
             ></${tag}>
           `)}
         </div>
       </div>
       <div class="bottom">
-        <button class="pv-btn pv-btn-primary main" type="button" ?disabled=${this._busy} @click=${this._next}>
-          ${step.primary ?? (last ? 'Finish' : 'Next')}
+        <button class="pv-btn pv-btn-primary main" type="button" ?disabled=${this._busy || !ready} @click=${this._next}>
+          ${label}
         </button>
+        ${step.secondary ? html`
+          <button class="second" type="button" ?disabled=${this._busy} @click=${this._secondary}>${step.secondary}</button>
+        ` : nothing}
       </div>
       ${this._toast ? html`<div class="toast" role="status">${this._toast}</div>` : nothing}
     `;
   }
 
+  protected updated(): void {
+    // A step's label and readiness live on its element, which exists only after the first render.
+    const element = this._element;
+    if (element && !(element as unknown as { _hostSeen?: boolean })._hostSeen) {
+      (element as unknown as { _hostSeen?: boolean })._hostSeen = true;
+      if (element.primaryLabel !== undefined || element.ready !== undefined) this.requestUpdate();
+    }
+  }
+
+  /** The step on screen now. */
+  private _currentId(): string | undefined {
+    const steps = this._steps();
+    return steps[Math.min(this._index, steps.length - 1)]?.id;
+  }
+
   private _next = async (): Promise<void> => {
     if (this._busy) return;
-    const element = this.renderRoot.querySelector<StepElement>('.step-el');
+    const element = this._element;
+    const current = this._currentId();
     this._busy = true;
     try {
       const ok = element?.commit ? await element.commit() : true;
       if (!ok) return;
-      const steps = this._steps();
-      if (this._index >= steps.length - 1) {
-        this.dispatchEvent(new CustomEvent('onboarding-complete', { bubbles: true, composed: true }));
-        return;
-      }
-      this._index += 1;
-      this._remember(steps[this._index].id);
+      this._take(element);
+      this._advance(element, current);
     } finally {
       this._busy = false;
     }
+  };
+
+  /**
+   * On to the step after `current`, as the steps stand after what it changed
+   * (choosing common chores brings their step in); past the last, setup is finished.
+   */
+  private _advance(element: StepElement | null, current: string | undefined): void {
+    const steps = this._steps();
+    const next = stepAfter(steps, current);
+    if (next === null) {
+      this.dispatchEvent(new CustomEvent('onboarding-complete', {
+        detail: { module: element?.openModule }, bubbles: true, composed: true,
+      }));
+      return;
+    }
+    this._index = next;
+    this._remember(steps[next].id);
+  }
+
+  private _secondary = async (): Promise<void> => {
+    if (this._busy) return;
+    const element = this._element;
+    const current = this._currentId();
+    this._busy = true;
+    try {
+      const go = element?.secondary ? await element.secondary() : true;
+      if (!go) return;
+      this._take(element);
+      this._advance(element, current);
+    } finally {
+      this._busy = false;
+    }
+  };
+
+  private _skip = (): void => {
+    if (this._busy) return;
+    this._advance(this._element, this._currentId());
   };
 
   private _back = (): void => {

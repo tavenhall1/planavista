@@ -396,9 +396,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._guardSettings();
   }
 
-  private _onOnboardingComplete() {
+  private _onOnboardingComplete(event?: CustomEvent<{ module?: string }>) {
     this._wizardOpen = false;
     this._onboardingDone = true;
+    // Setup's last step can open a module (Open the board).
+    const module = event?.detail?.module;
+    if (module) this._moduleId = module;
   }
 
   /** What the gear may do for this account; until the household answers, admins only, as in 1.1.0. */
@@ -600,6 +603,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .api=${this._api}
               .layout=${this._layout.layout}
               .drafts=${this._drafts}
+              .services=${this._services}
+              .revision=${this._serviceRevision}
               @onboarding-complete=${this._onOnboardingComplete}
             ></pv-setup>
           ` : this._renderSetupCard()}

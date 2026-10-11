@@ -12,6 +12,11 @@ import './settings/pv-person-phones';
 import './settings/pv-person-stars';
 import './settings/pv-import-export-page';
 import './settings/pv-import-review';
+import './setup/pv-setup-chores-choice';
+import './setup/pv-setup-common-chores';
+import './setup/pv-setup-file';
+import './setup/pv-setup-shared-screen';
+import './setup/pv-setup-done-board';
 import { registerChoresModule, registerChoresSettings } from './definition';
 
 registerChoresModule();

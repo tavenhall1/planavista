@@ -75,6 +75,8 @@ ERROR_MESSAGES = {
     "invalid_notify": "Requests and reminders are on or off.",
 }
 
+SETUP_STARTS = ("restore", "plan", "common", "empty", "calendar")
+
 MEMBER_FIELDS = vol.Schema(
     {
         vol.Optional("name"): str,
@@ -469,6 +471,8 @@ async def ws_settings_save(
         vol.Required("type"): "planavista/household/setup/save",
         vol.Optional("step"): vol.Any(None, str),
         vol.Optional("completed"): bool,
+        # How the household started (spec 14.7): restoring a file, a plan, common chores, empty, or just the calendar.
+        vol.Optional("start"): vol.Any(None, vol.In(SETUP_STARTS)),
         vol.Optional("session"): str,
     }
 )
@@ -481,7 +485,7 @@ async def ws_setup_save(
     if context is None:
         return
     household, _by = context
-    for key in ("step", "completed"):
+    for key in ("step", "completed", "start"):
         if key in msg:
             household.data["setup"][key] = msg[key]
     await household.async_save()

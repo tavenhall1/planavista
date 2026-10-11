@@ -67,8 +67,9 @@ export const shellSetupSteps: SetupStep[] = [
     order: 0,
     tag: 'pv-setup-welcome',
     heading: 'Welcome to PlanaVista',
-    lead: 'About 5 minutes. Everything can change later in Settings.',
+    lead: "Your family's calendar and chores, together on one screen.",
     primary: 'Set up',
+    secondary: 'Restore from a PlanaVista file',
   },
   {
     id: 'people',

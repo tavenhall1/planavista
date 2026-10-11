@@ -60,7 +60,7 @@ export class HouseholdApi extends WsApi {
     return this.call('planavista/household/settings/save', settings);
   }
 
-  saveSetup(progress: { step?: string | null; completed?: boolean }): Promise<void> {
+  saveSetup(progress: { step?: string | null; completed?: boolean; start?: string | null }): Promise<void> {
     return this.call('planavista/household/setup/save', progress);
   }
 

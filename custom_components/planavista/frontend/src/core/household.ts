@@ -44,7 +44,8 @@ export interface HouseholdView {
   account: AccountView;
   security: { shuffle_keypad: boolean; shared_screens: number };
   modules: Record<string, unknown>;
-  setup: { completed: boolean; step: string | null };
+  /** Where setup stands; `start` is how the household started (restore, plan, common, empty, calendar). */
+  setup: { completed: boolean; step: string | null; start?: string | null };
 }
 
 /** What a person's phones get (spec 7.2): Waiting for OK requests (parents) and evening reminders. */
