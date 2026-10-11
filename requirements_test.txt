@@ -4,3 +4,5 @@
 # that Home Assistant 2026.9.4 pins is installed too.
 pytest-homeassistant-custom-component==0.13.367
 home-assistant-frontend==20260826.7
+# The chores recurrence tests compare against python-dateutil's rrule (spec 16).
+python-dateutil==2.9.0.post0

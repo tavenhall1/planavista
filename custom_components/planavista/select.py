@@ -8,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .appearance import APPEARANCE, MODES, appearance_settings
+from .chores.entity import household_device
 from .const import CONF_DISPLAY
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .services import async_store_config
@@ -25,16 +26,18 @@ async def async_setup_entry(
 class PlanaVistaAppearanceSelect(CoordinatorEntity[PlanaVistaCoordinator], SelectEntity):
     """The household's appearance; an automation can pick Dark for movie night."""
 
+    _attr_has_entity_name = True
     _attr_translation_key = "appearance"
     _attr_icon = "mdi:theme-light-dark"
     _attr_options = list(MODES)
 
     def __init__(self, coordinator: PlanaVistaCoordinator, entry: PlanaVistaConfigEntry) -> None:
-        """Name it like the other PlanaVista entities, so its ID is select.planavista_appearance."""
+        """On the Household device as "Appearance"; its ID stays select.planavista_appearance."""
         super().__init__(coordinator)
         self.entity_id = "select.planavista_appearance"
-        self._attr_name = "PlanaVista appearance"
         self._attr_unique_id = f"{entry.entry_id}_appearance"
+        # The Household device holds household-wide entities (spec 10.1).
+        self._attr_device_info = household_device()
 
     @property
     def available(self) -> bool:

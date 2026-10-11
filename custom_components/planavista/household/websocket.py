@@ -66,6 +66,7 @@ ERROR_MESSAGES = {
     "invalid_order": "The list changed on another screen. Try again.",
     "last_parent_pin": "A shared screen needs at least one parent with a PIN.",
     "needs_parent_pin": "Set a PIN for a parent first, so someone can open Settings here.",
+    "invalid_away": "Pick the first and last days away.",
 }
 
 MEMBER_FIELDS = vol.Schema(
@@ -79,6 +80,7 @@ MEMBER_FIELDS = vol.Schema(
         vol.Optional("my_day"): str,
         vol.Optional("needs_ok_for"): str,
         vol.Optional("stars"): bool,
+        vol.Optional("away"): vol.Any(None, [dict]),
     }
 )
 
@@ -89,7 +91,7 @@ def _monotonic() -> float:
 
 
 @callback
-def _account(hass: HomeAssistant, household: Household, user: User) -> Account:
+def account_for(hass: HomeAssistant, household: Household, user: User) -> Account:
     """What kind of account `user` is: linked through a person to a member, or not."""
     member = None
     for state in hass.states.async_all("person"):
@@ -116,11 +118,11 @@ def _screens_need_parent_pin(
     An upgraded wall tablet is often an account linked to no one and not
     marked shared, so the account making the change counts too.
     """
-    return bool(household.shared_users) or _account(hass, household, connection.user).screen_rules
+    return bool(household.shared_users) or account_for(hass, household, connection.user).screen_rules
 
 
 @callback
-def _session(
+def session_for(
     household: Household, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> SessionView | None:
     """The command's session when it names a live one on this connection (counts as activity)."""
@@ -129,7 +131,7 @@ def _session(
 
 
 @callback
-def _household(
+def household_for(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> Household | None:
     household = hass.data.get(DATA_HOUSEHOLD)
@@ -139,7 +141,7 @@ def _household(
 
 
 @callback
-def _refuse(
+def refuse(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], account: Account
 ) -> None:
     if account.screen_rules:
@@ -151,7 +153,7 @@ def _refuse(
 
 
 @callback
-def _parent(
+def parent_for(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
@@ -159,13 +161,13 @@ def _parent(
     needs_file: bool = True,
 ) -> tuple[Household, str] | None:
     """The household and who acts as a parent, or None after saying why not."""
-    household = _household(hass, connection, msg)
+    household = household_for(hass, connection, msg)
     if household is None:
         return None
-    account = _account(hass, household, connection.user)
-    by = parent_level(account, _session(household, connection, msg))
+    account = account_for(hass, household, connection.user)
+    by = parent_level(account, session_for(household, connection, msg))
     if by is None:
-        _refuse(connection, msg, account)
+        refuse(connection, msg, account)
         return None
     if needs_file and not household.available:
         connection.send_error(
@@ -187,7 +189,7 @@ def _member_error(
 @callback
 def _view(hass: HomeAssistant, household: Household, user: User) -> dict[str, Any]:
     """What one account sees: people (never PIN data), its own kind, and setup progress."""
-    account = _account(hass, household, user)
+    account = account_for(hass, household, user)
     return {
         "available": household.available,
         "members": [
@@ -217,7 +219,7 @@ def ws_household_subscribe(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Send the household now and after every change, until unsubscribed."""
-    household = _household(hass, connection, msg)
+    household = household_for(hass, connection, msg)
     if household is None:
         return
 
@@ -246,7 +248,7 @@ async def ws_member_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Add someone, or change them (with the revision the editor started from)."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -288,7 +290,7 @@ async def ws_member_delete(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Remove someone. Their calendars stay and belong to no one."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -338,7 +340,7 @@ async def ws_member_reorder(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Put people in a new order (the order on the board and in PIN prompts)."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -363,7 +365,7 @@ async def ws_shared_screen(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Mark or unmark the account this screen signs in with as a shared family screen."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -392,7 +394,7 @@ async def ws_settings_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Household-wide PIN settings (today, Shuffle the keypad)."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -415,7 +417,7 @@ async def ws_setup_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Where first-run setup picks up, and whether it is finished."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -443,7 +445,7 @@ async def ws_config_save(
 
     Display settings merge into the saved ones (a None value removes one).
     """
-    if _parent(hass, connection, msg, needs_file=False) is None:
+    if parent_for(hass, connection, msg, needs_file=False) is None:
         return
     changes = {
         key: msg[key]
@@ -464,16 +466,16 @@ def _pin_manager(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> tuple[Household, str | None] | None:
     """The household and this command's session token, when the account may manage the PIN."""
-    household = _household(hass, connection, msg)
+    household = household_for(hass, connection, msg)
     if household is None:
         return None
     if household.member(msg["member_id"]) is None:
         connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
         return None
-    account = _account(hass, household, connection.user)
-    session = _session(household, connection, msg)
+    account = account_for(hass, household, connection.user)
+    session = session_for(household, connection, msg)
     if may_manage_pin(account, session, msg["member_id"]) is None:
-        _refuse(connection, msg, account)
+        refuse(connection, msg, account)
         return None
     if not household.available:
         connection.send_error(
@@ -495,7 +497,7 @@ async def ws_pin_unlock(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Check a PIN and start parent mode (a parent) or the member's own session."""
-    household = _household(hass, connection, msg)
+    household = household_for(hass, connection, msg)
     if household is None:
         return
     member_id = msg["member_id"]
@@ -622,7 +624,7 @@ async def ws_pin_clear_lockout(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """A parent ends a pause after too many wrong tries (spec 9.6)."""
-    context = _parent(hass, connection, msg)
+    context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
@@ -640,7 +642,7 @@ def ws_pin_lock(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """End a session now (Lock, or the page was hidden)."""
-    household = _household(hass, connection, msg)
+    household = household_for(hass, connection, msg)
     if household is None:
         return
     if household.sessions.get(msg["session"], connection, _monotonic()) is not None:
@@ -657,7 +659,7 @@ def ws_pin_touch(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Someone is using the screen: keep the session open."""
-    household = _household(hass, connection, msg)
+    household = household_for(hass, connection, msg)
     if household is None:
         return
     if household.sessions.get(msg["session"], connection, _monotonic(), touch=True) is None:

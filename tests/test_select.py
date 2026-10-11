@@ -8,7 +8,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .conftest import FakeCalendar, ws_command
 
@@ -40,10 +40,12 @@ async def test_the_select_is_pinned(hass: HomeAssistant, loaded_entry: MockConfi
     assert state is not None
     assert state.state == "light"
     assert state.attributes["options"] == ["light", "dark", "automatic"]
-    assert state.attributes["friendly_name"] == "PlanaVista appearance"
+    assert state.attributes["friendly_name"] == "Household Appearance"
     registry_entry = er.async_get(hass).async_get(ENTITY_ID)
     assert registry_entry is not None
     assert registry_entry.unique_id == f"{loaded_entry.entry_id}_appearance"
+    device = dr.async_get(hass).async_get(registry_entry.device_id)
+    assert (device.name, device.manufacturer, device.model) == ("Household", "PlanaVista", "Household")
 
 
 async def test_choosing_dark_saves_it_for_every_screen(

@@ -18,6 +18,7 @@ from homeassistant.core import (
     callback,
 )
 from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -28,6 +29,7 @@ from .const import (
     DOMAIN,
     EVENT_RANGE_FUTURE_DAYS,
     EVENT_RANGE_PAST_DAYS,
+    SIGNAL_CONFIG_APPLIED,
     UPDATE_INTERVAL_SECONDS,
 )
 
@@ -317,6 +319,7 @@ async def async_apply_config(
     this function. The entry is never reloaded, so the sensors stay in place.
     """
     hass.config_entries.async_update_entry(entry, data=new_data)
+    async_dispatcher_send(hass, SIGNAL_CONFIG_APPLIED, entry)
     if entry.state is ConfigEntryState.LOADED:
         coordinator = entry.runtime_data
         coordinator.async_set_calendars(new_data.get(CONF_CALENDARS, []))

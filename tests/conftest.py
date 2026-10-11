@@ -253,3 +253,36 @@ async def ws_command(
             seen.append(reply)
         if reply.get("id") == message["id"] and reply.get("type") == "result":
             return reply
+
+
+CHORES_SCENE = "2026-10-13T16:10:00-05:00"
+
+
+@pytest.fixture
+def chores_start() -> str:
+    """When the chores fixture starts its clock (a test may parametrize another time)."""
+    return CHORES_SCENE
+
+
+@pytest.fixture
+async def chores(hass: HomeAssistant, household: Any, freezer: Any, chores_start: str) -> Any:
+    """The sample household with chores on and the sample chores (spec section 4).
+
+    The clock stands at `chores_start`: Tuesday, October 13, 2026, 4:10 PM in
+    America/Chicago, unless a test asks for another time.
+    """
+    from custom_components.planavista.chores.runtime import DATA_CHORES
+
+    from .chores_sample import IN_USE_SINCE, built, sample_activities
+
+    freezer.move_to(chores_start)
+    await hass.config.async_update(time_zone="America/Chicago")
+    runtime = hass.data[DATA_CHORES]
+    await runtime.async_set_enabled(True)
+    runtime.engine.log["active_from"] = IN_USE_SINCE  # the household has used chores since June
+    await runtime.stores.async_save("log", runtime.engine.log)
+    runtime.engine.plan["activities"] = [built(a, household.members) for a in sample_activities()]
+    await runtime.stores.async_save("plan", runtime.engine.plan)
+    runtime.async_notify()
+    await hass.async_block_till_done()
+    return runtime

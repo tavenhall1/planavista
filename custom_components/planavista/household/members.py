@@ -7,6 +7,7 @@ are when this one saves (spec section 7.8).
 from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Mapping
+from datetime import date
 import re
 from typing import Any
 import unicodedata
@@ -36,6 +37,7 @@ EDITABLE_FIELDS = (
     "my_day",
     "needs_ok_for",
     "stars",
+    "away",
 )
 
 # Records name who acted with a member id or one of these words (spec 7.6).
@@ -46,6 +48,8 @@ PALETTE: tuple[str, ...] = tuple(DEFAULT_COLORS)
 MAX_MEMBERS = len(PALETTE)
 NAME_MAX_LENGTH = 40
 EMOJI_MAX_LENGTH = 16
+AWAY_NOTE_MAX_LENGTH = 60
+MAX_AWAY_RANGES = 50
 
 
 class MemberError(ValueError):
@@ -110,6 +114,28 @@ def _checked_picture(picture: object, person: str | None) -> dict[str, Any]:
     raise MemberError("invalid_picture")
 
 
+def _checked_away(away: object) -> list[dict[str, Any]]:
+    """Away ranges (spec 8.11): first and last chore days, inclusive, with an optional note."""
+    if away is None:
+        return []
+    if not isinstance(away, list) or len(away) > MAX_AWAY_RANGES:
+        raise MemberError("invalid_away")
+    ranges = []
+    for span in away:
+        if not isinstance(span, Mapping):
+            raise MemberError("invalid_away")
+        try:
+            first = date.fromisoformat(str(span.get("from")))
+            last = date.fromisoformat(str(span.get("to")))
+        except ValueError:
+            raise MemberError("invalid_away") from None
+        note = span.get("note")
+        if last < first or (note is not None and (not isinstance(note, str) or len(note) > AWAY_NOTE_MAX_LENGTH)):
+            raise MemberError("invalid_away")
+        ranges.append({"from": first.isoformat(), "to": last.isoformat(), "note": note or None})
+    return sorted(ranges, key=lambda span: span["from"])
+
+
 def build_member(
     existing: Mapping[str, Any] | None,
     changes: Mapping[str, Any],
@@ -172,6 +198,8 @@ def build_member(
         raise MemberError("person_taken")
     member["person"] = person
     member["picture"] = _checked_picture(member.get("picture"), person)
+    if "away" in member:
+        member["away"] = _checked_away(member["away"])
     return member
 
 
