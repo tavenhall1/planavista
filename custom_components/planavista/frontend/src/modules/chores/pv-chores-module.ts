@@ -20,6 +20,9 @@ import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
 import { dayWords, historyLines, itemOptions } from './options-derive';
 import type { OptionChoice } from './pv-chore-options';
+import { InboxRow, answeredText, inboxGroups } from './inbox-derive';
+import type { ReviewDetail } from './pv-chores-inbox';
+import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorMessage } from '../../core/ws-api';
 import { chime, haptic } from './effects';
 import type { PvChoresBoard } from './pv-chores-board';
@@ -28,6 +31,8 @@ import '../../shell/pv-notice-sheet';
 import './pv-chores-board';
 import './pv-chores-people-sheet';
 import './pv-chore-options';
+import './pv-chores-inbox';
+import './pv-chores-quick-add';
 
 /** A sheet the chores screens show over themselves. */
 type ChoresSheet =
@@ -35,7 +40,9 @@ type ChoresSheet =
   | { kind: 'no_pin'; heading: string }
   | { kind: 'people'; heading: string; body?: string; people: Member[]; pick: (member: Member | null) => void }
   | { kind: 'options'; key: string; history: string[] | null; busy: boolean }
-  | { kind: 'delete'; row: RowModel };
+  | { kind: 'delete'; row: RowModel }
+  | { kind: 'inbox' }
+  | { kind: 'quick_add'; busy: boolean };
 
 /** What the last check-off toast can take back or hand to someone else. */
 interface LastCheckoff {
@@ -72,6 +79,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @state() protected _toast: Toast | null = null;
   /** Minutes since the epoch, so bands and the evening check move with the clock. */
   @state() private _minute = Math.floor(Date.now() / 60000);
+  /** Requests being answered in the inbox. */
+  @state() private _reviewing: ReadonlySet<string> = new Set();
   private _overlayOpen = false;
   private _last: LastCheckoff | null = null;
   private _clock: ReturnType<typeof setInterval> | undefined;
@@ -128,9 +137,64 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return this.services?.chores as ChoresService | undefined;
   }
 
-  /** The bar's and the parent-mode strip's buttons. */
-  moduleAction(_id: string): void {
-    // Waiting for OK and Add chore arrive with their sheets.
+  /** The bar's and the parent-mode strip's buttons: Waiting for OK and Add chore. */
+  moduleAction(id: string): void {
+    if (id === 'inbox') void this._openInbox();
+    if (id === 'add') void this._openQuickAdd();
+  }
+
+  private async _openInbox(): Promise<void> {
+    if (await this.asParent("Who's approving?")) this._sheet = { kind: 'inbox' };
+  }
+
+  private async _openQuickAdd(): Promise<void> {
+    if (await this.asParent("Who's adding a chore?")) this._sheet = { kind: 'quick_add', busy: false };
+  }
+
+  /** One answer from the inbox: its own review, attributed to the parent (spec 13.7). */
+  private async _review(detail: ReviewDetail): Promise<boolean> {
+    const { row, allow, note } = detail;
+    const api = this.service?.api;
+    if (!api || !(await this.asParent("Who's approving?"))) return false;
+    this._reviewing = new Set([...this._reviewing, row.id]);
+    try {
+      await api.review(row.id, allow ? 'allow' : 'decline', note ?? null);
+      this.showToast({ id: `review-${row.id}`, text: answeredText(row, allow, note) });
+      return true;
+    } catch (err) {
+      this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+      return false;
+    } finally {
+      const next = new Set(this._reviewing);
+      next.delete(row.id);
+      this._reviewing = next;
+    }
+  }
+
+  /** Approve all: each chore to check approved on its own, so each is attributed and stands alone. */
+  private async _approveAll(rows: InboxRow[]): Promise<void> {
+    let approved = 0;
+    for (const row of rows) {
+      if (await this._review({ row, allow: true })) approved += 1;
+      else break;
+    }
+    if (approved > 1) this.showToast({ id: `approved-${Date.now()}`, text: `Approved ${approved} chores.` });
+  }
+
+  private async _quickAdd(draft: QuickAddDraft): Promise<void> {
+    const board = this.service?.board();
+    const api = this.service?.api;
+    if (!board || !api || this._sheet?.kind !== 'quick_add') return;
+    if (!(await this.asParent("Who's adding a chore?"))) return;
+    this._sheet = { kind: 'quick_add', busy: true };
+    try {
+      await api.saveActivity(activityFrom(draft, board.today));
+      this._sheet = null;
+      this.showToast({ id: `added-${Date.now()}`, text: `Added ${draft.name.trim()}.` });
+    } catch (err) {
+      this._sheet = { kind: 'quick_add', busy: false };
+      this.showToast({ id: `add-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
   }
 
   protected willUpdate(changed: PropertyValues): void {
@@ -601,6 +665,27 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _renderSheet() {
     const sheet = this._sheet;
     if (!sheet) return this.renderSheet();
+    if (sheet.kind === 'inbox') {
+      const board = this.service?.board();
+      if (!board) return nothing;
+      const groups = inboxGroups(board.requests, inOrder(this.household?.members ?? []), board.today, this.display?.time_format ?? '12h');
+      return html`
+        <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
+          @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}
+          @pv-approve-all=${() => void this._approveAll(groups.chores)}
+          @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chores-inbox>
+      `;
+    }
+    if (sheet.kind === 'quick_add') {
+      const board = this.service?.board();
+      if (!board) return nothing;
+      return html`
+        <pv-chores-quick-add .layout=${this.layout} .people=${inOrder(this.household?.members ?? [])} .hass=${this.hass}
+          .colorOf=${this._colorOf} today=${board.today} .minutesPerStar=${board.settings.minutes_per_star} ?busy=${sheet.busy}
+          @pv-quick-add=${(e: CustomEvent<{ draft: QuickAddDraft }>) => void this._quickAdd(e.detail.draft)}
+          @pv-sheet-close=${() => { if (this._sheet?.kind === 'quick_add') this._sheet = null; }}></pv-chores-quick-add>
+      `;
+    }
     if (sheet.kind === 'options') {
       const found = this._optionsModel(sheet.key);
       if (!found) {
