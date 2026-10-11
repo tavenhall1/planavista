@@ -8,16 +8,7 @@ import {
   settingsRegistry,
   setupRegistry,
 } from '../core/settings-registry';
-
-/** The theme names Settings shows (keys as display.theme saves them). */
-const THEME_NAMES: Record<string, string> = {
-  planavista: 'Clean Light',
-  light: 'Clean Light',
-  dark: 'Deep Dark',
-  minimal: 'Minimal',
-  modern: 'Vibrant',
-  vibrant: 'Vibrant',
-};
+import { appearanceSettings, appearanceSummary } from '../core/appearance';
 
 function count(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -43,7 +34,7 @@ export const shellSettingsPages: SettingsPage[] = [
     group: 'appearance',
     order: 400,
     tag: 'pv-settings-appearance',
-    summary: ({ data }) => THEME_NAMES[data.display?.theme ?? 'light'] ?? 'Clean Light',
+    summary: ({ data }) => appearanceSummary(appearanceSettings(data.display)),
   },
   {
     id: 'pins',

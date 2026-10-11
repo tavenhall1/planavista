@@ -88,7 +88,7 @@ export class PvSetup extends LitElement {
         padding: 0 8px;
         border: none;
         background: transparent;
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         font: inherit;
         font-size: 1rem;
         cursor: pointer;

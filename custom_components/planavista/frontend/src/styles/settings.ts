@@ -47,7 +47,7 @@ export const settingsPageStyles = css`
       }
 .pill-btn:hover {
         border-color: var(--pv-accent, #6366F1);
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         background: color-mix(in srgb, var(--pv-accent, #6366F1) 5%, transparent);
       }
 .pill-btn--active {

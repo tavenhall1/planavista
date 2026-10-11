@@ -26,7 +26,6 @@ import { SessionController } from './session-controller';
 import './planavista-card-editor';
 import './pv-glance-header';
 import './pv-nav-bar';
-import './settings/theme-picker';
 import './pv-parent-strip';
 import './pv-pin-sheet';
 import './pv-notice-sheet';
@@ -173,7 +172,7 @@ export class PlanaVistaCard extends LitElement {
       }
 
       .pvc-setup-icon {
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         opacity: 0.8;
         margin-bottom: 0.5rem;
       }

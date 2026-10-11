@@ -89,8 +89,9 @@ function legacyShape(overrides: Record<string, string>): ThemeShape {
  * is missing, what 1.1.0's theme and theme_overrides mean. The same rule as
  * appearance_settings in appearance.py (tests/fixtures/appearance_cases.json).
  */
-export function appearanceSettings(display: Display | undefined | null): AppearanceSettings {
-  const d = display ?? {};
+export function appearanceSettings(display: object | undefined | null): AppearanceSettings {
+  // Any saved display will do: every key is checked as it's read.
+  const d = (display ?? {}) as Display;
   const legacy = typeof d.theme === 'string' && d.theme ? d.theme : 'planavista';
   const [pair, mode] = LEGACY_THEMES[legacy] ?? LEGACY_THEMES.planavista;
   const overrides = record(d.theme_overrides) ?? {};

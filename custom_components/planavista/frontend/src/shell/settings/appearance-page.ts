@@ -6,9 +6,9 @@ import type { HouseholdView } from '../../core/household';
 import type { HouseholdApi } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import type { PlanaVistaData } from '../../types';
-import './theme-picker';
+import './pv-appearance-editor';
 
-/** pv-settings-appearance: today's themes; milestone 3 adds Light, Dark, and Automatic. */
+/** pv-settings-appearance: Light, Dark, or Automatic, the theme, Customize, and Motion (spec 12.4). */
 export class PvSettingsAppearance extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
@@ -16,6 +16,7 @@ export class PvSettingsAppearance extends LitElement {
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String }) layout: Layout = 'landscape';
   @property({ type: String }) mode: 'settings' | 'setup' = 'settings';
+  @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
 
   static styles = css`
     :host {
@@ -25,14 +26,15 @@ export class PvSettingsAppearance extends LitElement {
 
   render() {
     return html`
-      <pv-theme-picker
+      <pv-appearance-editor
         .hass=${this.hass}
         .data=${this.data}
         .household=${this.household}
         .api=${this.api}
         .layout=${this.layout}
-        mode=${this.mode}
-      ></pv-theme-picker>
+        .drafts=${this.drafts}
+        mode="settings"
+      ></pv-appearance-editor>
     `;
   }
 }

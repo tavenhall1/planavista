@@ -68,7 +68,7 @@ describe('settings registry', () => {
       people: '2 people',
       calendars: '2 calendars',
       'calendar-options': 'Week · 12-hour',
-      appearance: 'Deep Dark',
+      appearance: 'Dark · PlanaVista',
       pins: 'Shared screen · 1 PIN',
       about: `Version ${version}`,
     });
