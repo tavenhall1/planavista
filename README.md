@@ -87,7 +87,7 @@ Setup walks you through who lives here, your calendars, and the look. No YAML re
 The card works with zero configuration, but you can override settings per-card:
 
 ```yaml
-type: custom:planavista-card
+type: custom:planavista-calendar-card
 entity: sensor.planavista_config
 
 # Optional overrides
@@ -105,7 +105,7 @@ time_format: 12h            # 12h | 24h
 first_day: sunday           # sunday | monday
 ```
 
-- `planavista-card` is the card's other name, for new dashboards. Cards made as `planavista-calendar-card` keep working.
+- `planavista-card` is the card's newer name and works from 1.2.0 on. The example uses `planavista-calendar-card`, which every version knows, so a dashboard keeps working if you ever go back to 1.1.0.
 - `modules` and `module` choose what a card shows and where it starts. Today the calendar is the only module; chores comes next.
 - `theme` with a theme's name picks the theme and still follows the household's Light, Dark, or Automatic. `light` or `dark` fixes the card to PlanaVista's light or dark version.
 - `hide_header` hides the clock and weather header. The bar with the views and Settings stays.

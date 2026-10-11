@@ -126,7 +126,7 @@ Every theme version sets the same custom properties on the card (`styles/theme-p
 | `--pv-track`, `--pv-chip`, `--pv-seg`, `--pv-seg-on` | Ring tracks, chips, a segmented control and its chosen segment |
 | `--pv-accent` | The accent as a fill (the chosen view, the main button) |
 | `--pv-accent-text` | Text on an accent fill |
-| `--pv-accent-ink` | The accent as text or a mark (links, back controls, focus rings): the same color in light, brighter in dark |
+| `--pv-accent-ink` | The accent as text or a mark (links, back controls, focus rings), at least 4.5:1 on the card: for the built-in themes the same color in light and brighter in dark; a custom accent is darkened or brightened just enough |
 | `--pv-accent-tint`, `--pv-accent-tint-ink` | A pale accent fill and its text |
 | `--pv-warn-bg`, `--pv-warn-ink` | Amber: time pressure, hard-to-read warnings |
 | `--pv-bad-bg`, `--pv-bad-ink`, `--pv-danger` | Red: overdue, sent back, destructive |
@@ -324,7 +324,7 @@ Motion is part of the product, Apple style, in every module.
 Settings are saved for the whole household; a card's YAML can override some for that card:
 
 ```yaml
-type: custom:planavista-card
+type: custom:planavista-calendar-card
 default_view: day
 modules: [calendar]
 theme: minimal
@@ -332,7 +332,7 @@ hide_weather: true
 hide_header: false
 ```
 
-- `planavista-card` is the card's newer name; `planavista-calendar-card` keeps working.
+- `planavista-card` is the card's newer name, from 1.2.0 on. Examples and the card picker use `planavista-calendar-card`, which 1.1.0 also knows, so stepping back a release keeps dashboards working.
 - `theme`: `light` or `dark` fixes the card to PlanaVista Light or Dark; a theme name (`planavista`, `minimal`, `vibrant`) picks the theme and follows the household's Light, Dark, or Automatic.
 - `hide_header` hides the clock and weather header; the bar stays.
 - Anything not set in YAML follows the household's settings.
