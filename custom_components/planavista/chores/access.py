@@ -61,6 +61,7 @@ MESSAGES: dict[str, str] = {
     "invalid_due": "Pick today or a later day.",
     "nothing_to_change": "Nothing to change.",
     "not_open": "That chore isn't open anymore.",
+    "not_missed": "That chore wasn't missed, or it was already excused.",
     "not_for_member": "That reward isn't one they can get.",
     "not_enough_stars": "Not enough stars yet.",
     "reason_required": "Add a reason.",

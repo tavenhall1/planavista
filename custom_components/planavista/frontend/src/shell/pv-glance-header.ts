@@ -4,7 +4,9 @@ import { defineElement } from '../utils/define';
 import { formatClockParts } from '../utils/date-utils';
 import { weatherIcon } from '../utils/weather-icons';
 import type { Layout } from '../core/layout';
+import type { GlanceChip } from '../core/module-registry';
 import type { WeatherCondition } from '../types';
+import '../core/pv-ring';
 
 /** The part of a weather entity's state the header shows. */
 export interface HeaderWeather {
@@ -15,9 +17,12 @@ export interface HeaderWeather {
 /**
  * pv-glance-header: the clock, the date, and the weather, laid out for the
  * card's own size (spec 12.2): one row in landscape, a lock-screen clock in
- * portrait, a compact row on a phone. Glance chips arrive with chores.
+ * portrait, a compact row on a phone. Modules add glance chips ("9 of 17
+ * chores done today"): the main one beside the weather in landscape, all of
+ * them under the clock in portrait, the main one on a phone.
  *
  * @fires hass-more-info - { entityId } when the weather is tapped
+ * @fires pv-open - the chip's target (a module and view) when a chip is tapped
  */
 export class PvGlanceHeader extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
@@ -27,6 +32,8 @@ export class PvGlanceHeader extends LitElement {
   @property({ attribute: false }) weatherEntity = '';
   /** Today's high and low from the card's forecast. */
   @property({ attribute: false }) today: { high: number; low: number | null } | null = null;
+  /** The modules' glance chips. */
+  @property({ attribute: false }) chips: GlanceChip[] = [];
 
   /** Minutes since the epoch; changing it is what re-renders the clock. */
   @state() private _minute = Math.floor(Date.now() / 60000);
@@ -157,6 +164,67 @@ export class PvGlanceHeader extends LitElement {
       line-height: 1;
     }
 
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .left {
+      justify-self: start;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    :host([layout='portrait']) .chips {
+      padding: 0 20px 14px;
+    }
+
+    :host([layout='phone']) .chips {
+      padding: 0 14px 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .chip span.pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 32px;
+      padding: 0 12px 0 8px;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--pv-header-text, #1A1B1E) 7%, transparent);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .chip span.pill.plain {
+      padding-left: 12px;
+    }
+
+    .chip:focus-visible {
+      outline: none;
+    }
+
+    .chip:focus-visible span.pill {
+      outline: 2px solid var(--pv-accent-ink, var(--pv-accent, #5B5BD6));
+      outline-offset: 2px;
+    }
+
     /* Phone: one compact row. */
     :host([layout='phone']) .row {
       display: flex;
@@ -205,12 +273,14 @@ export class PvGlanceHeader extends LitElement {
     const now = new Date();
     const { time, ampm, date } = formatClockParts(now, this.timeFormat);
     const clock = html`<span class="time">${time}${ampm ? html`<span class="ampm muted">${ampm}</span>` : nothing}</span>`;
+    const primary = this.chips.filter(chip => chip.primary);
     if (this.layout === 'portrait') {
       return html`
         <div class="row">
           <div class="clock">${clock}<div class="date">${date}</div></div>
           ${this._weather(40, 'highlow')}
         </div>
+        ${this._chips(this.chips)}
       `;
     }
     if (this.layout === 'phone') {
@@ -220,15 +290,39 @@ export class PvGlanceHeader extends LitElement {
           <div class="clock">${clock}<span class="date muted">${short}</span></div>
           ${this._weather(24, 'none')}
         </div>
+        ${this._chips(primary)}
       `;
     }
     return html`
       <div class="row">
-        ${this._weather(32, 'condition')}
+        <div class="left">${this._weather(32, 'condition')}${this._chips(primary)}</div>
         <div class="date">${date}</div>
         ${clock}
       </div>
     `;
+  }
+
+  private _chips(chips: GlanceChip[]) {
+    if (chips.length === 0) return nothing;
+    return html`
+      <div class="chips">
+        ${chips.map(chip => html`
+          <button type="button" class="chip" @click=${() => this._openChip(chip)}>
+            <span class="pill ${chip.progress === undefined ? 'plain' : ''}">
+              ${chip.progress !== undefined ? html`
+                <pv-ring size="18" .progress=${chip.progress} color="var(--pv-accent, #5B5BD6)" ?closed=${chip.progress >= 1}></pv-ring>
+              ` : nothing}
+              ${chip.text}
+            </span>
+          </button>
+        `)}
+      </div>
+    `;
+  }
+
+  private _openChip(chip: GlanceChip): void {
+    if (!chip.open) return;
+    this.dispatchEvent(new CustomEvent('pv-open', { detail: chip.open, bubbles: true, composed: true }));
   }
 
   private _weather(size: number, detail: 'condition' | 'highlow' | 'none') {

@@ -126,6 +126,35 @@ def ws_chores_week(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
 
 
 @websocket_api.websocket_command({
+    vol.Required("type"): "planavista/chores/day", vol.Required("date"): cv.date,
+})
+@callback
+def ws_chores_day(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """One chore day for the Week view's day sheet: what was due, done, missed, or excused."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None:
+        return
+    connection.send_result(msg["id"], runtime.engine.day_view(runtime.now(), msg["date"]))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "planavista/chores/history", vol.Required("chore"): str, vol.Required("member"): str,
+})
+@callback
+def ws_chores_history(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """The options sheet's History: the streak, recent check-offs, and when it usually gets done."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None:
+        return
+    try:
+        result = runtime.engine.history(runtime.now(), msg["chore"], msg["member"])
+    except ChoreError as err:
+        connection.send_error(msg["id"], err.code, message(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({
     vol.Required("type"): "planavista/chores/complete",
     vol.Required("occurrence"): str,
     vol.Optional("done_by"): str,
@@ -249,6 +278,25 @@ async def ws_chores_override(hass: HomeAssistant, connection: websocket_api.Acti
     ))
     if out is not None:
         connection.send_result(msg["id"], out.data)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "planavista/chores/excuse_missed",
+    vol.Required("occurrence"): str,
+    vol.Optional("note"): vol.Any(None, str),
+    SESSION: str,
+})
+@websocket_api.async_response
+async def ws_chores_excuse_missed(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """A parent excuses a check-off already counted as missed, so its day and the streak hold."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None or (context := parent_for(hass, connection, msg, needs_file=False)) is None:
+        return
+    out = await _apply(connection, msg, runtime, lambda e, now: e.excuse_missed(
+        now, key=msg["occurrence"], by=context[1], note=msg.get("note"),
+    ))
+    if out is not None:
+        connection.send_result(msg["id"], {"result": out.result, **out.data})
 
 
 @websocket_api.websocket_command({
@@ -412,6 +460,9 @@ async def ws_stars_award(hass: HomeAssistant, connection: websocket_api.ActiveCo
 CHORES_COMMANDS = (
     ws_chores_subscribe,
     ws_chores_week,
+    ws_chores_day,
+    ws_chores_history,
+    ws_chores_excuse_missed,
     ws_chores_complete,
     ws_chores_undo,
     ws_chores_request,

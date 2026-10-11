@@ -1,8 +1,8 @@
-import { LitElement, html, css, nothing } from 'lit';
-import { property } from 'lit/decorators.js';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
-import type { Layout } from '../core/layout';
-import type { ModuleView } from '../core/module-registry';
+import { type Layout, barFits } from '../core/layout';
+import type { ModuleAction, ModuleView } from '../core/module-registry';
 
 /** A module as the switcher shows it. */
 export interface BarModule {
@@ -19,14 +19,20 @@ export interface BarModule {
  * @fires pv-module-select - { id } of the module tapped
  * @fires pv-view-select - { id } of the view tapped
  * @fires pv-open-settings - the gear
+ * @fires pv-module-action - { id } of one of the module's buttons (⏳ 2 waiting for OK, + Add chore)
  */
 export class PvNavBar extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** The controls don't fit on one row (a phone with two modules), so the views get their own. */
+  @state() private _wrapped = false;
+  private _observer?: ResizeObserver;
   @property({ attribute: false }) modules: BarModule[] = [];
   @property({ attribute: false }) activeModule = '';
   @property({ attribute: false }) views: ModuleView[] = [];
   @property({ attribute: false }) activeView = '';
   @property({ type: Boolean }) canOpenSettings = false;
+  /** The module's own buttons, between its views and the gear. */
+  @property({ attribute: false }) actions: ModuleAction[] = [];
 
   static styles = css`
     :host {
@@ -146,6 +152,43 @@ export class PvNavBar extends LitElement {
       color: var(--pv-text, #1A1B1E);
     }
 
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .action {
+      min-height: 48px;
+      flex-shrink: 0;
+    }
+
+    .action > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid var(--pv-border, #E7E7E3);
+      font-size: 0.875rem;
+      font-weight: 650;
+      color: var(--pv-text, #1A1B1E);
+      white-space: nowrap;
+    }
+
+    .action.act > span {
+      border-color: transparent;
+      background: var(--pv-accent-tint, #EEEEFC);
+      color: var(--pv-accent-tint-ink, #3B3BB0);
+    }
+
+    .glyph {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
     .gear {
       width: 48px;
       height: 48px;
@@ -171,7 +214,54 @@ export class PvNavBar extends LitElement {
       color: var(--pv-text-secondary, #5F6670);
       --mdc-icon-size: 22px;
     }
+
+    /* Two rows when one won't hold everything: the switcher, buttons, and gear, then the views. */
+    :host([wrapped]) nav {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+
+    :host([wrapped]) .views {
+      order: 1;
+      flex: 1 0 100%;
+      justify-content: space-around;
+      overflow-x: visible;
+      margin-left: 0;
+    }
   `;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._observer = new ResizeObserver(() => this._measure());
+    this._observer.observe(this);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._observer?.disconnect();
+  }
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    if (!changed.has('_wrapped')) this._measure();
+    this.toggleAttribute('wrapped', this._wrapped);
+  }
+
+  /** Whether everything fits on one row at its natural width; the views' buttons never shrink, so this is stable. */
+  private _measure(): void {
+    const nav = this.renderRoot.querySelector('nav');
+    if (!nav || !nav.clientWidth) return;
+    const style = getComputedStyle(nav);
+    const available = nav.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+    const gap = parseFloat(style.columnGap) || 12;
+    const views = [...this.renderRoot.querySelectorAll<HTMLElement>('.views .view')];
+    const viewsWidth = views.reduce((sum, view) => sum + view.offsetWidth, 0) + 2 * Math.max(0, views.length - 1);
+    const others = [...nav.children]
+      .filter(child => !child.classList.contains('views'))
+      .map(child => (child as HTMLElement).offsetWidth);
+    const wrapped = !barFits([...others, viewsWidth], gap, available);
+    if (wrapped !== this._wrapped) this._wrapped = wrapped;
+  }
 
   render() {
     return html`
@@ -198,6 +288,19 @@ export class PvNavBar extends LitElement {
             </button>
           `)}
         </div>
+        ${this.actions.length ? html`
+          <div class="actions">
+            ${this.actions.map(action => {
+              const text = this.layout === 'phone' && action.short !== undefined ? action.short : action.label;
+              return html`
+                <button type="button" class="action ${action.tone === 'act' ? 'act' : ''}" aria-label=${action.label}
+                  @click=${() => this._fire('pv-module-action', { id: action.id })}>
+                  <span>${action.glyph ? html`<span class="glyph" aria-hidden="true">${action.glyph}</span>` : nothing}${text}</span>
+                </button>
+              `;
+            })}
+          </div>
+        ` : nothing}
         ${this.canOpenSettings ? html`
           <button type="button" class="gear" aria-label="Settings" title="Settings"
             @click=${this._openSettings}>

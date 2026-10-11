@@ -143,7 +143,7 @@ def test_summaries_record_the_day() -> None:
     assert summary | {"missed": None, "chores": None} == {
         "member": "dana", "period": "day:2026-10-12", "due": 4, "done": 2, "pending": 0,
         "minutes_due": 35.0, "minutes_done": 10.0, "minutes_pending": 0.0, "missed": None,
-        "carried": [], "excused": [], "away": False, "closed": False, "chores": None,
+        "carried": [], "excused": [], "open": [], "away": False, "closed": False, "chores": None,
     }
     # The check-off still waiting at the end of the day was approved before the summary.
     assert summary["missed"] == ["set_the_table|dana|day:2026-10-12|0", "tidy_toys|dana|day:2026-10-12|0"]

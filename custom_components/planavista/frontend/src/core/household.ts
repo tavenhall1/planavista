@@ -1,5 +1,7 @@
 /** Household members and accounts as the card receives them (planavista/household/subscribe). */
 
+import { matchedInk } from './color';
+
 export type AgeGroup = 'young_child' | 'older_child' | 'teen' | 'adult';
 export type Role = 'parent' | AgeGroup;
 export type Picture = { initial: true } | { emoji: string } | { person: true };
@@ -176,4 +178,13 @@ export function pictureOf(
     if (url) return { kind: 'photo', url };
   }
   return { kind: 'initial', text: initialOf(member.name) };
+}
+
+/**
+ * Someone's color for the mode (spec 12.4): as chosen in light; in dark,
+ * the dark color they picked, or one Matched from it (brighter, same hue).
+ */
+export function memberColor(member: Pick<Member, 'color' | 'color_dark'>, mode: 'light' | 'dark'): string {
+  if (mode === 'light') return member.color;
+  return member.color_dark || matchedInk(member.color);
 }

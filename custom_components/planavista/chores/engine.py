@@ -9,7 +9,7 @@ so tests can run months in milliseconds. Nothing here imports Home Assistant.
 """
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
@@ -36,8 +36,9 @@ from .occurrences import (
     visible_on,
     with_overrides,
 )
-from .periods import BANDS, Clock, WeekRule, parse_clock
+from .periods import BANDS, WEEKDAY_CODES, Clock, WeekRule, parse_clock
 from .recurrence import instances, last_instance, parse_rule
+from .status import describe
 
 AUTO = "auto"
 RETENTION = timedelta(days=90)
@@ -45,8 +46,8 @@ REPEAT_WINDOW = timedelta(seconds=60)
 CREDITED = ("done", "pending")
 OPEN = ("open", "sent_back")
 SECTIONS = ("overdue", "today", "week")
-WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-MONTH_NAMES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+HISTORY_WEEKS = 6
+RECENT_REDEMPTIONS = 5
 MAX_UNTIL_DAYS = 60
 EVENT_TYPES = ("completed", "approved", "sent_back", "undone", "missed", "redeemed")
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -117,13 +118,6 @@ def _day(value: str) -> date:
 
 def _at(value: str) -> datetime:
     return datetime.fromisoformat(value)
-
-
-def short_day(day: date, today: date) -> str:
-    """"Mon" within a week of today, otherwise "Oct 3" (for to-do descriptions)."""
-    if abs((day - today).days) <= 6:
-        return WEEKDAY_NAMES[day.weekday()]
-    return f"{MONTH_NAMES[day.month - 1]} {day.day}"
 
 
 def needs_ok(doer: Mapping[str, Any], activity: Mapping[str, Any] | None) -> bool:
@@ -733,23 +727,7 @@ class ChoresEngine:
 
     def description(self, item: Item, today: date) -> str | None:
         """The to-do item's description: what the status map would say (spec 10.3)."""
-        if item.status == "pending":
-            return "Waiting for a parent's OK"
-        if item.status == "sent_back":
-            note = (item.completion or {}).get("review", {}) or {}
-            return f"Sent back: {note['note']}" if note.get("note") else "Sent back"
-        if item.status == "done":
-            return None
-        if item.overdue_since:
-            return f"Overdue since {short_day(item.overdue_since, today)}"
-        if item.moved_from:
-            return f"From {short_day(item.moved_from, today)}"
-        occ = item.occ
-        if occ.dated and occ.due is not None:
-            return f"Due {short_day(self.clock.due_day(occ.due), today)}"
-        if item.section == "week":
-            return "This month" if occ.window == "month" else "This week"
-        return None
+        return describe(self.item_view(item, today), today)
 
     def todo_items(
         self, member_id: str, now: datetime, items: Mapping[str, list[Item]] | None = None
@@ -795,6 +773,7 @@ class ChoresEngine:
         week_items = self._week_items(week, index, {day: by_member})
         members: dict[str, Any] = {}
         household = {"due": 0, "done": 0, "pending": 0}
+        week_stars = self._stars_since(clock.week_start(today))
         for member_id in self.member_ids():
             found = self._sorted(by_member.get(member_id, []), band)
             counted = [i for i in found if i.counted]
@@ -817,6 +796,7 @@ class ChoresEngine:
                 "streak": self.streak(member_id, now, found if day == today else None),
                 "week_streak": self.week_streak(member_id, now),
                 "stars": self.balance(member_id),
+                "week_stars": week_stars.get(member_id, 0),
                 "chore_minutes": self.chore_minutes(member_id),
                 "away": dict(away) if away else None,
             }
@@ -837,6 +817,7 @@ class ChoresEngine:
             "settings": dict(self.settings),
             "chores": [dict(a) for a in self.plan["activities"]],
             "rewards": [dict(r) for r in self.rewards["rewards"]],
+            "recent_redemptions": self.recent_redemptions(),
             "needs_a_look": self.needs_a_look(),
         }
 
@@ -867,9 +848,12 @@ class ChoresEngine:
                         "date": d.isoformat(), "kind": "past", "away": bool(away),
                         **(
                             {key: summary.get(key) for key in ("due", "done", "pending", "closed")}
-                            | {"missed": len(summary.get("missed", []))}
+                            | {
+                                "missed": len(summary.get("missed", [])),
+                                "missed_items": [self._past_item(k, "missed") for k in summary.get("missed", [])],
+                            }
                             if summary
-                            else {"due": None, "done": None, "pending": None, "closed": None, "missed": 0}
+                            else {"due": None, "done": None, "pending": None, "closed": None, "missed": 0, "missed_items": []}
                         ),
                     })
                     continue
@@ -910,6 +894,137 @@ class ChoresEngine:
                          if _day(span["to"]) >= week and _day(span["from"]) < end],
             }
         return {"week": {"start": week.isoformat(), "end": end.isoformat()}, "today": today.isoformat(), "members": members}
+
+    def _stars_since(self, first: date) -> dict[str, int]:
+        """Stars each member earned by doing chores from chore day `first` on (the week's sticker strip).
+
+        The ledger only grows, in time order, so this reads it from the end.
+        """
+        earned: dict[str, int] = defaultdict(int)
+        for entry in reversed(self.rewards["ledger"]):
+            if self._day_of(entry.get("at")) < first:
+                break
+            if entry.get("reason") in ("chore", "undo"):
+                earned[entry["member"]] += int(entry["delta"])
+        return {member: max(0, stars) for member, stars in earned.items()}
+
+    def recent_redemptions(self) -> list[dict[str, Any]]:
+        """The last rewards given, newest first, with who approved them (spec 13.6)."""
+        given = [r for r in self.rewards["redemptions"] if r.get("state") == "given"]
+        given.sort(key=lambda r: _at((r.get("review") or {}).get("at") or r["at"]), reverse=True)
+        result = []
+        for r in given[:RECENT_REDEMPTIONS]:
+            reward = self.reward(r["reward"])
+            review = r.get("review") or {}
+            result.append({
+                "id": r["id"], "member": r["member"], "reward": r["reward"],
+                "name": reward["name"] if reward else r["reward"], "cost": r["cost"],
+                "at": review.get("at") or r["at"], "by": review.get("by"),
+            })
+        return result
+
+    def history(self, now: datetime, chore_id: str, member_id: str) -> dict[str, Any]:
+        """The options sheet's History (spec 13.3): the streak, recent check-offs, and when it usually gets done."""
+        activity = self.activity(chore_id)
+        if activity is None:
+            raise ChoreError("unknown_chore")
+        if self.member(member_id) is None:
+            raise ChoreError("unknown_member")
+        clock = self.clock
+        done = sorted(
+            (c for c in self.log["completions"]
+             if c.get("chore") == chore_id and c.get("member") == member_id and c.get("state") in CREDITED),
+            key=lambda c: _at(c["at"]),
+        )
+        this_week = clock.week_start(self.today(now))
+        done_weeks = {clock.week_start(self._day_of(c["at"])) for c in done}
+        begins = self.generator().begins(activity, member_id)
+        weeks = [clock.week_start(this_week - timedelta(days=7 * n)) for n in range(1, HISTORY_WEEKS + 1)]
+        weeks = [w for w in weeks if clock.week_end(w) > begins]
+        daily = activity.get("schedule") == "plan" and (activity.get("minimum") or {}).get("per") == "day"
+        if daily:
+            streak = {"days": self.chore_streak(member_id, chore_id, now)}
+        else:
+            summaries = self._summaries(member_id, "week")
+            count = 0
+            week = clock.week_start(this_week - timedelta(days=1))
+            while clock.week_end(week) > begins:
+                summary = summaries.get(week) or {}
+                late = (summary.get("missed") or []) + (summary.get("carried") or [])
+                if week not in done_weeks or any(key.startswith(f"{chore_id}|") for key in late):
+                    break
+                count += 1
+                week = clock.week_start(week - timedelta(days=1))
+            streak = {"weeks": count}
+        bands = Counter(clock.band(_at(c["at"])) for c in done)
+        days = Counter(WEEKDAY_CODES[self._day_of(c["at"]).weekday()] for c in done)
+        return {
+            "chore": chore_id,
+            "member": member_id,
+            "streak": streak,
+            "recent": [
+                {"at": c["at"], "done_by": c["done_by"], "state": c["state"], "occurrence": c["occurrence"]}
+                for c in reversed(done[-5:])
+            ],
+            "weeks": {"done": sum(1 for w in weeks if w in done_weeks), "of": len(weeks)},
+            "usual": {
+                "band": bands.most_common(1)[0][0] if bands else None,
+                "day": days.most_common(1)[0][0] if len(done) >= 3 and not daily else None,
+            },
+        }
+
+    def day_view(self, now: datetime, day: date) -> dict[str, Any]:
+        """One chore day for the Week view's day sheet (spec 13.5).
+
+        A past day comes from the log and that day's summaries (history stays
+        true); today and later days are worked out as they stand.
+        """
+        today = self.today(now)
+        members: dict[str, Any] = {}
+        if day >= today:
+            found = self.items(now, day)
+            for member_id in self.member_ids():
+                items = [i for i in found.get(member_id, []) if i.counted]
+                members[member_id] = {
+                    "items": [self.item_view(i, day) for i in items],
+                    "summary": None,
+                    "away": away_on(self.member(member_id) or {}, day) is not None,
+                }
+            return {"date": day.isoformat(), "kind": "today" if day == today else "future", "members": members}
+        missed_later = {k for s in self.log["summaries"] for k in s.get("missed") or []}
+        for member_id in self.member_ids():
+            summary = self._summaries(member_id, "day").get(day)
+            items: list[dict[str, Any]] = []
+            for c in self.log["completions"]:
+                if c.get("member") == member_id and c.get("state") in CREDITED and self._day_of(c["at"]) == day:
+                    items.append(self._past_item(c["occurrence"], c["state"], done_by=c["done_by"], at=c["at"]))
+            if summary:
+                for key in summary.get("missed") or []:
+                    items.append(self._past_item(key, "missed"))
+                for key in summary.get("carried") or []:
+                    items.append(self._past_item(key, "carried"))
+                for key in summary.get("excused") or []:
+                    items.append(self._past_item(key, "excused"))
+                # A chore that slipped its day: missed once its week ended, or not done that day.
+                for key in summary.get("open") or []:
+                    items.append(self._past_item(key, "missed" if key in missed_later else "open"))
+            members[member_id] = {
+                "items": items,
+                "summary": (
+                    {k: summary.get(k) for k in ("due", "done", "pending", "closed")} if summary else None
+                ),
+                "away": bool(summary and summary.get("away")),
+            }
+        return {"date": day.isoformat(), "kind": "past", "members": members}
+
+    def _past_item(self, key: str, status: str, **extra: Any) -> dict[str, Any]:
+        parsed = parse_key(key)
+        chore = parsed[0] if parsed else key
+        activity = self.activity(chore)
+        return {
+            "key": key, "chore": chore, "name": activity["name"] if activity else chore,
+            "icon": activity.get("icon") if activity else None, "status": status, **extra,
+        }
 
     def needs_a_look(self) -> list[dict[str, Any]]:
         """Chores that wait off the board because nobody is assigned (spec 7.9, 15.5)."""
@@ -1247,6 +1362,66 @@ class ChoresEngine:
             )
         self._finish_if_done(self.activity(chore), now, out)
         return out
+
+    def excuse_missed(self, now: datetime, *, key: str, by: str, note: str | None = None) -> Outcome:
+        """Excuse a check-off already counted as missed (a sick day noticed later, spec 13.5).
+
+        Every summary that lists it as missed, or as still open on a day that counted it (a
+        make-up chore that slipped its day), stops counting it, so that day's ring, the week,
+        and the streak hold. A day that never counted it (a weekly chore missed at the week's
+        end) only lists it as excused.
+        """
+        if not any(key in (s.get("missed") or []) for s in self.log["summaries"]):
+            raise ChoreError("not_missed")
+        occ = self._past_occurrence(key)
+        parsed = parse_key(key)
+        chore = parsed[0] if parsed else None
+        for summary in self.log["summaries"]:
+            missed = summary.get("missed") or []
+            still_open = summary.get("open") or []
+            if key not in missed and key not in still_open:
+                continue
+            period = str(summary.get("period", ""))
+            counted = (
+                not period.startswith("day:")
+                or key in still_open
+                or (occ is not None and counted_on(occ, _day(period[4:]), self.clock))
+            )
+            summary["missed"] = [k for k in missed if k != key]
+            if "open" in summary:
+                summary["open"] = [k for k in still_open if k != key]
+            summary["excused"] = [*(summary.get("excused") or []), key]
+            if counted:
+                self._uncount(summary, chore, occ.credit_minutes if occ else None)
+        self.log["overrides"].append(
+            {"occurrence": key, "excused": True, "note": note, "late": True, "by": by, "at": self._stamp(now)}
+        )
+        return Outcome("excused", {"occurrence": key}, changed={"log"})
+
+    @staticmethod
+    def _uncount(summary: dict[str, Any], chore: str | None, minutes: float | None) -> None:
+        """Take one excused occurrence out of a summary's counts, and work out again whether it closed."""
+        summary["due"] = max(0, int(summary.get("due", 0)) - 1)
+        if minutes is not None:
+            summary["minutes_due"] = round(max(0.0, float(summary.get("minutes_due", 0)) - minutes), 2)
+        tally = (summary.get("chores") or {}).get(chore)
+        if tally:
+            tally["due"] = max(0, tally["due"] - 1)
+        if str(summary.get("period", "")).startswith("week:"):
+            summary["closed"] = summary["due"] > 0 and not summary.get("missed") and not summary.get("carried")
+        else:
+            credited = int(summary.get("done", 0)) + int(summary.get("pending", 0))
+            summary["closed"] = summary["due"] > 0 and credited >= summary["due"]
+
+    def _past_occurrence(self, key: str) -> Occurrence | None:
+        """An occurrence worked out again from its key, with its overrides (None once its chore is gone)."""
+        parsed = parse_key(key)
+        activity = self.activity(parsed[0]) if parsed else None
+        gen = self.generator()
+        occ = gen.from_key(activity, key) if activity else None
+        if occ is None:
+            return None
+        return with_overrides(occ, self._index().overrides.get(key, {}), set(self.member_ids()), gen.clock)
 
     # Writing: the plan ---------------------------------------------------------------
 
@@ -1592,6 +1767,12 @@ class ChoresEngine:
             "missed": missed,
             "carried": carried,
             "excused": [i.occ.key for i in counted if i.status == "excused"],
+            # Counted that day and still to do when it ended, without being missed or carried that day
+            # (a make-up chore that slipped its day): what else kept the ring open.
+            "open": [
+                i.occ.key for i in counted
+                if i.status in OPEN and i.occ.key not in missed and i.occ.key not in carried
+            ],
             "away": away_on(member, day) is not None,
             "closed": bool(due) and all(i.status in CREDITED for i in due),
             "chores": chores,

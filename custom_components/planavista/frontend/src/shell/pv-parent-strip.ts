@@ -4,6 +4,7 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { buttonStyles } from '../styles/shared';
 import { Member } from '../core/household';
+import type { ModuleAction } from '../core/module-registry';
 import '../core/pv-member-avatar';
 import '../core/pv-session-ring';
 
@@ -12,11 +13,14 @@ import '../core/pv-session-ring';
  * Lock (spec 9.4). It takes on the parent's color and picture.
  *
  * @fires pv-lock - Lock was tapped
+ * @fires pv-strip-action - { id } of a module's button (+ Add chore)
  */
 export class PvParentStrip extends LitElement {
   @property({ attribute: false }) member?: Member;
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ type: Number }) endsAt = 0;
+  /** The module's buttons, such as + Add chore. */
+  @property({ attribute: false }) actions: ModuleAction[] = [];
 
   static styles = [
     buttonStyles,
@@ -52,9 +56,14 @@ export class PvParentStrip extends LitElement {
         color: var(--pv-text-secondary, #6B7280);
       }
 
-      .lock {
+      .lock,
+      .action {
         min-width: 48px;
         min-height: 48px;
+      }
+
+      .action {
+        font-weight: 650;
       }
     `,
   ];
@@ -67,9 +76,18 @@ export class PvParentStrip extends LitElement {
         <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>
         <span class="who">${member.name} <span class="mode">· parent mode</span></span>
         <pv-session-ring .endsAt=${this.endsAt} color=${member.color}></pv-session-ring>
+        ${this.actions.map(action => html`
+          <button class="pv-btn pv-btn-primary action" type="button" @click=${() => this._action(action.id)}>
+            ${action.glyph ? `${action.glyph} ` : ''}${action.label}
+          </button>
+        `)}
         <button class="pv-btn pv-btn-ghost lock" type="button" @click=${this._lock}>Lock</button>
       </div>
     `;
+  }
+
+  private _action(id: string): void {
+    this.dispatchEvent(new CustomEvent('pv-strip-action', { detail: { id }, bubbles: true, composed: true }));
   }
 
   private _lock(): void {

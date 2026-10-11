@@ -30,9 +30,10 @@ from .members import (
     public_member,
     remove_member,
     reorder_members,
+    set_prefs,
     update_member,
 )
-from .permissions import Account, SessionView, may_manage_pin, parent_level
+from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
     SESSION_IDLE_SECONDS,
     after_failure,
@@ -67,6 +68,7 @@ ERROR_MESSAGES = {
     "last_parent_pin": "A shared screen needs at least one parent with a PIN.",
     "needs_parent_pin": "Set a PIN for a parent first, so someone can open Settings here.",
     "invalid_away": "Pick the first and last days away.",
+    "invalid_goal": "Pick a reward to save up for.",
 }
 
 MEMBER_FIELDS = vol.Schema(
@@ -275,6 +277,55 @@ async def ws_member_save(
     await household.async_save()
     connection.send_result(
         msg["id"], {"member": public_member(member, household.pins.get(member["id"]))}
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "planavista/household/member/prefs",
+        vol.Required("member_id"): str,
+        vol.Optional("my_day"): str,
+        vol.Optional("goal"): vol.Any(None, str),
+        vol.Optional("session"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_member_prefs(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """A person's own choices (their My day style, their goal): member-level, like checking off."""
+    household = household_for(hass, connection, msg)
+    if household is None:
+        return
+    if not household.available:
+        connection.send_error(msg["id"], "unavailable", "Update PlanaVista to change people and PINs.")
+        return
+    member_id = msg["member_id"]
+    member = household.member(member_id)
+    if member is None:
+        connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
+        return
+    account = account_for(hass, household, connection.user)
+    session = session_for(household, connection, msg)
+    if member_level(account, session, member_id, member_id in household.pins) is None:
+        if account.screen_rules:
+            connection.send_error(
+                msg["id"], "pin_required", f"{member.get('name', member_id)}'s PIN or a parent's is needed."
+            )
+        else:
+            refuse(connection, msg, account)
+        return
+    try:
+        members, changed = set_prefs(
+            household.members, member_id, {key: msg[key] for key in ("my_day", "goal") if key in msg}
+        )
+    except MemberError as err:
+        _member_error(connection, msg, err)
+        return
+    household.members = members
+    await household.async_save()
+    connection.send_result(
+        msg["id"], {"member": public_member(changed, household.pins.get(member_id))}
     )
 
 
@@ -671,6 +722,7 @@ def ws_pin_touch(
 HOUSEHOLD_COMMANDS = (
     ws_household_subscribe,
     ws_member_save,
+    ws_member_prefs,
     ws_member_delete,
     ws_member_reorder,
     ws_shared_screen,

@@ -9,8 +9,23 @@ import { getPlanaVistaData } from '../utils/ha-utils';
 import { todayHighLow } from '../utils/weather-subscription';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
 import { resolveDisplay } from '../core/display';
-import { ModuleDefinition, ResolvedModules, initialModuleView, moduleRegistry, resolveModules } from '../core/module-registry';
-import { SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
+import {
+  GlanceChip,
+  ModuleAction,
+  ModuleContext,
+  ModuleDefinition,
+  ModuleElement,
+  ModuleService,
+  OpenTarget,
+  ResolvedModules,
+  ServiceHost,
+  initialModuleView,
+  moduleRegistry,
+  resolveModules,
+} from '../core/module-registry';
+import { HouseholdView, Member, SettingsAccess, parentsWithPins, settingsAccess } from '../core/household';
+import type { PinGate } from '../core/pin-gate';
+import type { Session } from '../core/session';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { AppearanceEdits } from '../core/appearance-edits';
 import { appearanceDependencies, sunOf } from '../core/appearance-deps';
@@ -32,9 +47,10 @@ import './pv-notice-sheet';
 import './settings/pv-settings';
 import './setup/pv-setup';
 
-/** A sheet the card shows over everything: a parent's PIN, or why there is no way in. */
+/** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
   | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue'; heading: string }
+  | { kind: 'pin'; purpose: 'module'; heading: string; members: Member[]; resolve: (unlocked: boolean) => void }
   | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
@@ -44,7 +60,7 @@ const DEFAULT_ENTITY = 'sensor.planavista_config';
  * Settings, applies the theme, and hosts the modules registered in
  * core/module-registry (today, the calendar).
  */
-export class PlanaVistaCard extends LitElement {
+export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config?: PlanaVistaCardConfig;
   @state() private _wizardOpen = false;
@@ -60,6 +76,10 @@ export class PlanaVistaCard extends LitElement {
   @state() private _views: Record<string, string> = {};
   /** The module the switcher picked; null for the card's first. */
   @state() private _moduleId: string | null = null;
+  /** Where a glance chip or a ring sent the card last (a module and view, perhaps one person). */
+  @state() private _openTarget: OpenTarget | null = null;
+  /** Bumped whenever a module's service has news, so the modules and the header redraw. */
+  @state() private _serviceRevision = 0;
 
   private _household = new HouseholdController(this);
   private _session = new SessionController(this, () => this._api);
@@ -92,9 +112,52 @@ export class PlanaVistaCard extends LitElement {
     token => this._session.ended(token),
   );
 
+  /** Each module's card-wide state (the chores feed), made once per card. */
+  private readonly _services: Record<string, ModuleService> = {};
+
+  /** How a module asks for a PIN: the card's PIN sheet, then the card's session. */
+  private readonly _pinGate: PinGate = {
+    ask: (members, heading) => new Promise<boolean>(resolve => {
+      if (members.length === 0 || this._sheet) {
+        resolve(false);
+        return;
+      }
+      this._sheetOpener = (this.renderRoot as ShadowRoot | undefined)?.activeElement as HTMLElement | null ?? null;
+      this._sheet = { kind: 'pin', purpose: 'module', heading, members, resolve };
+    }),
+  };
+
   constructor() {
     super();
     this._drafts.set('appearance', this._appearanceEdits);
+    for (const mod of moduleRegistry.list()) {
+      if (mod.service) this._services[mod.id] = mod.service(this);
+    }
+  }
+
+  /** ServiceHost: the household, once it has answered. */
+  get householdView(): HouseholdView | null {
+    return this._household.view;
+  }
+
+  /** ServiceHost: the PIN session on this screen. */
+  get pinSession(): Session | null {
+    return this._session.session;
+  }
+
+  /** ServiceHost: the config sensor's data. */
+  get planavistaData(): PlanaVistaData | null {
+    return this._data();
+  }
+
+  /** ServiceHost: the backend refused a command made with this session. */
+  sessionEnded(token: string): void {
+    this._session.ended(token);
+  }
+
+  /** ServiceHost: a module's service has news. */
+  serviceChanged(): void {
+    this._serviceRevision++;
   }
 
   static styles = [
@@ -246,11 +309,39 @@ export class PlanaVistaCard extends LitElement {
     return this._displayFor(this._config, this._data());
   }
 
-  private _modulesFor = memoizeOne((config: PlanaVistaCardConfig | undefined): ResolvedModules =>
-    resolveModules(moduleRegistry.list(), config ?? {}));
+  private _modulesFor = memoizeOne((config: PlanaVistaCardConfig | undefined, modules: unknown, _available: boolean): ResolvedModules =>
+    resolveModules(moduleRegistry.list(), config ?? {}, { config, data: null, household: this._household.view }));
 
   private _modules(): ResolvedModules {
-    return this._modulesFor(this._config);
+    const view = this._household.view;
+    return this._modulesFor(this._config, view?.modules, !!view?.available);
+  }
+
+  /** What modules and their services know about the card right now. */
+  private _ctx(): ModuleContext {
+    return { config: this._config, data: this._data(), household: this._household.view };
+  }
+
+  /** Every module's glance chips, for the header (spec 12.2: on every module). */
+  private _glanceChips(): GlanceChip[] {
+    const ctx = this._ctx();
+    return Object.values(this._services).flatMap(service => service.glance?.(ctx) ?? []);
+  }
+
+  /** Go where a chip or a ring points: a module, one of its views, perhaps one person. */
+  private _open(target: OpenTarget): void {
+    const mod = this._modules().shown.find(m => m.id === target.module);
+    if (!mod) return;
+    this._moduleId = mod.id;
+    if (target.view && mod.views.some(v => v.id === target.view)) {
+      this._views = { ...this._views, [mod.id]: target.view };
+    }
+    this._openTarget = { ...target };
+  }
+
+  /** A bar or strip button of the module on screen. */
+  private _moduleAction(id: string): void {
+    (this.renderRoot.querySelector('.pv-module') as ModuleElement | null)?.moduleAction?.(id);
   }
 
   /** The config sensor, the weather entity, and whatever the shown modules watch. */
@@ -377,6 +468,10 @@ export class PlanaVistaCard extends LitElement {
     const sheet = this._sheet;
     this._session.unlocked(event.detail.result);
     this._closeSheet();
+    if (sheet?.kind === 'pin' && sheet.purpose === 'module') {
+      sheet.resolve(!!this._session.session);
+      return;
+    }
     if (sheet?.kind === 'pin' && (sheet.purpose === 'settings' || sheet.purpose === 'continue')) {
       this._settingsVia = 'session';
       this._settingsOpen = true;
@@ -387,6 +482,7 @@ export class PlanaVistaCard extends LitElement {
   private _onSheetCancel() {
     const sheet = this._sheet;
     this._closeSheet();
+    if (sheet?.kind === 'pin' && sheet.purpose === 'module') sheet.resolve(false);
     // Without parent mode, Settings can't stay open on this screen.
     if (sheet?.kind === 'pin' && sheet.purpose === 'continue') this._onSettingsClose();
   }
@@ -433,7 +529,7 @@ export class PlanaVistaCard extends LitElement {
         .api=${this._api}
         .layout=${layout}
         mode="unlock"
-        .members=${view ? parentsWithPins(view.members) : []}
+        .members=${sheet.purpose === 'module' ? sheet.members : view ? parentsWithPins(view.members) : []}
         .heading=${sheet.heading}
         .shuffle=${!!view?.security.shuffle_keypad}
         @pv-unlocked=${this._onUnlocked}
@@ -448,12 +544,16 @@ export class PlanaVistaCard extends LitElement {
     if (!session?.parent) return nothing;
     const parent = this._household.view?.members.find(m => m.id === session.memberId);
     if (!parent) return nothing;
+    const active = this._activeModule();
+    const actions: ModuleAction[] = active ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
     return html`
       <pv-parent-strip
         .member=${parent}
         .hass=${this.hass}
         .endsAt=${this._session.endsAt ?? 0}
+        .actions=${actions}
         @pv-lock=${() => this._session.lock()}
+        @pv-strip-action=${(e: CustomEvent<{ id: string }>) => this._moduleAction(e.detail.id)}
       ></pv-parent-strip>
     `;
   }
@@ -554,8 +654,16 @@ export class PlanaVistaCard extends LitElement {
         .mode=${this._appearance.mode}
         .shape=${this._appearance.look.shape}
         .forecast=${this._forecast.forecast}
+        .household=${this._household.view}
+        .session=${this._session.session}
+        .sessionEndsAt=${this._session.endsAt ?? 0}
+        .services=${this._services}
+        .revision=${this._serviceRevision}
+        .pinGate=${this._pinGate}
+        .openTarget=${this._openTarget}
         @pv-view-change=${(e: CustomEvent<{ view: string }>) => this._setView(e.detail.view)}
         @pv-overlay-change=${(e: CustomEvent<{ open: boolean }>) => { this._moduleOverlay = e.detail.open; }}
+        @pv-open=${(e: CustomEvent<OpenTarget>) => this._open(e.detail)}
       ></${tag}>
     `;
   }
@@ -569,6 +677,8 @@ export class PlanaVistaCard extends LitElement {
         .weather=${weather ?? null}
         .weatherEntity=${display.weather_entity}
         .today=${todayHighLow(this._forecast.forecast, new Date())}
+        .chips=${this._glanceChips()}
+        @pv-open=${(e: CustomEvent<OpenTarget>) => this._open(e.detail)}
       ></pv-glance-header>
     `;
   }
@@ -583,6 +693,8 @@ export class PlanaVistaCard extends LitElement {
         .views=${active.views}
         .activeView=${this._views[active.id] ?? ''}
         .canOpenSettings=${this._access() !== 'none'}
+        .actions=${this._services[active.id]?.barActions?.(this._ctx()) ?? []}
+        @pv-module-action=${(e: CustomEvent<{ id: string }>) => this._moduleAction(e.detail.id)}
         @pv-module-select=${(e: CustomEvent<{ id: string }>) => { this._moduleId = e.detail.id; }}
         @pv-view-select=${(e: CustomEvent<{ id: string }>) => this._setView(e.detail.id)}
         @pv-open-settings=${this._openSettings}

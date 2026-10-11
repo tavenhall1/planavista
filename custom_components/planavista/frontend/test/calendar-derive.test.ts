@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  calendarWatchedEntities, deriveCalendarData, initialView, selectCalendars,
+  calendarWatchedEntities, deriveCalendarData, eventForPopup, initialView, selectCalendars,
 } from '../src/modules/calendar/calendar-derive';
 import type { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../src/types';
 
@@ -70,5 +70,33 @@ describe('initialView', () => {
 
   it('has no view before data arrives when the card sets none', () => {
     expect(initialView(card(), null)).toBeUndefined();
+  });
+});
+
+describe('eventForPopup (what the event popup opens with)', () => {
+  const people = (event: CalendarEvent) => (event as { shared_calendars?: unknown }).shared_calendars;
+  const blair = { entity_id: 'calendar.test_blair', calendar_name: 'test_blair', calendar_color: '#F94144' };
+  const casey = { entity_id: 'calendar.test_casey', calendar_name: 'test_casey', calendar_color: '#F94144' };
+
+  it('lists each calendar of a shared event once, in the shape the popup reads', () => {
+    const a = ev('calendar.test_blair', 'same');
+    const b = ev('calendar.test_casey', 'same');
+    expect(people(eventForPopup(a, [a, b, { ...b }]))).toEqual([blair, casey]);
+  });
+
+  it('gives a merged chip (one entry on two calendars with separate ids) its people in that shape too', () => {
+    const merged = {
+      ...ev('calendar.test_blair', 'one'),
+      shared_calendars: [
+        { entity_id: 'calendar.test_blair', color: '#F94144', color_light: '#FDBDBE', person_entity: '', display_name: 'test_blair' },
+        { entity_id: 'calendar.test_casey', color: '#F94144', color_light: '#FDBDBE', person_entity: '', display_name: 'test_casey' },
+      ],
+    } as CalendarEvent;
+    expect(people(eventForPopup(merged, [merged, ev('calendar.test_casey', 'two')]))).toEqual([blair, casey]);
+  });
+
+  it('leaves an event on one calendar as it is', () => {
+    const a = ev('calendar.test_blair', 'alone');
+    expect(eventForPopup(a, [a])).toBe(a);
   });
 });
