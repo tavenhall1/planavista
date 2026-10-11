@@ -10,6 +10,8 @@ import './settings/pv-person-chores';
 import './settings/pv-person-sleep';
 import './settings/pv-person-phones';
 import './settings/pv-person-stars';
+import './settings/pv-import-export-page';
+import './settings/pv-import-review';
 import { registerChoresModule, registerChoresSettings } from './definition';
 
 registerChoresModule();

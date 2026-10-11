@@ -94,6 +94,15 @@ export const choresSettingsPages: SettingsPage[] = [
       return board ? remindersSummary(board.settings, ctx.data?.display?.time_format) : '';
     },
   },
+  {
+    // People, chores, rewards, and rules travel together, so this works with chores off too.
+    id: 'import-export',
+    label: 'Import and export',
+    group: 'data',
+    order: 600,
+    tag: 'pv-import-export-page',
+    applies: ({ household }) => !!household?.available,
+  },
 ];
 
 /** The person page's chores parts (spec 14.2): the chores rows, sleep, and phones with Use in automations. */

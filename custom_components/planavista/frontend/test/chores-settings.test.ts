@@ -40,6 +40,13 @@ describe('the Chores group of Settings', () => {
     expect(summary('rules', null)).toBe('');
   });
 
+  it('offers Import and export with chores off too', () => {
+    const registry = new PageRegistry<SettingsContext, SettingsPage>();
+    registerChoresSettings(registry);
+    expect(registry.pages(context(false, null)).map(p => p.id)).toEqual(['import-export']);
+    expect(registry.pages({ household: null, data: {} as never }).map(p => p.id)).toEqual([]);
+  });
+
   it('reads the board from the chores service', () => {
     expect(settingsBoard(context(true, sample))).toBe(sample);
     expect(settingsBoard({ services: {} })).toBeNull();

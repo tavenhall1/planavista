@@ -1,0 +1,726 @@
+{
+ "description": "The sample plan's preview for Alex, Blair, and Casey with the sample chores, as planavista/import/preview sends it (chores/importer.py preview). The card's review page reads this shape; tests/test_chores_importer.py keeps it current.",
+ "preview": {
+  "file": {
+   "format": "household-hours/v1",
+   "label": "Household Hours plan, version 1",
+   "exported": "2026-10-03",
+   "source": "Household Hours planner"
+  },
+  "people": [
+   {
+    "ref": "p_alex",
+    "name": "Alex",
+    "match": "alex",
+    "match_name": "Alex",
+    "color": "#277DA1",
+    "bedtime": {
+     "weeknight": "23:00",
+     "weekend": "23:30"
+    },
+    "sleep_hours": 7.5,
+    "age_group": null,
+    "parent": null
+   },
+   {
+    "ref": "p_blair",
+    "name": "Blair",
+    "match": "blair",
+    "match_name": "Blair",
+    "color": "#F3722C",
+    "bedtime": {
+     "weeknight": "22:30",
+     "weekend": "23:30"
+    },
+    "sleep_hours": 8.0,
+    "age_group": null,
+    "parent": null
+   },
+   {
+    "ref": "p_casey",
+    "name": "Casey",
+    "match": "casey",
+    "match_name": "Casey",
+    "color": "#43AA8B",
+    "bedtime": {
+     "weeknight": "22:00",
+     "weekend": "23:00"
+    },
+    "sleep_hours": 9.0,
+    "age_group": null,
+    "parent": null
+   },
+   {
+    "ref": "p_dana",
+    "name": "Dana",
+    "match": null,
+    "match_name": null,
+    "color": "#F94144",
+    "bedtime": {
+     "weeknight": "19:30",
+     "weekend": "20:00"
+    },
+    "sleep_hours": 10.5,
+    "age_group": null,
+    "parent": null
+   }
+  ],
+  "activities": [
+   {
+    "ref": "a02",
+    "name": "Kitchen cleanup",
+    "icon": null,
+    "category": "kitchen",
+    "kind": "board",
+    "on_board": true,
+    "match": "kitchen_cleanup",
+    "schedule": "plan",
+    "assignees": [
+     "p_alex"
+    ],
+    "minimum": {
+     "hours": 0.5,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a03",
+    "name": "Unload the dishwasher",
+    "icon": null,
+    "category": "kitchen",
+    "kind": "board",
+    "on_board": true,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 0.25,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "morning"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a04",
+    "name": "Set the table",
+    "icon": null,
+    "category": "kitchen",
+    "kind": "board",
+    "on_board": true,
+    "match": "set_the_table",
+    "schedule": "plan",
+    "assignees": [
+     "p_dana"
+    ],
+    "minimum": {
+     "hours": 0.25,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a05",
+    "name": "Cook dinner",
+    "icon": null,
+    "category": "kitchen",
+    "kind": "board",
+    "on_board": true,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_alex",
+     "p_blair"
+    ],
+    "minimum": {
+     "hours": 1.0,
+     "per": "day"
+    },
+    "split": "shared",
+    "shares": {
+     "p_alex": 0.5,
+     "p_blair": 0.5
+    },
+    "days": [],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a06",
+    "name": "Laundry",
+    "icon": null,
+    "category": "cleaning",
+    "kind": "board",
+    "on_board": true,
+    "match": "laundry",
+    "schedule": "plan",
+    "assignees": [
+     "p_blair"
+    ],
+    "minimum": {
+     "hours": 2.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "mon",
+     "thu"
+    ],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a07",
+    "name": "Clean the bathroom",
+    "icon": null,
+    "category": "cleaning",
+    "kind": "board",
+    "on_board": true,
+    "match": "clean_the_bathroom",
+    "schedule": "plan",
+    "assignees": [
+     "p_blair",
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 2.0,
+     "per": "week"
+    },
+    "split": "shared",
+    "shares": {
+     "p_blair": 1.0,
+     "p_casey": 1.0
+    },
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a08",
+    "name": "Vacuum",
+    "icon": null,
+    "category": "cleaning",
+    "kind": "board",
+    "on_board": true,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_blair"
+    ],
+    "minimum": {
+     "hours": 1.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a09",
+    "name": "Mop the floors",
+    "icon": null,
+    "category": "cleaning",
+    "kind": "board",
+    "on_board": true,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 0.75,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a10",
+    "name": "Tidy toys",
+    "icon": null,
+    "category": "cleaning",
+    "kind": "board",
+    "on_board": true,
+    "match": "tidy_toys",
+    "schedule": "plan",
+    "assignees": [
+     "p_dana"
+    ],
+    "minimum": {
+     "hours": 0.25,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a11",
+    "name": "Take out the trash",
+    "icon": null,
+    "category": "home",
+    "kind": "board",
+    "on_board": true,
+    "match": "take_out_the_trash",
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 0.5,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "tue",
+     "fri"
+    ],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a12",
+    "name": "Cat care",
+    "icon": null,
+    "category": "home",
+    "kind": "board",
+    "on_board": true,
+    "match": "cat_care",
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 0.5,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "morning",
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a13",
+    "name": "Yard work",
+    "icon": null,
+    "category": "home",
+    "kind": "board",
+    "on_board": true,
+    "match": "yard_work",
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 1.5,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a14",
+    "name": "Groceries",
+    "icon": null,
+    "category": "home",
+    "kind": "board",
+    "on_board": true,
+    "match": "groceries",
+    "schedule": "plan",
+    "assignees": [
+     "p_alex"
+    ],
+    "minimum": {
+     "hours": 1.5,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "sat"
+    ],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a15",
+    "name": "Wash the car",
+    "icon": null,
+    "category": "home",
+    "kind": "board",
+    "on_board": true,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [],
+    "minimum": {
+     "hours": 1.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a16",
+    "name": "Water the plants",
+    "icon": null,
+    "category": "home",
+    "kind": "board",
+    "on_board": true,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_blair",
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 0.75,
+     "per": "week"
+    },
+    "split": "shared",
+    "shares": {
+     "p_blair": 0.25,
+     "p_casey": 0.5
+    },
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a17",
+    "name": "Homework",
+    "icon": null,
+    "category": "work",
+    "kind": "plan_only",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 1.0,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "time_of_day": [
+     "afternoon"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a18",
+    "name": "Reading",
+    "icon": null,
+    "category": "personal",
+    "kind": "plan_only",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_dana"
+    ],
+    "minimum": {
+     "hours": 0.5,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a19",
+    "name": "Exercise",
+    "icon": null,
+    "category": "personal",
+    "kind": "plan_only",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_alex",
+     "p_blair"
+    ],
+    "minimum": {
+     "hours": 3.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a20",
+    "name": "Family dinner",
+    "icon": null,
+    "category": "family",
+    "kind": "plan_only",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_alex",
+     "p_blair",
+     "p_casey",
+     "p_dana"
+    ],
+    "minimum": {
+     "hours": 1.0,
+     "per": "day"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [
+     "evening"
+    ],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a21",
+    "name": "Work",
+    "icon": null,
+    "category": "work",
+    "kind": "plan_only",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_alex",
+     "p_blair"
+    ],
+    "minimum": {
+     "hours": 40.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a22",
+    "name": "Organize the closet",
+    "icon": null,
+    "category": "other",
+    "kind": "plan_only",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_alex"
+    ],
+    "minimum": {
+     "hours": 1.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [],
+    "time_of_day": [],
+    "set_time": null,
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a23",
+    "name": "Soccer practice",
+    "icon": null,
+    "category": "family",
+    "kind": "set_time",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_casey"
+    ],
+    "minimum": {
+     "hours": 3.0,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "time_of_day": [],
+    "set_time": "17:30",
+    "once": null,
+    "repeats": null
+   },
+   {
+    "ref": "a24",
+    "name": "Piano lesson",
+    "icon": null,
+    "category": "personal",
+    "kind": "set_time",
+    "on_board": false,
+    "match": null,
+    "schedule": "plan",
+    "assignees": [
+     "p_dana"
+    ],
+    "minimum": {
+     "hours": 0.5,
+     "per": "week"
+    },
+    "split": "each",
+    "shares": null,
+    "days": [
+     "wed"
+    ],
+    "time_of_day": [],
+    "set_time": "16:00",
+    "once": null,
+    "repeats": null
+   }
+  ],
+  "rewards": [],
+  "settings": false,
+  "needs_a_look": [
+   {
+    "kind": "unassigned",
+    "ref": "a15",
+    "name": "Wash the car"
+   },
+   {
+    "kind": "shares",
+    "ref": "a16",
+    "name": "Water the plants",
+    "hours": 0.75,
+    "planned": 0.5,
+    "per": "week"
+   },
+   {
+    "kind": "updates",
+    "refs": [
+     "a02",
+     "a04",
+     "a06",
+     "a07",
+     "a10",
+     "a11",
+     "a12",
+     "a13",
+     "a14"
+    ],
+    "names": [
+     "Kitchen cleanup",
+     "Set the table",
+     "Laundry",
+     "Clean the bathroom",
+     "Tidy toys",
+     "Take out the trash",
+     "Cat care",
+     "Yard work",
+     "Groceries"
+    ]
+   }
+  ]
+ }
+}

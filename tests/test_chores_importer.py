@@ -314,3 +314,9 @@ def test_a_restore_onto_a_household_updates_what_is_there() -> None:
     assert result["members_add"] == [] and set(result["members_update"]) == {"alex", "blair", "casey", "dana"}
     assert "person" not in result["members_update"]["casey"]  # a person Home Assistant doesn't have keeps the link there is
     assert result["activities_add"] == [] and len(result["activities_update"]) == 16
+
+
+def test_the_preview_the_card_reads_keeps_its_shape() -> None:
+    """test/import-derive.test.ts reads tests/fixtures/import_preview_sample.json; this keeps it current."""
+    fixture = json.loads((Path(__file__).parent / "fixtures" / "import_preview_sample.json").read_text("utf-8"))
+    assert _sample_preview() == fixture["preview"]
