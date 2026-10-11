@@ -1,9 +1,11 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { property } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles } from '../../../styles/shared';
+import type { Layout } from '../../../core/layout';
+import { MONTH_SIZES, MonthCellSizes, monthCellEvents } from '../layout-rules';
 import { getMonthGrid, isToday, getDateKey } from '../../../utils/date-utils';
 import {
   groupEventsByDate,
@@ -12,7 +14,6 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 
-const MAX_VISIBLE_EVENTS = 3;
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -26,6 +27,17 @@ export class PVViewMonth extends LitElement {
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
+  /** The card's layout; portrait's taller cells show more events (spec 12.3). */
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+
+  /**
+   * What the grid draws: a cell's height, and the sizes in an ordinary cell
+   * and in today's (its number is a bigger circle). 0 until measured.
+   */
+  @state() private _fit: { cell: number; normal: MonthCellSizes; today: MonthCellSizes } = {
+    cell: 0, normal: MONTH_SIZES, today: MONTH_SIZES,
+  };
+  private _gridObserver?: ResizeObserver;
 
   static styles = [
     baseStyles,
@@ -104,7 +116,10 @@ export class PVViewMonth extends LitElement {
         color: var(--pv-text);
         margin-bottom: 0.125rem;
         padding: 0.125rem 0.25rem;
-        display: inline-block;
+        /* Its own row: today's circle no longer sits on a text line that adds space below it. */
+        display: flex;
+        align-items: center;
+        width: fit-content;
       }
 
       .day-cell.today .day-number {
@@ -113,7 +128,7 @@ export class PVViewMonth extends LitElement {
         border-radius: var(--pv-radius-sm, 50%);
         width: 24px;
         height: 24px;
-        display: inline-flex;
+        display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 600;
@@ -126,6 +141,7 @@ export class PVViewMonth extends LitElement {
       }
 
       .more-events {
+        line-height: 1.2;
         font-size: 0.625rem;
         color: var(--pv-text-secondary);
         padding: 0 0.375rem;
@@ -134,7 +150,7 @@ export class PVViewMonth extends LitElement {
       }
 
       .more-events:hover {
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
       }
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
@@ -183,6 +199,61 @@ export class PVViewMonth extends LitElement {
     `,
   ];
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (this.hasUpdated) this._observeGrid();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._gridObserver?.disconnect();
+  }
+
+  firstUpdated(): void {
+    this._observeGrid();
+  }
+
+  updated(): void {
+    // Events come and go, and the first chip or "+N more" gives the real sizes.
+    this._measure();
+  }
+
+  private _observeGrid(): void {
+    const grid = this.shadowRoot?.querySelector('.month-grid');
+    if (!grid || typeof ResizeObserver === 'undefined') return;
+    this._gridObserver ??= new ResizeObserver(() => this._measure());
+    this._gridObserver.disconnect();
+    this._gridObserver.observe(grid);
+  }
+
+  /** Measure what the grid draws, so every event in a cell is whole or counted in "+N more". */
+  private _measure(): void {
+    const grid = this.shadowRoot?.querySelector<HTMLElement>('.month-grid');
+    if (!grid || grid.clientHeight === 0) return;
+    const list = grid.querySelector<HTMLElement>('.day-events');
+    const gap = list ? parseFloat(getComputedStyle(list).rowGap) || 0 : 0;
+    const chip = grid.querySelector<HTMLElement>('pv-event-chip');
+    const more = grid.querySelector<HTMLElement>('.more-events');
+    const row = chip ? Math.ceil(chip.getBoundingClientRect().height + gap) : MONTH_SIZES.row;
+    const moreLine = more ? Math.ceil(more.getBoundingClientRect().height + gap) : MONTH_SIZES.more;
+    // From the cell's top to its first event, plus its bottom border. Its padding
+    // stays usable: a cell clips what overflows at the padding's edge, not the content's.
+    const around = (cell: HTMLElement | null): number => {
+      const events = cell?.querySelector<HTMLElement>('.day-events');
+      if (!cell || !events) return MONTH_SIZES.number;
+      const border = parseFloat(getComputedStyle(cell).borderBottomWidth) || 0;
+      return Math.ceil(events.getBoundingClientRect().top - cell.getBoundingClientRect().top + border);
+    };
+    const normal = { number: around(grid.querySelector('.day-cell:not(.today)')), row, more: moreLine };
+    const todayCell = grid.querySelector<HTMLElement>('.day-cell.today');
+    const fit = {
+      cell: Math.floor(grid.clientHeight / 6),
+      normal,
+      today: todayCell ? { ...normal, number: around(todayCell) } : normal,
+    };
+    if (JSON.stringify(fit) !== JSON.stringify(this._fit)) this._fit = fit;
+  }
+
   render() {
     const visible = filterVisibleEvents(this.events, this.hiddenCalendars);
     const deduped = deduplicateSharedEvents(visible, this.calendars);
@@ -214,8 +285,8 @@ export class PVViewMonth extends LitElement {
     const dayEvents = (eventsByDate.get(key) || []) as SharedEvent[];
     const otherMonth = day.getMonth() !== currentMonth;
     const today = isToday(day);
-    const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS);
-    const remaining = dayEvents.length - MAX_VISIBLE_EVENTS;
+    const { shown, more } = monthCellEvents(dayEvents.length, this._fit.cell, today ? this._fit.today : this._fit.normal);
+    const visibleEvents = dayEvents.slice(0, shown);
 
     return html`
       <div
@@ -237,9 +308,9 @@ export class PVViewMonth extends LitElement {
               @click=${(ev: Event) => ev.stopPropagation()}
             ></pv-event-chip>
           `)}
-          ${remaining > 0 ? html`
+          ${more > 0 ? html`
             <div class="more-events" @click=${(ev: Event) => { ev.stopPropagation(); this._onDayClick(day); }}>
-              +${remaining} more
+              +${more} more
             </div>
           ` : nothing}
         </div>

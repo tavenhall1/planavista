@@ -6,7 +6,7 @@ import { css } from 'lit';
 export const baseStyles = css`
   :host {
     display: block;
-    font-family: var(--pv-font-family, Inter, -apple-system, system-ui, sans-serif);
+    font-family: var(--pv-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif);
     color: var(--pv-text, #1A1B1E);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -31,6 +31,8 @@ export const baseStyles = css`
  */
 export const typographyStyles = css`
   .pv-display {
+    font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
+    font-variant-numeric: tabular-nums;
     font-size: 3.5rem;
     font-weight: 300;
     line-height: 1.1;
@@ -38,6 +40,7 @@ export const typographyStyles = css`
   }
 
   .pv-heading-1 {
+    font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
     font-size: 1.5rem;
     font-weight: 600;
     line-height: 1.3;
@@ -45,6 +48,7 @@ export const typographyStyles = css`
   }
 
   .pv-heading-2 {
+    font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
     font-size: 1.125rem;
     font-weight: 600;
     line-height: 1.4;

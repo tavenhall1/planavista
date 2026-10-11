@@ -8,8 +8,9 @@ export const settingsPageStyles = css`
         animation: pv-slideLeft 250ms ease forwards;
       }
 .page-title {
+        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         font-size: 1.375rem;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--pv-text, #1A1B1E);
         margin: 0 0 0.25rem;
         letter-spacing: -0.02em;
@@ -46,7 +47,7 @@ export const settingsPageStyles = css`
       }
 .pill-btn:hover {
         border-color: var(--pv-accent, #6366F1);
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         background: color-mix(in srgb, var(--pv-accent, #6366F1) 5%, transparent);
       }
 .pill-btn--active {

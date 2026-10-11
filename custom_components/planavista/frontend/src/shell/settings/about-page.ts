@@ -34,7 +34,7 @@ export class PvSettingsAbout extends LitElement {
         display: flex;
         align-items: center;
         min-height: 48px;
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         text-decoration: none;
         font-weight: 600;
       }

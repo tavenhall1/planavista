@@ -227,7 +227,7 @@ export class PvColorSwatchPicker extends LitElement {
 
       .swatch-btn.custom-btn:hover .custom-circle {
         border-color: var(--pv-accent, #6366F1);
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
       }
 
       /* When custom color is active, show the color instead of the placeholder */

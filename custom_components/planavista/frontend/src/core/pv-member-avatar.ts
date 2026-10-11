@@ -3,7 +3,7 @@ import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { Member, pictureOf } from './household';
-import { contrastText } from '../styles/themes';
+import { contrastText } from './color';
 
 /**
  * pv-member-avatar: a person's photo, emoji, or initial on their color

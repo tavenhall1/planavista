@@ -1,9 +1,10 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, WeatherCondition } from '../../../types';
 import { baseStyles, animationStyles } from '../../../styles/shared';
+import type { Layout } from '../../../core/layout';
 import {
   formatDate,
   getRelativeLabel,
@@ -18,7 +19,7 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 import { weatherIcon } from '../../../utils/weather-icons';
-import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../../../utils/weather-subscription';
+import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 
 const DAYS_PER_PAGE = 14;
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -30,14 +31,14 @@ export class PVViewAgenda extends LitElement {
   @property({ type: Object }) currentDate: Date = new Date();
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
-  @property({ attribute: false }) weatherEntity: string = '';
+  /** The card's daily forecast (one subscription per card, in the shell). */
+  @property({ attribute: false }) forecast: ForecastEntry[] = [];
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
+  /** The card's layout (spec 12.1). */
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
 
   @state() private _daysLoaded = DAYS_PER_PAGE;
-  @state() private _forecast: ForecastEntry[] = [];
-
-  private _forecastSub = new ForecastSubscription(forecast => { this._forecast = forecast; });
 
   static styles = [
     baseStyles,
@@ -99,7 +100,7 @@ export class PVViewAgenda extends LitElement {
       }
 
       .day-name--today {
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
       }
 
       .day-relative {
@@ -135,7 +136,7 @@ export class PVViewAgenda extends LitElement {
       }
 
       .add-event-link {
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
         cursor: pointer;
         font-weight: 500;
         font-size: 0.6875rem;
@@ -175,7 +176,7 @@ export class PVViewAgenda extends LitElement {
         background: var(--pv-card-bg, #fff);
         border-radius: var(--pv-radius-md, 12px);
         border: 1px dashed var(--pv-border);
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
         cursor: pointer;
         font-weight: 600;
         font-size: 0.875rem;
@@ -242,7 +243,7 @@ export class PVViewAgenda extends LitElement {
     const grouped = groupEventsByDate(sharedEvents);
 
     // Weather forecast
-    const forecast = buildForecastMap(this._forecast);
+    const forecast = buildForecastMap(this.forecast);
 
     return html`
       <div class="agenda-container">
@@ -309,32 +310,6 @@ export class PVViewAgenda extends LitElement {
         </div>
       </div>
     `;
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    // A re-attached view gets no property change, so re-subscribe here.
-    if (this.hasUpdated) this._syncForecast();
-  }
-
-  updated(changed: PropertyValues) {
-    super.updated(changed);
-    if (changed.has('weatherEntity') || changed.has('hass')) {
-      this._syncForecast();
-    }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._forecastSub.stop();
-  }
-
-  private _syncForecast() {
-    this._forecastSub.update(
-      this.hass?.connection as unknown as ForecastConnection | undefined,
-      this.weatherEntity,
-      this.hass?.states?.[this.weatherEntity]?.attributes?.forecast,
-    );
   }
 
   private _loadMore() {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ModuleRegistry } from '../src/core/module-registry';
+import { ModuleRegistry, initialModuleView } from '../src/core/module-registry';
 import {
   calendarModule,
   calendarSettingsPages,
@@ -28,6 +28,14 @@ describe('the calendar module', () => {
     expect(calendarModule.watchedEntities({ config: undefined, data })).toEqual(['person.alex']);
     expect(calendarModule.watchedEntities({ config: { type: 'custom:planavista-card', calendars: ['calendar.test_blair'] }, data })).toEqual([]);
     expect(calendarModule.watchedEntities({ config: undefined, data: null })).toEqual([]);
+  });
+
+  it('offers its four views and opens on the one the card or Settings names', () => {
+    expect(calendarModule.views.map(v => v.label)).toEqual(['Day', 'Week', 'Month', 'Agenda']);
+    expect(initialModuleView(calendarModule, { config: undefined, data })).toBe('week');
+    expect(initialModuleView(calendarModule, { config: { type: 'custom:planavista-card', view: 'month' }, data })).toBe('month');
+    // As 1.1.0 did with no saved default view.
+    expect(initialModuleView(calendarModule, { config: undefined, data: null })).toBe('day');
   });
 
   it('registers itself', () => {

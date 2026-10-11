@@ -1,9 +1,10 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { property, state } from 'lit/decorators.js';
+import { LitElement, html, css, nothing } from 'lit';
+import { property } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles, animationStyles } from '../../../styles/shared';
+import type { Layout } from '../../../core/layout';
 import { getStartOfWeek, isToday, getDateKey } from '../../../utils/date-utils';
 import {
   compareEventsForDisplay,
@@ -13,7 +14,7 @@ import {
   SharedEvent,
 } from '../utils/event-utils';
 import { weatherIcon } from '../../../utils/weather-icons';
-import { DayForecast, ForecastConnection, ForecastEntry, ForecastSubscription, buildForecastMap } from '../../../utils/weather-subscription';
+import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -25,13 +26,13 @@ export class PVViewWeek extends LitElement {
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ attribute: false }) firstDay: 'monday' | 'sunday' = 'sunday';
-  @property({ attribute: false }) weatherEntity: string = '';
+  /** The card's daily forecast (one subscription per card, in the shell). */
+  @property({ attribute: false }) forecast: ForecastEntry[] = [];
   @property({ type: Boolean }) showStripes: boolean = true;
   @property({ type: Number }) tick = 0;
+  /** The card's layout: four days across in landscape, two in portrait, one on a phone (spec 12.3). */
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
 
-  @state() private _forecast: ForecastEntry[] = [];
-
-  private _forecastSub = new ForecastSubscription(forecast => { this._forecast = forecast; });
 
   static styles = [
     baseStyles,
@@ -53,6 +54,11 @@ export class PVViewWeek extends LitElement {
         padding: 0.75rem 1rem 0.5rem;
         flex-shrink: 0;
       }
+
+      /* Days across follow the card's own shape, not the window's (spec 12.1). */
+      :host([layout='landscape']) .day-grid { grid-template-columns: repeat(4, 1fr); }
+      :host([layout='portrait']) .day-grid { grid-template-columns: repeat(2, 1fr); }
+      :host([layout='phone']) .day-grid { grid-template-columns: 1fr; }
 
       .day-grid {
         display: grid;
@@ -99,7 +105,7 @@ export class PVViewWeek extends LitElement {
       }
 
       .day-card--today .day-name {
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
       }
 
       .day-meta {
@@ -112,7 +118,7 @@ export class PVViewWeek extends LitElement {
 
       .add-event-link {
         font-size: 0.6875rem;
-        color: var(--pv-accent);
+        color: var(--pv-accent-ink, var(--pv-accent));
         cursor: pointer;
         font-weight: 500;
         background: none;
@@ -166,15 +172,9 @@ export class PVViewWeek extends LitElement {
 
       /* ═══════════ RESPONSIVE ═══════════ */
 
-      /* MD: tablets, 2 columns */
-      @media (max-width: 1023px) {
-        .day-grid { grid-template-columns: repeat(2, 1fr); }
-      }
-
-      /* SM/XS: phones, 1 column (agenda-like) */
+      /* SM/XS: small screens, tighter cards */
       @media (max-width: 767px) {
         .day-grid {
-          grid-template-columns: 1fr;
           gap: 0.375rem;
           padding: 0 0.5rem 0.5rem;
         }
@@ -226,32 +226,6 @@ export class PVViewWeek extends LitElement {
     return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`;
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    // A re-attached view gets no property change, so re-subscribe here.
-    if (this.hasUpdated) this._syncForecast();
-  }
-
-  updated(changed: PropertyValues) {
-    super.updated(changed);
-    if (changed.has('weatherEntity') || changed.has('hass')) {
-      this._syncForecast();
-    }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._forecastSub.stop();
-  }
-
-  private _syncForecast() {
-    this._forecastSub.update(
-      this.hass?.connection as unknown as ForecastConnection | undefined,
-      this.weatherEntity,
-      this.hass?.states?.[this.weatherEntity]?.attributes?.forecast,
-    );
-  }
-
   render() {
     const visible = filterVisibleEvents(this.events, this.hiddenCalendars);
     const days = this._getWeekDays();
@@ -261,7 +235,7 @@ export class PVViewWeek extends LitElement {
     weekEnd.setHours(23, 59, 59, 999);
     const weekEvents = getEventsForDateRange(visible, weekStart, weekEnd);
     const deduped = deduplicateSharedEvents(weekEvents, this.calendars);
-    const forecasts = buildForecastMap(this._forecast);
+    const forecasts = buildForecastMap(this.forecast);
 
     return html`
       <div class="week-container">

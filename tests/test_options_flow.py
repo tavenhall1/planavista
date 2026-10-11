@@ -82,8 +82,37 @@ async def test_display_options_apply_in_place(
     assert loaded_entry.runtime_data is coordinator
     assert loaded_entry.update_listeners == []
     display = hass.states.get("sensor.planavista_config").attributes["display"]
-    assert display == {**NEW_DISPLAY, "theme_overrides": {"accent": "#277DA1"}}
+    # Deep Dark is PlanaVista in Dark; the accent stays with the light version it was made for.
+    assert display == {
+        **NEW_DISPLAY,
+        "appearance": "dark",
+        "appearance_switch": "sun",
+        "light_from": "07:00",
+        "dark_from": "21:00",
+        "theme_pair": "planavista",
+        "colors_light": {"accent": "#277DA1"},
+        "colors_dark": {},
+        "shape": {},
+        "motion": "device",
+    }
     assert hass.states.get("sensor.planavista_upcoming_events") is not None
+
+
+async def test_display_options_keep_automatic_when_the_theme_stays(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
+) -> None:
+    """Saving the form without changing the theme leaves Automatic alone."""
+    hass.config_entries.async_update_entry(
+        loaded_entry, data={**loaded_entry.data, "display": {**loaded_entry.data["display"], "appearance": "automatic"}}
+    )
+    result = await hass.config_entries.options.async_init(loaded_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "display"})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**NEW_DISPLAY, "theme": loaded_entry.data["display"]["theme"]}
+    )
+    await hass.async_block_till_done()
+
+    assert loaded_entry.data["display"]["appearance"] == "automatic"
 
 
 async def test_manage_calendars_removes_a_calendar(

@@ -57,6 +57,12 @@ def config_entry_data() -> dict[str, Any]:
 
 
 @pytest.fixture
+def config_entry_minor_version() -> int:
+    """These entries come from 1.1.0."""
+    return 1
+
+
+@pytest.fixture
 async def people(
     hass: HomeAssistant, hass_admin_user: MockUser, local_auth: Any
 ) -> dict[str, MockUser]:
@@ -92,6 +98,10 @@ async def test_upgrade_keeps_the_calendars_and_adds_their_people(
     assert "member_id" not in rows[1]
     assert mock_config_entry.data["display"]["theme"] == "dark"
     assert mock_config_entry.data["onboarding_complete"] is True
+    # Deep Dark becomes PlanaVista in Dark (spec 12.4), and 1.1.0 still reads Deep Dark.
+    assert mock_config_entry.minor_version == 2
+    display = mock_config_entry.data["display"]
+    assert (display["theme_pair"], display["appearance"]) == ("planavista", "dark")
 
     members = {m["id"]: m for m in hass.data[DATA_HOUSEHOLD].members}
     assert set(members) == {"alex", "casey"}

@@ -36,6 +36,8 @@ export class PvSetup extends LitElement {
   @property({ attribute: false }) household: HouseholdView | null = null;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Edits the card keeps while steps come and go (the appearance changes, spec 14.7). */
+  @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
 
   @state() private _index = 0;
   @state() private _busy = false;
@@ -86,7 +88,7 @@ export class PvSetup extends LitElement {
         padding: 0 8px;
         border: none;
         background: transparent;
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
         font: inherit;
         font-size: 1rem;
         cursor: pointer;
@@ -109,9 +111,10 @@ export class PvSetup extends LitElement {
       }
 
       .heading {
+        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 8px 0 8px;
         font-size: 2rem;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: -0.02em;
         line-height: 1.2;
       }
@@ -207,6 +210,7 @@ export class PvSetup extends LitElement {
               .household=${this.household}
               .api=${this.api}
               .layout=${this.layout}
+              .drafts=${this.drafts}
               mode="setup"
             ></${tag}>
           `)}

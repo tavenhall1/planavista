@@ -8,7 +8,7 @@ import {
   settingsRegistry,
   setupRegistry,
 } from '../../core/settings-registry';
-import { calendarWatchedEntities, selectCalendars } from './calendar-derive';
+import { calendarWatchedEntities, initialView, selectCalendars } from './calendar-derive';
 
 /** The calendar module, as the shell sees it. */
 export const calendarModule: ModuleDefinition = {
@@ -17,6 +17,13 @@ export const calendarModule: ModuleDefinition = {
   icon: 'mdi:calendar-month',
   tag: 'pv-calendar-module',
   order: 10,
+  views: [
+    { id: 'day', label: 'Day' },
+    { id: 'week', label: 'Week' },
+    { id: 'month', label: 'Month' },
+    { id: 'agenda', label: 'Agenda' },
+  ],
+  initialView: ({ config, data }) => initialView(config, data),
   watchedEntities: ({ config, data }) => calendarWatchedEntities(selectCalendars(data, config)),
 };
 

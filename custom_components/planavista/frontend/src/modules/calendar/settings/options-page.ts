@@ -264,7 +264,7 @@ export class PvCalendarOptionsPage extends LitElement {
       }
 .view-card--active .view-label,
       .view-card:hover .view-label {
-        color: var(--pv-accent, #6366F1);
+        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
       }
 @media (max-width: 479px) {
 .field-group { margin-bottom: 1rem; }

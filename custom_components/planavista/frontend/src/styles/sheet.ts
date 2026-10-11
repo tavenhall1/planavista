@@ -47,6 +47,7 @@ export const sheetStyles = css`
   }
 
   .heading {
+    font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
     margin: 0 0 6px;
     font-size: 1.25rem;
     font-weight: 700;
@@ -81,23 +82,28 @@ export const sheetStyles = css`
     white-space: nowrap;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .panel {
-      animation: pv-sheet-rise 220ms ease-out;
-    }
-
-    :host([layout='landscape']) .panel {
-      animation: pv-sheet-pop 180ms ease-out;
-    }
+  /* The band a finger drags down to close the sheet (portrait and phone). */
+  .grab-zone {
+    display: none;
+    margin: -12px -20px 4px;
+    padding: 10px 0 14px;
+    touch-action: none;
+    cursor: grab;
   }
 
-  @keyframes pv-sheet-rise {
-    from { transform: translateY(24px); opacity: 0; }
-    to { transform: none; opacity: 1; }
+  :host(:not([layout='landscape'])) .grab-zone {
+    display: block;
   }
 
-  @keyframes pv-sheet-pop {
-    from { transform: scale(0.96); opacity: 0; }
-    to { transform: none; opacity: 1; }
+  .grab {
+    width: 36px;
+    height: 5px;
+    margin: 0 auto;
+    border-radius: 3px;
+    background: var(--pv-border, #E7E7E3);
+  }
+
+  .panel {
+    will-change: transform;
   }
 `;
