@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bandAt,
   bandState,
   boardColumns,
   boardRows,
@@ -31,6 +32,16 @@ function ctx(fields: Partial<DeriveContext> = {}): DeriveContext {
 const keysOf = (entries: ReturnType<typeof columnFor>['entries']) =>
   entries.map(e => (e.kind === 'row' ? `${e.zone}:${e.row.key.split('|')[0]}` : `${e.kind}:${e.text}`));
 
+describe('bandAt (the engine\'s bands, spec 8.4)', () => {
+  it('runs morning from the day\'s start to noon, afternoon to 5 PM, and evening past midnight', () => {
+    const times: Array<[number, number]> = [[3, 0], [11, 59], [12, 0], [16, 59], [17, 0], [23, 59], [0, 30], [2, 59]];
+    expect(times.map(([h, m]) => bandAt(new Date(2026, 9, 13, h, m)))).toEqual(
+      ['morning', 'morning', 'afternoon', 'afternoon', 'evening', 'evening', 'evening', 'evening'],
+    );
+    expect(bandAt(new Date(2026, 9, 13, 3, 30), '04:00')).toBe('evening');
+  });
+});
+
 describe('columnFor (spec 13.1)', () => {
   it('puts Now first, then later bands, This week, Done today, and past bands as credit', () => {
     const casey_items = [
@@ -54,6 +65,15 @@ describe('columnFor (spec 13.1)', () => {
     expect(rows.find(r => r.key.startsWith('fix_it'))?.badge).toEqual({ words: 'Due Sat', tone: 'neutral' });
     expect(rows.find(r => r.key.startsWith('yard'))?.badge?.words).toBe('Sent back: edges');
     expect(rows.find(r => r.key.startsWith('cat_care'))?.meta).toBe('15 min · ★ 1');
+  });
+
+  it('follows the clock when the board was last sent in an earlier band', () => {
+    const items = [
+      item('feed_the_fish|casey|day:2026-10-13|0', { band: 'afternoon' }),
+      item('cat_care|casey|day:2026-10-13|1', { band: 'evening' }),
+    ];
+    const col = columnFor(casey, column(items), board({ casey: column(items) }, { band: 'morning' }), ctx());
+    expect(keysOf(col.entries)).toEqual(['head:Now · afternoon', 'now:feed_the_fish', 'head:Later · evening', 'later:cat_care']);
   });
 
   it('shows a floating chore once, with its check-offs this week', () => {

@@ -76,6 +76,21 @@ export function doneToday(item: ItemView, board: Pick<Board, 'day'>): boolean {
   return t >= new Date(board.day.start).getTime() && t < new Date(board.day.end).getTime();
 }
 
+/**
+ * The band at `now`, as the engine works it out (periods.band): morning from the
+ * day's start (3:00 AM unless the household moved it) until noon, afternoon until
+ * 5:00 PM, and evening after that, past midnight too. The card works it out from
+ * its own clock, since the board is only sent again after a change.
+ */
+export function bandAt(now: Date, dayStarts = '03:00'): Band {
+  const [h, m] = dayStarts.split(':').map(Number);
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const start = (Number.isFinite(h) ? h : 3) * 60 + (Number.isFinite(m) ? m : 0);
+  if (minutes >= start && minutes < 12 * 60) return 'morning';
+  if (minutes >= 12 * 60 && minutes < 17 * 60) return 'afternoon';
+  return 'evening';
+}
+
 /** The band an item belongs to now: its own, or the current one for items without one (spec 8.4). */
 export function bandOf(item: ItemView, current: Band): Band {
   return item.band ?? current;
@@ -137,7 +152,7 @@ export function groupKey(item: ItemView): string | null {
 
 /** One person's column (spec 13.1): bands with Now highlighted, This week, Done today, and past bands as credit. */
 export function columnFor(member: Member, entry: BoardMember, board: Board, ctx: DeriveContext): ColumnModel {
-  const current = board.band;
+  const current = bandAt(ctx.now, board.settings?.day_starts);
   const earnsStars = !!member.stars;
   const entries: ColumnEntry[] = [];
   const items = entry.items;

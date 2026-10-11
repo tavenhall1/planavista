@@ -42,6 +42,16 @@ describe('timelineFor (spec 13.4)', () => {
     ]);
   });
 
+  it('keeps the end of the chore day, after midnight, in the evening as the engine does', () => {
+    const items = [item('tidy_toys|casey|day:2026-10-13|0', { band: null })];
+    const late = new Date(2026, 9, 14, 0, 30);
+    const ctx: DeriveContext = { today: TODAY, now: late, events: [], timeFormat: '12h', activities: new Map(), members: MEMBERS };
+    const col = columnFor(casey, column(items), board({ casey: column(items) }), ctx);
+    const labels = timelineFor(col, { now: late, events: [], timeFormat: '12h', bedtime: null })
+      .flatMap(e => (e.kind === 'band' ? [e.label] : e.kind === 'chore' ? [e.row.name] : []));
+    expect(labels).toEqual(['Evening', 'Tidy toys']);
+  });
+
   it('says it is free for the rest of the day when nothing else is on the calendar', () => {
     const entries = timelineFor(casey_column(), { now: at(19, 30), events: EVENTS, timeFormat: '12h', bedtime: null });
     const free = entries.find(e => e.kind === 'free');

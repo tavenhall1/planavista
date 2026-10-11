@@ -2,7 +2,7 @@ import type { Member } from '../../core/household';
 import { minutesText } from '../../core/status-map';
 import type { Band, Board, BoardMember, Reward } from './chores-types';
 import type { ColumnModel, RowModel } from './board-derive';
-import { BANDS, BAND_NAMES, bandState } from './board-derive';
+import { BANDS, BAND_NAMES, bandAt, bandState } from './board-derive';
 import { DayEvent, clockTime } from './calendar-ties';
 import { pictureFor } from './picture-words';
 
@@ -23,11 +23,8 @@ export interface DayContext {
   timeFormat: '12h' | '24h';
   /** Today's bedtime for this person, as a Date, or null. */
   bedtime: Date | null;
-}
-
-function bandOfTime(date: Date): Band {
-  const h = date.getHours();
-  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  /** When the chore day starts ("03:00"), for the bands. */
+  dayStarts?: string;
 }
 
 function range(event: DayEvent, format: '12h' | '24h'): string {
@@ -69,7 +66,7 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
  */
 export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry[] {
   const now = ctx.now;
-  const current = bandOfTime(now);
+  const current = bandAt(now, ctx.dayStarts);
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
   const bandOf = (row: RowModel): Band => row.item.band ?? current;
   // Overdue ones and ones left from an earlier band are due now.
@@ -84,9 +81,9 @@ export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry
   const end = ctx.bedtime;
   for (const band of BANDS) {
     const state = bandState(band, current);
-    const inBand = events.filter(e => bandOfTime(e.start) === band && (!end || e.start < end));
+    const inBand = events.filter(e => bandAt(e.start, ctx.dayStarts) === band && (!end || e.start < end));
     const choresHere = state === 'past' ? [] : [...(state === 'now' ? dueNow : []), ...open.filter(r => bandOf(r) === band)];
-    const doneHere = done.filter(r => r.item.completion && bandOfTime(new Date(r.item.completion.at)) === band);
+    const doneHere = done.filter(r => r.item.completion && bandAt(new Date(r.item.completion.at), ctx.dayStarts) === band);
     const items: Array<{ at: number; entry: TimelineEntry }> = [];
     for (const e of inBand) {
       items.push({

@@ -476,7 +476,10 @@ export class PvChoresMyDay extends LitElement {
   }
 
   private _timeline() {
-    const entries = timelineFor(this.column, { now: new Date(), events: this.events, timeFormat: this.timeFormat, bedtime: this.bedtime });
+    const entries = timelineFor(this.column, {
+      now: new Date(), events: this.events, timeFormat: this.timeFormat, bedtime: this.bedtime,
+      dayStarts: this.board?.settings?.day_starts,
+    });
     if (entries.length === 0) return html`<p class="meta" style="margin-top:12px">Nothing on today's timeline.</p>`;
     return html`<div class="tl">${repeat(entries, e => e.key, e => this._entry(e))}</div>${this._weekRows()}`;
   }
