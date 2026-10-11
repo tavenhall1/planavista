@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
-import { HoldGesture } from '../../core/hold';
+import { HOLD_MS, HoldGesture, MOVE_CANCEL_PX } from '../../core/hold';
 import { BOUNCY, motionOf, springEasing } from '../../core/motion';
 import { contrastText } from '../../core/color';
 import '../../core/pv-ring';
@@ -226,8 +226,16 @@ export class PvChoreTile extends LitElement {
     return !this.locked && (state === 'open' || state === 'sent_back' || state === 'done');
   }
 
+  /** A press that began where this screen can't hold (waiting, or someone else's): a quick release explains why. */
+  private _hintPress: { x: number; y: number; t: number } | null = null;
+
   private _down = (event: PointerEvent): void => {
-    if (!this._holdable || this._held || event.button > 0) return;
+    if (event.button > 0) return;
+    if (!this._holdable) {
+      this._hintPress = { x: event.clientX, y: event.clientY, t: performance.now() };
+      return;
+    }
+    if (this._held) return;
     try {
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     } catch {
@@ -241,7 +249,15 @@ export class PvChoreTile extends LitElement {
     this._frame = requestAnimationFrame(tick);
   };
 
-  private _up = (): void => {
+  private _up = (event?: PointerEvent): void => {
+    const press = this._hintPress;
+    if (press) {
+      this._hintPress = null;
+      const quick = !!event && performance.now() - press.t < HOLD_MS
+        && Math.hypot(event.clientX - press.x, event.clientY - press.y) <= MOVE_CANCEL_PX;
+      if (quick) this._fire('pv-hint', { row: this.row });
+      return;
+    }
     cancelAnimationFrame(this._frame);
     this._gesture.up(performance.now());
   };
@@ -286,7 +302,7 @@ export class PvChoreTile extends LitElement {
         <div class="hold" role="button" tabindex=${this.locked ? -1 : 0} aria-disabled=${this.locked ? 'true' : 'false'}
           aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for OK` : `Hold to complete ${row.name}`}
           @pointerdown=${this._down} @pointermove=${(e: PointerEvent) => this._gesture.move(e.clientX, e.clientY)}
-          @pointerup=${this._up} @pointercancel=${() => this._gesture.cancel()} @keydown=${this._key}
+          @pointerup=${this._up} @pointercancel=${() => { this._hintPress = null; this._gesture.cancel(); }} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>
         ${done ? html`
           <span class="tick" style="background:${this.color};color:${contrastText(this.color)}" aria-hidden="true">

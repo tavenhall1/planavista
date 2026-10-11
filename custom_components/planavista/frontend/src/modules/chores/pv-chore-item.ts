@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, svg, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
-import { HoldGesture } from '../../core/hold';
+import { HOLD_MS, HoldGesture, MOVE_CANCEL_PX } from '../../core/hold';
 import { BOUNCY, motionOf, springEasing } from '../../core/motion';
 import { contrastText } from '../../core/color';
 import { choresStyles } from './chores-styles';
@@ -52,6 +52,8 @@ export class PvChoreItem extends LitElement {
   private _frame = 0;
   /** The rewind's own frame, so the browser's lostpointercapture after a release can't stop it. */
   private _rewindFrame = 0;
+  /** A press that began where this screen can't hold (waiting, or someone else's): a quick release explains why. */
+  private _hintPress: { x: number; y: number; t: number } | null = null;
   private _gesture = new HoldGesture({
     progress: fill => {
       this._fill = fill;
@@ -281,7 +283,12 @@ export class PvChoreItem extends LitElement {
   }
 
   private _down = (event: PointerEvent): void => {
-    if (!this._holdable || this._held || event.button > 0) return;
+    if (event.button > 0) return;
+    if (!this._holdable) {
+      this._hintPress = { x: event.clientX, y: event.clientY, t: performance.now() };
+      return;
+    }
+    if (this._held) return;
     cancelAnimationFrame(this._rewindFrame);
     const target = event.currentTarget as HTMLElement;
     try {
@@ -301,12 +308,21 @@ export class PvChoreItem extends LitElement {
     this._gesture.move(event.clientX, event.clientY);
   };
 
-  private _up = (): void => {
+  private _up = (event?: PointerEvent): void => {
+    const press = this._hintPress;
+    if (press) {
+      this._hintPress = null;
+      const quick = !!event && performance.now() - press.t < HOLD_MS
+        && Math.hypot(event.clientX - press.x, event.clientY - press.y) <= MOVE_CANCEL_PX;
+      if (quick) this._fire('pv-hint', { row: this.row });
+      return;
+    }
     cancelAnimationFrame(this._frame);
     this._gesture.up(performance.now());
   };
 
   private _cancel = (): void => {
+    this._hintPress = null;
     cancelAnimationFrame(this._frame);
     this._gesture.cancel();
   };
