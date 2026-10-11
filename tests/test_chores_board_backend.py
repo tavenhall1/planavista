@@ -77,6 +77,17 @@ def test_a_past_day_comes_from_its_summary_and_the_log() -> None:
     ]
 
 
+def test_the_week_names_what_was_missed() -> None:
+    engine = sample_engine(at(10, 12, 7))
+    engine.complete(at(10, 12, 7, 5), key="cat_care|casey|day:2026-10-12|0", by="casey", source="tablet")
+    engine.catch_up(SCENE)
+    monday = engine.week_view(SCENE)["members"]["casey"]["days"][0]
+    assert (monday["date"], monday["missed"]) == ("2026-10-12", 1)
+    assert monday["missed_items"] == [
+        {"key": CAT_MONDAY_EVENING, "chore": "cat_care", "name": "Cat care", "icon": None, "status": "missed"},
+    ]
+
+
 def test_excusing_a_missed_check_off_mends_its_day_and_the_streak() -> None:
     engine = sample_engine(at(10, 11, 7))
     engine.complete(at(10, 11, 7), chore="cat_care", member="casey", by="casey", source="tablet")

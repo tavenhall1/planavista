@@ -848,9 +848,12 @@ class ChoresEngine:
                         "date": d.isoformat(), "kind": "past", "away": bool(away),
                         **(
                             {key: summary.get(key) for key in ("due", "done", "pending", "closed")}
-                            | {"missed": len(summary.get("missed", []))}
+                            | {
+                                "missed": len(summary.get("missed", [])),
+                                "missed_items": [self._past_item(k, "missed") for k in summary.get("missed", [])],
+                            }
                             if summary
-                            else {"due": None, "done": None, "pending": None, "closed": None, "missed": 0}
+                            else {"due": None, "done": None, "pending": None, "closed": None, "missed": 0, "missed_items": []}
                         ),
                     })
                     continue

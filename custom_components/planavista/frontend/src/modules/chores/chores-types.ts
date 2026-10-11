@@ -187,6 +187,8 @@ export interface WeekDay {
   pending: number | null;
   closed: boolean | null;
   missed: number;
+  /** What was missed, on a past day. */
+  missed_items?: PastItem[];
 }
 
 export interface WeeklyEntry {

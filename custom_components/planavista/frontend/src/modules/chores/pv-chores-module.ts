@@ -19,6 +19,9 @@ import { ColumnModel, RowModel, boardColumns } from './board-derive';
 import { eventsOn } from './calendar-ties';
 import { bedtimeOn, fairShares, goalFor } from './my-day-derive';
 import type { MyDayStyle } from './pv-chores-my-day';
+import type { DayView, WeekView } from './chores-types';
+import { weekHighlights, weekRows, weekShares } from './week-derive';
+import { addDays } from './options-derive';
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
@@ -38,6 +41,8 @@ import './pv-chore-options';
 import './pv-chores-inbox';
 import './pv-chores-quick-add';
 import './pv-chores-my-day';
+import './pv-chores-week';
+import './pv-chores-day-sheet';
 
 /** A sheet the chores screens show over themselves. */
 type ChoresSheet =
@@ -47,6 +52,7 @@ type ChoresSheet =
   | { kind: 'options'; key: string; history: string[] | null; busy: boolean }
   | { kind: 'delete'; row: RowModel }
   | { kind: 'inbox' }
+  | { kind: 'day'; member: string; date: string; day: DayView | null; failed: boolean }
   | { kind: 'quick_add'; busy: boolean };
 
 /** What the last check-off toast can take back or hand to someone else. */
@@ -84,6 +90,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @state() protected _toast: Toast | null = null;
   /** Minutes since the epoch, so bands and the evening check move with the clock. */
   @state() private _minute = Math.floor(Date.now() / 60000);
+  /** The Week view: how many weeks from this one, what came back, and for which request. */
+  @state() private _weekOffset = 0;
+  @state() private _week: WeekView | null = null;
+  @state() private _weekFailed = false;
+  private _weekAsked: string | null = null;
+  private _weekRevision = -1;
   /** Whose My day is showing. */
   @state() private _myDayMember: string | null = null;
   /** Requests being answered in the inbox. */
@@ -215,6 +227,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
+    if (this.view === 'week') this._loadWeek();
     const open = this._sheet !== null;
     if (open !== this._overlayOpen) {
       this._overlayOpen = open;
@@ -343,6 +356,78 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     `;
   }
 
+  /** The week to show, fetched when the view opens, the week changes, or (this week) the board changes. */
+  private _loadWeek(force = false): void {
+    const board = this.service?.board();
+    const api = this.service?.api;
+    if (!board || !api) return;
+    const date = this._weekOffset === 0 ? board.week.start : addDays(board.week.start, 7 * this._weekOffset);
+    const stale = this._weekOffset === 0 && this._weekRevision !== this.revision;
+    if (!force && this._weekAsked === date && !stale) return;
+    this._weekAsked = date;
+    this._weekRevision = this.revision;
+    if (this._week?.week.start !== date) this._week = null;
+    this._weekFailed = false;
+    api.week(date).then(
+      view => {
+        if (this._weekAsked === date) this._week = view;
+      },
+      () => {
+        if (this._weekAsked === date) this._weekFailed = true;
+      },
+    );
+  }
+
+  private _renderWeek(board: Board) {
+    const members = inOrder(this.household?.members ?? []);
+    const view = this._week;
+    return html`
+      <pv-chores-week .view=${view} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
+        .highlights=${view ? weekHighlights(view, members) : []} .shares=${view ? weekShares(view, members) : []}
+        .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout} ?current=${this._weekOffset === 0}
+        ?failed=${this._weekFailed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
+        @pv-week-nav=${(e: CustomEvent<{ offset: number }>) => this._navWeek(e.detail.offset)}
+        @pv-week-day=${(e: CustomEvent<{ member: string; date: string }>) => this._openDay(e.detail.member, e.detail.date)}
+        @pv-week-excuse=${(e: CustomEvent<{ occurrence: string; name: string; member: string }>) => void this._excuseMissed(e.detail.occurrence, e.detail.name, e.detail.member)}>
+      </pv-chores-week>
+    `;
+  }
+
+  private _navWeek(offset: number): void {
+    this._weekOffset = offset === 0 ? 0 : this._weekOffset + offset;
+    this._loadWeek(offset === 0 && this._weekFailed);
+  }
+
+  private _openDay(member: string, date: string): void {
+    const api = this.service?.api;
+    if (!api) return;
+    const sheet = { kind: 'day' as const, member, date, day: null, failed: false };
+    this._sheet = sheet;
+    api.day(date).then(
+      day => {
+        if (this._sheet?.kind === 'day' && this._sheet.date === date) this._sheet = { ...this._sheet, day };
+      },
+      () => {
+        if (this._sheet?.kind === 'day' && this._sheet.date === date) this._sheet = { ...this._sheet, failed: true };
+      },
+    );
+  }
+
+  /** Excuse it on a missed one (spec 13.5): its day and the streak hold. */
+  private async _excuseMissed(occurrence: string, name: string, member: string): Promise<void> {
+    const api = this.service?.api;
+    if (!api || !(await this.asParent(`Who's excusing ${name}?`))) return;
+    try {
+      await api.excuseMissed(occurrence);
+      const who = this._member(member)?.name;
+      this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${who ? ` ${who}'s streak holds.` : ''}` });
+      this._loadWeek(true);
+      if (this._sheet?.kind === 'day') this._openDay(this._sheet.member, this._sheet.date);
+    } catch (err) {
+      this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
+  }
+
   /** The view the bar picked. */
   protected renderView(): unknown {
     const board = this.service?.board();
@@ -350,6 +435,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const empty = board.chores.length === 0;
     if (empty) return this._empty();
     if (this.view === 'my_day') return this._renderMyDay(board);
+    if (this.view === 'week') return this._renderWeek(board);
     return html`
       <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
         .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} layout=${this.layout}
@@ -729,6 +815,18 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _renderSheet() {
     const sheet = this._sheet;
     if (!sheet) return this.renderSheet();
+    if (sheet.kind === 'day') {
+      const member = this._member(sheet.member);
+      const board = this.service?.board();
+      if (!member || !board) return nothing;
+      return html`
+        <pv-chores-day-sheet .layout=${this.layout} .member=${member} date=${sheet.date} today=${board.today}
+          .day=${sheet.day} ?failed=${sheet.failed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
+          .names=${(id: string) => this._member(id)?.name ?? id}
+          @pv-day-excuse=${(e: CustomEvent<{ occurrence: string; name: string }>) => void this._excuseMissed(e.detail.occurrence, e.detail.name, sheet.member)}
+          @pv-sheet-close=${() => { if (this._sheet?.kind === 'day') this._sheet = null; }}></pv-chores-day-sheet>
+      `;
+    }
     if (sheet.kind === 'inbox') {
       const board = this.service?.board();
       if (!board) return nothing;
