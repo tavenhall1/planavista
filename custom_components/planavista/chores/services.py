@@ -156,6 +156,10 @@ async def _undo_chore(call: ServiceCall) -> ServiceResponse:
     by = member_by(household, account, member)
     chore = _chore(engine, call.data["chore"])
     key = _occurrence(chore, call.data.get("occurrence"))
+    if key is not None:
+        item = engine.find_item(key, runtime.now())
+        if item is not None and item.occ.member != member:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="unknown_occurrence")
     out = await _run(runtime, lambda e, now: e.undo(
         now, key=key, chore=chore, member=member, by=by, source=source_of(account), user=account.user_id,
     ))

@@ -180,3 +180,22 @@ async def test_actions_say_when_chores_are_off(hass: HomeAssistant, household: A
     with pytest.raises(ServiceValidationError) as err:
         await _call(hass, "complete_chore", {"member": "casey", "chore": "yard_work"})
     assert err.value.translation_key == "chores_off"
+
+
+async def test_undo_with_an_occurrence_undoes_only_that_members_check_off(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser]
+) -> None:
+    household = chores.household
+    household.shared_users.append(accounts["kitchen"].id)
+    await set_pin(hass, household, "casey", "4826")
+    await _call(hass, "complete_chore", {"member": "alex", "chore": "kitchen_cleanup"})
+    await _call(hass, "complete_chore", {"member": "casey", "chore": "take_out_the_trash"})
+    for user, member, chore, key in (
+        ("casey", "casey", "kitchen_cleanup", "kitchen_cleanup|alex|day:2026-10-13|0"),
+        ("kitchen", "dana", "take_out_the_trash", TRASH),
+    ):
+        with pytest.raises(ServiceValidationError) as err:
+            await _call(hass, "undo_chore", {"member": member, "chore": chore, "occurrence": key}, accounts[user])
+        assert err.value.translation_key == "unknown_occurrence", user
+    assert [c["state"] for c in chores.engine.log["completions"]] == ["done", "done"]
+    assert hass.states.get("sensor.casey_stars").state == "1"

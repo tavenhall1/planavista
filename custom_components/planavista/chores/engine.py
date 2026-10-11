@@ -991,6 +991,8 @@ class ChoresEngine:
             if completion.get("state") not in CREDITED or clock.chore_date(_at(completion["at"])) != today:
                 continue
             if key is not None and completion["occurrence"] == key:
+                if member is not None and completion["member"] != member:
+                    return None  # someone else's check-off
                 return completion
             if key is None and completion["chore"] == chore and completion["member"] == member:
                 return completion
