@@ -138,7 +138,7 @@ export class ChoresService implements ModuleService {
   }
 
   requestUpdate(): void {
-    this._host.requestUpdate();
+    this._host.serviceChanged();
   }
 
   private _follow(): void {

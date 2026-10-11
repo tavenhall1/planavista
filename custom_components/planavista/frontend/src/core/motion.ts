@@ -58,3 +58,14 @@ export function resolveMotion(setting: MotionSetting | undefined, deviceReduced:
   if (setting === 'full' || setting === 'reduced') return setting;
   return deviceReduced ? 'reduced' : 'full';
 }
+
+/**
+ * Full or reduced motion where an element is drawn. The card sets
+ * --pv-motion (spec 11.5), and custom properties reach into every shadow
+ * root, so a sheet inside a Settings page reads it too.
+ */
+export function motionOf(element: Element): Motion {
+  const value = getComputedStyle(element).getPropertyValue('--pv-motion').trim();
+  if (value === 'reduced' || value === 'full') return value;
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
+}

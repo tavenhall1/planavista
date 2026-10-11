@@ -40,10 +40,10 @@ export function choresBarActions(board: Board | null, view: HouseholdView | null
   const actions: ModuleAction[] = [];
   const waiting = board.requests.length;
   if (waiting > 0 && mayEverReview(view)) {
-    actions.push({ id: 'inbox', label: `${waiting} waiting for OK`, glyph: '⏳', tone: 'act' });
+    actions.push({ id: 'inbox', label: `${waiting} waiting for OK`, short: String(waiting), glyph: '⏳', tone: 'act' });
   }
   const access = parentAccess(view, session);
-  if (access !== 'no' && !session?.parent) actions.push({ id: 'add', label: 'Add chore', glyph: '+' });
+  if (access !== 'no' && !session?.parent) actions.push({ id: 'add', label: 'Add chore', short: '', glyph: '+' });
   return actions;
 }
 

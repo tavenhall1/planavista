@@ -1,6 +1,7 @@
 // PlanaVista: the single entry point. Modules register themselves first,
 // then the card that hosts them.
 import './modules/calendar';
+import './modules/chores';
 import './shell/planavista-card';
 import { version } from '../package.json';
 import { registerCardPicker } from './shell/card-picker';

@@ -41,6 +41,8 @@ export interface GlanceChip {
 export interface ModuleAction {
   id: string;
   label: string;
+  /** What a phone's narrow bar shows instead ("2"); just the glyph when empty. */
+  short?: string;
   /** A leading glyph or emoji. */
   glyph?: string;
   /** 'act' draws it in indigo: something to act on (spec 11.3). */
@@ -65,6 +67,8 @@ export interface ServiceHost extends ReactiveControllerHost, HTMLElement {
   readonly planavistaData: PlanaVistaData | null;
   /** A command was refused although it carried this session: the backend already ended it. */
   sessionEnded(token: string): void;
+  /** The service has news: the card redraws the header, the bar, and the modules. */
+  serviceChanged(): void;
 }
 
 /**

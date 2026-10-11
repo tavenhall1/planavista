@@ -1,17 +1,8 @@
 import type { Layout } from '../core/layout';
-import { BOUNCY, Motion, SMOOTH, springEasing } from '../core/motion';
+import { BOUNCY, SMOOTH, motionOf, springEasing } from '../core/motion';
 import { sheetDragOffset, sheetDragOutcome } from '../core/sheet-drag';
 
-/**
- * Full or reduced motion where an element is drawn. The card sets
- * --pv-motion (spec 11.5), and custom properties reach into every shadow
- * root, so a sheet inside a Settings page reads it too.
- */
-export function motionOf(element: Element): Motion {
-  const value = getComputedStyle(element).getPropertyValue('--pv-motion').trim();
-  if (value === 'reduced' || value === 'full') return value;
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
-}
+export { motionOf };
 
 const QUICK_MS = 150;
 

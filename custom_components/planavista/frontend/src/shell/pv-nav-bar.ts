@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import type { Layout } from '../core/layout';
-import type { ModuleView } from '../core/module-registry';
+import type { ModuleAction, ModuleView } from '../core/module-registry';
 
 /** A module as the switcher shows it. */
 export interface BarModule {
@@ -19,6 +19,7 @@ export interface BarModule {
  * @fires pv-module-select - { id } of the module tapped
  * @fires pv-view-select - { id } of the view tapped
  * @fires pv-open-settings - the gear
+ * @fires pv-module-action - { id } of one of the module's buttons (⏳ 2 waiting for OK, + Add chore)
  */
 export class PvNavBar extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
@@ -27,6 +28,8 @@ export class PvNavBar extends LitElement {
   @property({ attribute: false }) views: ModuleView[] = [];
   @property({ attribute: false }) activeView = '';
   @property({ type: Boolean }) canOpenSettings = false;
+  /** The module's own buttons, between its views and the gear. */
+  @property({ attribute: false }) actions: ModuleAction[] = [];
 
   static styles = css`
     :host {
@@ -146,6 +149,43 @@ export class PvNavBar extends LitElement {
       color: var(--pv-text, #1A1B1E);
     }
 
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .action {
+      min-height: 48px;
+      flex-shrink: 0;
+    }
+
+    .action > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 9px;
+      border: 1px solid var(--pv-border, #E7E7E3);
+      font-size: 0.875rem;
+      font-weight: 650;
+      color: var(--pv-text, #1A1B1E);
+      white-space: nowrap;
+    }
+
+    .action.act > span {
+      border-color: transparent;
+      background: var(--pv-accent-tint, #EEEEFC);
+      color: var(--pv-accent-tint-ink, #3B3BB0);
+    }
+
+    .glyph {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
     .gear {
       width: 48px;
       height: 48px;
@@ -198,6 +238,19 @@ export class PvNavBar extends LitElement {
             </button>
           `)}
         </div>
+        ${this.actions.length ? html`
+          <div class="actions">
+            ${this.actions.map(action => {
+              const text = this.layout === 'phone' && action.short !== undefined ? action.short : action.label;
+              return html`
+                <button type="button" class="action ${action.tone === 'act' ? 'act' : ''}" aria-label=${action.label}
+                  @click=${() => this._fire('pv-module-action', { id: action.id })}>
+                  <span>${action.glyph ? html`<span class="glyph" aria-hidden="true">${action.glyph}</span>` : nothing}${text}</span>
+                </button>
+              `;
+            })}
+          </div>
+        ` : nothing}
         ${this.canOpenSettings ? html`
           <button type="button" class="gear" aria-label="Settings" title="Settings"
             @click=${this._openSettings}>
