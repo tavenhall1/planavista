@@ -6,6 +6,7 @@ import {
   appearanceSummary,
   clockText,
   mayAutoSwitch,
+  nextLookAt,
   resolveMode,
   sunSummary,
   transitionKind,
@@ -106,6 +107,40 @@ describe('words', () => {
 
   it('sums up the Appearance row', () => {
     expect(appearanceSummary(auto({ theme_pair: 'minimal' }))).toBe('Automatic · Minimal');
+  });
+});
+
+describe('resolveMode: an out-of-date sun', () => {
+  // A screen whose connection slept still holds the sun's state from before; its times say what happened since.
+  it('is dark once the sunset it was waiting for has passed', () => {
+    expect(resolveMode(auto({}), { now: at(20), sun: DAY })).toEqual({
+      mode: 'dark', next: new Date('2026-10-14T12:12:00Z'), sunMissing: false,
+    });
+  });
+
+  it('is light once the sunrise it was waiting for has passed', () => {
+    expect(resolveMode(auto({}), { now: at(9, 0, 14), sun: NIGHT })).toEqual({
+      mode: 'light', next: new Date('2026-10-14T23:30:00Z'), sunMissing: false,
+    });
+  });
+
+  it('is back where it started a whole day later, until a new state says when next', () => {
+    expect(resolveMode(auto({}), { now: at(8, 0, 14), sun: DAY })).toEqual({ mode: 'light', next: null, sunMissing: false });
+  });
+});
+
+describe('nextLookAt', () => {
+  it('looks again at the next change, when a quiet moment ends, or within a minute', () => {
+    const now = 1_000_000;
+    expect(nextLookAt(now, null, Number.POSITIVE_INFINITY)).toBe(now + 60_000);
+    expect(nextLookAt(now, new Date(now + 5_000), Number.POSITIVE_INFINITY)).toBe(now + 6_000);
+    expect(nextLookAt(now, null, now + 3_000)).toBe(now + 3_050);
+  });
+
+  it('never looks again at once, whatever time has passed', () => {
+    const now = 1_000_000;
+    expect(nextLookAt(now, null, now - 5_000)).toBe(now + 60_000);
+    expect(nextLookAt(now, new Date(now - 5_000), Number.POSITIVE_INFINITY)).toBe(now + 60_000);
   });
 });
 

@@ -192,6 +192,29 @@ function sunDate(value: string | undefined, now: Date): Date | null {
   return date && !Number.isNaN(date.getTime()) && date.getTime() > now.getTime() ? date : null;
 }
 
+function timeOf(value: string | undefined): number | null {
+  const time = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isNaN(time) ? null : time;
+}
+
+/**
+ * Light or dark from sun.sun. A screen whose connection slept still holds the
+ * state from before, so its own next rising and setting say what has happened
+ * since: a sunset that has passed means night, and the sunrise after it, day.
+ */
+function sunMode(sun: SunState, now: Date): { mode: Mode; next: Date | null } {
+  const up = sun.state === 'above_horizon';
+  const t = now.getTime();
+  // From this state, the next change and the one after it.
+  const first = timeOf(up ? sun.next_setting : sun.next_rising);
+  const second = timeOf(up ? sun.next_rising : sun.next_setting);
+  const [fromState, other]: [Mode, Mode] = up ? ['light', 'dark'] : ['dark', 'light'];
+  if (first === null || first > t) return { mode: fromState, next: first === null ? null : new Date(first) };
+  if (second === null || second > t) return { mode: other, next: second === null ? null : new Date(second) };
+  // A whole day out of date: back where it was, until a new state says when next.
+  return { mode: fromState, next: null };
+}
+
 /** Light or dark right now, and when that changes next (spec 12.4). */
 export function resolveMode(settings: AppearanceSettings, ctx: ModeContext): ResolvedMode {
   if (settings.appearance !== 'automatic') return { mode: settings.appearance, next: null, sunMissing: false };
@@ -201,8 +224,7 @@ export function resolveMode(settings: AppearanceSettings, ctx: ModeContext): Res
   if (settings.appearance_switch === 'sun') {
     const sun = ctx.sun;
     if (sun && (sun.state === 'above_horizon' || sun.state === 'below_horizon')) {
-      const dark = sun.state === 'below_horizon';
-      return { mode: dark ? 'dark' : 'light', next: sunDate(dark ? sun.next_rising : sun.next_setting, ctx.now), sunMissing: false };
+      return { ...sunMode(sun, ctx.now), sunMissing: false };
     }
     return { ...scheduleMode(settings, ctx.now), sunMissing: true };
   }
@@ -244,6 +266,24 @@ export function appearanceSummary(settings: AppearanceSettings): string {
 
 /** An automatic change waits until nobody has touched the screen for this long (spec 12.4). */
 export const QUIET_MS = 10_000;
+/** Look again at least this often, so a sunset or a schedule time is never missed. */
+export const RECHECK_MS = 60_000;
+/**
+ * After a screen wakes, changes just switch for this long: Home Assistant
+ * reconnects first, and only then says what changed while the screen slept.
+ */
+export const WAKE_MS = 15_000;
+
+/**
+ * When to look again (ms since the epoch): at the next change, when a quiet
+ * moment ends, or within a minute. Times already past are ignored, so it
+ * never answers "now": a quiet moment under an open sheet has nothing to wait
+ * out (closing the sheet draws the card again).
+ */
+export function nextLookAt(now: number, next: Date | null, quietUntil: number): number {
+  const times = [now + RECHECK_MS, next ? next.getTime() + 1000 : Number.NaN, quietUntil + 50];
+  return Math.min(...times.filter(time => time > now));
+}
 
 /** May an automatic change play now? Not mid-touch, and not while a sheet is open. */
 export function mayAutoSwitch(now: number, lastInteraction: number, overlayOpen: boolean): boolean {

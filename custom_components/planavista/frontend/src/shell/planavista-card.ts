@@ -74,7 +74,8 @@ export class PlanaVistaCard extends LitElement {
     this,
     this._appearanceEdits,
     () => ({
-      display: this._data()?.display as Record<string, unknown> | undefined,
+      // The sensor's own settings, not the stand-in a missing sensor gets: while Home Assistant restarts they're unknown.
+      display: (this.hass?.states?.[this._entityId()]?.attributes as { display?: Record<string, unknown> } | undefined)?.display,
       cardTheme: this._config?.theme,
       sun: sunOf(this.hass?.states as never),
       haDark: !!(this.hass as unknown as { themes?: { darkMode?: boolean } } | undefined)?.themes?.darkMode,
