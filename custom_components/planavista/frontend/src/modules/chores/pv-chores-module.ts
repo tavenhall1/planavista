@@ -22,6 +22,7 @@ import type { MyDayStyle } from './pv-chores-my-day';
 import type { DayView, WeekView } from './chores-types';
 import { weekHighlights, weekRows, weekShares } from './week-derive';
 import { addDays } from './options-derive';
+import { RewardDraft, balances, recentLine, rewardCards, rewardFrom } from './rewards-derive';
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
@@ -43,6 +44,8 @@ import './pv-chores-quick-add';
 import './pv-chores-my-day';
 import './pv-chores-week';
 import './pv-chores-day-sheet';
+import './pv-chores-rewards';
+import './pv-chores-reward-sheet';
 
 /** A sheet the chores screens show over themselves. */
 type ChoresSheet =
@@ -52,6 +55,8 @@ type ChoresSheet =
   | { kind: 'options'; key: string; history: string[] | null; busy: boolean }
   | { kind: 'delete'; row: RowModel }
   | { kind: 'inbox' }
+  | { kind: 'reward'; id: string | null; busy: boolean }
+  | { kind: 'delete_reward'; id: string; name: string }
   | { kind: 'day'; member: string; date: string; day: DayView | null; failed: boolean }
   | { kind: 'quick_add'; busy: boolean };
 
@@ -428,6 +433,79 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     }
   }
 
+  private _renderRewards(board: Board) {
+    const members = inOrder(this.household?.members ?? []);
+    return html`
+      <pv-chores-rewards .balances=${balances(board, members)} .cards=${rewardCards(board, members)}
+        .recent=${recentLine(board, members)} .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout}
+        ?canEdit=${parentAccess(this.household, this.session) !== 'no'}
+        @pv-reward-redeem=${(e: CustomEvent<{ reward: string }>) => this._redeem(e.detail.reward)}
+        @pv-reward-open=${(e: CustomEvent<{ reward: string | null }>) => void this._openReward(e.detail.reward)}></pv-chores-rewards>
+    `;
+  }
+
+  /** Redeem: for whoever can afford it (asking who, when more than one can), behind their PIN if they have one. */
+  private _redeem(rewardId: string): void {
+    const board = this.service?.board();
+    if (!board) return;
+    const card = rewardCards(board, inOrder(this.household?.members ?? [])).find(c => c.reward.id === rewardId);
+    if (!card) return;
+    const ready = card.people.filter(p => p.afford && !p.asked).map(p => p.member);
+    const go = async (member: Member) => {
+      const api = this.service?.api;
+      if (!api || !(await this.asMember(member.id, `Who's getting ${card.reward.name}?`))) return;
+      try {
+        const out = await api.redeem(member.id, rewardId);
+        this.showToast({
+          id: `redeem-${Date.now()}`,
+          text: out.result === 'given' ? `${card.reward.name} is ${member.name}'s!` : `Asked for ${card.reward.name}. A parent will answer.`,
+        });
+      } catch (err) {
+        this.showToast({ id: `redeem-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+      }
+    };
+    if (ready.length === 1) {
+      void go(ready[0]);
+      return;
+    }
+    this._sheet = {
+      kind: 'people', heading: `Who's getting ${card.reward.name}?`, people: ready, body: `It costs ★ ${card.reward.cost}.`,
+      pick: member => { if (member) void go(member); },
+    };
+  }
+
+  private async _openReward(id: string | null): Promise<void> {
+    if (id === null && !(await this.asParent("Who's adding a reward?"))) return;
+    this._sheet = { kind: 'reward', id, busy: false };
+  }
+
+  private async _saveReward(id: string | null, draft: RewardDraft): Promise<void> {
+    const api = this.service?.api;
+    if (!api || !(await this.asParent(id ? "Who's changing this reward?" : "Who's adding a reward?"))) return;
+    this._sheet = { kind: 'reward', id, busy: true };
+    try {
+      await api.saveReward(rewardFrom(draft), id ?? undefined);
+      this._sheet = null;
+      this.showToast({ id: `reward-${Date.now()}`, text: id ? `Saved ${draft.name.trim()}.` : `Added ${draft.name.trim()}.` });
+    } catch (err) {
+      this._sheet = { kind: 'reward', id, busy: false };
+      this.showToast({ id: `reward-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
+  }
+
+  private async _setGoal(memberId: string, rewardId: string | null): Promise<void> {
+    const api = this.service?.api;
+    const member = this._member(memberId);
+    if (!api || !member || !(await this.asMember(memberId, `Whose goal is this?`))) return;
+    const reward = this.service?.board()?.rewards.find(r => r.id === rewardId);
+    try {
+      await api.savePrefs(memberId, { goal: rewardId });
+      this.showToast({ id: `goal-${Date.now()}`, text: reward ? `${member.name} is saving up for ${reward.name}.` : `${member.name} has no goal now.` });
+    } catch (err) {
+      this.showToast({ id: `goal-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
+  }
+
   /** The view the bar picked. */
   protected renderView(): unknown {
     const board = this.service?.board();
@@ -436,6 +514,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (empty) return this._empty();
     if (this.view === 'my_day') return this._renderMyDay(board);
     if (this.view === 'week') return this._renderWeek(board);
+    if (this.view === 'rewards') return this._renderRewards(board);
     return html`
       <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
         .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} layout=${this.layout}
@@ -827,6 +906,32 @@ export class PvChoresModule extends LitElement implements ModuleElement {
           @pv-sheet-close=${() => { if (this._sheet?.kind === 'day') this._sheet = null; }}></pv-chores-day-sheet>
       `;
     }
+    if (sheet.kind === 'reward') {
+      const board = this.service?.board();
+      if (!board) return nothing;
+      const members = inOrder(this.household?.members ?? []);
+      const card = sheet.id ? rewardCards(board, members).find(c => c.reward.id === sheet.id) ?? null : null;
+      if (sheet.id && !card) {
+        queueMicrotask(() => { if (this._sheet === sheet) this._sheet = null; });
+        return nothing;
+      }
+      return html`
+        <pv-chores-reward-sheet .layout=${this.layout} .card=${card} .people=${members} .hass=${this.hass} .colorOf=${this._colorOf}
+          ?canEdit=${parentAccess(this.household, this.session) !== 'no'} ?busy=${sheet.busy}
+          @pv-reward-goal=${(e: CustomEvent<{ member: string; reward: string | null }>) => void this._setGoal(e.detail.member, e.detail.reward)}
+          @pv-reward-save=${(e: CustomEvent<{ draft: RewardDraft }>) => void this._saveReward(sheet.id, e.detail.draft)}
+          @pv-reward-delete=${() => { if (card) this._sheet = { kind: 'delete_reward', id: card.reward.id, name: card.reward.name }; }}
+          @pv-sheet-close=${() => { if (this._sheet?.kind === 'reward') this._sheet = null; }}></pv-chores-reward-sheet>
+      `;
+    }
+    if (sheet.kind === 'delete_reward') {
+      return html`
+        <pv-notice-sheet .layout=${this.layout} heading=${`Delete ${sheet.name}?`}
+          body="It leaves the catalog. Rewards already given stay in history, and nobody loses stars."
+          .actions=${[{ id: 'delete', label: `Delete ${sheet.name}`, kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+          @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => void this._confirmDeleteReward(sheet.id, sheet.name, e.detail.id)}></pv-notice-sheet>
+      `;
+    }
     if (sheet.kind === 'inbox') {
       const board = this.service?.board();
       if (!board) return nothing;
@@ -898,6 +1003,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._sheet = null;
     if (id !== 'delete' || !this.service) return;
     await this._run(() => this.service!.api.deleteActivity(row.item.chore), `Deleted ${row.name}.`);
+  }
+
+  private async _confirmDeleteReward(rewardId: string, name: string, id: string): Promise<void> {
+    this._sheet = null;
+    if (id !== 'delete' || !this.service || !(await this.asParent(`Who's deleting ${name}?`))) return;
+    await this._run(() => this.service!.api.deleteReward(rewardId), `Deleted ${name}.`);
   }
 
   private async _onStartOver(id: string): Promise<void> {
