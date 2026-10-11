@@ -8,7 +8,8 @@ import { baseStyles, buttonStyles } from '../../styles/shared';
 import type { HouseholdView, Member } from '../../core/household';
 import type { HouseholdApi } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
-import { PAGE_ERROR, POP_PAGE, PUSH_PAGE, PushPageDetail } from '../../core/page-host';
+import type { ModuleService, OpenTarget } from '../../core/module-registry';
+import { OPEN_TARGET, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PushPageDetail } from '../../core/page-host';
 import type { Session } from '../../core/session';
 import { SettingsContext, SettingsPage, groupPages, settingsRegistry } from '../../core/settings-registry';
 import type { PlanaVistaData } from '../../types';
@@ -31,6 +32,7 @@ const TOAST_MS = 4000;
  * phones. The parent-mode strip stays on top while parent mode is on.
  *
  * @fires pv-settings-close - Done
+ * @fires pv-settings-open-target - a page asked for a module's view (Open Dana's day); Settings closes
  */
 export class PvSettings extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -42,6 +44,9 @@ export class PvSettings extends LitElement {
   @property({ type: Number }) sessionEndsAt = 0;
   @property({ attribute: false }) parent: Member | null = null;
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
+  /** The card's module services, and a number that changes whenever one of them does. */
+  @property({ attribute: false }) services: Record<string, ModuleService> = {};
+  @property({ type: Number }) revision = 0;
 
   /** The page picked in the sidebar (the stack starts at the list). */
   @state() private _selected: string | null = null;
@@ -55,6 +60,7 @@ export class PvSettings extends LitElement {
     this.addEventListener(PUSH_PAGE, this._onPush as EventListener);
     this.addEventListener(POP_PAGE, this._onPop);
     this.addEventListener(PAGE_ERROR, this._onError as EventListener);
+    this.addEventListener(OPEN_TARGET, this._onOpen as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -62,6 +68,7 @@ export class PvSettings extends LitElement {
     this.removeEventListener(PUSH_PAGE, this._onPush as EventListener);
     this.removeEventListener(POP_PAGE, this._onPop);
     this.removeEventListener(PAGE_ERROR, this._onError as EventListener);
+    this.removeEventListener(OPEN_TARGET, this._onOpen as EventListener);
     window.clearTimeout(this._toastTimer);
   }
 
@@ -236,7 +243,7 @@ export class PvSettings extends LitElement {
   ];
 
   private _context(): SettingsContext {
-    return { household: this.household, data: this.data };
+    return { household: this.household, data: this.data, services: this.services };
   }
 
   private get _split(): boolean {
@@ -320,6 +327,8 @@ export class PvSettings extends LitElement {
             mode="settings"
             .pageProps=${top?.props ?? {}}
             .drafts=${this.drafts}
+            .services=${this.services}
+            .revision=${this.revision}
           ></${tag}>
         `)}
       </section>
@@ -359,6 +368,16 @@ export class PvSettings extends LitElement {
     event.stopPropagation();
     this._stack = this._stack.slice(0, -1);
   };
+
+  private _onOpen = (event: CustomEvent<OpenTarget>): void => {
+    event.stopPropagation();
+    void this._openTarget(event.detail);
+  };
+
+  private async _openTarget(target: OpenTarget): Promise<void> {
+    if (!(await this._mayLeave())) return;
+    this.dispatchEvent(new CustomEvent('pv-settings-open-target', { detail: target, bubbles: true, composed: true }));
+  }
 
   private _onError = (event: CustomEvent<{ message: string }>): void => {
     event.stopPropagation();

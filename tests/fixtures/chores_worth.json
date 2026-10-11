@@ -1,0 +1,33 @@
+{
+  "description": "What one check-off is worth in minutes, per assignee (spec 8.2, 14.4). The engine's occurrences and the card's worth line are both checked against this table.",
+  "cases": [
+    {"name": "every day, once", "minutes": {"alex": 30},
+     "activity": {"id": "kitchen_cleanup", "name": "Kitchen cleanup", "schedule": "plan", "assignees": ["alex"],
+                  "minimum": {"hours": 0.5, "per": "day"}}},
+    {"name": "every day, twice", "minutes": {"casey": 15},
+     "activity": {"id": "cat_care", "name": "Cat care", "schedule": "plan", "assignees": ["casey"],
+                  "minimum": {"hours": 0.5, "per": "day"}, "times": 2, "time_of_day": ["morning", "evening"]}},
+    {"name": "every day, each does it all", "minutes": {"casey": 10, "dana": 10},
+     "activity": {"id": "tidy_up", "name": "Tidy up", "schedule": "plan", "assignees": ["casey", "dana"],
+                  "minimum": {"hours": 0.1666666667, "per": "day"}, "split": "each"}},
+    {"name": "a week on two days", "minutes": {"blair": 60},
+     "activity": {"id": "laundry", "name": "Laundry", "schedule": "plan", "assignees": ["blair"],
+                  "minimum": {"hours": 2, "per": "week"}, "days": ["mon", "thu"]}},
+    {"name": "a week, split unevenly, any day", "minutes": {"blair": 90, "casey": 30},
+     "activity": {"id": "clean_the_bathroom", "name": "Clean the bathroom", "schedule": "plan",
+                  "assignees": ["blair", "casey"], "minimum": {"hours": 2, "per": "week"}, "split": "shared",
+                  "shares": {"blair": 1.5, "casey": 0.5}}},
+    {"name": "a week on two days, twice each", "minutes": {"casey": 15},
+     "activity": {"id": "take_out_the_trash", "name": "Take out the trash", "schedule": "plan", "assignees": ["casey"],
+                  "minimum": {"hours": 1, "per": "week"}, "days": ["tue", "fri"], "times": 2}},
+    {"name": "a week, three check-offs any day", "minutes": {"casey": 20},
+     "activity": {"id": "yard_work", "name": "Yard work", "schedule": "plan", "assignees": ["casey"],
+                  "minimum": {"hours": 1, "per": "week"}, "times": 3}},
+    {"name": "one time, two sessions", "minutes": {"casey": 120},
+     "activity": {"id": "clean_out_the_garage", "name": "Clean out the garage", "schedule": "once", "assignees": ["casey"],
+                  "once": {"by": "2026-10-18", "sessions": 2, "estimate_minutes": 240}}},
+    {"name": "repeats, each time", "minutes": {"alex": 45, "casey": 45},
+     "activity": {"id": "rake_the_leaves", "name": "Rake the leaves", "schedule": "repeats", "assignees": ["alex", "casey"],
+                  "repeats": {"rrule": "FREQ=WEEKLY;BYDAY=SA", "start": "2026-10-17", "window": "day", "estimate_minutes": 45}}}
+  ]
+}

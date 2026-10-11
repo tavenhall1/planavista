@@ -1,4 +1,5 @@
 import { HouseholdView } from './household';
+import type { ModuleService } from './module-registry';
 import { PageRegistry, WizardPage } from './page-registry';
 import { PlanaVistaData } from '../types';
 
@@ -6,6 +7,8 @@ import { PlanaVistaData } from '../types';
 export interface SettingsContext {
   household: HouseholdView | null;
   data: PlanaVistaData;
+  /** The card's module services (the chores pages read the chores feed). */
+  services?: Record<string, ModuleService>;
 }
 
 export interface SettingsGroup {
@@ -52,6 +55,7 @@ export function groupPages(
 export interface SetupContext {
   household: HouseholdView | null;
   data: PlanaVistaData;
+  services?: Record<string, ModuleService>;
 }
 
 export interface SetupStep extends WizardPage<SetupContext> {

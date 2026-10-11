@@ -629,7 +629,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .sessionEndsAt=${this._session.endsAt ?? 0}
               .parent=${this._household.view?.members.find(m => m.id === this._session.session?.memberId) ?? null}
               .drafts=${this._drafts}
+              .services=${this._services}
+              .revision=${this._serviceRevision}
               @pv-settings-close=${this._onSettingsClose}
+              @pv-settings-open-target=${(e: CustomEvent<OpenTarget>) => { this._onSettingsClose(); this._open(e.detail); }}
               @pv-lock=${this._onSettingsLock}
             ></pv-settings>
           </div>
