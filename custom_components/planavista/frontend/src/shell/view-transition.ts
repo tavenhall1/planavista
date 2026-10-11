@@ -75,6 +75,8 @@ async function start(): Promise<void> {
   const root = document.documentElement;
   setTransitionStyles(transitionCss([PAGE], batch.kind));
   root.dataset.pvVt = batch.kind;
+  // They hold their last frame (fill), so they're taken away once the change is over.
+  let animations: Animation[] = [];
   const applyAll = () => Promise.all(batch.changes.map(change => change.apply())).then(() => undefined);
   try {
     const startTransition = (document as unknown as { startViewTransition: StartViewTransition }).startViewTransition.bind(document);
@@ -87,42 +89,45 @@ async function start(): Promise<void> {
     }
     try {
       await transition.ready;
-      animate(batch.kind, batch.changes);
+      animations = animate(batch.kind, batch.changes);
     } catch {
       // The browser skipped the animation; the change itself still happened.
     }
     await transition.finished.catch(() => undefined);
   } finally {
+    for (const animation of animations) animation.cancel();
     delete root.dataset.pvVt;
     setTransitionStyles('');
     running = false;
   }
 }
 
-function animate(kind: TransitionKind, changes: Change[]): void {
+function animate(kind: TransitionKind, changes: Change[]): Animation[] {
   const root = document.documentElement;
   const oldImage = `::view-transition-old(${PAGE})`;
   const newImage = `::view-transition-new(${PAGE})`;
   if (kind === 'dusk' || kind === 'dawn') {
     // Night falls from the top; day rises from the bottom.
     const [from, to] = kind === 'dusk' ? ['0% 100%', '0% 0%'] : ['0% 0%', '0% 100%'];
-    root.animate(
+    return [root.animate(
       { maskPosition: [from, to], webkitMaskPosition: [from, to] },
       { duration: SWEEP_MS, easing: SWEEP_EASING, fill: 'both', pseudoElement: oldImage },
-    );
-  } else if (kind === 'reveal') {
+    )];
+  }
+  if (kind === 'reveal') {
     // The new look spreads out from the finger, or from the card's middle.
     const tapped = changes.find(change => change.point) ?? changes[0];
     const rect = tapped.element.getBoundingClientRect();
     const point = tapped.point ?? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     const circle = revealCircle(point, window.innerWidth, window.innerHeight);
     const spring = springEasing(SMOOTH);
-    root.animate(
+    return [root.animate(
       { clipPath: [`circle(0px at ${circle.x}px ${circle.y}px)`, `circle(${circle.radius}px at ${circle.x}px ${circle.y}px)`] },
       { duration: spring.duration, easing: spring.easing, fill: 'both', pseudoElement: newImage },
-    );
-  } else {
-    root.animate({ opacity: [1, 0] }, { duration: FADE_MS, easing: 'ease', fill: 'both', pseudoElement: oldImage });
-    root.animate({ opacity: [0, 1] }, { duration: FADE_MS, easing: 'ease', fill: 'both', pseudoElement: newImage });
+    )];
   }
+  return [
+    root.animate({ opacity: [1, 0] }, { duration: FADE_MS, easing: 'ease', fill: 'both', pseudoElement: oldImage }),
+    root.animate({ opacity: [0, 1] }, { duration: FADE_MS, easing: 'ease', fill: 'both', pseudoElement: newImage }),
+  ];
 }
