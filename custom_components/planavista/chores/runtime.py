@@ -407,7 +407,6 @@ class ChoresRuntime:
         if enabled and first_time:
             module["set_up_at"] = dt_util.now().isoformat()
         self.household.data["modules"]["chores"] = module
-        await self.household.async_save()
         if enabled:
             if self.available:
                 self.engine.start(self.now())
@@ -415,9 +414,13 @@ class ChoresRuntime:
                 for name in STORE_KEYS:
                     await self.stores.async_save(name, getattr(self.engine, name))
                 self._check_writes()
+            # Entities first: the household save below makes everyone sync, and
+            # by then each member's entities already exist (no duplicates).
             await self._async_load_platforms()
+            await self.household.async_save()
             await self.async_sync_members()
         else:
+            await self.household.async_save()
             await self._async_unload_platforms()
             self._remove_entities()
             self._devices.clear()

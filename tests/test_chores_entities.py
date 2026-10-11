@@ -1,8 +1,10 @@
 """Chores in Home Assistant: devices, entities, and turning chores on and off (spec 10.1, 10.2)."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.core import HomeAssistant
@@ -143,3 +145,14 @@ async def test_people_joining_renaming_and_leaving(hass: HomeAssistant, chores: 
     assert hass.states.get("todo.casey_chores") is None
     assert chores.engine.activity("yard_work")["assignees"] == []
     assert chores.engine.activity("clean_the_bathroom")["assignees"] == ["blair"]
+
+
+async def test_turning_chores_on_logs_no_errors(
+    hass: HomeAssistant, household: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.clear()
+    await hass.data[DATA_CHORES].async_set_enabled(True)
+    await hass.async_block_till_done()
+    # asyncio's own slow-task notices come from the test harness's debug mode.
+    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING and r.name != "asyncio"] == []
+    assert hass.states.get("sensor.casey_chores_left") is not None
