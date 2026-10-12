@@ -89,8 +89,8 @@ Release 1.4.0 works end to end, but underneath it is still two products in one s
 - **Pick one of a few** (the module switcher, the views, My day's style, quick add's When, Motion, every Settings editor's segments, the repeat picker, a person's Picture): one segmented control.
   - Its look: a grey track, a white selected chip with a light shadow, labels at 0.875rem 650, 48 px tall.
   - The accent fill is kept for buttons that do something, never for "where am I".
-- **Pick from a list of named choices** (Age group, the missed rule, Theme, Default view, Time format, First day, Customize's options): one choice-row or choice-card style, the one Appearance uses for Light, Dark, Automatic. Native radios go.
-  - The option in effect is always marked selected, including a theme's own value ("Theme default").
+- **Pick from a list of named choices** with a line of explanation (Age group, the missed rule): one grouped list of rows around real radio inputs, the chosen row marked with a check, as in a phone's settings. Appearance's Light, Dark, Automatic and its themes stay picture cards, because they preview; setup's choice cards already mark the chosen card. Shorter choices (Default view, Time format, First day, Customize's shape) use the segmented control.
+  - The option in effect is always marked chosen, including a theme's own value (Customize's "Theme").
 - **People:** two patterns, by job.
   - A **people strip** chooses whose view you're looking at: the phone board, Day on a phone, and My day. It uses round faces with names, and the one shown is filled with its color.
   - **Person chips** choose who something is for: New event's Who, quick add, a chore's people, and a reward's who. They are avatar chips, selected with the person's color ring and a check.
@@ -151,17 +151,18 @@ Release 1.4.0 works end to end, but underneath it is still two products in one s
 
 ## 4. Architecture
 
-- `core/pv-segmented.ts` (new): the one segmented control (options, value, a change event; keyboard arrows; 48 px).
-- `core/pv-people-strip.ts`, `core/pv-person-chips.ts` (new): the two people patterns.
-- `core/pv-date-picker.ts`, `core/pv-time-picker.ts` (new): moved out of the event editor, unchanged in behavior.
-- `core/access.ts`: `eventAccess(view, session, memberIds, unlinked)` mirrors 9.5 for events (pure, tested).
-- `core/session.ts` and `household/security.py`: sessions carry their start; `SessionManager` ends a session after the household's idle time or its cap; the card's ring counts down to the earlier end.
-- `household/security.py`: `easy_pin(pin)`, with the cases in `tests/fixtures/easy_pins.json` shared by the Python and card tests.
-- `core/place.ts` (new): the remembered module and view (localStorage `planavista.place`, keyed by the dashboard path and the card's configuration; entries older than an hour are ignored).
-- `modules/calendar/calendar-derive.ts`: one merge of event copies for every view, and a calendar's color from its member (`memberColors`).
-- `shell/pv-parent-strip.ts` becomes the session strip for any session (parent or child).
-- `styles/shared.ts` and `styles/theme-pairs.ts`: one button family with a disabled look, `--pv-danger` and `--pv-danger-ink`, one toggle, one tag, one section head.
-- `chores/runtime.py` and `diagnostics.py`: a ring of the last 20 command refusals.
+- `styles/controls.ts` (new): the one look for each kind of choice, as shared styles over each site's own buttons and inputs (no new elements, so sites keep their handlers and keyboard focus): `.pv-seg` (segmented), `.pv-choices` (choice rows), `.pv-tag` (tags), `.pv-people` (the people strip), `.pv-person-chips` (person chips). `core/people-strip.ts` picks whose view opens first.
+- `core/pickers.ts`, `core/picker-views.ts`, `styles/pickers.ts` (new), with `core/pv-date-field.ts` and `core/pv-time-field.ts`: the event editor's month grid and time list, shared. The editor draws them in its own dropdowns; the two fields open them inline everywhere else.
+- `core/access.ts`: `eventAccess(view, session, owners)` and `eventPinChoices(view, owners)` mirror 9.5 for events (pure, tested). `modules/calendar/event-gate.ts` (new) asks for the PIN from the details sheet and the editor. `core/pin-gate.ts` `pinReason` gives every PIN question its why line.
+- `core/session.ts`, `shell/session-controller.ts`, and `household/security.py`: sessions carry their start; `SessionManager(limits)` ends a session after the household's quiet time or its cap, both read at every check; a command the backend accepted counts as a touch on the card too (`WsApi` onSessionUsed).
+- `household/security.py` `easy_pin(pin)` and `core/keypad.ts` `easyPin`, both checked against `tests/fixtures/easy_pins.json`.
+- `core/place.ts` (new): the remembered module and views (localStorage `planavista.place`, keyed by the dashboard path and the card's configuration; places last on screen more than an hour ago are ignored).
+- `modules/calendar/mode-colors.ts`: a linked calendar's colors come from its member (`withModeColors(data, mode, members)`), with `core/color.ts` `lightTint`. `modules/calendar/settings/calendars-page.ts` shows Set in People (`rowColor`).
+- `modules/calendar/utils/event-utils.ts` `sameEventKey`: one key for an event's copies, used by Week's merge, the Day view's faces, the details sheet (`eventForPopup`), and Day's all-day row (`groupSameEvents`).
+- `shell/pv-parent-strip.ts` is the strip for any session, a parent's or a child's.
+- `styles/shared.ts`, `styles/theme-pairs.ts`, and `styles/sheet.ts`: one button family with a disabled look, `--pv-danger` and `--pv-danger-ink`, one toggle, toast tokens, one sheet heading and footer.
+- `refusals.py` (new) and `diagnostics.py`: the last 20 refusals from the household and chores commands.
+- `modules/chores/recent-checkoffs.ts` and `fairness.ts` (new), with the chores derive modules: each toast's Undo, one fairness line, the goal and sticker words.
 - No new Store files. Two added fields under `security` in the household Store (`session_idle_seconds`, `parent_mode_minutes`). Older releases ignore them, so a step back to 1.4.0 keeps working.
 
 ## 5. Testing
