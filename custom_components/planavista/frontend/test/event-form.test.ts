@@ -11,6 +11,7 @@ import {
   withEndTime,
   withStartTime,
   type EventFormDates,
+  defaultWho,
 } from '../src/modules/calendar/utils/event-form';
 
 describe('calendarDaysBetween', () => {
@@ -235,5 +236,13 @@ describe('buildEventBase', () => {
       location: ' Museum ',
     });
     expect(base).toEqual({ summary: 'Field trip', start_date: '2026-10-09', end_date: '2026-10-10', location: 'Museum' });
+  });
+});
+
+describe("a new event's Who (milestone 8)", () => {
+  it('picks the one calendar offered, or nobody when there is a choice', () => {
+    expect(defaultWho(['calendar.test_casey'])).toEqual(['calendar.test_casey']);
+    expect(defaultWho(['calendar.test_alex', 'calendar.test_blair'])).toEqual([]);
+    expect(defaultWho([])).toEqual([]);
   });
 });

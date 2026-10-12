@@ -14,6 +14,7 @@ import { SheetController } from '../../../shell/sheet-controller';
 import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
 import { calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen } from '../event-words';
+import { EventGate, calendarsOf } from '../event-gate';
 
 interface Participant {
   entity_id: string;
@@ -39,6 +40,8 @@ function participantsOf(event: CalendarEvent): Participant[] {
 export class PVEventPopup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) event: CalendarEvent | null = null;
+  /** Who may change it here (D1); without one, anyone may. */
+  @property({ attribute: false }) gate?: EventGate;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** The calendars shown, for what each one lets PlanaVista change. */
@@ -203,6 +206,8 @@ export class PVEventPopup extends LitElement {
     const calendar = this.calendars.find(c => c.entity_id === event.calendar_entity_id);
     const can = calendarCan(calendar?.attributes);
     const changeable = !!event.uid;
+    const ids = calendarsOf(event);
+    const allowed = this.gate?.allowed(ids) ?? true;
     const question = deleteQuestion(event, shared.length > 1 ? shared.map(p => p.calendar_name) : []);
 
     return html`
@@ -240,15 +245,17 @@ export class PVEventPopup extends LitElement {
         ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
         ${!changeable || (!can.edit && !can.delete) ? html`
           <p class="note">This event can only be changed in its calendar's own app.</p>
+        ` : !allowed ? html`
+          <p class="note">${this.gate?.note(ids)}</p>
         ` : nothing}
 
         <div class="actions">
-          ${changeable && can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
-          ${changeable && can.delete ? html`
+          ${allowed && changeable && can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
+          ${allowed && changeable && can.delete ? html`
             <button class="pv-btn pv-btn-secondary danger apart" type="button" ?disabled=${this._deleting}
-              @click=${() => { this._asking = true; }}>${this._deleting ? 'Deleting…' : 'Delete event'}</button>
+              @click=${this._askDelete}>${this._deleting ? 'Deleting…' : 'Delete event'}</button>
           ` : nothing}
-          <button class="pv-btn pv-btn-secondary ${changeable && can.delete ? 'apart' : ''}" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
+          <button class="pv-btn pv-btn-secondary ${allowed && changeable && can.delete ? 'apart' : ''}" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
         </div>
       </div>
       ${this._asking ? html`
@@ -291,8 +298,23 @@ export class PVEventPopup extends LitElement {
     else void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.danger')?.focus());
   };
 
-  private _edit() {
-    if (this.event) this.store.openEditDialog(this.event);
+  /** A PIN first when this screen needs one (D1), then the editor. */
+  private async _edit(): Promise<void> {
+    const event = this.event;
+    if (!event || !(await this._mayChange(event))) return;
+    // The sheet may have been handed a fresh copy meanwhile (the minute's refresh); it is the same event.
+    if (this.isConnected && this.event) this.store.openEditDialog(this.event);
+  }
+
+  /** A PIN first when this screen needs one (D1), then the question. */
+  private _askDelete = async (): Promise<void> => {
+    const event = this.event;
+    if (!event || !(await this._mayChange(event))) return;
+    if (this.isConnected && this.event) this._asking = true;
+  };
+
+  private _mayChange(event: CalendarEvent): Promise<boolean> {
+    return this.gate ? this.gate.ask(calendarsOf(event), event.summary ?? '') : Promise.resolve(true);
   }
 
   private async _delete(everyone: boolean) {

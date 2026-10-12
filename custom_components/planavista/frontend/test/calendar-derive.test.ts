@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  calendarWatchedEntities, deriveCalendarData, eventForPopup, initialView, selectCalendars,
+  calendarWatchedEntities, deriveCalendarData, eventForPopup, initialView, ownersOf, selectCalendars,
 } from '../src/modules/calendar/calendar-derive';
 import type { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../src/types';
 
@@ -99,5 +99,25 @@ describe('eventForPopup (what the event popup opens with)', () => {
   it('leaves an event on one calendar as it is', () => {
     const a = ev('calendar.test_blair', 'alone');
     expect(eventForPopup(a, [a])).toBe(a);
+  });
+});
+
+describe('ownersOf (milestone 8, D1)', () => {
+  const rows = [
+    { entity_id: 'calendar.alex', member_id: 'alex' },
+    { entity_id: 'calendar.alex_work', member_id: 'alex' },
+    { entity_id: 'calendar.casey', member_id: 'casey' },
+    { entity_id: 'calendar.family', member_id: null },
+  ] as CalendarConfig[];
+
+  it('names whose calendars an event is on, once each', () => {
+    expect(ownersOf(['calendar.casey'], rows)).toEqual(['casey']);
+    expect(ownersOf(['calendar.alex', 'calendar.alex_work'], rows)).toEqual(['alex']);
+    expect(ownersOf(['calendar.alex', 'calendar.casey'], rows)).toEqual(['alex', 'casey']);
+  });
+
+  it("a calendar that belongs to nobody, or one PlanaVista no longer shows, counts as nobody's", () => {
+    expect(ownersOf(['calendar.family'], rows)).toEqual([null]);
+    expect(ownersOf(['calendar.gone', 'calendar.casey'], rows)).toEqual([null, 'casey']);
   });
 });

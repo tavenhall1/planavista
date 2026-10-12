@@ -284,3 +284,8 @@ export async function runEditWithRestore(steps: {
     );
   }
 }
+
+/** A new event's Who, however it was opened (New event or a day's +): the one calendar offered, or nobody when there is a choice. */
+export function defaultWho(offered: readonly string[]): string[] {
+  return offered.length === 1 ? [offered[0]] : [];
+}

@@ -7,12 +7,13 @@ import { CalendarConfig, CalendarEvent, CreateEventData } from '../../../types';
 import { CalendarStore, StoreSubscriber } from '../calendar-store';
 import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../../../utils/ha-utils';
 import {
-  EditRestoreError,
-  EventFormDates,
   buildDeleteData,
   buildEventBase,
   buildRestoreData,
   defaultFormDates,
+  defaultWho,
+  EditRestoreError,
+  EventFormDates,
   formDatesFromEvent,
   formEndDate,
   planEdit,
@@ -33,6 +34,7 @@ import { dateLabel, timeSlots } from '../../../core/pickers';
 import { pickerStyles } from '../../../styles/pickers';
 import { contrastText } from '../../../core/color';
 import { calendarCan, formSignature, saveFailedText } from '../event-words';
+import type { EventGate } from '../event-gate';
 
 
 const DISCARD_ACTIONS: NoticeAction[] = [
@@ -52,6 +54,8 @@ const DISCARD_ACTIONS: NoticeAction[] = [
 export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) calendars: CalendarConfig[] = [];
+  /** Who may change events here (D1): Save asks for a PIN first when this screen needs one. */
+  @property({ attribute: false }) gate?: EventGate;
   @property({ type: Boolean }) open = false;
   @property({ type: String }) mode: 'create' | 'edit' = 'create';
   @property({ type: Object }) prefill: Partial<CalendarEvent> | null = null;
@@ -64,6 +68,8 @@ export class PVEventCreateDialog extends LitElement {
 
   @state() private _title = '';
   @state() private _selectedCalendars: Set<string> = new Set();
+  /** Save is waiting on a PIN (D1). */
+  private _gating = false;
   @state() private _originalCalendars: Set<string> = new Set();
   @state() private _organizerEntityId = '';
   @state() private _date = '';
@@ -527,7 +533,7 @@ export class PVEventCreateDialog extends LitElement {
       } else if (this.prefill.calendar_entity_id) {
         this._selectedCalendars = new Set([this.prefill.calendar_entity_id]);
       } else {
-        this._selectedCalendars = new Set([this.calendars[0]?.entity_id].filter(Boolean));
+        this._selectedCalendars = new Set(defaultWho(this._offered().map(c => c.entity_id)));
       }
       this._originalCalendars = new Set(this._selectedCalendars);
 
@@ -562,9 +568,15 @@ export class PVEventCreateDialog extends LitElement {
     }
   }
 
+  /** The calendars Who offers: a read-only calendar can't take a new event; the event's own calendars stay in an edit. */
+  private _offered(): CalendarConfig[] {
+    return this.calendars.filter(c =>
+      c.visible !== false && (calendarCan(c.attributes).create || this._originalCalendars.has(c.entity_id)));
+  }
+
   private _setDefaults() {
     this._title = '';
-    this._selectedCalendars = new Set();
+    this._selectedCalendars = new Set(defaultWho(this._offered().map(c => c.entity_id)));
     this._originalCalendars = new Set();
     this._organizerEntityId = '';
     this._applyDates(defaultFormDates(new Date()));
@@ -617,9 +629,7 @@ export class PVEventCreateDialog extends LitElement {
   render() {
     if (!this.open) return nothing;
 
-    // A read-only calendar can't take a new event; the event's own calendars stay in an edit.
-    const visibleCalendars = this.calendars.filter(c =>
-      c.visible !== false && (calendarCan(c.attributes).create || this._originalCalendars.has(c.entity_id)));
+    const visibleCalendars = this._offered();
     const isEdit = this.mode === 'edit';
     const heading = isEdit ? 'Edit event' : 'New event';
 
@@ -1182,6 +1192,14 @@ export class PVEventCreateDialog extends LitElement {
       this._showError(dateError);
       return;
     }
+
+    // An edit changes the calendars it leaves as well as the ones it joins (D1).
+    if (this._gating) return;
+    const touched = this.mode === 'edit' ? new Set([...this._originalCalendars, ...this._selectedCalendars]) : this._selectedCalendars;
+    this._gating = true;
+    const allowed = this.gate ? await this.gate.ask([...touched], this._title) : true;
+    this._gating = false;
+    if (!allowed) return;
 
     this._error = '';
     this._saving = true;

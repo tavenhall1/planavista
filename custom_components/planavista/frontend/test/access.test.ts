@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actingParent, mayEverReview, memberAccess, parentAccess, pinChoicesFor } from '../src/core/access';
+import { actingParent, eventAccess, eventPinChoices, mayEverReview, memberAccess, parentAccess, pinChoicesFor } from '../src/core/access';
 import type { AccountKind, HouseholdView, Member } from '../src/core/household';
 import type { Session } from '../src/core/session';
 
@@ -91,5 +91,50 @@ describe('actingParent', () => {
     expect(actingParent(view('shared'), session('blair', true))?.id).toBe('blair');
     expect(actingParent(view('parent', 'alex'), null)?.id).toBe('alex');
     expect(actingParent(view('shared'), null)).toBeNull();
+  });
+});
+
+describe('eventAccess (milestone 8, D1: events follow 9.5)', () => {
+  it('an event only on your own calendar is yours to change; anything else needs a parent', () => {
+    const casey = view('member', 'casey');
+    expect(eventAccess(casey, null, ['casey'])).toBe('yes');
+    expect(eventAccess(casey, null, ['dana'])).toBe('no');
+    expect(eventAccess(casey, null, ['casey', 'dana'])).toBe('no');
+    expect(eventAccess(casey, null, [null])).toBe('no');
+  });
+
+  it("a parent's own login and an admin change any event", () => {
+    expect(eventAccess(view('parent', 'alex'), null, ['casey', 'dana'])).toBe('yes');
+    expect(eventAccess(view('admin'), null, [null])).toBe('yes');
+  });
+
+  it("the shared screen asks for the owner's PIN or a parent's", () => {
+    const kitchen = view('shared');
+    expect(eventAccess(kitchen, null, ['dana'])).toBe('yes');
+    expect(eventAccess(kitchen, null, ['casey'])).toBe('pin');
+    expect(eventAccess(kitchen, null, ['casey', 'dana'])).toBe('pin');
+    expect(eventAccess(kitchen, null, [null])).toBe('pin');
+    expect(eventAccess(kitchen, session('casey', false), ['casey'])).toBe('yes');
+    expect(eventAccess(kitchen, session('casey', false), ['casey', 'dana'])).toBe('pin');
+    expect(eventAccess(kitchen, session('blair', true), ['casey', null])).toBe('yes');
+  });
+
+  it('who may unlock: the owner and the parents for one person, the parents otherwise', () => {
+    const kitchen = view('shared');
+    expect(eventPinChoices(kitchen, ['casey']).map(m => m.id)).toEqual(['casey', 'blair']);
+    expect(eventPinChoices(kitchen, ['casey', 'dana']).map(m => m.id)).toEqual(['blair']);
+    expect(eventPinChoices(kitchen, [null]).map(m => m.id)).toEqual(['blair']);
+  });
+
+  it('a household with no parent PINs keeps changing events as before', () => {
+    const open = view('shared', null, PEOPLE.map(m => ({ ...m, has_pin: false })));
+    expect(eventAccess(open, null, [null])).toBe('yes');
+    expect(eventAccess(open, null, ['casey', 'dana'])).toBe('yes');
+    expect(eventAccess(view('other', null, []), null, [null])).toBe('yes');
+  });
+
+  it('the calendar keeps working before the household answers, or when it is unavailable', () => {
+    expect(eventAccess(null, null, ['casey'])).toBe('yes');
+    expect(eventAccess({ ...view('shared'), available: false }, null, [null])).toBe('yes');
   });
 });

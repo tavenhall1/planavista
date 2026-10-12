@@ -124,3 +124,17 @@ export function calendarWatchedEntities(calendars: CalendarConfig[]): string[] {
 export function initialView(config: PlanaVistaCardConfig | undefined, data: PlanaVistaData | null): ViewType | undefined {
   return config?.view || config?.default_view || data?.display?.default_view || undefined;
 }
+
+/**
+ * Whose calendars an event is on (milestone 8, D1), once each: a member id,
+ * or null for a calendar that belongs to nobody (or that PlanaVista no
+ * longer shows).
+ */
+export function ownersOf(calendarIds: readonly string[], rows: readonly CalendarConfig[]): (string | null)[] {
+  const owners: (string | null)[] = [];
+  for (const id of calendarIds) {
+    const owner = rows.find(row => row.entity_id === id)?.member_id ?? null;
+    if (!owners.includes(owner)) owners.push(owner);
+  }
+  return owners;
+}

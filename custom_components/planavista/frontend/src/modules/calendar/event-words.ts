@@ -170,3 +170,14 @@ export function formSignature(f: FormFields): string {
 export function saveFailedText(title: string, editing: boolean): string {
   return `Couldn't ${editing ? 'save' : 'add'} ${eventName({ summary: title })}. Check that Home Assistant is reachable, then try again.`;
 }
+
+/** Under an event this login may not change (D1): who can. */
+export function lockedEventNote(ownerNames: readonly string[]): string {
+  return ownerNames.length === 1 ? `Only ${ownerNames[0]} or a parent can change this event.` : 'Only a parent can change this event.';
+}
+
+/** The PIN sheet's question, and the line that says why it is asking. */
+export function changeReason(summary: string): { heading: string; reason: string } {
+  const name = summary.trim() || 'this event';
+  return { heading: `Who's changing ${name}?`, reason: `To change ${name}` };
+}

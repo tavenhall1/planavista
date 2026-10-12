@@ -48,6 +48,31 @@ export function pinChoicesFor(view: HouseholdView | null, memberId: string): Mem
   return member?.has_pin ? [member, ...parents] : parents;
 }
 
+/**
+ * Whether this screen may change a calendar event (milestone 8, D1: events
+ * follow 9.5). `owners` holds the member of each calendar the event is on, or
+ * null for a calendar that belongs to nobody. An event only on one person's
+ * calendar is a member-level change; anything else is parent-level. This is
+ * the card's rule (Home Assistant's own calendar stays as it allows), so a
+ * household that has asked for no protection (no parent has a PIN), or whose
+ * household hasn't answered, keeps changing events as before.
+ */
+export function eventAccess(view: HouseholdView | null, session: Session | null, owners: readonly (string | null)[]): Access {
+  if (!view || !view.available) return 'yes';
+  const [only] = owners;
+  if (owners.length === 1 && only) return memberAccess(view, session, only);
+  const access = parentAccess(view, session);
+  return access === 'no_pin' ? 'yes' : access;
+}
+
+/** Who may unlock a change to an event: the owner and the parents for one person's event, the parents otherwise. */
+export function eventPinChoices(view: HouseholdView | null, owners: readonly (string | null)[]): Member[] {
+  if (!view) return [];
+  const [only] = owners;
+  if (owners.length === 1 && only) return pinChoicesFor(view, only);
+  return parentsWithPins(view.members);
+}
+
 /** Who did a parent-level change on this screen: the parent in parent mode, or the account's own member. */
 export function actingParent(view: HouseholdView | null, session: Session | null): Member | null {
   if (!view) return null;

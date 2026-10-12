@@ -54,6 +54,8 @@ export class PvPinSheet extends LitElement {
   @property({ attribute: false }) members: Member[] = [];
   /** Unlock mode: the picker's question, such as "Who's opening Settings?". */
   @property({ type: String }) heading = '';
+  /** Unlock mode: why it is asking, under "Blair, enter your PIN" ("To change Team standup"). */
+  @property({ type: String }) reason = '';
   /** Choose mode: whose PIN this is. */
   @property({ attribute: false }) target?: Member;
   @property({ type: Boolean }) shuffle = false;
@@ -320,6 +322,7 @@ export class PvPinSheet extends LitElement {
         : nothing}
       <h2 class="heading" id="pin-heading">${heading}</h2>
       ${this._step === 'choose' ? html`<p class="hint">${pinHint(!!this.target?.parent)}</p>` : nothing}
+      ${this._step === 'enter' && this.reason ? html`<p class="hint">${this.reason}</p>` : nothing}
       <div class="boxes ${this._shake ? 'shake' : ''}" aria-hidden="true">
         ${Array.from({ length: this._entry.length }, (_, i) => html`
           <span class="box ${i < this._entry.digits.length ? 'filled' : ''}"></span>

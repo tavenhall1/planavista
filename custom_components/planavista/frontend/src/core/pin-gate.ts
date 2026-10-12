@@ -6,5 +6,6 @@ import type { Member } from './household';
  * what for, and hears whether a session for one of them started.
  */
 export interface PinGate {
-  ask(members: Member[], heading: string): Promise<boolean>;
+  /** `reason` is the line under "Blair, enter your PIN" that says why ("To change Team standup"). */
+  ask(members: Member[], heading: string, reason?: string): Promise<boolean>;
 }

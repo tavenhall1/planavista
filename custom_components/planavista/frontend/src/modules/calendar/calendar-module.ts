@@ -21,6 +21,8 @@ import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
 import { deepActiveElement } from '../../core/focus';
 import type { HouseholdView } from '../../core/household';
 import type { Session } from '../../core/session';
+import type { PinGate } from '../../core/pin-gate';
+import { eventGate } from './event-gate';
 import { parentAccess } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
@@ -74,6 +76,8 @@ export class PvCalendarModule extends LitElement {
   /** The household and parent mode, for what the empty states offer (a parent adds calendars). */
   @property({ attribute: false }) household: HouseholdView | null = null;
   @property({ attribute: false }) session: Session | null = null;
+  /** The card's PIN sheet, for changes that need someone's PIN on a shared screen (D1). */
+  @property({ attribute: false }) pinGate?: PinGate;
 
   /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
   @state() private _tick = Math.floor(Date.now() / 60000);
@@ -724,6 +728,7 @@ export class PvCalendarModule extends LitElement {
           .event=${this._details.value}
           .leaving=${this._details.leaving}
           .calendars=${calendars}
+          .gate=${this._gate}
           .now=${this._now(this._tick)}
           .timeFormat=${display?.time_format || '12h'}
           @pv-sheet-close=${this._onDetailsClosed}
@@ -735,7 +740,8 @@ export class PvCalendarModule extends LitElement {
           layout=${this.layout}
           .store=${store}
           .hass=${this.hass}
-          .calendars=${calendars}
+          .calendars=${this._mine(calendars)}
+          .gate=${this._gate}
           .open=${true}
           .mode=${this._editor.value.mode}
           .prefill=${this._editor.value.prefill}
@@ -884,10 +890,12 @@ export class PvCalendarModule extends LitElement {
         </div>
 
         <div class="pvc-controls">
-          <button class="pvc-new-btn" type="button" @click=${() => this._pv.store.openCreateDialog()}>
-            <ha-icon icon="mdi:plus"></ha-icon>
-            New event
-          </button>
+          ${this._mine(calendars).length ? html`
+            <button class="pvc-new-btn" type="button" @click=${() => this._pv.store.openCreateDialog()}>
+              <ha-icon icon="mdi:plus"></ha-icon>
+              New event
+            </button>
+          ` : nothing}
 
           <div class="pvc-nav">
             <button class="pvc-nav-btn" type="button" aria-label=${arrows.prev} title=${arrows.prev}
@@ -1023,7 +1031,18 @@ export class PvCalendarModule extends LitElement {
     this._pv.store.selectEvent(eventForPopup(clicked, allEvents));
   }
 
+  /** Who may change events here (D1): the household's rule, read when asked. */
+  private readonly _gate = eventGate(() => ({
+    view: this.household, session: this.session, pinGate: this.pinGate, rows: this.data?.calendars ?? [],
+  }));
+
+  /** The calendars this screen may ever put an event on: a child's own login offers only their own (D1). */
+  private _mine(calendars: CalendarConfig[]): CalendarConfig[] {
+    return calendars.filter(c => this._gate.allowed([c.entity_id]));
+  }
+
   private _onCreateEvent(e: CustomEvent) {
+    if (!this._mine(this._derived().calendars).length) return;
     const date = e.detail?.date as Date | undefined;
     const prefill: Partial<any> = {};
     if (date) {

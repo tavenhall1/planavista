@@ -54,7 +54,7 @@ import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/conte
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
   | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue' | 'keep_setup'; heading: string }
-  | { kind: 'pin'; purpose: 'module'; heading: string; members: Member[]; resolve: (unlocked: boolean) => void }
+  | { kind: 'pin'; purpose: 'module'; heading: string; reason?: string; members: Member[]; resolve: (unlocked: boolean) => void }
   | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
@@ -132,13 +132,13 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   /** How a module asks for a PIN: the card's PIN sheet, then the card's session. */
   private readonly _pinGate: PinGate = {
-    ask: (members, heading) => new Promise<boolean>(resolve => {
+    ask: (members, heading, reason) => new Promise<boolean>(resolve => {
       if (members.length === 0 || this._sheet) {
         resolve(false);
         return;
       }
       this._sheetOpener = (this.renderRoot as ShadowRoot | undefined)?.activeElement as HTMLElement | null ?? null;
-      this._sheet = { kind: 'pin', purpose: 'module', heading, members, resolve };
+      this._sheet = { kind: 'pin', purpose: 'module', heading, reason, members, resolve };
     }),
   };
 
@@ -589,6 +589,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         mode="unlock"
         .members=${sheet.purpose === 'module' ? sheet.members : view ? parentsWithPins(view.members) : []}
         .heading=${sheet.heading}
+        .reason=${sheet.purpose === 'module' ? sheet.reason ?? '' : ''}
         .shuffle=${!!view?.security.shuffle_keypad}
         @pv-unlocked=${this._onUnlocked}
         @pv-sheet-close=${this._onSheetCancel}
