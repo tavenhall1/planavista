@@ -204,7 +204,7 @@ export class PvChoreEditor extends LitElement {
         font: inherit;
         font-size: 1.0625rem;
         color: inherit;
-        min-height: 44px;
+        min-height: 48px;
       }
 
       .name-row input:focus {
@@ -262,8 +262,8 @@ export class PvChoreEditor extends LitElement {
       }
 
       .day {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         border: 1px solid var(--pv-border-subtle, #E5E7EB);
         background: var(--pv-card-bg, #FFFFFF);
@@ -305,7 +305,7 @@ export class PvChoreEditor extends LitElement {
       }
 
       .copy {
-        min-height: 40px;
+        min-height: 48px;
         margin-left: auto;
       }
 

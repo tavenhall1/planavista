@@ -74,8 +74,6 @@ export class PVViewMonth extends LitElement {
         padding: 0.5rem 0;
         font-size: 0.6875rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
         color: var(--pv-text-muted);
       }
 

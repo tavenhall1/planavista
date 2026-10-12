@@ -163,3 +163,34 @@ export const choiceStyles = css`
     outline-offset: -2px;
   }
 `;
+
+export const tagStyles = css`
+  .pv-tag {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    background: color-mix(in srgb, var(--pv-accent, #5B5BD6) 12%, transparent);
+    color: var(--pv-accent-ink, #5B5BD6);
+  }
+
+  .pv-tag.muted {
+    background: color-mix(in srgb, var(--pv-text, #1A1B1E) 7%, transparent);
+    color: var(--pv-text-secondary, #5F6670);
+  }
+
+  .pv-tag.muted.ok {
+    color: var(--pv-text, #1A1B1E);
+  }
+
+  .pv-tag.ask,
+  .pv-tag.attention {
+    background: var(--pv-warn-bg, #FDF1DC);
+    color: var(--pv-warn-ink, #8A5A00);
+  }
+`;

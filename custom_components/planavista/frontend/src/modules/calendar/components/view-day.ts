@@ -100,9 +100,7 @@ export class PVViewDay extends LitElement {
         justify-content: center;
         font-size: 0.6875rem;
         color: var(--pv-text-muted);
-        text-transform: uppercase;
         font-weight: 500;
-        letter-spacing: 0.04em;
       }
 
       .all-day-events {

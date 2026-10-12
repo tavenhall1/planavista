@@ -62,7 +62,7 @@ export class PvPinActions extends LitElement {
       }
 
       .buttons button {
-        min-height: 44px;
+        min-height: 48px;
       }
 
       .message {

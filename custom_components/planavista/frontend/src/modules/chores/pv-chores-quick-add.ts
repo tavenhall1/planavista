@@ -3,7 +3,7 @@ import { segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
-import { buttonStyles } from '../../styles/shared';
+import { buttonStyles, formStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
@@ -50,6 +50,7 @@ export class PvChoresQuickAdd extends LitElement {
   private _closing = false;
 
   static styles = [
+    formStyles,
     segmentedStyles,
     buttonStyles,
     sheetStyles,
@@ -78,7 +79,7 @@ export class PvChoresQuickAdd extends LitElement {
       }
 
       .text {
-        min-height: 44px;
+        min-height: 48px;
         padding: 0 8px;
         border: none;
         background: transparent;
@@ -176,7 +177,7 @@ export class PvChoresQuickAdd extends LitElement {
       }
 
       .chip {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 14px;
         border-radius: 999px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -205,37 +206,9 @@ export class PvChoresQuickAdd extends LitElement {
         font-size: 0.8125rem;
       }
 
-      .switch {
-        position: relative;
-        width: 52px;
-        height: 32px;
-        flex-shrink: 0;
-        border: none;
-        border-radius: 999px;
-        background: var(--pv-track, #ECECE8);
-        cursor: pointer;
-      }
 
-      .switch::after {
-        content: '';
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #FFFFFF;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-        transition: transform 180ms ease;
-      }
 
-      .switch[aria-checked='true'] {
-        background: var(--pv-accent, #5B5BD6);
-      }
 
-      .switch[aria-checked='true']::after {
-        transform: translateX(20px);
-      }
 
       .worth {
         color: var(--pv-text-secondary, #5F6670);
@@ -250,8 +223,8 @@ export class PvChoresQuickAdd extends LitElement {
       }
 
       .stepper button {
-        min-width: 44px;
-        min-height: 44px;
+        min-width: 48px;
+        min-height: 48px;
       }
 
       .problem {
@@ -380,7 +353,7 @@ export class PvChoresQuickAdd extends LitElement {
               <div>Needs a parent's OK</div>
               <div class="caption">On for young children automatically</div>
             </div>
-            <button class="switch" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
+            <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
               @click=${() => this._set({ needsOk: !d.needsOk, needsOkSet: true })}></button>
           </div>
         </section>

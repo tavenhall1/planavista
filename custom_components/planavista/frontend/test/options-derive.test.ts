@@ -40,7 +40,7 @@ describe('itemOptions (spec 13.3)', () => {
   it('offers a member planning, requests, done by someone else, and history', () => {
     const options = itemOptions(ctx({}));
     expect(ids(options.member)).toEqual(['plan_day', 'more_time', 'skip', 'done_by', 'history']);
-    expect(options.member[1]).toMatchObject({ tag: 'needs OK', hint: 'Sends a request to Alex and Blair.' });
+    expect(options.member[1]).toMatchObject({ tag: 'Needs an OK', hint: 'Sends a request to Alex and Blair.' });
     expect(options.member[0].hint).toBe('Shows on that day, and it\'s still due Sunday.');
     expect(options.title).toBe('Yard work');
     expect(options.meta).toBe('Casey · Every week · 1 h · ★ 4');
@@ -51,7 +51,7 @@ describe('itemOptions (spec 13.3)', () => {
     const shared = itemOptions(ctx({}));
     expect(ids(shared.parent)).toEqual(['change_due', 'hand_off', 'excuse', 'edit', 'delete']);
     expect(shared.parent.find(o => o.id === 'edit')!.hint).toBe('Opens it in Settings.');
-    expect(shared.parent.every(o => o.tag === '🔒 parent')).toBe(true);
+    expect(shared.parent.every(o => o.tag === '🔒 Parent')).toBe(true);
     expect(itemOptions(ctx({ parent: 'no' })).parent).toEqual([]);
     expect(itemOptions(ctx({ parent: 'yes' })).parent[0].tag).toBeUndefined();
   });

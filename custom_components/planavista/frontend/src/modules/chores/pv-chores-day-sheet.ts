@@ -88,7 +88,7 @@ export class PvChoresDaySheet extends LitElement {
       }
 
       .link {
-        min-height: 40px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: var(--pv-accent-ink, #5B5BD6);

@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { tagStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
 import { buttonStyles } from '../../styles/shared';
@@ -48,6 +49,7 @@ export class PvChoreOptions extends LitElement {
   private _closing = false;
 
   static styles = [
+    tagStyles,
     buttonStyles,
     sheetStyles,
     choresStyles,
@@ -97,10 +99,8 @@ export class PvChoreOptions extends LitElement {
 
       .group {
         margin: 14px 2px 2px;
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         font-weight: 750;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
         color: var(--pv-text-muted, #8E949C);
       }
 
@@ -163,21 +163,7 @@ export class PvChoreOptions extends LitElement {
         line-height: 1.35;
       }
 
-      .tag {
-        flex-shrink: 0;
-        padding: 3px 8px;
-        border-radius: 8px;
-        background: var(--pv-chip, #F1F1EE);
-        color: var(--pv-text-secondary, #5F6670);
-        font-size: 0.75rem;
-        font-weight: 700;
-        white-space: nowrap;
-      }
 
-      .tag.ask {
-        background: var(--pv-warn-bg, #FDF1DC);
-        color: var(--pv-warn-ink, #8A5A00);
-      }
 
       .chips {
         display: flex;
@@ -187,7 +173,7 @@ export class PvChoreOptions extends LitElement {
       }
 
       .chip {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 14px;
         border-radius: 999px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -206,7 +192,7 @@ export class PvChoreOptions extends LitElement {
 
       input[type='date'],
       input[type='text'] {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 12px;
         border-radius: 12px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -295,7 +281,7 @@ export class PvChoreOptions extends LitElement {
             <span class="label">${option.label}</span>
             ${option.hint ? html`<span class="hint">${option.hint}</span>` : nothing}
           </span>
-          ${option.tag ? html`<span class="tag ${option.tag === 'needs OK' ? 'ask' : ''}">${option.tag}</span>` : nothing}
+          ${option.tag ? html`<span class="pv-tag ${option.tag === 'Needs an OK' ? 'ask' : 'muted'}">${option.tag}</span>` : nothing}
         </button>
         ${open ? this._more(option) : nothing}
       </div>

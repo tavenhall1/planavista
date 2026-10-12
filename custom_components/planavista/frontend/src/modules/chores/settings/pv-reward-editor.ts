@@ -137,7 +137,7 @@ export class PvRewardEditor extends LitElement {
 
       .name-row input {
         flex: 1;
-        min-height: 44px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: inherit;

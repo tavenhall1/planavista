@@ -92,7 +92,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       .done {
-        min-height: 44px;
+        min-height: 48px;
         font-weight: 750;
       }
 
@@ -107,7 +107,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       .link {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 4px;
         border: none;
         background: transparent;
@@ -147,7 +147,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       .answers button {
-        min-height: 44px;
+        min-height: 48px;
         padding: 0 14px;
       }
 
@@ -174,7 +174,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       .chip {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 14px;
         border-radius: 999px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -186,7 +186,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       input {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 12px;
         border-radius: 12px;
         border: 1px solid var(--pv-border, #E7E7E3);

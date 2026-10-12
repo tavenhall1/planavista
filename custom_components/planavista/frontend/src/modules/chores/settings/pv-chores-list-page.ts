@@ -110,7 +110,7 @@ export class PvChoresListPage extends LitElement {
         font: inherit;
         font-weight: 600;
         cursor: pointer;
-        min-height: 44px;
+        min-height: 48px;
       }
     `,
   ];
@@ -186,7 +186,7 @@ export class PvChoresListPage extends LitElement {
           <span class="row-sub">${row.rhythm}</span>
           ${row.tags.length ? html`
             <span class="row-tags">
-              ${row.tags.map(tag => html`<span class="tag ${tag === 'Plan only' ? 'tag--muted' : tag === 'No one yet' ? 'tag--attention' : ''}">${tag}</span>`)}
+              ${row.tags.map(tag => html`<span class="pv-tag ${tag === 'Plan only' ? 'muted' : tag === 'No one yet' ? 'attention' : ''}">${tag}</span>`)}
             </span>
           ` : nothing}
         </span>

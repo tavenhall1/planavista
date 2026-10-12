@@ -76,8 +76,8 @@ export class PvRecurrencePicker extends LitElement {
 
     .stepper button,
     .day {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       border: 1px solid var(--pv-border-subtle, #E5E7EB);
       background: var(--pv-card-bg, #FFFFFF);
       color: inherit;
@@ -115,7 +115,7 @@ export class PvRecurrencePicker extends LitElement {
 
     input,
     select {
-      min-height: 44px;
+      min-height: 48px;
       padding: 0 10px;
       border-radius: 10px;
       border: 1px solid var(--pv-border-subtle, #E5E7EB);

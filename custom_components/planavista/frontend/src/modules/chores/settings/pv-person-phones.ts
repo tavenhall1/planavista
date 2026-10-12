@@ -73,7 +73,7 @@ export class PvPersonPhones extends LitElement {
       }
 
       .copy {
-        min-height: 40px;
+        min-height: 48px;
         margin-left: auto;
       }
 

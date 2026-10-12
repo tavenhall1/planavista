@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
-import { buttonStyles } from '../../styles/shared';
+import { buttonStyles, formStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
@@ -42,6 +42,7 @@ export class PvChoresRewardSheet extends LitElement {
   private _started = false;
 
   static styles = [
+    formStyles,
     buttonStyles,
     sheetStyles,
     css`
@@ -79,7 +80,7 @@ export class PvChoresRewardSheet extends LitElement {
       }
 
       .toggle {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 12px;
         border-radius: 999px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -125,8 +126,8 @@ export class PvChoresRewardSheet extends LitElement {
       }
 
       .pictures button {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         border-radius: 12px;
         border: 1px solid var(--pv-border, #E7E7E3);
         background: var(--pv-card-bg, #FFFFFF);
@@ -174,37 +175,9 @@ export class PvChoresRewardSheet extends LitElement {
         margin-top: 12px;
       }
 
-      .switch {
-        position: relative;
-        width: 52px;
-        height: 32px;
-        flex-shrink: 0;
-        border: none;
-        border-radius: 999px;
-        background: var(--pv-track, #ECECE8);
-        cursor: pointer;
-      }
 
-      .switch::after {
-        content: '';
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #FFFFFF;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-        transition: transform 180ms ease;
-      }
 
-      .switch[aria-checked='true'] {
-        background: var(--pv-accent, #5B5BD6);
-      }
 
-      .switch[aria-checked='true']::after {
-        transform: translateX(20px);
-      }
 
       .problem {
         margin-top: 8px;
@@ -308,7 +281,7 @@ export class PvChoresRewardSheet extends LitElement {
         @input=${(e: Event) => this._set({ cost: Math.round(Number((e.target as HTMLInputElement).value)) })} />
       <div class="row">
         <span>Needs a parent's OK</span>
-        <button class="switch" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
+        <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
           @click=${() => this._set({ needsOk: !d.needsOk })}></button>
       </div>
       <span class="title">Who can get it (nobody picked means everyone who earns stars)</span>

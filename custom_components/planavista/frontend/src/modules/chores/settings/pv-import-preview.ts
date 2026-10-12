@@ -125,7 +125,7 @@ export class PvImportPreview extends LitElement {
         font: inherit;
         font-weight: 600;
         cursor: pointer;
-        min-height: 40px;
+        min-height: 48px;
         white-space: nowrap;
       }
 
@@ -217,7 +217,7 @@ export class PvImportPreview extends LitElement {
                     <span class="row-title">${person.name}</span>
                     <span class="row-sub">${personLine(person, this.choices, this.members, this.timeFormat)}</span>
                   </span>
-                  ${isNew ? html`<span class="tag">New</span>` : nothing}
+                  ${isNew ? html`<span class="pv-tag">New</span>` : nothing}
                   <select class="pv-input pv-select" aria-label="Who ${person.name} is" .value=${match ?? ''}
                     @change=${(e: Event) => this._pickPerson(person.ref, (e.target as HTMLSelectElement).value)}>
                     <option value="" ?selected=${!match}>New person</option>

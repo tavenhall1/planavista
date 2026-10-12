@@ -23,7 +23,7 @@ export interface OptionModel {
   id: OptionId;
   label: string;
   hint?: string;
-  /** Says what unlocks it ("🔒 parent", "🔒 Casey's PIN"), or that it asks the parents ("needs OK"). */
+  /** Says what unlocks it ("🔒 Parent", "🔒 Casey's PIN"), or that it asks the parents ("Needs OK"). */
   tag?: string;
   chips?: DayChip[];
   /** A date picker for anything the chips don't offer. */
@@ -157,7 +157,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   const parents = members.filter(m => m.parent && m.id !== owner.id);
   const ownerIsParent = owner.parent;
   const memberTag = ctx.member === 'pin' ? `🔒 ${owner.name}'s PIN` : undefined;
-  const parentTag = ctx.parent === 'pin' ? '🔒 parent' : ctx.parent === 'no_pin' ? 'needs a parent\'s PIN' : undefined;
+  const parentTag = ctx.parent === 'pin' ? '🔒 Parent' : ctx.parent === 'no_pin' ? 'Needs a parent\'s PIN' : undefined;
   const status = item.status;
   const open = status === 'open' || status === 'sent_back';
   const member: OptionModel[] = [];
@@ -175,11 +175,11 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
     }
     if (!ownerIsParent && due && !item.request) {
       member.push({
-        id: 'more_time', label: 'Ask for more time', tag: 'needs OK', chips: moreTimeChips(item, today),
+        id: 'more_time', label: 'Ask for more time', tag: 'Needs an OK', chips: moreTimeChips(item, today),
         pick: { min: addDays(due, 1), max: addDays(today, 60) },
         hint: parents.length ? `Sends a request to ${names(parents)}.` : 'Sends a request to the parents.',
       });
-      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'needs OK', hint: 'Sick, away, rained out…' });
+      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs an OK', hint: 'Sick, away, rained out…' });
     }
     member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
   }

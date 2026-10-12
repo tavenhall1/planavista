@@ -74,8 +74,8 @@ export class PvChoresWeek extends LitElement {
       }
 
       .nav {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         border-radius: 12px;
         border: 1px solid var(--pv-border, #E7E7E3);
         background: var(--pv-card-bg, #FFFFFF);
@@ -280,7 +280,7 @@ export class PvChoresWeek extends LitElement {
       }
 
       .highlights .link {
-        min-height: 40px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: var(--pv-accent-ink, #5B5BD6);

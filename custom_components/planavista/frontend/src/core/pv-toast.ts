@@ -79,7 +79,7 @@ export class PvToast extends LitElement {
 
     button {
       flex-shrink: 0;
-      min-height: 40px;
+      min-height: 48px;
       min-width: 48px;
       padding: 0 10px;
       border: none;

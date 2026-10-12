@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { tagStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -34,6 +35,7 @@ export class PvChoresRewards extends LitElement {
   @property({ type: Boolean }) canEdit = false;
 
   static styles = [
+    tagStyles,
     buttonStyles,
     choresStyles,
     css`
@@ -164,18 +166,7 @@ export class PvChoresRewards extends LitElement {
         gap: 4px;
       }
 
-      .tag {
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: var(--pv-chip, #F1F1EE);
-        color: var(--pv-text-secondary, #5F6670);
-        font-size: 0.75rem;
-        font-weight: 700;
-      }
 
-      .tag.ok {
-        color: var(--pv-text, #1A1B1E);
-      }
 
       .goal-tag {
         position: absolute;
@@ -185,7 +176,7 @@ export class PvChoresRewards extends LitElement {
 
       .card .action {
         margin-top: auto;
-        min-height: 44px;
+        min-height: 48px;
         width: 100%;
       }
 
@@ -258,14 +249,14 @@ export class PvChoresRewards extends LitElement {
     const asked = card.asked.length;
     return html`
       <div class="card">
-        ${card.goals.length ? html`<span class="tag goal-tag">${card.goals.map(m => `${m.name}'s goal`).join(', ')}</span>` : nothing}
+        ${card.goals.length ? html`<span class="pv-tag goal-tag">${card.goals.map(m => `${m.name}'s goal`).join(', ')}</span>` : nothing}
         <button class="open" type="button" @click=${() => this._fire('pv-reward-open', { reward: reward.id })}>
           <span class="icon" aria-hidden="true">${pictureOf(reward.icon)}</span>
           <span class="name">${reward.name}</span>
           <span class="cost num">★ ${reward.cost}</span>
         </button>
         <div class="tags">
-          ${card.people.map(p => html`<span class="tag ${p.afford ? 'ok' : ''}">${p.member.name}${p.afford ? ' ✓' : `: ${p.more} more`}</span>`)}
+          ${card.people.map(p => html`<span class="pv-tag muted ${p.afford ? 'ok' : ''}">${p.member.name}${p.afford ? ' ✓' : `: ${p.more} more`}</span>`)}
           ${asked ? html`<span class="badge act">⏳ ${card.asked.map(m => m.name).join(', ')} · Waiting for OK</span>` : nothing}
         </div>
         ${card.canRedeem

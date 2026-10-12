@@ -199,7 +199,7 @@ export class PvSetup extends LitElement {
       }
 
       .second {
-        min-height: 44px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: var(--pv-accent-ink, var(--pv-accent, #6366F1));

@@ -175,7 +175,7 @@ export class PvSetupCommonChores extends LitElement {
       }
 
       .chip {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 12px;
         border-radius: 999px;
         border: 1px solid var(--pv-border-subtle, #E5E7EB);

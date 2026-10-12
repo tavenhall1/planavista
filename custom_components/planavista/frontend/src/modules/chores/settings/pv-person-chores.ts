@@ -70,7 +70,7 @@ export class PvPersonChores extends LitElement {
       }
 
       .remove {
-        min-height: 40px;
+        min-height: 48px;
         margin-left: auto;
       }
     `,

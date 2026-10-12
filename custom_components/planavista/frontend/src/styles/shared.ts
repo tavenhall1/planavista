@@ -70,8 +70,6 @@ export const typographyStyles = css`
   .pv-overline {
     font-size: 0.6875rem;
     font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
     color: var(--pv-text-muted);
   }
 `;
@@ -87,10 +85,10 @@ export const buttonStyles = css`
     gap: 0.5rem;
     padding: 0.625rem 1.25rem;
     border: none;
-    border-radius: var(--pv-radius-sm, 8px);
+    border-radius: var(--pv-radius, 12px);
     font-family: inherit;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: 0.9375rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all var(--pv-transition, 200ms ease);
     min-height: 48px;
@@ -104,13 +102,13 @@ export const buttonStyles = css`
     color: var(--pv-accent-text);
   }
 
-  .pv-btn-primary:hover {
+  .pv-btn-primary:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
     box-shadow: var(--pv-shadow);
   }
 
-  .pv-btn-primary:active {
+  .pv-btn-primary:active:not(:disabled) {
     transform: translateY(0);
   }
 
@@ -120,7 +118,7 @@ export const buttonStyles = css`
     border: 1px solid var(--pv-border);
   }
 
-  .pv-btn-secondary:hover {
+  .pv-btn-secondary:hover:not(:disabled) {
     background: var(--pv-event-hover);
   }
 
@@ -130,9 +128,28 @@ export const buttonStyles = css`
     padding: 0.5rem;
   }
 
-  .pv-btn-ghost:hover {
+  .pv-btn-ghost:hover:not(:disabled) {
     background: var(--pv-event-hover);
     color: var(--pv-text);
+  }
+
+  /* A disabled button looks it: faded, no lift, nothing under the pointer (milestone 8). */
+  .pv-btn:disabled,
+  .pv-btn[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Destructive: a filled button in a confirmation, red text on a secondary button in place. */
+  .pv-btn-danger {
+    background: var(--pv-danger, #C62828);
+    color: #FFFFFF;
+  }
+
+  .pv-btn.danger {
+    color: var(--pv-danger-ink, #A12828);
   }
 
   .pv-btn-icon {
@@ -263,6 +280,8 @@ export const formStyles = css`
     width: 44px;
     height: 24px;
     flex-shrink: 0;
+    border: none;
+    padding: 0;
     /* Off reads at about 3:1 on the card, like a control should (spec 11.8). */
     background: var(--pv-text-muted, #8E949C);
     border-radius: var(--pv-radius, 12px);
@@ -270,8 +289,21 @@ export const formStyles = css`
     transition: background var(--pv-transition, 200ms ease);
   }
 
-  .pv-toggle.active {
+  .pv-toggle.active,
+  .pv-toggle[aria-checked='true'] {
     background: var(--pv-accent);
+  }
+
+  /* The switch is drawn 44 by 24; its target reaches 48 by 48. */
+  .pv-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -12px -2px;
+  }
+
+  .pv-toggle:focus-visible {
+    outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+    outline-offset: 2px;
   }
 
   .pv-toggle::after {
@@ -287,7 +319,8 @@ export const formStyles = css`
     transition: transform var(--pv-transition, 200ms ease);
   }
 
-  .pv-toggle.active::after {
+  .pv-toggle.active::after,
+  .pv-toggle[aria-checked='true']::after {
     transform: translateX(20px);
   }
 `;

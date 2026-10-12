@@ -135,8 +135,8 @@ export class PvColorSwatchPicker extends LitElement {
 
       /* Each cell is a 44×44 touch target */
       .swatch-btn {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         padding: 6px;
         background: transparent;
         border: none;

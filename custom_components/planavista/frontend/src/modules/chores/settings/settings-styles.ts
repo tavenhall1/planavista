@@ -1,21 +1,22 @@
 import { css } from 'lit';
+import { tagStyles } from '../../../styles/controls';
 
 /**
  * The chores Settings pages' look (the approved settings-editors mockup):
  * small headings over grouped cards of rows, tags as pills, person chips,
  * steppers, and segmented controls. Built on the card's theme tokens.
  */
-export const choresSettingsStyles = css`
+export const choresSettingsStyles = [
+  tagStyles,
+  css`
   :host {
     display: block;
   }
 
   .section-label {
     margin: 22px 4px 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 0.8125rem;
+    font-weight: 750;
     color: var(--pv-text-secondary, #6B7280);
   }
 
@@ -109,26 +110,8 @@ export const choresSettingsStyles = css`
     margin-top: 2px;
   }
 
-  .tag {
-    flex-shrink: 0;
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-    background: color-mix(in srgb, var(--pv-accent, #6366F1) 12%, transparent);
-    color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
-  }
 
-  .tag--muted {
-    background: color-mix(in srgb, var(--pv-text, #1A1B1E) 7%, transparent);
-    color: var(--pv-text-secondary, #6B7280);
-  }
 
-  .tag--attention {
-    background: color-mix(in srgb, #F59E0B 18%, transparent);
-    color: var(--pv-text, #1A1B1E);
-  }
 
   .stars {
     flex-shrink: 0;
@@ -163,7 +146,7 @@ export const choresSettingsStyles = css`
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 40px;
+    min-height: 48px;
     padding: 0 14px 0 6px;
     border-radius: 999px;
     border: 1px solid var(--pv-border-subtle, #E5E7EB);
@@ -204,8 +187,8 @@ export const choresSettingsStyles = css`
   }
 
   .stepper button {
-    width: 44px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--pv-border-subtle, #E5E7EB);
     border-radius: 10px;
     background: var(--pv-card-bg, #FFFFFF);
@@ -275,4 +258,5 @@ export const choresSettingsStyles = css`
       opacity: 0.5;
     }
   }
-`;
+`,
+];

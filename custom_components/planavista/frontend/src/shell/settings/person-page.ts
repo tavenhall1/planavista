@@ -202,35 +202,9 @@ export class PvSettingsPerson extends LitElement {
         opacity: 0.45;
       }
 
-      .segmented {
-        display: inline-flex;
-        gap: 4px;
-        padding: 4px;
-        border-radius: 12px;
-        background: color-mix(in srgb, var(--pv-text, #1A1B1E) 6%, transparent);
-      }
 
-      .segmented button {
-        min-height: 44px;
-        padding: 0 16px;
-        border: none;
-        border-radius: 9px;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-      }
 
-      .segmented button[aria-pressed='true'] {
-        background: var(--pv-card-bg, #FFFFFF);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-        font-weight: 600;
-      }
 
-      .segmented button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
 
       .emoji {
         margin-top: 10px;

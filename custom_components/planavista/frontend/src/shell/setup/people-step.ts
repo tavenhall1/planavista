@@ -118,7 +118,7 @@ export class PvSetupPeople extends LitElement {
       .role {
         width: auto;
         min-width: 150px;
-        min-height: 44px;
+        min-height: 48px;
       }
 
       .add {

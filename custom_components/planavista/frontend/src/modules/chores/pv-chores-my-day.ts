@@ -198,7 +198,7 @@ export class PvChoresMyDay extends LitElement {
         grid-template-columns: 56px minmax(0, 1fr);
         gap: 8px;
         align-items: center;
-        min-height: 40px;
+        min-height: 48px;
       }
 
       .tl-time {
@@ -210,10 +210,8 @@ export class PvChoresMyDay extends LitElement {
 
       .tl-band {
         margin: 14px 0 4px 64px;
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         font-weight: 750;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
         color: var(--pv-text-muted, #8E949C);
       }
 
