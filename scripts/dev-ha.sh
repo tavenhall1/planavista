@@ -14,7 +14,7 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
-IMAGE="${PLANAVISTA_DEV_IMAGE:-ghcr.io/home-assistant/home-assistant:2026.9.4}"
+IMAGE="${PLANAVISTA_DEV_IMAGE:-ghcr.io/home-assistant/home-assistant:2026.10.0}"
 NAME="planavista-dev-ha"
 VOLUME="planavista-dev-ha-config"
 PORT="${PLANAVISTA_DEV_PORT:-8124}"
