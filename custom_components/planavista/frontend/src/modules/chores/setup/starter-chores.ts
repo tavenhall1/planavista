@@ -45,6 +45,8 @@ export interface Pick {
   days: string[];
   minutes: number;
   on: boolean;
+  /** Already on the board (added earlier in setup, or by hand), so it isn't added again. */
+  added: boolean;
 }
 
 function fits(member: Member, suits: Suits): boolean {
@@ -54,13 +56,20 @@ function fits(member: Member, suits: Suits): boolean {
   return member.age_group === 'adult';
 }
 
+/** A chore with the starter's name is on the board (finished ones don't count). */
+function onBoard(starter: Starter, chores: Activity[]): boolean {
+  const name = starter.name.toLowerCase();
+  return chores.some(a => !a.finished_at && a.name.trim().toLowerCase() === name);
+}
+
 /**
  * Who each starter goes to (spec 14.7: suggested by age group, so young
  * children get quick, simple ones): the first person it suits, sharing the
  * grown-ups' chores out in turn. A chore nobody suits starts unpicked, with
- * no one, until the parent picks someone.
+ * no one, until the parent picks someone; one already on the board starts
+ * unpicked and marked as added, so coming back to the step adds nothing twice.
  */
-export function suggestPicks(members: Member[]): Pick[] {
+export function suggestPicks(members: Member[], chores: Activity[] = []): Pick[] {
   const people = inOrder(members);
   const turns = new Map<Suits, number>();
   return STARTERS.map(starter => {
@@ -68,8 +77,22 @@ export function suggestPicks(members: Member[]): Pick[] {
     const turn = turns.get(starter.suits) ?? 0;
     turns.set(starter.suits, turn + 1);
     const member = suited.length ? suited[turn % suited.length].id : null;
-    return { id: starter.id, member, rhythm: starter.rhythm, days: starter.days, minutes: starter.minutes, on: starter.picked && member !== null };
+    const added = onBoard(starter, chores);
+    return {
+      id: starter.id, member, rhythm: starter.rhythm, days: starter.days, minutes: starter.minutes,
+      on: !added && starter.picked && member !== null, added,
+    };
   });
+}
+
+/** Picks whose chores are now on the board (the feed arrived, or a save went through) turn into added ones. */
+export function markAdded(picks: Pick[], chores: Activity[]): Pick[] {
+  return picks.map(pick => (!pick.added && onBoard(starterOf(pick.id), chores) ? { ...pick, added: true, on: false } : pick));
+}
+
+/** The picks the main button adds: picked, with someone, and not on the board yet. */
+export function picksToAdd(picks: Pick[]): Pick[] {
+  return picks.filter(p => p.on && p.member && !p.added);
 }
 
 export function starterOf(id: string): Starter {
@@ -83,10 +106,11 @@ export function pickLine(pick: Pick): string {
   return `${when} · ${durationText(pick.minutes)}`;
 }
 
-/** The main button: "Add 8 chores". */
+/** The main button: "Add 8 chores", or Continue once everything picked is on the board. */
 export function addLabel(picks: Pick[]): string {
-  const n = picks.filter(p => p.on && p.member).length;
-  return n === 0 ? 'Add chores' : `Add ${n} ${n === 1 ? 'chore' : 'chores'}`;
+  const n = picksToAdd(picks).length;
+  if (n === 0) return picks.some(p => p.added) ? 'Continue' : 'Add chores';
+  return `Add ${n} ${n === 1 ? 'chore' : 'chores'}`;
 }
 
 /** Each pick as a normal Plan chore (spec 14.7: each pick becomes a normal chore). */

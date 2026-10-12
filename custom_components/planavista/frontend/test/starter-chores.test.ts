@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { STARTERS, addLabel, pickActivity, pickLine, suggestPicks } from '../src/modules/chores/setup/starter-chores';
-import { MEMBERS, person } from './chores-fixtures';
+import {
+  STARTERS, addLabel, markAdded, pickActivity, pickLine, picksToAdd, starterOf, suggestPicks,
+} from '../src/modules/chores/setup/starter-chores';
+import { MEMBERS, activity, person } from './chores-fixtures';
 
 describe('the common chores starter list (spec 14.7)', () => {
   it('has the twelve starters in the spec\'s order', () => {
@@ -44,5 +46,34 @@ describe('the common chores starter list (spec 14.7)', () => {
       time_of_day: ['evening'],
     });
     expect(pickActivity(picks.find(p => p.id === 'make_your_bed')!).minimum).toEqual({ hours: 5 / 60, per: 'day' });
+  });
+});
+
+describe('starters already on the board (spec 14.7: each pick becomes one chore)', () => {
+  const laundry = activity('laundry', { name: 'Laundry', assignees: ['alex'] });
+  const bed = activity('make_your_bed', { name: 'make your bed ', assignees: ['dana'] });
+
+  it('start unpicked and marked as added, so Back and Add again adds nothing twice', () => {
+    const picks = suggestPicks(MEMBERS, [laundry, bed]);
+    expect(picks.filter(p => p.added).map(p => p.id)).toEqual(['make_your_bed', 'laundry']);
+    expect(picks.filter(p => p.added).every(p => !p.on)).toBe(true);
+    expect(picksToAdd(picks).map(p => p.id)).toEqual([
+      'set_the_table', 'tidy_toys', 'unload_the_dishwasher', 'take_out_the_trash', 'kitchen_cleanup', 'clean_the_bathroom',
+    ]);
+    expect(addLabel(picks)).toBe('Add 6 chores');
+  });
+
+  it('say Continue once everything picked is on the board', () => {
+    const all = suggestPicks(MEMBERS).filter(p => p.on).map(p => activity(p.id, { name: starterOf(p.id).name }));
+    const picks = suggestPicks(MEMBERS, all);
+    expect(picksToAdd(picks)).toEqual([]);
+    expect(addLabel(picks)).toBe('Continue');
+  });
+
+  it('are marked when they arrive later, and finished chores are left alone', () => {
+    const finished = activity('vacuum', { name: 'Vacuum', finished_at: '2026-10-10T12:00:00-05:00' });
+    const picks = markAdded(suggestPicks(MEMBERS), [laundry, finished]);
+    expect(picks.find(p => p.id === 'laundry')).toMatchObject({ added: true, on: false });
+    expect(picks.find(p => p.id === 'vacuum')!.added).toBe(false);
   });
 });

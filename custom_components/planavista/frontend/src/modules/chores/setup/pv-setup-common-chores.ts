@@ -10,7 +10,7 @@ import { errorMessage } from '../../../core/ws-api';
 import type { ChoresService } from '../chores-service';
 import { durationText } from '../settings/chores-list-derive';
 import { STEP_CHANGE } from '../../../core/settings-registry';
-import { Pick, addLabel, pickActivity, pickLine, starterOf, suggestPicks } from './starter-chores';
+import { Pick, addLabel, markAdded, pickActivity, pickLine, picksToAdd, starterOf, suggestPicks } from './starter-chores';
 import { PreviewPick } from './setup-derive';
 import './pv-setup-board-preview';
 import '../../../core/pv-member-avatar';
@@ -36,10 +36,19 @@ export class PvSetupCommonChores extends LitElement {
   @state() private _message = '';
   private _built = false;
 
+  private get _chores(): ChoresService | undefined {
+    return this.services?.chores as ChoresService | undefined;
+  }
+
   protected willUpdate(): void {
+    const chores = this._chores?.board()?.chores ?? [];
     if (!this._built && this.household) {
-      this._picks = suggestPicks(this.household.members);
+      this._picks = suggestPicks(this.household.members, chores);
       this._built = true;
+    } else if (this._built) {
+      // Chores that reach the board after the step was built (the feed, a save) aren't offered again.
+      const next = markAdded(this._picks, chores);
+      if (next.some((p, i) => p !== this._picks[i])) this._picks = next;
     }
   }
 
@@ -48,21 +57,23 @@ export class PvSetupCommonChores extends LitElement {
   }
 
   get ready(): boolean {
-    return this._picks.some(p => p.on && p.member);
+    return picksToAdd(this._picks).length > 0 || this._picks.some(p => p.added);
   }
 
   private _changed(): void {
     this.dispatchEvent(new CustomEvent(STEP_CHANGE, { bubbles: true, composed: true }));
   }
 
-  /** Add the picked chores. */
+  /** Add the picked chores that aren't on the board yet; each one saved is marked, so trying again adds the rest. */
   async commit(): Promise<boolean> {
-    const chores = this.services?.chores as ChoresService | undefined;
+    const chores = this._chores;
     if (!chores) return false;
     this._message = '';
-    const picked = this._picks.filter(p => p.on && p.member);
     try {
-      for (const pick of picked) await chores.api.saveActivity(pickActivity(pick));
+      for (const pick of picksToAdd(this._picks)) {
+        await chores.api.saveActivity(pickActivity(pick));
+        this._picks = this._picks.map(p => (p.id === pick.id ? { ...p, added: true, on: false } : p));
+      }
       return true;
     } catch (err) {
       this._message = errorMessage(err) ?? "Couldn't add the chores. Check the connection and try again.";
@@ -108,6 +119,11 @@ export class PvSetupCommonChores extends LitElement {
         font: inherit;
         text-align: center;
         cursor: pointer;
+      }
+
+      .tile.added {
+        cursor: default;
+        opacity: 0.6;
       }
 
       .tile[aria-pressed='true'] {
@@ -194,6 +210,7 @@ export class PvSetupCommonChores extends LitElement {
   ];
 
   private _toggle(pick: Pick): void {
+    if (pick.added) return;
     if (!pick.member) {
       this._editing = pick.id;
       return;
@@ -214,8 +231,7 @@ export class PvSetupCommonChores extends LitElement {
 
   render() {
     const members = inOrder(this.household?.members ?? []);
-    const picks: PreviewPick[] = this._picks
-      .filter(p => p.on && p.member)
+    const picks: PreviewPick[] = picksToAdd(this._picks)
       .map(p => ({ member: p.member!, name: starterOf(p.id).name, week: p.rhythm === 'weekly' && !p.days.length }));
     return html`
       <div class="layout">
@@ -225,12 +241,15 @@ export class PvSetupCommonChores extends LitElement {
               const starter = starterOf(pick.id);
               const who = members.find(m => m.id === pick.member);
               return html`
-                <button class="tile" type="button" aria-pressed=${pick.on ? 'true' : 'false'} @click=${() => this._toggle(pick)}>
+                <button class="tile ${pick.added ? 'added' : ''}" type="button" aria-pressed=${pick.on ? 'true' : 'false'}
+                  ?disabled=${pick.added} @click=${() => this._toggle(pick)}>
                   ${pick.on ? html`<span class="check" aria-hidden="true">✓</span>` : nothing}
                   <span class="emoji" aria-hidden="true">${starter.icon}</span>
                   <span class="name">${starter.name}</span>
-                  <span class="line">${pickLine(pick)}</span>
-                  ${who ? html`<pv-member-avatar .member=${who} .hass=${this.hass} size="22"></pv-member-avatar>` : html`<span class="line">Pick someone</span>`}
+                  <span class="line">${pick.added ? 'On the board' : pickLine(pick)}</span>
+                  ${pick.added ? nothing : who
+                    ? html`<pv-member-avatar .member=${who} .hass=${this.hass} size="22"></pv-member-avatar>`
+                    : html`<span class="line">Pick someone</span>`}
                 </button>
                 ${this._editing === pick.id ? this._renderEditor(pick) : nothing}
               `;
