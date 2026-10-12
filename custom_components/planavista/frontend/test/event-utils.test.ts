@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CalendarEvent } from '../src/types';
 import {
   compareEventsForDisplay,
+  deduplicateSharedEvents,
   detectOverlaps,
   getEventsForDateRange,
   groupEventsByDate,
@@ -129,5 +130,23 @@ describe('US fall-back day (2026-11-01)', () => {
     expect(isAllDayEvent(e)).toBe(false);
     const [o] = detectOverlaps([e]);
     expect(o.totalColumns).toBe(1);
+  });
+});
+
+describe('deduplicateSharedEvents', () => {
+  const calendar = (entity_id: string) => ({
+    entity_id, display_name: entity_id.split('.')[1], color: '#F94144', color_light: '#FDBDBE', icon: 'mdi:account', person_entity: '', visible: true,
+  });
+
+  it("keeps each person's own copy (its uid and recurrence) when it merges an event on several calendars", () => {
+    const blair = ev('Team standup', '2026-10-12T09:00:00-05:00', '2026-10-12T09:30:00-05:00',
+      { calendar_entity_id: 'calendar.test_blair', uid: 'blair-copy', recurrence_id: '20261012T140000Z' });
+    const casey = ev('Team standup', '2026-10-12T09:00:00-05:00', '2026-10-12T09:30:00-05:00',
+      { calendar_entity_id: 'calendar.test_casey', uid: 'casey-copy' });
+    const [merged] = deduplicateSharedEvents([blair, casey], [calendar('calendar.test_blair'), calendar('calendar.test_casey')]);
+    expect(merged.shared_calendars.map(p => [p.entity_id, p.uid, p.recurrence_id])).toEqual([
+      ['calendar.test_blair', 'blair-copy', '20261012T140000Z'],
+      ['calendar.test_casey', 'casey-copy', undefined],
+    ]);
   });
 });

@@ -8,6 +8,8 @@ import { contrastText } from '../../../core/color';
 import { formatTime } from '../../../utils/date-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { baseStyles } from '../../../styles/shared';
+import { statusStyles } from '../../../styles/status';
+import type { StatusBadge } from '../../../core/status-map';
 
 export class PVEventChip extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -17,9 +19,12 @@ export class PVEventChip extends LitElement {
   @property({ type: Boolean }) compact = false;
   @property({ type: Boolean }) showStripes = true;
   @property({ type: Number }) tick = 0;
+  /** A status from the status map (Now, In 10 min), when the view shows one (spec 11.4). */
+  @property({ attribute: false }) badge: StatusBadge | null = null;
 
   static styles = [
     baseStyles,
+    statusStyles,
     css`
       :host { display: block; }
 
@@ -47,6 +52,11 @@ export class PVEventChip extends LitElement {
         transform: scale(0.98);
       }
 
+      .chip:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 1px;
+      }
+
       .chip-body {
         flex: 1;
         min-width: 0;
@@ -66,11 +76,24 @@ export class PVEventChip extends LitElement {
       }
 
       .chip-time {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
         font-size: 0.75rem;
         font-weight: 500;
+        font-variant-numeric: tabular-nums;
         color: var(--chip-text);
-        opacity: 0.8;
         margin-top: 2px;
+      }
+
+      .chip-time .time-text {
+        opacity: 0.8;
+      }
+
+      .chip-time .badge {
+        padding: 1px 6px;
+        font-size: 0.75rem;
       }
 
       .chip-avatars {
@@ -144,7 +167,7 @@ export class PVEventChip extends LitElement {
       }
 
       /* Responsive: small screens */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .chip { padding: 0.375rem 0.5rem; }
         .chip-title { font-size: 0.8125rem; }
         .chip-time { font-size: 0.6875rem; }
@@ -152,7 +175,7 @@ export class PVEventChip extends LitElement {
       }
 
       /* Large screens */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .chip { padding: 0.625rem 0.75rem; }
         .chip-title { font-size: 0.9375rem; }
         .chip-time { font-size: 0.8125rem; }
@@ -160,7 +183,7 @@ export class PVEventChip extends LitElement {
       }
 
       /* XL screens: ~50% larger for wall displays */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .chip { padding: 1rem 1.25rem; gap: 0.75rem; border-left-width: 4px; }
         .chip-title { font-size: 1.375rem; }
         .chip-time { font-size: 1.125rem; }
@@ -211,13 +234,17 @@ export class PVEventChip extends LitElement {
       <div
         class="${chipClass}"
         style="${bgStyle}; --chip-border-color: ${borderColor}; --chip-text: ${textColor}"
+        role="button"
+        tabindex="0"
         @click=${this._onClick}
+        @keydown=${this._onKey}
       >
         <div class="chip-body">
           <div class="${titleClass}">${event.summary}</div>
           ${!this.compact ? html`
             <div class="chip-time">
-              ${isAllDay ? 'All day' : `${formatTime(event.start, this.timeFormat)} – ${formatTime(event.end, this.timeFormat)}`}
+              <span class="time-text">${isAllDay ? 'All day' : `${formatTime(event.start, this.timeFormat)} – ${formatTime(event.end, this.timeFormat)}`}</span>
+              ${this.badge ? html`<span class="badge ${this.badge.tone}">${this.badge.words}</span>` : nothing}
             </div>
           ` : nothing}
         </div>
@@ -246,6 +273,13 @@ export class PVEventChip extends LitElement {
         ${overflow > 0 ? html`<div class="chip-overflow">+${overflow}</div>` : nothing}
       </div>
     `;
+  }
+
+  /** Enter or Space opens the event, as a tap does (spec 11.8). */
+  private _onKey(e: KeyboardEvent) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    this._onClick();
   }
 
   private _onClick() {

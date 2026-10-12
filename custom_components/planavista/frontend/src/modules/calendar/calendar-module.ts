@@ -1,11 +1,13 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
 import type { Layout } from '../../core/layout';
 import type { Mode, ThemeShape } from '../../styles/theme-pairs';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../../styles/shared';
+import { statusStyles } from '../../styles/status';
 import { getPersonAvatar, getPersonName } from '../../utils/ha-utils';
 import { swipeDirection } from '../../utils/gestures';
 import { memoizeOne } from '../../utils/render-cache';
@@ -15,6 +17,17 @@ import { CalendarDerived, deriveCalendarData, eventForPopup } from './calendar-d
 import { withModeColors } from './mode-colors';
 import { contrastText } from '../../core/color';
 import type { ModuleService } from '../../core/module-registry';
+import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
+import { deepActiveElement } from '../../core/focus';
+import type { HouseholdView } from '../../core/household';
+import type { Session } from '../../core/session';
+import { parentAccess } from '../../core/access';
+import { OPEN_SETTINGS } from '../../core/page-host';
+import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
+import { calendarSkeleton, skeletonStyles } from './components/calendar-skeleton';
+import { navLabels } from './view-words';
+import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
+import { motionOf, supportsLinearEasing } from '../../core/motion';
 
 import './components/view-day';
 import './components/view-week';
@@ -24,6 +37,12 @@ import './components/event-popup';
 import './components/event-create-dialog';
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
+
+/** What the editor sheet shows: New event, or Edit event with what it starts from. */
+interface EditorWant {
+  mode: 'create' | 'edit';
+  prefill: Partial<CalendarEvent> | null;
+}
 
 /**
  * pv-calendar-module: the calendar's toolbar, its four views, and the event
@@ -52,6 +71,9 @@ export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) services: Record<string, ModuleService> = {};
   /** Bumped by the card when a module's service has news. */
   @property({ attribute: false }) revision = 0;
+  /** The household and parent mode, for what the empty states offer (a parent adds calendars). */
+  @property({ attribute: false }) household: HouseholdView | null = null;
+  @property({ attribute: false }) session: Session | null = null;
 
   /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
   @state() private _tick = Math.floor(Date.now() / 60000);
@@ -63,6 +85,22 @@ export class PvCalendarModule extends LitElement {
   private _progressOf = (memberId: string) => this.services?.chores?.memberProgress?.(memberId) ?? null;
   /** What pv-overlay-change last said, so the card hears each change once. */
   private _overlayOpen = false;
+  /** The view and day last drawn, to tell how the next change moves (spec 11.5). */
+  private _drawn: ViewPlace | null = null;
+  /** When a person last moved the calendar; a midnight rollover or a wake doesn't glide. */
+  private _movedAt = 0;
+  /** The event sheet: mounted while the store wants it and while it leaves. */
+  private _details: Presence<CalendarEvent> = GONE;
+  /** Bumped for each new details sheet, so one reopened mid-exit starts fresh. */
+  private _detailsMount = 0;
+  /** What had focus when the details sheet opened; it gets focus back when the sheet has left (spec 11.8). */
+  private _detailsOpener: HTMLElement | null = null;
+  /** The editor sheet (New event, Edit event), mounted the same way. */
+  private _editor: Presence<EditorWant> = GONE;
+  private _editorMount = 0;
+  private _editorOpener: HTMLElement | null = null;
+  /** The store's editor choice as one object, so the presence sees the same value while it stands. */
+  private _editorWant: EditorWant | null = null;
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
@@ -73,12 +111,24 @@ export class PvCalendarModule extends LitElement {
     buttonStyles,
     typographyStyles,
     animationStyles,
+    statusStyles,
+    skeletonStyles,
     css`
       :host {
         display: flex;
         flex-direction: column;
         flex: 1 1 auto;
         min-height: 0;
+      }
+
+      /* The card measures itself (DESIGN_SYSTEM 2.1): the toolbar and the views size
+         against this frame's width. The sheets sit outside it, so it never holds them in. */
+      .pvc-frame {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        container: pv-calendar / inline-size;
       }
 
 /* ================================================================
@@ -115,7 +165,7 @@ export class PvCalendarModule extends LitElement {
         cursor: pointer;
         transition: all 200ms ease;
         font-family: inherit;
-        min-height: 40px;
+        min-height: 48px;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -253,7 +303,8 @@ export class PvCalendarModule extends LitElement {
         transition: all 200ms ease;
         white-space: nowrap;
         -webkit-tap-highlight-color: transparent;
-        min-height: 40px;
+        min-height: 48px;
+        --mdc-icon-size: 20px;
       }
 
       .pvc-new-btn:hover {
@@ -277,8 +328,8 @@ export class PvCalendarModule extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -306,7 +357,7 @@ export class PvCalendarModule extends LitElement {
         cursor: pointer;
         transition: all 200ms ease;
         font-family: inherit;
-        min-height: 38px;
+        min-height: 48px;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -337,8 +388,8 @@ export class PvCalendarModule extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -415,7 +466,8 @@ export class PvCalendarModule extends LitElement {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 4px 10px 4px 4px;
+        min-height: 48px;
+        padding: 4px 12px 4px 8px;
         border-radius: 9999px;
         border: 1.5px solid var(--chip-color, var(--pv-border));
         background: transparent;
@@ -467,17 +519,17 @@ export class PvCalendarModule extends LitElement {
 
 /* lg: large desktops / small wall displays (1024–1439px), scale up ~20% */
 
-      @media (min-width: 1024px){
+      @container pv-calendar (min-width: 1024px){
         .pvc-toolbar { padding: 14px 20px; gap: 10px; }
         .pvc-filter-btn { padding: 10px 20px; font-size: 1rem; min-height: 48px; }
         .pvc-new-btn { padding: 11px 22px; font-size: 1.0625rem; min-height: 48px; }
-        .pvc-today-btn { padding: 8px 18px; font-size: 1rem; min-height: 44px; }
+        .pvc-today-btn { padding: 8px 18px; font-size: 1rem; min-height: 48px; }
         .pvc-nav-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
       }
 
 /* xl: wall-mounted touch displays (1440px+, 27"+), scale up ~40% */
 
-      @media (min-width: 1440px){
+      @container pv-calendar (min-width: 1440px){
         .pvc-toolbar { padding: 16px 24px; gap: 12px; }
         .pvc-filter-btn { padding: 12px 24px; font-size: 1.125rem; min-height: 56px; }
         .pvc-filter-badge { min-width: 24px; height: 24px; font-size: 0.8125rem; }
@@ -513,11 +565,31 @@ export class PvCalendarModule extends LitElement {
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
     const store = this._pv.store;
-    const open = !!(store.selectedEvent || store.dialogOpen);
+    const open = !!(this._details.value || this._editor.value);
     if (open !== this._overlayOpen) {
       this._overlayOpen = open;
       this._fireOverlay(open);
     }
+    this._playViewChange();
+  }
+
+  /** Arrows, Today, and a swipe: a person moving the calendar, so the step slides in. */
+  private _navigate(direction: 'prev' | 'next' | 'today'): void {
+    this._movedAt = performance.now();
+    this._pv.store.navigateDate(direction);
+  }
+
+  /** The springs for view changes (spec 11.5): another view glides in, a step slides in from its side. */
+  private _playViewChange(): void {
+    const store = this._pv.store;
+    const day = new Date(store.currentDate);
+    day.setHours(0, 0, 0, 0);
+    const next: ViewPlace = { view: store.currentView, at: day.getTime() };
+    let change = viewChange(this._drawn, next);
+    this._drawn = next;
+    if ((change === 'forward' || change === 'back') && performance.now() - this._movedAt > 1000) change = 'none';
+    const motion = viewMotion(change, motionOf(this), supportsLinearEasing());
+    if (motion) this.renderRoot.querySelector<HTMLElement>('.pvc-body')?.animate(motion.keyframes, motion.options);
   }
 
   private _fireOverlay(open: boolean): void {
@@ -536,7 +608,57 @@ export class PvCalendarModule extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     // The shell owns which view shows (the bar); the store follows it.
     if (changed.has('view') && this.view) this._pv.store.setView(this.view);
+    const details = nextPresence(this._details, this._pv.store.selectedEvent);
+    if (details.value && (!this._details.value || this._details.leaving)) {
+      this._detailsMount += 1;
+      this._detailsOpener = deepActiveElement();
+    }
+    this._details = details;
+    const editor = nextPresence(this._editor, this._wantedEditor());
+    if (editor.value && (!this._editor.value || this._editor.leaving)) {
+      this._editorMount += 1;
+      this._editorOpener = deepActiveElement();
+    }
+    this._editor = editor;
   }
+
+  /** The store's editor choice, the same object while it stands. */
+  private _wantedEditor(): EditorWant | null {
+    const store = this._pv.store;
+    if (!store.dialogOpen) return (this._editorWant = null);
+    const want = this._editorWant;
+    if (want && want.mode === store.dialogOpen && want.prefill === store.createPrefill) return want;
+    return (this._editorWant = { mode: store.dialogOpen, prefill: store.createPrefill });
+  }
+
+  /** The editor left: the store lets go, and focus goes back to what opened it (Edit, or New event). */
+  private _onEditorClosed = (): void => {
+    this._editor = GONE;
+    if (this._pv.store.dialogOpen) this._pv.store.closeDialog();
+    this.requestUpdate();
+    const opener = this._editorOpener;
+    this._editorOpener = null;
+    // A details sheet leaving too (a saved edit) takes focus back to the event itself.
+    if (this._details.value && this._details.leaving) return;
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  };
+
+  /** Now, to the minute the views last moved to. */
+  private _now = memoizeOne((tick: number) => new Date(tick * 60000));
+
+  /** The details sheet left: the store lets go too, and focus goes back to the event that opened it. */
+  private _onDetailsClosed = (): void => {
+    this._details = GONE;
+    if (this._pv.store.selectedEvent) this._pv.store.selectEvent(null);
+    this.requestUpdate();
+    const opener = this._detailsOpener;
+    this._detailsOpener = null;
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  };
 
   /** Cached until the data, the card config, the calendar filter, or the mode changes. */
   private _derive = memoizeOne((
@@ -555,9 +677,28 @@ export class PvCalendarModule extends LitElement {
     const { calendars, visibleEvents } = this._derived();
     const store = this._pv.store;
     const display = this.display;
+    const hidden = store.hiddenCalendars;
+    const running = this._running();
+    const screen = screenOf({
+      sensorState: this.hass.states[this.cardConfig?.entity || DEFAULT_ENTITY]?.state,
+      running,
+      calendars,
+      configured: this.data?.calendars_configured,
+      hidden,
+    });
+    const banners = screen === 'ready' ? bannersOf({ connected: this.hass.connected !== false, running, calendars, hidden }) : [];
 
     return html`
-      ${this._renderToolbar(calendars)}
+      <div class="pvc-frame">
+      ${screen === 'no-calendars' || screen === 'unavailable' ? nothing : this._renderToolbar(calendars)}
+      ${banners.map(banner => html`
+        <div class="banner" role="status">
+          <span class="text">${banner.text}</span>
+          ${banner.kind === 'unreachable' ? html`
+            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._refreshing} @click=${this._refreshCalendars}>Try again</button>
+          ` : nothing}
+        </div>
+      `)}
       <div class="pvc-body"
         @touchstart=${this._onTouchStart}
         @touchend=${this._onTouchEnd}
@@ -566,41 +707,107 @@ export class PvCalendarModule extends LitElement {
         @day-click=${this._onDayClick}
         @create-event=${this._onCreateEvent}
       >
-        ${this._renderView(store.currentView, visibleEvents, calendars, display)}
+        ${screen === 'ready' ? this._renderView(store.currentView, visibleEvents, calendars, display) : this._renderScreen(screen, calendars)}
       </div>
+      </div><!-- .pvc-frame -->
 
-      ${store.selectedEvent ? html`
+      ${this._details.value ? keyed(this._detailsMount, html`
         <pv-event-popup
+          layout=${this.layout}
           .store=${store}
           .hass=${this.hass}
-          .event=${store.selectedEvent}
+          .event=${this._details.value}
+          .leaving=${this._details.leaving}
+          .calendars=${calendars}
+          .now=${this._now(this._tick)}
           .timeFormat=${display?.time_format || '12h'}
+          @pv-sheet-close=${this._onDetailsClosed}
         ></pv-event-popup>
-      ` : nothing}
+      `) : nothing}
 
-      ${store.dialogOpen ? html`
+      ${this._editor.value ? keyed(this._editorMount, html`
         <pv-event-create-dialog
+          layout=${this.layout}
           .store=${store}
           .hass=${this.hass}
           .calendars=${calendars}
           .open=${true}
-          .mode=${store.dialogOpen}
-          .prefill=${store.createPrefill}
+          .mode=${this._editor.value.mode}
+          .prefill=${this._editor.value.prefill}
+          .leaving=${this._editor.leaving}
           .timeFormat=${display?.time_format || '12h'}
           .locationAutocomplete=${display.location_autocomplete === true}
+          @pv-sheet-close=${this._onEditorClosed}
         ></pv-event-create-dialog>
-      ` : nothing}
+      `) : nothing}
     `;
   }
 
+  /** Whether Home Assistant has finished starting (an older frontend without the state counts as running). */
+  private _running(): boolean {
+    const state = (this.hass.config as { state?: string } | undefined)?.state;
+    return state === undefined || state === 'RUNNING';
+  }
+
+  /** The designed states (spec 11.6): what's loading, what's missing, and what to do next. */
+  private _renderScreen(screen: CalendarScreen, calendars: CalendarConfig[]) {
+    if (screen === 'loading') return calendarSkeleton(this._pv.store.currentView, this.layout, calendars.length);
+    if (screen === 'unavailable') {
+      return html`
+        <div class="state" role="alert">
+          <div class="art" aria-hidden="true">📡</div>
+          <h2>Can't load the calendar</h2>
+          <p>PlanaVista couldn't read the calendars just now, and tries again every minute. If this stays, check Settings, System, Logs for PlanaVista.</p>
+          <div class="buttons">
+            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._refreshing} @click=${this._refreshCalendars}>Try again</button>
+          </div>
+        </div>
+      `;
+    }
+    if (screen === 'no-calendars') {
+      const parent = parentAccess(this.household, this.session) !== 'no';
+      return html`
+        <div class="state">
+          <div class="art" aria-hidden="true">📅</div>
+          <h2>No calendars yet</h2>
+          <p>${parent ? "Add your family's calendars, and say whose each one is." : 'A parent can add calendars in Settings.'}</p>
+          ${parent ? html`
+            <div class="buttons">
+              <button class="pv-btn pv-btn-primary" type="button" @click=${this._openCalendarsPage}>Add calendars</button>
+            </div>
+          ` : nothing}
+        </div>
+      `;
+    }
+    return html`
+      <div class="state">
+        <div class="art" aria-hidden="true">📅</div>
+        <h2>Every calendar is hidden</h2>
+        <p>Show them again to see what's coming up.</p>
+        <div class="buttons">
+          <button class="pv-btn pv-btn-primary" type="button" @click=${() => this._pv.store.showAllCalendars()}>Show all</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Settings, Calendars (the card asks for a parent's PIN first where it needs one). */
+  private _openCalendarsPage = (): void => {
+    this.dispatchEvent(new CustomEvent(OPEN_SETTINGS, { detail: { page: 'calendars' }, bubbles: true, composed: true }));
+  };
+
   private _renderToolbar(calendars: CalendarConfig[]) {
     const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
+    const arrows = navLabels(this._pv.store.currentView);
 
     return html`
       <div class="pvc-toolbar">
         <div class="pvc-filter-wrap">
           <button
             class="pvc-filter-btn ${hiddenCount > 0 ? 'has-hidden' : ''}"
+            type="button"
+            aria-expanded=${this._filterOpen ? 'true' : 'false'}
+            aria-label=${hiddenCount > 0 ? `Calendars, ${calendars.length - hiddenCount} of ${calendars.length} shown` : 'Calendars'}
             @click=${this._toggleFilterDropdown}
           >
             <ha-icon icon="mdi:filter-variant" style="--mdc-icon-size: 20px"></ha-icon>
@@ -620,7 +827,11 @@ export class PvCalendarModule extends LitElement {
                   <div
                     class="pvc-filter-item ${isActive ? 'active' : ''}"
                     style="--item-color: ${cal.color}; --item-ink: ${contrastText(cal.color)}"
+                    role="checkbox"
+                    tabindex="0"
+                    aria-checked=${isActive ? 'true' : 'false'}
                     @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
+                    @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._pv.store.toggleCalendar(cal.entity_id); } }}
                   >
                     <div class="pvc-filter-check">
                       ${isActive ? html`<span class="pvc-filter-check-icon">✓</span>` : nothing}
@@ -649,6 +860,8 @@ export class PvCalendarModule extends LitElement {
             return html`
               <button
                 class="pvc-cal-chip ${isActive ? 'active' : ''}"
+                type="button"
+                aria-pressed=${isActive ? 'true' : 'false'}
                 style="--chip-color: ${cal.color}; --chip-ink: ${contrastText(cal.color)}"
                 @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
               >
@@ -665,18 +878,21 @@ export class PvCalendarModule extends LitElement {
         </div>
 
         <div class="pvc-controls">
-          <button class="pvc-new-btn" @click=${() => this._pv.store.openCreateDialog()}>
-            + New
+          <button class="pvc-new-btn" type="button" @click=${() => this._pv.store.openCreateDialog()}>
+            <ha-icon icon="mdi:plus"></ha-icon>
+            New event
           </button>
 
           <div class="pvc-nav">
-            <button class="pvc-nav-btn" @click=${() => this._pv.store.navigateDate('prev')}>
+            <button class="pvc-nav-btn" type="button" aria-label=${arrows.prev} title=${arrows.prev}
+              @click=${() => this._navigate('prev')}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="pvc-today-btn" @click=${() => this._pv.store.navigateDate('today')}>
+            <button class="pvc-today-btn" type="button" @click=${() => this._navigate('today')}>
               Today
             </button>
-            <button class="pvc-nav-btn" @click=${() => this._pv.store.navigateDate('next')}>
+            <button class="pvc-nav-btn" type="button" aria-label=${arrows.next} title=${arrows.next}
+              @click=${() => this._navigate('next')}>
               <ha-icon icon="mdi:chevron-right"></ha-icon>
             </button>
           </div>
@@ -815,6 +1031,7 @@ export class PvCalendarModule extends LitElement {
   }
 
   private _onDayClick(e: CustomEvent) {
+    this._movedAt = performance.now();
     this._pv.store.setDate(e.detail.date);
     this.dispatchEvent(new CustomEvent('pv-view-change', { detail: { view: 'day' }, bubbles: true, composed: true }));
   }
@@ -832,14 +1049,14 @@ export class PvCalendarModule extends LitElement {
     if (!start || e.touches.length > 0 || e.changedTouches.length !== 1) return;
     const end = e.changedTouches[0];
     const direction = swipeDirection(end.clientX - start.x, end.clientY - start.y);
-    if (direction) this._pv.store.navigateDate(direction);
+    if (direction) this._navigate(direction);
   }
 
   private _onTouchCancel() {
     this._touchStart = null;
   }
 
-  private async _refreshCalendars() {
+  private _refreshCalendars = async (): Promise<void> => {
     if (this._refreshing) return;
     this._refreshing = true;
     try {
@@ -855,7 +1072,7 @@ export class PvCalendarModule extends LitElement {
     }
     // Keep spinner for at least 800ms so the animation completes
     setTimeout(() => { this._refreshing = false; }, 800);
-  }
+  };
 }
 
 defineElement('pv-calendar-module', PvCalendarModule);

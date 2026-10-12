@@ -81,18 +81,19 @@ describe('eventForPopup (what the event popup opens with)', () => {
   it('lists each calendar of a shared event once, in the shape the popup reads', () => {
     const a = ev('calendar.test_blair', 'same');
     const b = ev('calendar.test_casey', 'same');
-    expect(people(eventForPopup(a, [a, b, { ...b }]))).toEqual([blair, casey]);
+    expect(people(eventForPopup(a, [a, b, { ...b }]))).toEqual([{ ...blair, uid: 'same' }, { ...casey, uid: 'same' }]);
   });
 
   it('gives a merged chip (one entry on two calendars with separate ids) its people in that shape too', () => {
     const merged = {
       ...ev('calendar.test_blair', 'one'),
       shared_calendars: [
-        { entity_id: 'calendar.test_blair', color: '#F94144', color_light: '#FDBDBE', person_entity: '', display_name: 'test_blair' },
-        { entity_id: 'calendar.test_casey', color: '#F94144', color_light: '#FDBDBE', person_entity: '', display_name: 'test_casey' },
+        { entity_id: 'calendar.test_blair', color: '#F94144', color_light: '#FDBDBE', person_entity: '', display_name: 'test_blair', uid: 'one' },
+        { entity_id: 'calendar.test_casey', color: '#F94144', color_light: '#FDBDBE', person_entity: '', display_name: 'test_casey', uid: 'two' },
       ],
     } as CalendarEvent;
-    expect(people(eventForPopup(merged, [merged, ev('calendar.test_casey', 'two')]))).toEqual([blair, casey]);
+    // Each person's copy keeps its own uid, so a delete for everyone reaches every copy.
+    expect(people(eventForPopup(merged, [merged, ev('calendar.test_casey', 'two')]))).toEqual([{ ...blair, uid: 'one' }, { ...casey, uid: 'two' }]);
   });
 
   it('leaves an event on one calendar as it is', () => {

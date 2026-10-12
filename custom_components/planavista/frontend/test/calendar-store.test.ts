@@ -54,10 +54,11 @@ describe('doEditEvent', () => {
 
   it('restores the original event when the recreate fails', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.mocked(createEvent)
       .mockRejectedValueOnce(new Error('Invalid end time'))
       .mockResolvedValueOnce(undefined);
-    await expect(state.doEditEvent(hass, del, next, original)).rejects.toThrow('The original event was restored.');
+    await expect(state.doEditEvent(hass, del, next, original)).rejects.toThrow('so the event is back as it was');
     expect(createEvent).toHaveBeenNthCalledWith(2, hass, original);
     expect(state.isLoading).toBe(false);
     expect(errorSpy).toHaveBeenCalledWith('PlanaVista: Failed to edit event', expect.anything());

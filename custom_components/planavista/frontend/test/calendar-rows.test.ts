@@ -7,7 +7,7 @@ const SAVED = [
   {
     entity_id: 'calendar.test_casey', display_name: 'Casey', color: '#43AA8B', color_light: '#BDE1D6',
     icon: 'mdi:soccer', person_entity: 'person.casey', visible: false, member_id: 'casey',
-    added_later: 'kept', state: 'off', attributes: { friendly_name: 'Test Casey' },
+    added_later: 'kept', state: 'off', attributes: { friendly_name: 'Test Casey' }, fetch_failed: true,
   },
 ];
 const names: Record<string, string> = { 'calendar.test_alex': 'Test Alex', 'calendar.test_blair': 'Test Blair' };
@@ -23,6 +23,8 @@ describe('calendar rows', () => {
     expect(rows[1]).toMatchObject({ display_name: 'Test Alex', color: '#005F73', color_light: '#A6C7CE', member_id: null, saved: null });
     expect(rows[0].saved).not.toHaveProperty('state');
     expect(rows[0].saved).not.toHaveProperty('attributes');
+    // The coordinator's read-failure mark is the sensor's to say, never saved back (it would stick).
+    expect(rows[0].saved).not.toHaveProperty('fetch_failed');
   });
 
   it('saves included rows with every key they had, and defaults for new ones', () => {

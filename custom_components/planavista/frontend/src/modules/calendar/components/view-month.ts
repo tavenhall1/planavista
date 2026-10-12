@@ -50,9 +50,12 @@ export class PVViewMonth extends LitElement {
         height: 100%;
       }
 
+      /* Headings and numbers in the rounded face (spec 11.2). */
       .month-name {
+        font-family: var(--pv-font-heading, inherit);
         font-size: 1.125rem;
-        font-weight: 700;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
         padding: 0.5rem 0.75rem;
         text-align: center;
@@ -111,8 +114,10 @@ export class PVViewMonth extends LitElement {
       }
 
       .day-number {
+        font-family: var(--pv-font-heading, inherit);
         font-size: 0.8125rem;
-        font-weight: 400;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
         margin-bottom: 0.125rem;
         padding: 0.125rem 0.25rem;
@@ -131,7 +136,7 @@ export class PVViewMonth extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
+        font-weight: 800;
       }
 
       .day-events {
@@ -140,13 +145,14 @@ export class PVViewMonth extends LitElement {
         gap: 1px;
       }
 
+      /* Inside the cell, which is the day's whole target (spec 11.8). */
       .more-events {
         line-height: 1.2;
-        font-size: 0.625rem;
+        font-size: 0.75rem;
         color: var(--pv-text-secondary);
         padding: 0 0.375rem;
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 600;
       }
 
       .more-events:hover {
@@ -156,7 +162,7 @@ export class PVViewMonth extends LitElement {
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
       /* xs: phones, compact day cells */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .month-name { font-size: 0.9375rem; padding: 0.375rem 0.5rem; }
         .weekday-name { font-size: 0.5625rem; padding: 0.25rem 0; letter-spacing: 0.02em; }
         .day-number { font-size: 0.6875rem; padding: 0.0625rem 0.125rem; }
@@ -166,7 +172,7 @@ export class PVViewMonth extends LitElement {
       }
 
       /* sm: large phones */
-      @media (min-width: 480px) and (max-width: 767px) {
+      @container pv-calendar (min-width: 480px) and (max-width: 767px) {
         .weekday-name { font-size: 0.625rem; }
         .day-number { font-size: 0.75rem; }
       }
@@ -178,7 +184,7 @@ export class PVViewMonth extends LitElement {
       }
 
       /* lg: large screens (1024–1439px) */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .month-name { font-size: 1.25rem; }
         .weekday-name { font-size: 0.8125rem; padding: 0.625rem 0; }
         .day-number { font-size: 0.9375rem; padding: 0.25rem 0.375rem; }
@@ -187,7 +193,7 @@ export class PVViewMonth extends LitElement {
       }
 
       /* xl: wall displays (1440px+) */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .month-name { font-size: 1.375rem; }
         .weekday-name { font-size: 0.9375rem; padding: 0.75rem 0; }
         .day-number { font-size: 1.0625rem; padding: 0.375rem 0.5rem; }

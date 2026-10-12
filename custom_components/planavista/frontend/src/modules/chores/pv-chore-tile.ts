@@ -39,14 +39,22 @@ export class PvChoreTile extends LitElement {
 
   @state() private _fill = 0;
   @state() private _held = false;
+  /**
+   * The ring draws the fill as given: through a hold, and when the answer
+   * comes (it gives way to the done or waiting tile at once). Only a rewind
+   * eases back from where the hold got to (spec 11.5).
+   */
+  @state() private _tracking = true;
   private _frame = 0;
   private _celebrate = false;
   private _gesture = new HoldGesture({
     progress: fill => {
+      this._tracking = true;
       this._fill = fill;
     },
     complete: () => this._finish(),
     rewind: () => {
+      this._tracking = false;
       this._held = false;
       this._fill = 0;
     },
@@ -198,6 +206,7 @@ export class PvChoreTile extends LitElement {
     if (changed.has('row')) {
       const change = rowChange(changed.get('row') as RowModel | undefined, this.row);
       if (change !== 'none') {
+        this._tracking = true;
         this._held = false;
         this._fill = 0;
       }
@@ -278,6 +287,7 @@ export class PvChoreTile extends LitElement {
       from,
       settle: accepted => {
         if (!accepted) {
+          this._tracking = false;
           this._held = false;
           this._fill = 0;
         }
@@ -310,7 +320,7 @@ export class PvChoreTile extends LitElement {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
           </span>
         ` : nothing}
-        <pv-ring size=${ring} .progress=${fill} color=${this.color}>
+        <pv-ring size=${ring} .progress=${fill} ?tracking=${this._tracking} color=${this.color}>
           <span class="picture" aria-hidden="true">${chorePicture(row.icon, row.name)}</span>
         </pv-ring>
         <span class="name">${row.name}</span>

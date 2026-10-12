@@ -89,8 +89,8 @@ export class PvCalendarCalendarsPage extends LitElement {
     if (this._rows.length === 0) {
       return html`
         <div class="page-content">
-          <p class="page-subtitle">No calendar entities found in Home Assistant.</p>
-          <p class="empty-hint">Add calendar integrations (Google Calendar, CalDAV, etc.) and re-run setup.</p>
+          <p class="page-subtitle">Home Assistant has no calendars yet.</p>
+          <p class="empty-hint">Add one in Settings, Devices and services (Google Calendar, CalDAV, or Local Calendar), and it shows up here.</p>
         </div>
       `;
     }
@@ -185,13 +185,13 @@ export class PvCalendarCalendarsPage extends LitElement {
           <div class="cal-details">
             <!-- Display name input -->
             <div class="cal-field">
-              <label class="pv-label" for="cal-name-${idx}">Display Name</label>
+              <label class="pv-label" for="cal-name-${idx}">Name</label>
               <input
                 id="cal-name-${idx}"
                 type="text"
                 class="pv-input cal-name-input"
                 .value=${cal.display_name}
-                placeholder="Calendar name"
+                placeholder="Name on the calendar"
                 @input=${(e: Event) => this._updateCalendar(idx, { display_name: (e.target as HTMLInputElement).value }, false)}
                 @change=${() => this._save()}
               />
@@ -209,14 +209,14 @@ export class PvCalendarCalendarsPage extends LitElement {
 
             <!-- Person entity link -->
             <div class="cal-field">
-              <label class="pv-label" for="cal-person-${idx}">Link to Person</label>
+              <label class="pv-label" for="cal-person-${idx}">Home Assistant person</label>
               <select
                 id="cal-person-${idx}"
                 class="pv-input pv-select cal-person-select"
                 .value=${cal.person_entity}
                 @change=${(e: Event) => this._updateCalendar(idx, { person_entity: (e.target as HTMLSelectElement).value })}
               >
-                <option value="">(None)</option>
+                <option value="">None</option>
                 ${this._personEntities.map(p => html`
                   <option value="${p}" ?selected=${cal.person_entity === p}>${this._personLabel(p)}</option>
                 `)}

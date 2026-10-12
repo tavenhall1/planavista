@@ -8,6 +8,9 @@ export interface SharedEvent extends CalendarEvent {
     color_light: string;
     person_entity: string;
     display_name: string;
+    /** This person's own copy: calendars off Google give each copy its own uid. */
+    uid?: string;
+    recurrence_id?: string;
   }>;
 }
 
@@ -33,6 +36,8 @@ export function deduplicateSharedEvents(
           color_light: cal.color_light,
           person_entity: cal.person_entity,
           display_name: cal.display_name,
+          uid: event.uid,
+          recurrence_id: event.recurrence_id,
         });
       }
     } else {
@@ -46,6 +51,8 @@ export function deduplicateSharedEvents(
           color_light: cal.color_light,
           person_entity: cal.person_entity,
           display_name: cal.display_name,
+          uid: event.uid,
+          recurrence_id: event.recurrence_id,
         }] : [],
       });
     }

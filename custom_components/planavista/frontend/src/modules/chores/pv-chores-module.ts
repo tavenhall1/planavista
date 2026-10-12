@@ -11,6 +11,9 @@ import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
+import { deepActiveElement } from '../../core/focus';
+import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
+import { motionOf, supportsLinearEasing } from '../../core/motion';
 import type { SettingsTarget } from '../../core/settings-registry';
 import type { Mode } from '../../styles/theme-pairs';
 import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../../types';
@@ -63,13 +66,6 @@ type ChoresSheet =
   | { kind: 'day'; member: string; date: string; day: DayView | null; failed: boolean }
   | { kind: 'quick_add'; busy: boolean };
 
-/** The element with focus, looking inside shadow roots (the card's controls live in several). */
-function deepActiveElement(): HTMLElement | null {
-  let active: Element | null = document.activeElement;
-  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-  return active instanceof HTMLElement ? active : null;
-}
-
 /** What the last check-off toast can take back or hand to someone else. */
 interface LastCheckoff {
   row: RowModel;
@@ -109,6 +105,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @state() private _minute = Math.floor(Date.now() / 60000);
   /** The Week view: how many weeks from this one, what came back, and for which request. */
   @state() private _weekOffset = 0;
+  /** The view (and Week's week) last drawn, to tell how the next change moves (spec 11.5). */
+  private _drawn: ViewPlace | null = null;
   @state() private _week: WeekView | null = null;
   @state() private _weekFailed = false;
   private _weekAsked: string | null = null;
@@ -272,6 +270,16 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       this._overlayOpen = open;
       this.dispatchEvent(new CustomEvent('pv-overlay-change', { detail: { open }, bubbles: true, composed: true }));
     }
+    this._playViewChange();
+  }
+
+  /** The calendar's springs for view changes (spec 11.5): another view glides in, another week slides in from its side. */
+  private _playViewChange(): void {
+    const next: ViewPlace = { view: this.view ?? 'board', at: this.view === 'week' ? this._weekOffset : 0 };
+    const change = viewChange(this._drawn, next);
+    this._drawn = next;
+    const motion = viewMotion(change, motionOf(this), supportsLinearEasing());
+    if (motion) this.renderRoot.querySelector<HTMLElement>('.view')?.animate(motion.keyframes, motion.options);
   }
 
   connectedCallback(): void {

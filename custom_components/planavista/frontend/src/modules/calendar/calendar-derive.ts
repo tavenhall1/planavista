@@ -57,6 +57,9 @@ export interface PopupParticipant {
   entity_id: string;
   calendar_name: string;
   calendar_color: string;
+  /** This person's own copy of the event, for deleting or editing it there. */
+  uid?: string;
+  recurrence_id?: string;
 }
 
 /** A calendar a view merged into one chip (deduplicateSharedEvents' shape). */
@@ -66,6 +69,8 @@ interface MergedParticipant {
   color?: string;
   calendar_name?: string;
   calendar_color?: string;
+  uid?: string;
+  recurrence_id?: string;
 }
 
 /**
@@ -91,6 +96,8 @@ export function eventForPopup(clicked: CalendarEvent, allEvents: CalendarEvent[]
         entity_id: s.calendar_entity_id,
         calendar_name: s.calendar_name,
         calendar_color: s.calendar_color,
+        uid: s.uid,
+        recurrence_id: s.recurrence_id,
       }));
       return { ...clicked, shared_calendars: shared } as CalendarEvent;
     }
@@ -101,6 +108,8 @@ export function eventForPopup(clicked: CalendarEvent, allEvents: CalendarEvent[]
       entity_id: p.entity_id,
       calendar_name: p.calendar_name ?? p.display_name ?? '',
       calendar_color: p.calendar_color ?? p.color ?? clicked.calendar_color,
+      uid: p.uid,
+      recurrence_id: p.recurrence_id,
     }));
     return { ...clicked, shared_calendars: shared } as CalendarEvent;
   }

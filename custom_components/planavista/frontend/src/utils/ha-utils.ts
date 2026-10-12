@@ -125,6 +125,7 @@ export function getPlanaVistaData(hass: HomeAssistant, entityId = 'sensor.planav
     },
     onboarding_complete: attrs.onboarding_complete,
     version: attrs.version,
+    calendars_configured: typeof attrs.calendars_configured === 'number' ? attrs.calendars_configured : undefined,
   };
 }
 

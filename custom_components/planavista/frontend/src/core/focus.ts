@@ -9,6 +9,18 @@ export function wrapFocusIndex(current: number, count: number, backwards: boolea
   return backwards ? (current - 1 + count) % count : (current + 1) % count;
 }
 
+/** Where focus is kept: the document, or a shadow root. */
+interface FocusHolder {
+  activeElement: Element | null;
+}
+
+/** The element with focus, looking inside shadow roots (the card's controls live in several). */
+export function deepActiveElement(root: FocusHolder = document): HTMLElement | null {
+  let active: Element | null = root.activeElement;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  return active && typeof (active as HTMLElement).focus === 'function' ? (active as HTMLElement) : null;
+}
+
 /** Keep Tab inside a dialog rendered in `root` (spec 11.8). */
 export function trapTab(root: ShadowRoot, event: KeyboardEvent): void {
   if (event.key !== 'Tab') return;

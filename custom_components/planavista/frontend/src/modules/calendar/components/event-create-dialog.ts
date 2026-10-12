@@ -20,12 +20,32 @@ import {
   withEndTime,
   withStartTime,
 } from '../utils/event-form';
-import { baseStyles, buttonStyles, formStyles, dialogStyles, animationStyles } from '../../../styles/shared';
+import { baseStyles, buttonStyles, formStyles, animationStyles } from '../../../styles/shared';
+import { sheetStyles } from '../../../styles/sheet';
+import type { Layout } from '../../../core/layout';
+import { SheetController } from '../../../shell/sheet-controller';
+import type { NoticeAction } from '../../../shell/pv-notice-sheet';
+import '../../../shell/pv-notice-sheet';
 import { LocationSearch } from '../utils/location-search';
 import { contrastText } from '../../../core/color';
+import { calendarCan, formSignature, saveFailedText } from '../event-words';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+const DISCARD_ACTIONS: NoticeAction[] = [
+  { id: 'discard', label: 'Discard', kind: 'destructive' },
+  { id: 'keep', label: 'Keep editing', kind: 'secondary' },
+];
+
+/**
+ * pv-event-create-dialog: New event and Edit event as a sheet (spec 11.5,
+ * 11.8, 12.3): from the bottom in portrait and on phones, a card in
+ * landscape. Escape closes an open picker first, then the sheet. Escape, a
+ * tap outside, or a drag ask before throwing away what was typed; Cancel
+ * is the deliberate way out and doesn't.
+ *
+ * @fires pv-sheet-close - once it has left (Cancel, a dismiss or discard, or `leaving`)
+ */
 export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) calendars: CalendarConfig[] = [];
@@ -35,6 +55,9 @@ export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   /** Display setting `location_autocomplete`: when false the Location field never touches the network. */
   @property({ attribute: false }) locationAutocomplete = false;
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Set once nothing wants the sheet (an event saved): it plays its exit, then fires pv-sheet-close. */
+  @property({ type: Boolean }) leaving = false;
 
   @state() private _title = '';
   @state() private _selectedCalendars: Set<string> = new Set();
@@ -54,6 +77,9 @@ export class PVEventCreateDialog extends LitElement {
   @state() private _saving = false;
   @state() private _error = '';
   @state() private _removeGuestsHint = false;
+  @state() private _askDiscard = false;
+  /** The fields as the sheet opened with them, to tell whether a dismiss would throw anything away. */
+  private _baseline = '';
 
   // Date picker state
   @state() private _datePickerOpen = false;
@@ -76,6 +102,11 @@ export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) store!: CalendarStore;
   /** Re-renders when that store changes (the controller registers itself with this element). */
   private _storeSubscription = new StoreSubscriber(this, () => this.store);
+  private _sheet = new SheetController(this, {
+    initialFocus: () => this._titleInput ?? null,
+    escape: () => this._closePickers(),
+    mayDismiss: () => this._mayDismiss(),
+  });
 
   @query('#title-input') private _titleInput?: HTMLInputElement;
   @query('.location-input') private _locationInput?: HTMLInputElement;
@@ -87,10 +118,80 @@ export class PVEventCreateDialog extends LitElement {
     baseStyles,
     buttonStyles,
     formStyles,
-    dialogStyles,
+    sheetStyles,
     animationStyles,
     css`
-      :host { display: block; }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding-bottom: 0;
+      }
+
+      :host([layout='landscape']) .panel {
+        width: min(560px, calc(100vw - 32px));
+        max-height: 88vh;
+        padding-bottom: 0;
+      }
+
+      .heading {
+        text-align: left;
+        font-weight: 800;
+        margin: 0 0 14px;
+      }
+
+      /* The form scrolls between the heading and the footer. */
+      .fields {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 2px 2px 16px;
+      }
+
+      .footer {
+        display: flex;
+        gap: 10px;
+        padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+        border-top: 1px solid var(--pv-border-subtle, #F1F1EE);
+      }
+
+      .footer .pv-btn {
+        flex: 1 1 0;
+        min-height: 48px;
+      }
+
+      :host([layout='landscape']) .footer {
+        justify-content: flex-end;
+        padding-bottom: 20px;
+      }
+
+      :host([layout='landscape']) .footer .pv-btn {
+        flex: 0 0 auto;
+        min-width: 120px;
+      }
+
+      :host([layout='phone']) .form-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+
+      .hint {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.5rem;
+        border-radius: 12px;
+        background: var(--pv-accent-tint, #EEEEFC);
+        color: var(--pv-accent-tint-ink, #3B3BB0);
+        font-size: 0.875rem;
+      }
+
+      .hint ha-icon {
+        --mdc-icon-size: 16px;
+        flex-shrink: 0;
+      }
 
       .form-grid {
         display: flex;
@@ -118,7 +219,8 @@ export class PVEventCreateDialog extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.5rem 0;
+        min-height: 48px;
+        cursor: pointer;
       }
 
       .all-day-label {
@@ -138,16 +240,16 @@ export class PVEventCreateDialog extends LitElement {
         display: inline-flex;
         align-items: center;
         gap: 0.375rem;
-        padding: 0.375rem 0.75rem;
+        padding: 0.375rem 0.875rem;
         border: 2px solid transparent;
         border-radius: 9999px;
         cursor: pointer;
         transition: all var(--pv-transition);
-        font-size: 0.8125rem;
-        font-weight: 500;
+        font-size: 0.875rem;
+        font-weight: 600;
         background: transparent;
         font-family: inherit;
-        min-height: 40px;
+        min-height: 48px;
       }
 
       .cal-option.selected {
@@ -174,11 +276,9 @@ export class PVEventCreateDialog extends LitElement {
         top: -10px;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 0.5rem;
+        font-size: 0.6875rem;
         font-weight: 700;
         color: var(--pv-accent-ink, var(--pv-accent));
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
         line-height: 1;
         white-space: nowrap;
         pointer-events: none;
@@ -202,14 +302,24 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       .show-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        align-self: flex-start;
+        min-height: 48px;
         background: none;
         border: none;
-        color: var(--pv-text-secondary);
-        font-size: 0.8125rem;
+        color: var(--pv-accent-ink, var(--pv-accent));
+        font-size: 0.9375rem;
+        font-weight: 600;
         cursor: pointer;
-        padding: 0.5rem 0;
+        padding: 0;
         font-family: inherit;
         text-align: left;
+      }
+
+      .show-more-btn ha-icon {
+        --mdc-icon-size: 18px;
       }
 
       .show-more-btn:hover {
@@ -223,11 +333,12 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       .error-msg {
-        color: #EF4444;
-        font-size: 0.8125rem;
-        padding: 0.5rem;
-        background: color-mix(in srgb, #EF4444 8%, transparent);
-        border-radius: var(--pv-radius-sm);
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: var(--pv-bad-bg, #FBE4E4);
+        color: var(--pv-bad-ink, #A12828);
+        font-size: 0.875rem;
+        line-height: 1.4;
       }
 
       /* ============================================
@@ -249,10 +360,17 @@ export class PVEventCreateDialog extends LitElement {
         color: var(--pv-text);
         font-size: 0.9375rem;
         font-family: inherit;
+        text-align: left;
         cursor: pointer;
         min-height: 48px;
         box-sizing: border-box;
         transition: border-color 200ms ease;
+      }
+
+      .date-display:focus-visible,
+      .time-display:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 2px;
       }
 
       .date-display:hover {
@@ -271,8 +389,8 @@ export class PVEventCreateDialog extends LitElement {
         border: 1px solid var(--pv-border);
         border-radius: var(--pv-radius-md, 12px);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-        padding: 12px;
-        width: 280px;
+        padding: 8px;
+        width: max-content;
         animation: pv-fadeIn 150ms ease;
       }
 
@@ -298,8 +416,8 @@ export class PVEventCreateDialog extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 30px;
-        height: 30px;
+        width: 48px;
+        height: 48px;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -329,34 +447,50 @@ export class PVEventCreateDialog extends LitElement {
         font-weight: 600;
         color: var(--pv-text-muted);
         padding: 4px 0;
-        text-transform: uppercase;
       }
 
       .picker-days {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 2px;
+        grid-template-columns: repeat(7, 48px);
       }
 
+      /* A 48 px target with the day drawn smaller inside (spec 11.8). */
       .picker-day {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        padding: 0;
         border: none;
-        border-radius: 50%;
         background: transparent;
         color: var(--pv-text);
-        font-size: 0.8125rem;
-        font-family: inherit;
+        font-family: var(--pv-font-heading, inherit);
+        font-size: 0.875rem;
+        font-variant-numeric: tabular-nums;
         cursor: pointer;
-        transition: all 150ms;
-        margin: 0 auto;
       }
 
-      .picker-day:hover {
+      .picker-day span {
+        display: grid;
+        place-items: center;
+        box-sizing: border-box;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        transition: background 150ms;
+      }
+
+      .picker-day:hover span {
         background: var(--pv-event-hover, rgba(0,0,0,0.05));
+      }
+
+      .picker-day:focus-visible {
+        outline: none;
+      }
+
+      .picker-day:focus-visible span {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 1px;
       }
 
       .picker-day.other-month {
@@ -364,19 +498,15 @@ export class PVEventCreateDialog extends LitElement {
         opacity: 0.4;
       }
 
-      .picker-day.today {
+      .picker-day.today span {
         border: 2px solid var(--pv-accent);
-        font-weight: 600;
+        font-weight: 700;
       }
 
-      .picker-day.selected {
+      .picker-day.selected span {
         background: var(--pv-accent);
         color: var(--pv-accent-text, #fff);
-        font-weight: 600;
-      }
-
-      .picker-day.selected:hover {
-        filter: brightness(1.1);
+        font-weight: 700;
       }
 
       /* ============================================
@@ -432,10 +562,18 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       .time-slot {
-        padding: 10px 16px;
-        cursor: pointer;
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        padding: 0 16px;
+        border: none;
+        background: transparent;
+        text-align: left;
+        font-family: inherit;
         font-size: 0.9375rem;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
+        cursor: pointer;
         transition: background 120ms ease;
       }
 
@@ -471,13 +609,19 @@ export class PVEventCreateDialog extends LitElement {
         display: flex;
         align-items: flex-start;
         gap: 8px;
-        padding: 10px 12px;
+        width: 100%;
+        min-height: 48px;
+        padding: 12px;
+        border: none;
+        border-bottom: 1px solid var(--pv-border-subtle, rgba(0,0,0,0.04));
+        background: transparent;
+        text-align: left;
         cursor: pointer;
-        font-size: 0.8125rem;
+        font-family: inherit;
+        font-size: 0.875rem;
         color: var(--pv-text);
         line-height: 1.35;
         transition: background 120ms ease;
-        border-bottom: 1px solid var(--pv-border-subtle, rgba(0,0,0,0.04));
       }
 
       .location-suggestion:last-child {
@@ -509,43 +653,6 @@ export class PVEventCreateDialog extends LitElement {
         color: var(--pv-text-muted);
         opacity: 0.6;
       }
-
-      /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
-
-      /* xs: phones, bottom-sheet dialog */
-      @media (max-width: 479px) {
-        .pv-overlay {
-          align-items: flex-end;
-        }
-
-        .pv-dialog {
-          max-width: 100%;
-          width: 100%;
-          max-height: 90vh;
-          border-radius: 16px 16px 0 0;
-          animation: pv-slideUp 250ms ease;
-        }
-
-        .pv-dialog-header { padding: 1rem; }
-        .pv-dialog-body { padding: 1rem; }
-        .pv-dialog-footer { padding: 0.75rem 1rem; }
-
-        .form-row { flex-direction: column; gap: 0.5rem; align-items: stretch; }
-
-        .cal-option { padding: 0.25rem 0.5rem; font-size: 0.75rem; min-height: 36px; }
-      }
-
-      /* sm: large phones, slightly wider dialog */
-      @media (min-width: 480px) and (max-width: 767px) {
-        .pv-dialog { max-width: calc(100% - 1rem); }
-        .pv-dialog-header { padding: 1rem 1.25rem; }
-        .pv-dialog-body { padding: 1.25rem; }
-      }
-
-      @keyframes pv-slideUp {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-      }
     `,
   ];
 
@@ -556,15 +663,14 @@ export class PVEventCreateDialog extends LitElement {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    if (changedProps.has('leaving') && this.leaving) void this._sheet.close();
     if (changedProps.has('locationAutocomplete') && !this.locationAutocomplete) {
       this._resetLocationSearch();
     }
     if (changedProps.has('open') && this.open) {
       this._initForm();
       this._datePickerOpen = false;
-      requestAnimationFrame(() => {
-        this._titleInput?.focus();
-      });
+      this._baseline = this._signature();
     }
   }
 
@@ -672,7 +778,7 @@ export class PVEventCreateDialog extends LitElement {
   }
 
   private _formatDateDisplay(): string {
-    if (!this._date) return 'Select a date';
+    if (!this._date) return 'Pick a date';
     const [y, m, d] = this._date.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     return date.toLocaleDateString('en-US', {
@@ -686,160 +792,223 @@ export class PVEventCreateDialog extends LitElement {
   render() {
     if (!this.open) return nothing;
 
-    const visibleCalendars = this.calendars.filter(c => c.visible !== false);
+    // A read-only calendar can't take a new event; the event's own calendars stay in an edit.
+    const visibleCalendars = this.calendars.filter(c =>
+      c.visible !== false && (calendarCan(c.attributes).create || this._originalCalendars.has(c.entity_id)));
     const isEdit = this.mode === 'edit';
-    const heading = isEdit ? 'Edit Event' : 'New Event';
+    const heading = isEdit ? 'Edit event' : 'New event';
 
     return html`
-      <div class="pv-overlay" @click=${this._onOverlayClick}>
-        <div class="pv-dialog" @click=${(e: Event) => e.stopPropagation()}>
-          <div class="pv-dialog-header">
-            <span class="pv-heading-2">${heading}</span>
-            <button class="pv-btn-icon" @click=${this._close}>
-              <ha-icon icon="mdi:close"></ha-icon>
-            </button>
-          </div>
+      <div class="backdrop" @click=${() => this._sheet.dismiss()}></div>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="editor-title" @keydown=${this._sheet.onKeydown}>
+        <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
+        <h2 class="heading" id="editor-title">${heading}</h2>
 
-          <div class="pv-dialog-body">
-            <div class="form-grid">
-              ${this._error ? html`<div class="error-msg">${this._error}</div>` : nothing}
+        <div class="fields">
+          <div class="form-grid">
+            ${this._error ? html`<div class="error-msg" role="alert">${this._error}</div>` : nothing}
 
-              <div class="form-field">
-                <input
-                  id="title-input"
-                  class="pv-input"
-                  type="text"
-                  placeholder="Event title"
-                  .value=${this._title}
-                  @input=${(e: Event) => this._title = (e.target as HTMLInputElement).value}
-                />
-              </div>
+            <div class="form-field">
+              <input
+                id="title-input"
+                class="pv-input"
+                type="text"
+                placeholder="Title"
+                aria-label="Title"
+                .value=${this._title}
+                @input=${(e: Event) => this._title = (e.target as HTMLInputElement).value}
+              />
+            </div>
 
-              <div class="form-field">
-                <label class="pv-label">${isEdit ? 'Participants' : 'Calendars'}</label>
-                ${this._removeGuestsHint ? html`
-                  <div style="
-                    display: flex; align-items: center; gap: 0.5rem;
-                    padding: 0.5rem 0.75rem; margin-bottom: 0.5rem;
-                    background: color-mix(in srgb, var(--pv-accent, #6366F1) 8%, transparent);
-                    border: 1px solid color-mix(in srgb, var(--pv-accent, #6366F1) 20%, transparent);
-                    border-radius: var(--pv-radius-sm, 8px);
-                    font-size: 0.8125rem; color: var(--pv-text-secondary);
-                  ">
-                    <ha-icon icon="mdi:information-outline" style="--mdc-icon-size: 16px; color: var(--pv-accent-ink, var(--pv-accent, #6366F1)); flex-shrink: 0;"></ha-icon>
-                    Tap a guest to remove them from this event
-                  </div>
-                ` : nothing}
-                <div class="calendar-select">
-                  ${visibleCalendars.map(cal => {
-                    const selected = this._selectedCalendars.has(cal.entity_id);
-                    const isOrganizer = cal.entity_id === this._organizerEntityId;
-                    const isLockedOrganizer = isEdit && isOrganizer;
-                    return html`
-                      <div class="cal-option-wrap">
-                        ${isOrganizer && selected
-                          ? html`<span class="organizer-badge">Organizer</span>`
-                          : nothing}
-                        <button
-                          class="cal-option ${selected ? 'selected' : ''} ${isLockedOrganizer ? 'locked' : ''}"
-                          style="${selected
-                            ? `background: ${cal.color}; --cal-bg: ${cal.color}; color: ${contrastText(cal.color)}`
-                            : `--cal-bg: ${cal.color}`}"
-                          @click=${() => this._toggleCalendar(cal.entity_id)}
-                        >
-                          <span class="cal-dot" style="background: ${cal.color}"></span>
-                          ${cal.display_name}
-                          ${isLockedOrganizer
-                            ? html`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`
-                            : nothing}
-                        </button>
-                      </div>
-                    `;
-                  })}
-                </div>
-              </div>
-
-              <div class="form-field">
-                <label class="pv-label">Date</label>
-                ${this._renderDatePicker()}
-                ${this._renderEndsHint()}
-              </div>
-
-              <div class="all-day-row">
-                <span class="all-day-label">All Day</span>
-                <div
-                  class="pv-toggle ${this._allDay ? 'active' : ''}"
-                  role="switch"
-                  tabindex="0"
-                  aria-checked="${this._allDay}"
-                  @click=${() => this._allDay = !this._allDay}
-                  @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._allDay = !this._allDay; }}}
-                ></div>
-              </div>
-
-              ${!this._allDay ? html`
-                <div class="form-row">
-                  <div class="form-field">
-                    <label class="pv-label">Start Time</label>
-                    <div class="time-display start-time-display" @click=${() => this._openTimePicker('start')}>
-                      <ha-icon icon="mdi:clock-outline"></ha-icon>
-                      ${this._formatTimeForDisplay(this._startTime)}
-                    </div>
-                  </div>
-                  <div class="form-field">
-                    <label class="pv-label">End Time</label>
-                    <div class="time-display end-time-display" @click=${() => this._openTimePicker('end')}>
-                      <ha-icon icon="mdi:clock-outline"></ha-icon>
-                      ${this._formatTimeForDisplay(this._endTime)}
-                    </div>
-                  </div>
+            <div class="form-field">
+              <span class="pv-label" id="who-label">Who</span>
+              ${this._removeGuestsHint ? html`
+                <div class="hint">
+                  <ha-icon icon="mdi:information-outline"></ha-icon>
+                  Tap someone to take them off this event.
                 </div>
               ` : nothing}
-
-              ${!this._showMore ? html`
-                <button class="show-more-btn" @click=${() => this._showMore = true}>
-                  + Add description, location
-                </button>
-              ` : html`
-                <div class="form-field">
-                  <label class="pv-label">Description</label>
-                  <textarea
-                    class="pv-input"
-                    rows="3"
-                    placeholder="Add a description..."
-                    .value=${this._description}
-                    @input=${(e: Event) => this._description = (e.target as HTMLTextAreaElement).value}
-                    style="resize: vertical; min-height: 80px;"
-                  ></textarea>
-                </div>
-                <div class="form-field">
-                  <label class="pv-label">Location</label>
-                  ${this._renderLocationField()}
-                </div>
-              `}
+              <div class="calendar-select" role="group" aria-labelledby="who-label">
+                ${visibleCalendars.map(cal => {
+                  const selected = this._selectedCalendars.has(cal.entity_id);
+                  const isOrganizer = cal.entity_id === this._organizerEntityId;
+                  const isLockedOrganizer = isEdit && isOrganizer;
+                  return html`
+                    <div class="cal-option-wrap">
+                      ${isOrganizer && selected
+                        ? html`<span class="organizer-badge">Organizer</span>`
+                        : nothing}
+                      <button
+                        type="button"
+                        class="cal-option ${selected ? 'selected' : ''} ${isLockedOrganizer ? 'locked' : ''}"
+                        aria-pressed=${selected ? 'true' : 'false'}
+                        style="${selected
+                          ? `background: ${cal.color}; --cal-bg: ${cal.color}; color: ${contrastText(cal.color)}`
+                          : `--cal-bg: ${cal.color}`}"
+                        @click=${() => this._toggleCalendar(cal.entity_id)}
+                      >
+                        <span class="cal-dot" style="background: ${cal.color}"></span>
+                        ${cal.display_name}
+                        ${isLockedOrganizer
+                          ? html`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`
+                          : nothing}
+                      </button>
+                    </div>
+                  `;
+                })}
+              </div>
             </div>
-          </div>
 
-          <div class="pv-dialog-footer">
-            <button class="pv-btn pv-btn-secondary" @click=${this._close}>
-              Cancel
-            </button>
-            <button
-              class="pv-btn pv-btn-primary"
-              ?disabled=${this._saving}
-              @click=${this._save}
-            >
-              ${this._saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Event')}
-            </button>
+            <div class="form-field">
+              <label class="pv-label" for="date-button">Date</label>
+              ${this._renderDatePicker()}
+              ${this._renderEndsHint()}
+            </div>
+
+            <div class="all-day-row" @click=${this._toggleAllDay}>
+              <span class="all-day-label" id="all-day-label">All day</span>
+              <div
+                class="pv-toggle ${this._allDay ? 'active' : ''}"
+                role="switch"
+                tabindex="0"
+                aria-checked="${this._allDay}"
+                aria-labelledby="all-day-label"
+                @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._toggleAllDay(); }}}
+              ></div>
+            </div>
+
+            ${!this._allDay ? html`
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="pv-label" for="starts-button">Starts</label>
+                  <button type="button" id="starts-button" class="time-display start-time-display"
+                    aria-expanded=${this._activeTimePicker === 'start' ? 'true' : 'false'}
+                    @click=${() => this._openTimePicker('start')}>
+                    <ha-icon icon="mdi:clock-outline"></ha-icon>
+                    ${this._formatTimeForDisplay(this._startTime)}
+                  </button>
+                </div>
+                <div class="form-field">
+                  <label class="pv-label" for="ends-button">Ends</label>
+                  <button type="button" id="ends-button" class="time-display end-time-display"
+                    aria-expanded=${this._activeTimePicker === 'end' ? 'true' : 'false'}
+                    @click=${() => this._openTimePicker('end')}>
+                    <ha-icon icon="mdi:clock-outline"></ha-icon>
+                    ${this._formatTimeForDisplay(this._endTime)}
+                  </button>
+                </div>
+              </div>
+            ` : nothing}
+
+            ${!this._showMore ? html`
+              <button class="show-more-btn" type="button" @click=${() => this._showMore = true}>
+                <ha-icon icon="mdi:plus"></ha-icon>
+                Add a description or location
+              </button>
+            ` : html`
+              <div class="form-field">
+                <label class="pv-label" for="description-input">Description</label>
+                <textarea
+                  id="description-input"
+                  class="pv-input"
+                  rows="3"
+                  placeholder="Add a description"
+                  .value=${this._description}
+                  @input=${(e: Event) => this._description = (e.target as HTMLTextAreaElement).value}
+                  style="resize: vertical; min-height: 80px;"
+                ></textarea>
+              </div>
+              <div class="form-field">
+                <label class="pv-label" for="location-input">Location</label>
+                ${this._renderLocationField()}
+              </div>
+            `}
           </div>
+        </div>
+
+        <div class="footer">
+          <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._saving} @click=${this._cancel}>Cancel</button>
+          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._saving} @click=${this._save}>
+            ${this._saving ? 'Saving…' : (isEdit ? 'Save' : 'Add')}
+          </button>
         </div>
       </div>
 
       ${this._renderLocationDropdown()}
       ${this._renderDatePickerDropdown()}
       ${this._renderTimePickerDropdown()}
+      ${this._askDiscard ? html`
+        <pv-notice-sheet
+          .layout=${this.layout}
+          .heading=${isEdit ? 'Discard your changes?' : 'Discard this event?'}
+          .actions=${DISCARD_ACTIONS}
+          @pv-sheet-action=${this._onDiscardChoice}
+        ></pv-notice-sheet>
+      ` : nothing}
     `;
   }
+
+  /** The editor's fields, to tell whether anything changed since it opened. */
+  private _signature(): string {
+    return formSignature({
+      title: this._title,
+      calendars: this._selectedCalendars,
+      date: this._date,
+      allDay: this._allDay,
+      startTime: this._startTime,
+      endTime: this._endTime,
+      spanDays: this._spanDays,
+      endDayOffset: this._endDayOffset,
+      description: this._description,
+      location: this._location,
+    });
+  }
+
+  /** Escape closes an open picker before the sheet; true when there was one. Focus goes back to its field unless a question takes it. */
+  private _closePickers(refocus = true): boolean {
+    const open = this._datePickerOpen || this._activeTimePicker !== null || this._locationSuggestions.length > 0;
+    if (!open) return false;
+    const field = this._datePickerOpen ? this._dateDisplay
+      : this._activeTimePicker === 'start' ? this._startTimeEl
+        : this._activeTimePicker === 'end' ? this._endTimeEl
+          : this._locationInput;
+    this._datePickerOpen = false;
+    this._activeTimePicker = null;
+    this._resetLocationSearch();
+    if (refocus) this._focusAfterUpdate(() => field ?? null);
+    return true;
+  }
+
+  /** An error shows at the top of the form, scrolled into view (on a phone the form may be scrolled down to Location). */
+  private _showError(text: string): void {
+    this._error = text;
+    void this.updateComplete.then(() => this.renderRoot.querySelector('.error-msg')?.scrollIntoView({ block: 'nearest' }));
+  }
+
+  /** Focus an element once the next render is in (a picker that closes takes its focused button with it). */
+  private _focusAfterUpdate(target: () => HTMLElement | null): void {
+    void this.updateComplete.then(() => target()?.focus());
+  }
+
+  /** A dismiss throws nothing away without asking (spec 11.7). */
+  private _mayDismiss(): boolean {
+    if (this._saving) return false;
+    if (this._signature() === this._baseline) return true;
+    // The discard question takes focus, so the picker's field doesn't.
+    this._closePickers(false);
+    this._askDiscard = true;
+    return false;
+  }
+
+  private _onDiscardChoice = (e: CustomEvent<{ id: string }>): void => {
+    this._askDiscard = false;
+    if (e.detail.id === 'discard') void this._sheet.close();
+    else void this.updateComplete.then(() => this._titleInput?.focus());
+  };
+
+  private _toggleAllDay = (): void => {
+    this._allDay = !this._allDay;
+  };
 
   // ==================================================================
   // CUSTOM DATE PICKER
@@ -848,10 +1017,11 @@ export class PVEventCreateDialog extends LitElement {
   private _renderDatePicker() {
     return html`
       <div class="date-picker-wrap">
-        <div class="date-display" @click=${this._toggleDatePicker}>
+        <button type="button" id="date-button" class="date-display"
+          aria-expanded=${this._datePickerOpen ? 'true' : 'false'} @click=${this._toggleDatePicker}>
           <ha-icon icon="mdi:calendar"></ha-icon>
           ${this._formatDateDisplay()}
-        </div>
+        </button>
       </div>
     `;
   }
@@ -863,26 +1033,28 @@ export class PVEventCreateDialog extends LitElement {
     if (!el) return nothing;
     const rect = el.getBoundingClientRect();
 
-    // Position below the trigger, but if it would go off-screen, position above
-    const dropdownHeight = 330; // approximate
+    // Below the field, or above it when it won't fit; never off the screen.
+    const dropdownHeight = 384; // the header, the weekdays, and six 48 px weeks
     const spaceBelow = window.innerHeight - rect.bottom - 8;
     const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
-    const top = placeAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4;
+    const wanted = placeAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4;
+    const top = Math.max(8, Math.min(wanted, window.innerHeight - dropdownHeight - 8));
 
     return html`
       <div
         class="date-picker-dropdown"
         style="top: ${top}px; left: ${rect.left}px;"
+        @keydown=${this._sheet.onKeydown}
       >
         <div class="picker-header">
           <span class="picker-month-label">
             ${new Date(this._pickerYear, this._pickerMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </span>
           <div class="picker-nav">
-            <button class="picker-nav-btn" @click=${this._pickerPrevMonth}>
+            <button class="picker-nav-btn" type="button" aria-label="Previous month" @click=${this._pickerPrevMonth}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="picker-nav-btn" @click=${this._pickerNextMonth}>
+            <button class="picker-nav-btn" type="button" aria-label="Next month" @click=${this._pickerNextMonth}>
               <ha-icon icon="mdi:chevron-right"></ha-icon>
             </button>
           </div>
@@ -897,9 +1069,11 @@ export class PVEventCreateDialog extends LitElement {
             const isSelected = this._toDateStr(day) === this._date;
             return html`
               <button
+                type="button"
                 class="picker-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
+                aria-pressed=${isSelected ? 'true' : 'false'}
                 @click=${() => this._selectPickerDay(day)}
-              >${day.getDate()}</button>
+              ><span>${day.getDate()}</span></button>
             `;
           })}
         </div>
@@ -914,6 +1088,12 @@ export class PVEventCreateDialog extends LitElement {
       const [y, m] = this._date.split('-').map(Number);
       this._pickerYear = y;
       this._pickerMonth = m - 1;
+    }
+    if (this._datePickerOpen) {
+      this._focusAfterUpdate(() =>
+        this.renderRoot.querySelector<HTMLElement>('.picker-day.selected')
+        ?? this.renderRoot.querySelector<HTMLElement>('.picker-day.today')
+        ?? this.renderRoot.querySelector<HTMLElement>('.picker-day'));
     }
   }
 
@@ -951,6 +1131,7 @@ export class PVEventCreateDialog extends LitElement {
   private _selectPickerDay(day: Date) {
     this._date = this._toDateStr(day);
     this._datePickerOpen = false;
+    this._focusAfterUpdate(() => this._dateDisplay ?? null);
   }
 
   // ==================================================================
@@ -958,7 +1139,7 @@ export class PVEventCreateDialog extends LitElement {
   // ==================================================================
 
   private _formatTimeForDisplay(time24: string): string {
-    if (!time24) return 'Select time';
+    if (!time24) return 'Pick a time';
     const [h, m] = time24.split(':').map(Number);
     if (this.timeFormat === '24h') {
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -988,6 +1169,7 @@ export class PVEventCreateDialog extends LitElement {
         if (selected && dropdown) {
           dropdown.scrollTop = selected.offsetTop - dropdown.clientHeight / 2 + selected.clientHeight / 2;
         }
+        (selected ?? dropdown?.querySelector<HTMLElement>('.time-slot'))?.focus({ preventScroll: true });
       });
     }
   }
@@ -1005,7 +1187,9 @@ export class PVEventCreateDialog extends LitElement {
       this._endTime = next.endTime;
       this._endDayOffset = next.endDayOffset;
     }
+    const field = this._activeTimePicker === 'start' ? this._startTimeEl : this._endTimeEl;
     this._activeTimePicker = null;
+    this._focusAfterUpdate(() => field ?? null);
   }
 
   private _renderTimePickerDropdown() {
@@ -1026,12 +1210,15 @@ export class PVEventCreateDialog extends LitElement {
       <div
         class="time-picker-dropdown"
         style="top: ${top}px; left: ${rect.left}px; width: ${rect.width}px;"
+        @keydown=${this._sheet.onKeydown}
       >
         ${slots.map(slot => html`
-          <div
+          <button
+            type="button"
             class="time-slot ${slot === currentTime ? 'selected' : ''}"
+            aria-pressed=${slot === currentTime ? 'true' : 'false'}
             @click=${() => this._selectTime(slot)}
-          >${this._formatTimeForDisplay(slot)}</div>
+          >${this._formatTimeForDisplay(slot)}</button>
         `)}
       </div>
     `;
@@ -1052,9 +1239,10 @@ export class PVEventCreateDialog extends LitElement {
     return html`
       <div class="location-wrap">
         <input
+          id="location-input"
           class="pv-input location-input"
           type="text"
-          placeholder=${this.locationAutocomplete ? 'Search for a place or address...' : 'Add a location'}
+          placeholder=${this.locationAutocomplete ? 'Search for a place or address' : 'Add a location'}
           .value=${this._location}
           @input=${this._onLocationInput}
           @focus=${() => this._locationFocused = true}
@@ -1079,15 +1267,18 @@ export class PVEventCreateDialog extends LitElement {
       <div
         class="location-suggestions-fixed"
         style="top: ${rect.bottom}px; left: ${rect.left}px; width: ${rect.width}px;"
+        @keydown=${this._sheet.onKeydown}
       >
         ${this._locationLoading ? html`
-          <div class="location-loading">Searching...</div>
+          <div class="location-loading">Searching…</div>
         ` : nothing}
         ${this._locationSuggestions.map(s => html`
-          <div class="location-suggestion" @mousedown=${() => this._selectLocation(s)}>
+          <button type="button" class="location-suggestion"
+            @mousedown=${(e: Event) => e.preventDefault()}
+            @click=${() => this._selectLocation(s)}>
             <ha-icon icon="mdi:map-marker"></ha-icon>
             <span>${s}</span>
-          </div>
+          </button>
         `)}
         ${this._locationSuggestions.length > 0 ? html`
           <div class="location-powered">Suggestions by Photon &middot; &copy; OpenStreetMap contributors</div>
@@ -1143,16 +1334,15 @@ export class PVEventCreateDialog extends LitElement {
     this._removeGuestsHint = false;
   }
 
-  private _onOverlayClick() {
-    this._close();
-  }
-
-  private _close() {
+  /** Cancel: the deliberate way out, so it doesn't ask first. */
+  private _cancel = (): void => {
+    // A save that is running finishes first: it closes the sheet itself, and must not close one opened since.
+    if (this._saving) return;
     this._datePickerOpen = false;
     this._activeTimePicker = null;
     this._resetLocationSearch();
-    this.store.closeDialog();
-  }
+    void this._sheet.close();
+  };
 
   private async _editFallback(
     baseData: Omit<CreateEventData, 'entity_id'> & { entity_id?: string },
@@ -1162,6 +1352,12 @@ export class PVEventCreateDialog extends LitElement {
     const uid = this.prefill?.uid;
     const recurrenceId = this.prefill?.recurrence_id;
     const primaryEntityId = this.prefill?.calendar_entity_id;
+    // Each person's own copy (off Google every copy has its own uid).
+    const copies = (this.prefill as { shared_calendars?: Array<{ entity_id: string; uid?: string; recurrence_id?: string }> } | null)?.shared_calendars ?? [];
+    const copyOn = (entityId: string): { uid?: string; recurrence_id?: string } => {
+      const copy = copies.find(c => c.entity_id === entityId);
+      return copy?.uid ? { uid: copy.uid, recurrence_id: copy.recurrence_id } : { uid, recurrence_id: recurrenceId };
+    };
 
     const added = [...selected].filter(id => !original.has(id));
     const removed = [...original].filter(id => !selected.has(id));
@@ -1176,9 +1372,10 @@ export class PVEventCreateDialog extends LitElement {
 
     for (const entityId of kept) {
       if (entityId === primaryEntityId) continue;
-      if (uid) {
+      const copy = copyOn(entityId);
+      if (copy.uid) {
         try {
-          await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+          await deleteEvent(this.hass, { entity_id: entityId, uid: copy.uid, recurrence_id: copy.recurrence_id });
         } catch { /* may not exist */ }
       }
       await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
@@ -1190,9 +1387,10 @@ export class PVEventCreateDialog extends LitElement {
 
     for (const entityId of removed) {
       if (entityId === primaryEntityId) continue;
-      if (uid) {
+      const copy = copyOn(entityId);
+      if (copy.uid) {
         try {
-          await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+          await deleteEvent(this.hass, { entity_id: entityId, uid: copy.uid, recurrence_id: copy.recurrence_id });
         } catch { /* may not exist */ }
       }
     }
@@ -1204,17 +1402,17 @@ export class PVEventCreateDialog extends LitElement {
 
   private async _save() {
     if (!this._title.trim()) {
-      this._error = 'Please enter an event title';
+      this._showError('Give the event a title.');
       return;
     }
     if (this._selectedCalendars.size === 0) {
-      this._error = 'Please select at least one calendar';
+      this._showError("Pick who it's for.");
       return;
     }
 
     const dateError = validateFormDates(this._formDates);
     if (dateError) {
-      this._error = dateError;
+      this._showError(dateError);
       return;
     }
 
@@ -1356,9 +1554,9 @@ export class PVEventCreateDialog extends LitElement {
         }
       }
     } catch (err: any) {
-      this._error = err instanceof EditRestoreError
-        ? err.message
-        : `Failed to save event: ${err?.message || 'Unknown error'}`;
+      // Home Assistant's own words go to the log; people get plain ones (spec 11.7).
+      console.error('PlanaVista: Saving the event failed', err);
+      this._showError(err instanceof EditRestoreError ? err.message : saveFailedText(this._title, this.mode === 'edit'));
       this._saving = false;
     }
   }

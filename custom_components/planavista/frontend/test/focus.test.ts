@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { wrapFocusIndex } from '../src/core/focus';
+import { deepActiveElement, wrapFocusIndex } from '../src/core/focus';
+
+describe('deepActiveElement', () => {
+  it('follows focus into shadow roots to the control that has it', () => {
+    const button = { focus() {}, shadowRoot: null };
+    const sheet = { shadowRoot: { activeElement: button } };
+    const card = { shadowRoot: { activeElement: sheet } };
+    expect(deepActiveElement({ activeElement: card as unknown as Element })).toBe(button);
+  });
+
+  it('says nothing when nothing has focus', () => {
+    expect(deepActiveElement({ activeElement: null })).toBeNull();
+  });
+});
 
 describe('wrapFocusIndex', () => {
   it('wraps Tab and Shift+Tab around the ends of a dialog', () => {

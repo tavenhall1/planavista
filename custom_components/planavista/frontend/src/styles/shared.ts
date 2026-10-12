@@ -215,64 +215,6 @@ export const eventStyles = css`
 `;
 
 /**
- * Dialog/popup styles.
- */
-export const dialogStyles = css`
-  .pv-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--pv-backdrop, rgba(0, 0, 0, 0.3));
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-    animation: pv-fadeIn var(--pv-transition, 200ms ease) forwards;
-  }
-
-  .pv-dialog {
-    background: var(--pv-card-bg-elevated, #FFFFFF);
-    border-radius: var(--pv-radius-lg, 16px);
-    box-shadow: var(--pv-shadow-xl);
-    max-width: 480px;
-    width: calc(100% - 2rem);
-    max-height: 85vh;
-    overflow-y: auto;
-    animation: pv-scaleIn var(--pv-transition, 200ms ease) forwards;
-  }
-
-  .pv-dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--pv-border-subtle);
-  }
-
-  .pv-dialog-body {
-    padding: 1.5rem;
-  }
-
-  .pv-dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--pv-border-subtle);
-  }
-
-  .pv-popup {
-    background: var(--pv-card-bg-elevated, #FFFFFF);
-    border-radius: var(--pv-radius-lg, 16px);
-    box-shadow: var(--pv-shadow-xl);
-    max-width: 360px;
-    width: calc(100% - 2rem);
-    animation: pv-scaleIn var(--pv-transition, 200ms ease) forwards;
-  }
-`;
-
-/**
  * Form input styles.
  */
 export const formStyles = css`
@@ -320,7 +262,9 @@ export const formStyles = css`
     position: relative;
     width: 44px;
     height: 24px;
-    background: var(--pv-border);
+    flex-shrink: 0;
+    /* Off reads at about 3:1 on the card, like a control should (spec 11.8). */
+    background: var(--pv-text-muted, #8E949C);
     border-radius: var(--pv-radius, 12px);
     cursor: pointer;
     transition: background var(--pv-transition, 200ms ease);

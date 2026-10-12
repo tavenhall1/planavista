@@ -53,7 +53,10 @@ export class PVViewDay extends LitElement {
   @property({ attribute: false }) avatarBorderMode: string = 'primary';
   @property({ attribute: false }) sharedEventMap: Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>> = new Map();
   @property({ type: Number }) tick = 0;
-  /** The card's layout: portrait fits about 14 hours on screen (spec 12.2). */
+  /**
+   * The card's layout: portrait fits about 14 hours on screen (spec 12.2). The hours fit the
+   * space, so this view doesn't shrink the header: each step would re-fit them mid-scroll.
+   */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Today's chore progress per person, when Chores is on: each column header gets a ring. */
   @property({ attribute: false }) progress: ProgressOf | null = null;
@@ -85,8 +88,7 @@ export class PVViewDay extends LitElement {
       .all-day-section {
         display: flex;
         border-bottom: 1px solid var(--pv-border);
-        padding: 0.5rem 0;
-        min-height: 40px;
+        min-height: 48px;
         flex-shrink: 0;
       }
 
@@ -106,31 +108,61 @@ export class PVViewDay extends LitElement {
       .all-day-events {
         flex: 1;
         display: flex;
-        gap: 0.375rem;
+        gap: 0 0.375rem;
         flex-wrap: wrap;
         padding: 0 0.5rem;
       }
 
+      /* Names and the date in the rounded face (spec 11.2). */
+      .person-name,
+      .date-banner {
+        font-family: var(--pv-font-heading, inherit);
+        font-weight: 700;
+      }
+
+      .next-day-footer {
+        width: 100%;
+        min-height: 48px;
+        border: none;
+        font-family: var(--pv-font-heading, inherit);
+        font-weight: 700;
+      }
+
+      .all-day-chip:focus-visible .all-day-pill,
+      .positioned-event:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 1px;
+      }
+
+      /* A 48 px target with the pill drawn inside, like the header's chips. */
       .all-day-chip {
         display: inline-flex;
         align-items: center;
+        min-height: 48px;
+        max-width: 200px;
+        cursor: pointer;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .all-day-pill {
+        display: block;
+        min-width: 0;
         padding: 6px 14px;
         border-radius: 9999px;
         font-size: 0.8125rem;
         font-weight: 600;
         color: white;
-        cursor: pointer;
         transition: all 200ms ease;
-        max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
       }
 
-      .all-day-chip.past { opacity: 0.45; }
+      .all-day-chip.past .all-day-pill { opacity: 0.45; }
 
-      .all-day-chip:hover {
+      .all-day-chip:hover .all-day-pill {
         transform: scale(1.03);
         box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
         filter: brightness(1.05);
@@ -391,6 +423,31 @@ export class PVViewDay extends LitElement {
       }
 
       /* Date banner (shown when viewing a day other than today) */
+      /* A quiet line on a day with nothing on it (spec 11.6); the lanes stay. */
+      .day-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 48px;
+        padding: 0 16px;
+        color: var(--pv-text-secondary);
+        font-size: 0.9375rem;
+        border-bottom: 1px solid var(--pv-border-subtle, rgba(0, 0, 0, 0.04));
+        flex-shrink: 0;
+      }
+
+      .day-empty-add {
+        min-height: 48px;
+        padding: 0 12px;
+        border: none;
+        background: transparent;
+        color: var(--pv-accent-ink, var(--pv-accent));
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
       .date-banner {
         display: flex;
         align-items: center;
@@ -472,28 +529,28 @@ export class PVViewDay extends LitElement {
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
       /* xs: phones, hide column headers, compact events */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .column-headers { display: none; }
         .time-gutter { width: 40px; }
         .all-day-gutter { width: 40px; font-size: 0.5625rem; }
         .time-label { font-size: 0.5625rem; }
         .positioned-event { padding: 3px 6px; }
-        .event-title { font-size: 0.75rem; }
-        .event-time { display: none; }
+        .positioned-event .event-title { font-size: 0.75rem; }
+        .positioned-event .event-time { display: none; }
         .next-day-footer { padding: 10px; font-size: 0.8125rem; }
       }
 
       /* sm: large phones, hide column headers, narrower gutter */
-      @media (min-width: 480px) and (max-width: 767px) {
+      @container pv-calendar (min-width: 480px) and (max-width: 767px) {
         .column-headers { display: none; }
         .time-gutter { width: 48px; }
         .all-day-gutter { width: 48px; }
         .positioned-event { padding: 4px 8px; }
-        .event-title { font-size: 0.875rem; }
+        .positioned-event .event-title { font-size: 0.875rem; }
       }
 
       /* md: tablets, smaller avatars */
-      @media (min-width: 768px) and (max-width: 1023px) {
+      @container pv-calendar (min-width: 768px) and (max-width: 1023px) {
         .person-avatar, .person-initial { width: 48px; height: 48px; font-size: 1.125rem; }
         .person-name { font-size: 0.8125rem; }
       }
@@ -511,29 +568,29 @@ export class PVViewDay extends LitElement {
       }
 
       /* lg: large screens (1024–1439px), scale up ~20% */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .time-gutter { width: 72px; }
         .time-label { font-size: 0.8125rem; }
         .all-day-gutter { width: 72px; font-size: 0.8125rem; }
         .header-gutter { width: 72px; }
-        .all-day-chip { font-size: 0.9375rem; min-height: 30px; }
+        .all-day-pill { font-size: 0.9375rem; }
         .positioned-event { min-height: 30px; }
-        .event-title { font-size: 1.0625rem; }
-        .event-time { font-size: 0.9375rem; }
+        .positioned-event .event-title { font-size: 1.0625rem; }
+        .positioned-event .event-time { font-size: 0.9375rem; }
         .person-name { font-size: 1rem; }
         .next-day-footer { font-size: 1.0625rem; }
       }
 
       /* xl: wall displays (1440px+), scale up ~40% */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .time-gutter { width: 84px; }
         .time-label { font-size: 0.9375rem; }
         .all-day-gutter { width: 84px; font-size: 0.9375rem; }
         .header-gutter { width: 84px; }
-        .all-day-chip { font-size: 1.0625rem; min-height: 34px; padding: 6px 14px; }
+        .all-day-pill { font-size: 1.0625rem; }
         .positioned-event { min-height: 34px; padding: 8px 12px; }
-        .event-title { font-size: 1.1875rem; }
-        .event-time { font-size: 1.0625rem; }
+        .positioned-event .event-title { font-size: 1.1875rem; }
+        .positioned-event .event-time { font-size: 1.0625rem; }
         .person-avatar, .person-initial { width: 72px; height: 72px; font-size: 1.5rem; }
         .person-name { font-size: 1.125rem; }
         .next-day-footer { font-size: 1.1875rem; padding: 18px; }
@@ -652,14 +709,16 @@ export class PVViewDay extends LitElement {
       <div class="day-container" style="--pv-hour-px: ${this._hourPx}px">
         ${allDayEvents.length > 0 ? html`
           <div class="all-day-section">
-            <div class="all-day-gutter">All Day</div>
+            <div class="all-day-gutter">All day</div>
             <div class="all-day-events">
               ${allDayEvents.map(e => html`
                 <div
                   class="all-day-chip${isEventPast(e) ? ' past' : ''}"
-                  style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
+                  role="button"
+                  tabindex="0"
                   @click=${() => this._onEventClick(e)}
-                >${e.summary}</div>
+                  @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, e)}
+                ><span class="all-day-pill" style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}">${e.summary}</span></div>
               `)}
             </div>
           </div>
@@ -713,6 +772,15 @@ export class PVViewDay extends LitElement {
               day: 'numeric',
               year: 'numeric',
             })}
+          </div>
+        ` : nothing}
+
+        ${dayEvents.length === 0 ? html`
+          <div class="day-empty" role="status">
+            <span>${isCurrentDay
+              ? 'Nothing on the calendar today.'
+              : `Nothing on the calendar on ${this.currentDate.toLocaleDateString('en-US', { weekday: 'long' })}.`}</span>
+            <button class="day-empty-add" type="button" @click=${this._addEvent}>New event</button>
           </div>
         ` : nothing}
 
@@ -779,12 +847,17 @@ export class PVViewDay extends LitElement {
       day: 'numeric',
     });
     return html`
-      <div class="next-day-footer" @click=${this._goToNextDay}>
+      <button class="next-day-footer" type="button" aria-label="Go to ${label}" @click=${this._goToNextDay}>
         ${label}
         <ha-icon icon="mdi:arrow-down"></ha-icon>
-      </div>
+      </button>
     `;
   }
+
+  /** New event on the day shown (the module opens the editor). */
+  private _addEvent = (): void => {
+    this.dispatchEvent(new CustomEvent('create-event', { detail: { date: this.currentDate }, bubbles: true, composed: true }));
+  };
 
   private _goToToday() {
     this.dispatchEvent(new CustomEvent('day-click', {
@@ -835,7 +908,10 @@ export class PVViewDay extends LitElement {
                 --event-color-light: ${event.calendar_color_light || ''};
                 --event-text: ${contrastText(event.calendar_color_light || event.calendar_color)};
               "
+              role="button"
+              tabindex="0"
               @click=${() => this._onEventClick(event)}
+              @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, event)}
             >
               <div class="event-title">${event.summary}</div>
               <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
@@ -861,6 +937,13 @@ export class PVViewDay extends LitElement {
         })}
       </div>
     `;
+  }
+
+  /** Enter or Space opens an event, as a tap does (spec 11.8). */
+  private _onEventKey(ev: KeyboardEvent, event: CalendarEvent) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    this._onEventClick(event);
   }
 
   private _onEventClick(event: CalendarEvent) {

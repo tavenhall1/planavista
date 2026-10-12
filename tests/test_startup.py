@@ -67,6 +67,19 @@ async def test_refresh_when_configured_calendars_appear(
     assert _calendar_ids(hass) == ["calendar.test_alex", "calendar.test_blair"]
 
 
+async def test_the_sensor_says_how_many_calendars_are_set_up(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    fake_calendars: dict[str, FakeCalendar],
+) -> None:
+    """Before the calendars load, the card can tell "set up, not loaded yet" from "none set up" (spec 11.6)."""
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    state = hass.states.get("sensor.planavista_config")
+    assert state.attributes["calendars"] == []
+    assert state.attributes["calendars_configured"] == 3
+
+
 async def test_missing_calendar_does_not_cause_refreshes(
     hass: HomeAssistant,
     setup_calendars: dict[str, FakeCalendar],

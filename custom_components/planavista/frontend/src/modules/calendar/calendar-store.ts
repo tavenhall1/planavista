@@ -63,6 +63,13 @@ export class CalendarStore {
     this._notify();
   }
 
+  /** Show every calendar again (the all-hidden state's Show all). */
+  showAllCalendars(): void {
+    if (this.hiddenCalendars.size === 0) return;
+    this.hiddenCalendars = new Set();
+    this._notify();
+  }
+
   setView(view: ViewType): void {
     if (this.currentView !== view) {
       this.currentView = view;

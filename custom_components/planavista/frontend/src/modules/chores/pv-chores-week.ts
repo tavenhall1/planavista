@@ -11,6 +11,7 @@ import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
 import type { WeekView } from './chores-types';
 import { Highlight, WeekCell, WeekRow, weekDays, weekTitle } from './week-derive';
+import { ScrollReporter } from '../../core/content-scroll';
 
 /**
  * pv-chores-week: how the week is going, for everyone (spec 13.5). One mini
@@ -24,6 +25,9 @@ import { Highlight, WeekCell, WeekRow, weekDays, weekTitle } from './week-derive
  * @fires pv-week-excuse - { occurrence, name, member } Excuse it on a highlight
  */
 export class PvChoresWeek extends LitElement {
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
+
   @property({ attribute: false }) view: WeekView | null = null;
   @property({ attribute: false }) rows: WeekRow[] = [];
   @property({ attribute: false }) highlights: Highlight[] = [];
@@ -294,6 +298,16 @@ export class PvChoresWeek extends LitElement {
       }
     `,
   ];
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._scroll.attach(this);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._scroll.attach(undefined);
+  }
 
   render() {
     const view = this.view;

@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { formatClockParts } from '../utils/date-utils';
@@ -26,6 +26,10 @@ export interface HeaderWeather {
  */
 export class PvGlanceHeader extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Portrait with the content scrolled down: the header shrinks to one line (spec 12.2). */
+  @property({ type: Boolean }) compact = false;
+  /** The shape drawn: the layout, or the phone's one row for a compact portrait header. Styles key off it. */
+  @property({ type: String, reflect: true }) shape: Layout = 'landscape';
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   /** The weather entity's state, or null for no weather (none set, or hide_weather). */
   @property({ attribute: false }) weather: HeaderWeather | null = null;
@@ -134,31 +138,31 @@ export class PvGlanceHeader extends LitElement {
     }
 
     /* Portrait: a lock-screen clock at the left, the weather at the right. */
-    :host([layout='portrait']) .row {
+    :host([shape='portrait']) .row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       padding: 16px 20px 12px;
     }
 
-    :host([layout='portrait']) .time {
+    :host([shape='portrait']) .time {
       font-weight: 700;
       font-size: clamp(40px, 6cqi, 60px);
       line-height: 1;
       letter-spacing: -0.5px;
     }
 
-    :host([layout='portrait']) .ampm {
+    :host([shape='portrait']) .ampm {
       font-size: 0.4em;
       letter-spacing: 0;
     }
 
-    :host([layout='portrait']) .date {
+    :host([shape='portrait']) .date {
       font-size: clamp(16px, 2.2cqi, 22px);
       margin-top: 6px;
     }
 
-    :host([layout='portrait']) .temp {
+    :host([shape='portrait']) .temp {
       font-weight: 800;
       font-size: clamp(24px, 3.5cqi, 34px);
       line-height: 1;
@@ -178,11 +182,11 @@ export class PvGlanceHeader extends LitElement {
       min-width: 0;
     }
 
-    :host([layout='portrait']) .chips {
+    :host([shape='portrait']) .chips {
       padding: 0 20px 14px;
     }
 
-    :host([layout='phone']) .chips {
+    :host([shape='phone']) .chips {
       padding: 0 14px 8px;
     }
 
@@ -226,33 +230,44 @@ export class PvGlanceHeader extends LitElement {
     }
 
     /* Phone: one compact row. */
-    :host([layout='phone']) .row {
+    :host([shape='phone']) .row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 8px 14px;
     }
 
-    :host([layout='phone']) .clock {
+    :host([shape='phone']) .clock {
       display: flex;
       align-items: baseline;
       gap: 8px;
     }
 
-    :host([layout='phone']) .time {
+    :host([shape='phone']) .time {
       font-weight: 700;
       font-size: 22px;
     }
 
-    :host([layout='phone']) .date {
+    :host([shape='phone']) .date {
       font-weight: 700;
       font-size: 14px;
     }
 
-    :host([layout='phone']) .temp {
+    :host([shape='phone']) .temp {
       font-size: 18px;
     }
   `;
+
+  protected willUpdate(): void {
+    this.shape = this.layout === 'portrait' && this.compact ? 'phone' : this.layout;
+  }
+
+  protected updated(changed: PropertyValues): void {
+    // The new shape fades in, so the step to one line (and back) isn't a jump cut.
+    if (changed.has('shape') && changed.get('shape') !== undefined) {
+      this.renderRoot.querySelector('.row')?.animate({ opacity: [0, 1] }, { duration: 150, easing: 'ease-out' });
+    }
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -274,7 +289,7 @@ export class PvGlanceHeader extends LitElement {
     const { time, ampm, date } = formatClockParts(now, this.timeFormat);
     const clock = html`<span class="time">${time}${ampm ? html`<span class="ampm muted">${ampm}</span>` : nothing}</span>`;
     const primary = this.chips.filter(chip => chip.primary);
-    if (this.layout === 'portrait') {
+    if (this.shape === 'portrait') {
       return html`
         <div class="row">
           <div class="clock">${clock}<div class="date">${date}</div></div>
@@ -283,7 +298,7 @@ export class PvGlanceHeader extends LitElement {
         ${this._chips(this.chips)}
       `;
     }
-    if (this.layout === 'phone') {
+    if (this.shape === 'phone') {
       const short = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       return html`
         <div class="row">

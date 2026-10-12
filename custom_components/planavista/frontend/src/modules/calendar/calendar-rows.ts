@@ -19,7 +19,8 @@ export interface CalendarRow {
 }
 
 /** Keys the sensor adds to each row that aren't settings. */
-const SENSOR_ONLY = new Set(['state', 'attributes']);
+/** What the sensor adds to a row, never saved back: the entity's state and attributes, and the coordinator's read-failure mark. */
+const SENSOR_ONLY = new Set(['state', 'attributes', 'fetch_failed']);
 
 /** Saved calendars in their order, then Home Assistant's other calendars, sorted and left out. */
 export function buildCalendarRows(

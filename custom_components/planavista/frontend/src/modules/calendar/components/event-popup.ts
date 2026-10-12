@@ -1,42 +1,199 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
-import { CalendarEvent, DeleteEventData } from '../../../types';
+import { CalendarConfig, CalendarEvent } from '../../../types';
+import type { Layout } from '../../../core/layout';
 import { CalendarStore, StoreSubscriber } from '../calendar-store';
 import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../../../utils/ha-utils';
-import { baseStyles, buttonStyles, dialogStyles, animationStyles } from '../../../styles/shared';
-import { formatTime, formatDate, parseEventDate } from '../../../utils/date-utils';
-import { isAllDayEvent } from '../utils/event-utils';
+import { buttonStyles } from '../../../styles/shared';
+import { sheetStyles } from '../../../styles/sheet';
+import { statusStyles } from '../../../styles/status';
 import { contrastText } from '../../../core/color';
+import { SheetController } from '../../../shell/sheet-controller';
+import type { NoticeAction } from '../../../shell/pv-notice-sheet';
+import '../../../shell/pv-notice-sheet';
+import { calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen } from '../event-words';
 
+interface Participant {
+  entity_id: string;
+  calendar_name: string;
+  calendar_color: string;
+  /** This person's own copy: off Google each copy has its own uid. */
+  uid?: string;
+  recurrence_id?: string;
+}
+
+function participantsOf(event: CalendarEvent): Participant[] {
+  return ((event as { shared_calendars?: Participant[] }).shared_calendars ?? []);
+}
+
+/**
+ * pv-event-popup: an event's details as a sheet (spec 11.5, 11.8, 12.3): it
+ * rises from the bottom in portrait and on phones and pops in as a card in
+ * landscape, keeps Tab inside, closes on Escape, a tap outside, a drag, or
+ * Done, and asks by name before a delete.
+ *
+ * @fires pv-sheet-close - once it has left (Done, Escape, outside, a drag, or `leaving`)
+ */
 export class PVEventPopup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
-  @property({ type: Object }) event: CalendarEvent | null = null;
+  @property({ attribute: false }) event: CalendarEvent | null = null;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
-
-  @state() private _confirmDelete = false;
-  @state() private _deleteMode: 'all' | 'remove-me' | null = null;
-  @state() private _deleting = false;
-  @state() private _deleteError = '';
-  @state() private _organizerEntityId: string | null = null;
+  @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** The calendars shown, for what each one lets PlanaVista change. */
+  @property({ attribute: false }) calendars: CalendarConfig[] = [];
+  /** Set once nothing wants the sheet (a delete done, an edit saved): it plays its exit. */
+  @property({ type: Boolean }) leaving = false;
+  /** Now, to the minute, for the Now and In N min badges. */
+  @property({ attribute: false }) now: Date = new Date();
 
   /** The calendar state of the card that opened this. */
   @property({ attribute: false }) store!: CalendarStore;
+
+  @state() private _asking = false;
+  @state() private _deleting = false;
+  @state() private _error = '';
+  @state() private _organizerEntityId: string | null = null;
+
   /** Re-renders when that store changes (the controller registers itself with this element). */
   private _storeSubscription = new StoreSubscriber(this, () => this.store);
+  private _sheet = new SheetController(this, { mayDismiss: () => !this._deleting });
   private _lastOrganizerUid = '';
 
-  updated(changedProps: Map<string, unknown>) {
-    super.updated(changedProps);
-    if (changedProps.has('event') && this.event) {
-      const shared = (this.event as any).shared_calendars;
+  static styles = [
+    buttonStyles,
+    sheetStyles,
+    statusStyles,
+    css`
+      .heading {
+        text-align: left;
+        font-weight: 800;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .heading:focus {
+        outline: none;
+      }
+
+      .who {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0 0;
+        color: var(--pv-text-secondary, #5F6670);
+        font-weight: 600;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .people {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .person {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.8125rem;
+        font-weight: 700;
+      }
+
+      .person .tag {
+        font-size: 0.75rem;
+        font-weight: 600;
+        opacity: 0.85;
+      }
+
+      .status {
+        margin-top: 10px;
+      }
+
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin: 16px 0 4px;
+      }
+
+      .row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        line-height: 1.4;
+      }
+
+      .row ha-icon {
+        --mdc-icon-size: 20px;
+        color: var(--pv-text-secondary, #5F6670);
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      .row .sub {
+        color: var(--pv-text-secondary, #5F6670);
+        font-size: 0.875rem;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .row .notes {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .note {
+        margin: 12px 0 0;
+        color: var(--pv-text-secondary, #5F6670);
+        font-size: 0.875rem;
+      }
+
+      .error {
+        margin: 12px 0 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: var(--pv-bad-bg, #FBE4E4);
+        color: var(--pv-bad-ink, #A12828);
+        font-size: 0.875rem;
+        line-height: 1.4;
+      }
+
+      .pair {
+        display: flex;
+        gap: 10px;
+      }
+
+      .pair button {
+        flex: 1 1 0;
+      }
+
+      .danger {
+        color: var(--pv-bad-ink, #A12828);
+      }
+    `,
+  ];
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    if (changed.has('leaving') && this.leaving) void this._sheet.close();
+    if (changed.has('event') && this.event) {
+      const shared = participantsOf(this.event);
       const uid = this.event.uid || '';
-      if (shared && shared.length > 1 && uid && uid !== this._lastOrganizerUid) {
+      if (shared.length > 1 && uid && uid !== this._lastOrganizerUid) {
         this._lastOrganizerUid = uid;
         this._organizerEntityId = null;
-        this._fetchOrganizer(this.event.calendar_entity_id, uid);
-      } else if (!shared || shared.length <= 1) {
+        void this._fetchOrganizer(this.event.calendar_entity_id, uid);
+      } else if (shared.length <= 1) {
         this._organizerEntityId = null;
         this._lastOrganizerUid = '';
       }
@@ -47,409 +204,149 @@ export class PVEventPopup extends LitElement {
     this._organizerEntityId = await getEventOrganizer(this.hass, entityId, uid);
   }
 
-  static styles = [
-    baseStyles,
-    buttonStyles,
-    dialogStyles,
-    animationStyles,
-    css`
-      :host { display: block; }
-
-      .popup-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--pv-border-subtle);
-      }
-
-      .popup-title {
-        font-size: 1.125rem;
-        font-weight: 600;
-        line-height: 1.3;
-        color: var(--pv-text);
-        margin: 0;
-      }
-
-      .popup-calendar {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        margin-top: 0.375rem;
-        font-size: 0.8125rem;
-        color: var(--pv-text-secondary);
-      }
-
-      .calendar-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-
-      .popup-body {
-        padding: 1rem 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-
-      .detail-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        font-size: 0.9375rem;
-        color: var(--pv-text);
-      }
-
-      .detail-row ha-icon {
-        --mdc-icon-size: 20px;
-        color: var(--pv-text-secondary);
-        flex-shrink: 0;
-        margin-top: 1px;
-      }
-
-      .detail-text {
-        flex: 1;
-        min-width: 0;
-        line-height: 1.4;
-      }
-
-      .detail-label {
-        font-size: 0.75rem;
-        color: var(--pv-text-muted);
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        margin-bottom: 0.125rem;
-      }
-
-      .popup-actions {
-        display: flex;
-        gap: 0.75rem;
-        padding: 1rem 1.5rem;
-        border-top: 1px solid var(--pv-border-subtle);
-      }
-
-      .popup-actions .pv-btn {
-        flex: 1;
-      }
-
-      .delete-confirm {
-        padding: 0.75rem 1.5rem;
-        background: color-mix(in srgb, #EF4444 6%, transparent);
-        border-top: 1px solid color-mix(in srgb, #EF4444 15%, transparent);
-      }
-
-      .delete-confirm-text {
-        font-size: 0.875rem;
-        color: #B91C1C;
-        margin-bottom: 0.75rem;
-        font-weight: 500;
-      }
-
-      .delete-confirm-actions {
-        display: flex;
-        gap: 0.75rem;
-      }
-
-      .btn-delete {
-        background: #EF4444;
-        color: white;
-      }
-
-      .btn-delete:hover {
-        background: #DC2626;
-      }
-
-      .close-btn {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-      }
-
-      .participants-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.375rem;
-        margin-top: 0.25rem;
-      }
-
-      .participant-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        padding: 0.25rem 0.625rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: white;
-      }
-
-      .participant-chip .organizer-tag {
-        font-size: 0.5625rem;
-        opacity: 0.85;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-      }
-
-      .participant-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: currentColor;
-        opacity: 0.6;
-      }
-
-      .delete-option {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-        padding: 0.625rem 0.75rem;
-        border: 1px solid color-mix(in srgb, #EF4444 20%, var(--pv-border));
-        border-radius: var(--pv-radius-sm, 8px);
-        background: transparent;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 0.8125rem;
-        color: var(--pv-text);
-        width: 100%;
-        text-align: left;
-        transition: background 150ms;
-      }
-
-      .delete-option:hover {
-        background: color-mix(in srgb, #EF4444 6%, transparent);
-      }
-
-      .delete-option ha-icon {
-        --mdc-icon-size: 20px;
-        color: #EF4444;
-        flex-shrink: 0;
-      }
-
-      .delete-option-text {
-        flex: 1;
-      }
-
-      .delete-option-label {
-        font-weight: 600;
-        color: #B91C1C;
-      }
-
-      .delete-option-desc {
-        font-size: 0.75rem;
-        color: var(--pv-text-secondary);
-        margin-top: 0.125rem;
-      }
-    `,
-  ];
-
   render() {
-    if (!this.event) return nothing;
-
     const event = this.event;
-    const allDay = isAllDayEvent(event);
-    const startDate = parseEventDate(event.start);
-    const shared = (event as any).shared_calendars as Array<{ entity_id: string; calendar_name: string; calendar_color: string }> | undefined;
-    const isShared = shared && shared.length > 1;
+    if (!event) return nothing;
+    const shared = participantsOf(event);
+    const when = eventWhen(event, this.timeFormat, this.now);
+    const status = eventStatus(event, this.now);
+    const calendar = this.calendars.find(c => c.entity_id === event.calendar_entity_id);
+    const can = calendarCan(calendar?.attributes);
+    const changeable = !!event.uid;
+    const question = deleteQuestion(event, shared.length > 1 ? shared.map(p => p.calendar_name) : []);
 
     return html`
-      <div class="pv-overlay" @click=${this._close}>
-        <div class="pv-popup" @click=${(e: Event) => e.stopPropagation()} style="position: relative;">
-          <button class="pv-btn-icon close-btn" @click=${this._close}>
-            <ha-icon icon="mdi:close"></ha-icon>
-          </button>
-
-          <div class="popup-header">
-            <h3 class="popup-title">${event.summary}</h3>
-            ${isShared ? html`
-              <div class="participants-row">
-                ${shared!.map(p => html`
-                  <span class="participant-chip" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
-                    ${p.calendar_name}
-                    ${p.entity_id === this._organizerEntityId
-                      ? html`<span class="organizer-tag">organizer</span>`
-                      : nothing}
-                  </span>
-                `)}
-              </div>
-            ` : html`
-              <div class="popup-calendar">
-                <span class="calendar-indicator" style="background: ${event.calendar_color}"></span>
-                ${event.calendar_name}
-              </div>
-            `}
+      <div class="backdrop" @click=${() => this._sheet.dismiss()}></div>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="event-title" @keydown=${this._sheet.onKeydown}>
+        <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
+        <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>
+        ${shared.length > 1 ? html`
+          <div class="people">
+            ${shared.map(p => html`
+              <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
+                ${p.calendar_name}
+                ${p.entity_id === this._organizerEntityId ? html`<span class="tag">Organizer</span>` : nothing}
+              </span>
+            `)}
           </div>
+        ` : html`
+          <div class="who"><span class="dot" style="background: ${event.calendar_color}"></span>${event.calendar_name}</div>
+        `}
+        ${status ? html`<div class="status"><span class="badge ${status.tone}">${status.words}</span></div>` : nothing}
 
-          <div class="popup-body">
-            <div class="detail-row">
-              <ha-icon icon="mdi:clock-outline"></ha-icon>
-              <div class="detail-text">
-                <div>${formatDate(startDate, 'long')}</div>
-                ${!allDay ? html`
-                  <div style="color: var(--pv-text-secondary); font-size: 0.875rem">
-                    ${formatTime(event.start, this.timeFormat)} – ${formatTime(event.end, this.timeFormat)}
-                  </div>
-                ` : html`
-                  <div style="color: var(--pv-text-secondary); font-size: 0.875rem">All Day</div>
-                `}
-              </div>
-            </div>
-
-            ${event.location ? html`
-              <div class="detail-row">
-                <ha-icon icon="mdi:map-marker-outline"></ha-icon>
-                <div class="detail-text">${event.location}</div>
-              </div>
-            ` : nothing}
-
-            ${event.description ? html`
-              <div class="detail-row">
-                <ha-icon icon="mdi:text"></ha-icon>
-                <div class="detail-text" style="white-space: pre-wrap;">${event.description}</div>
-              </div>
-            ` : nothing}
+        <div class="rows">
+          <div class="row">
+            <ha-icon icon="mdi:clock-outline"></ha-icon>
+            <div><div>${when.date}</div><div class="sub">${when.time}</div></div>
           </div>
+          ${event.location ? html`
+            <div class="row"><ha-icon icon="mdi:map-marker-outline"></ha-icon><div>${event.location}</div></div>
+          ` : nothing}
+          ${event.description ? html`
+            <div class="row"><ha-icon icon="mdi:text"></ha-icon><div class="notes">${event.description}</div></div>
+          ` : nothing}
+        </div>
 
-          ${!this._confirmDelete ? html`
-            <div class="popup-actions">
-              <button class="pv-btn pv-btn-secondary" @click=${this._edit}>
-                <ha-icon icon="mdi:pencil-outline"></ha-icon>
-                Edit
-              </button>
-              <button class="pv-btn pv-btn-secondary" style="color: #EF4444; border-color: #FCA5A5;"
-                @click=${() => this._confirmDelete = true}>
-                <ha-icon icon="mdi:delete-outline"></ha-icon>
-                Delete
-              </button>
-            </div>
-          ` : html`
-            <div class="delete-confirm">
-              ${this._deleteError ? html`
-                <div style="color: #EF4444; font-size: 0.8125rem; margin-bottom: 0.75rem;">${this._deleteError}</div>
+        ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
+        ${!changeable || (!can.edit && !can.delete) ? html`
+          <p class="note">This event can only be changed in its calendar's own app.</p>
+        ` : nothing}
+
+        <div class="actions">
+          ${changeable && (can.edit || can.delete) ? html`
+            <div class="pair">
+              ${can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
+              ${can.delete ? html`
+                <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${this._deleting}
+                  @click=${() => { this._asking = true; }}>${this._deleting ? 'Deleting…' : 'Delete'}</button>
               ` : nothing}
-
-              ${isShared && !this._deleteMode ? html`
-                <div class="delete-confirm-text">
-                  This event is shared across ${shared!.length} calendars.
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                  <button class="delete-option" @click=${() => { this._deleteMode = 'all'; }}>
-                    <ha-icon icon="mdi:delete-outline"></ha-icon>
-                    <div class="delete-option-text">
-                      <div class="delete-option-label">Delete for everyone</div>
-                      <div class="delete-option-desc">Removes the event from all ${shared!.length} calendars</div>
-                    </div>
-                  </button>
-                  <button class="delete-option" @click=${this._openRemoveGuests}>
-                    <ha-icon icon="mdi:account-minus-outline"></ha-icon>
-                    <div class="delete-option-text">
-                      <div class="delete-option-label">Remove guests</div>
-                      <div class="delete-option-desc">Edit the event to add or remove participants</div>
-                    </div>
-                  </button>
-                  <button class="pv-btn pv-btn-secondary" style="margin-top: 0.25rem;"
-                    @click=${() => { this._confirmDelete = false; this._deleteError = ''; this._deleteMode = null; }}>
-                    Cancel
-                  </button>
-                </div>
-              ` : html`
-                <div class="delete-confirm-text">
-                  ${this._deleteMode === 'all' && isShared
-                    ? `Delete "${event.summary}" from all ${shared!.length} calendars?`
-                    : this._deleteMode === 'remove-me' && isShared
-                      ? `Remove "${event.summary}" from ${event.calendar_name}'s calendar only?`
-                      : `Delete "${event.summary}"?`}
-                </div>
-                <div class="delete-confirm-actions">
-                  <button class="pv-btn pv-btn-secondary" @click=${() => {
-                    this._confirmDelete = false; this._deleteError = ''; this._deleteMode = null;
-                  }}>
-                    Cancel
-                  </button>
-                  <button class="pv-btn btn-delete" ?disabled=${this._deleting} @click=${this._delete}>
-                    ${this._deleting ? 'Deleting...' : 'Delete'}
-                  </button>
-                </div>
-              `}
             </div>
-          `}
+          ` : nothing}
+          <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
         </div>
       </div>
+      ${this._asking ? html`
+        <pv-notice-sheet
+          .layout=${this.layout}
+          .heading=${question.heading}
+          .body=${question.body}
+          .actions=${this._deleteActions(question.shared)}
+          @pv-sheet-action=${this._onDeleteChoice}
+        ></pv-notice-sheet>
+      ` : nothing}
     `;
   }
 
-  private _close() {
-    this._confirmDelete = false;
-    this._deleteMode = null;
-    this._deleting = false;
-    this._deleteError = '';
-    this.store.selectEvent(null);
+  private _deleteActions(shared: boolean): NoticeAction[] {
+    return shared
+      ? [
+          { id: 'everyone', label: 'Delete for everyone', kind: 'destructive' },
+          { id: 'remove', label: 'Remove someone', kind: 'secondary' },
+          { id: 'cancel', label: 'Cancel', kind: 'secondary' },
+        ]
+      : [
+          { id: 'delete', label: 'Delete', kind: 'destructive' },
+          { id: 'cancel', label: 'Cancel', kind: 'secondary' },
+        ];
   }
 
-  private _edit() {
-    if (this.event) {
-      this.store.openEditDialog(this.event);
+  private _onDeleteChoice = (e: CustomEvent<{ id: string }>): void => {
+    this._asking = false;
+    const id = e.detail.id;
+    if (id === 'delete' || id === 'everyone') {
+      void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('#event-title')?.focus());
+      void this._delete(id === 'everyone');
     }
-  }
-
-  private _openRemoveGuests() {
-    if (this.event) {
-      this._confirmDelete = false;
-      this._deleteMode = null;
+    else if (id === 'remove' && this.event) {
+      // Delete gets focus first, so it gets it back when the editor closes.
+      this.renderRoot.querySelector<HTMLElement>('.danger')?.focus();
       this.store.openEditDialog(this.event, { removeGuests: true });
     }
+    else void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.danger')?.focus());
+  };
+
+  private _edit() {
+    if (this.event) this.store.openEditDialog(this.event);
   }
 
-  private async _delete() {
-    if (!this.event?.uid) {
-      this._deleteError = 'Cannot delete this event: it has no unique ID. Delete it from your calendar app directly.';
-      return;
-    }
-
-    const shared = (this.event as any).shared_calendars as Array<{ entity_id: string }> | undefined;
-    const isShared = shared && shared.length > 1;
-
+  private async _delete(everyone: boolean) {
+    const event = this.event;
+    if (!event?.uid) return;
     this._deleting = true;
-    this._deleteError = '';
-
+    this._error = '';
+    const shared = participantsOf(event);
     try {
-      if (isShared && this._deleteMode === 'all') {
-        // Delete from ALL participant calendars
-        for (const participant of shared!) {
+      if (everyone && shared.length > 1) {
+        // Each person's copy goes separately, by its own uid; any that stay are named.
+        const failed: string[] = [];
+        for (const participant of shared) {
+          const copy = participant.uid
+            ? { uid: participant.uid, recurrence_id: participant.recurrence_id }
+            : { uid: event.uid, recurrence_id: event.recurrence_id };
           try {
-            await deleteEvent(this.hass, {
-              entity_id: participant.entity_id,
-              uid: this.event.uid!,
-              recurrence_id: this.event.recurrence_id,
-            });
-          } catch (e) {
-            console.warn(`[PlanaVista] Failed to delete from ${participant.entity_id}:`, e);
+            await deleteEvent(this.hass, { entity_id: participant.entity_id, ...copy });
+          } catch (err) {
+            console.warn(`[PlanaVista] Couldn't delete from ${participant.entity_id}:`, err);
+            failed.push(participant.calendar_name);
           }
         }
-        await refreshPlanaVista(this.hass);
+        await refreshPlanaVista(this.hass).catch(() => undefined);
+        if (failed.length) {
+          this._error = deleteFailedText(event, failed, true);
+          this._deleting = false;
+          return;
+        }
         this.store.selectEvent(null);
-      } else if (isShared && this._deleteMode === 'remove-me') {
-        // Delete only from the organizer's calendar (first in shared list)
-        const organizerId = this.event.calendar_entity_id;
-        await deleteEvent(this.hass, {
-          entity_id: organizerId,
-          uid: this.event.uid!,
-          recurrence_id: this.event.recurrence_id,
-        });
-        await refreshPlanaVista(this.hass);
-        this.store.selectEvent(null);
-      } else {
-        // Single-calendar event: normal delete
-        const data: DeleteEventData = {
-          entity_id: this.event.calendar_entity_id,
-          uid: this.event.uid,
-          recurrence_id: this.event.recurrence_id,
-        };
-        await this.store.doDeleteEvent(this.hass, data);
+        return;
       }
+      await this.store.doDeleteEvent(this.hass, {
+        entity_id: event.calendar_entity_id,
+        uid: event.uid,
+        recurrence_id: event.recurrence_id,
+      });
     } catch (err) {
       console.error('PlanaVista: Delete failed', err);
-      this._deleteError = 'Failed to delete event. Please try again.';
+      this._error = deleteFailedText(event, [], false);
       this._deleting = false;
     }
   }

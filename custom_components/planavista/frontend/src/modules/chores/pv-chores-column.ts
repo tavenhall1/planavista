@@ -11,6 +11,8 @@ import type { ColumnEntry, ColumnModel, RowModel } from './board-derive';
 import { bump, flyStars, glide, measure } from './effects';
 import './pv-chore-item';
 import './pv-chore-tile';
+import { ref } from 'lit/directives/ref.js';
+import { ScrollReporter } from '../../core/content-scroll';
 
 /** The most stickers a strip draws before it says "+5". */
 const STICKERS = 20;
@@ -25,6 +27,9 @@ const STICKERS = 20;
  * @fires pv-member-open - { member } the header was tapped
  */
 export class PvChoresColumn extends LitElement {
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
+
   @property({ attribute: false }) model!: ColumnModel;
   @property({ attribute: false }) hass?: HomeAssistant;
   /** The person's color for the mode (their ring, checks, and tints). */
@@ -274,7 +279,7 @@ export class PvChoresColumn extends LitElement {
         </span>
       </button>
       ${model.next ? html`<div class="next">${this._next(model.next)}</div>` : nothing}
-      <div class="body">
+      <div class="body" ${ref(this._scroll.attach)}>
         ${model.away ? html`<div class="away">🧳 Away${model.away.note ? ` · ${model.away.note}` : ''}. Nothing is due, and the streak keeps.</div>` : nothing}
         ${model.ring.closed && !model.entries.some(e => e.kind === 'row' && (e.zone === 'now' || e.zone === 'later' || e.zone === 'overdue'))
           ? html`<div class="closed"><strong>Ring closed for today</strong><span>Everything due today is done. Nice work.</span></div>`
@@ -313,22 +318,24 @@ export class PvChoresColumn extends LitElement {
   }
 
   private _tiles(model: ColumnModel) {
-    const rows: Array<{ row: RowModel; now: boolean }> = [];
+    const tiles: Array<{ row: RowModel; now: boolean; stars: number }> = [];
     let first = true;
     for (const entry of model.entries) {
       if (entry.kind !== 'row' || entry.zone === 'done') continue;
-      rows.push({ row: entry.row, now: first && entry.row.state !== 'pending' });
+      tiles.push({ row: entry.row, now: first && entry.row.state !== 'pending', stars: model.member.stars ? entry.row.item.stars : 0 });
       if (entry.row.state !== 'pending') first = false;
     }
-    const done = model.entries.flatMap(e => (e.kind === 'row' && e.zone === 'done' ? [e.row] : []));
+    // Done tiles last, in the same keyed list: a tile that's just done keeps its element, so it pops and glides there.
+    for (const entry of model.entries) {
+      if (entry.kind === 'row' && entry.zone === 'done') tiles.push({ row: entry.row, now: false, stars: 0 });
+    }
     const stickers = model.entry.week_stars;
     return html`
       <div class="tiles">
-        ${repeat(rows, r => r.row.key, r => html`
-          <pv-chore-tile .row=${r.row} color=${this.color} ?now=${r.now} ?locked=${this.locked}
-            .stars=${model.member.stars ? r.row.item.stars : 0}></pv-chore-tile>
+        ${repeat(tiles, t => t.row.key, t => html`
+          <pv-chore-tile data-key=${t.row.key} .row=${t.row} color=${this.color} ?now=${t.now} ?locked=${this.locked}
+            .stars=${t.stars}></pv-chore-tile>
         `)}
-        ${repeat(done, r => r.key, r => html`<pv-chore-tile .row=${r} color=${this.color} ?locked=${this.locked}></pv-chore-tile>`)}
       </div>
       ${model.member.stars ? html`
         <div class="stickers">

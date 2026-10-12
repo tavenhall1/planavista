@@ -1,16 +1,12 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, WeatherCondition } from '../../../types';
-import { baseStyles, animationStyles } from '../../../styles/shared';
+import { baseStyles, animationStyles, buttonStyles } from '../../../styles/shared';
+import { statusStyles } from '../../../styles/status';
 import type { Layout } from '../../../core/layout';
-import {
-  formatDate,
-  getRelativeLabel,
-  getDateKey,
-  isToday,
-} from '../../../utils/date-utils';
+import { getDateKey, isToday } from '../../../utils/date-utils';
 import {
   compareEventsForDisplay,
   groupEventsByDate,
@@ -20,6 +16,10 @@ import {
 } from '../utils/event-utils';
 import { weatherIcon } from '../../../utils/weather-icons';
 import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
+import { dayOfStatus, eventStatus } from '../event-words';
+import { agendaEmpty, agendaNote, newEventLabel } from '../view-words';
+import { ref } from 'lit/directives/ref.js';
+import { ScrollReporter } from '../../../core/content-scroll';
 
 const DAYS_PER_PAGE = 14;
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -37,12 +37,16 @@ export class PVViewAgenda extends LitElement {
   @property({ type: Number }) tick = 0;
   /** The card's layout (spec 12.1). */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
 
   @state() private _daysLoaded = DAYS_PER_PAGE;
 
   static styles = [
     baseStyles,
     animationStyles,
+    buttonStyles,
+    statusStyles,
     css`
       :host { display: block; height: 100%; overflow: hidden; }
 
@@ -77,9 +81,10 @@ export class PVViewAgenda extends LitElement {
 
       .day-card-header {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: space-between;
-        padding: 0.625rem 0.75rem 0.375rem;
+        min-height: 48px;
+        padding: 0 0 0 0.75rem;
         border-bottom: 1px solid var(--pv-border-subtle);
         position: sticky;
         top: 0;
@@ -93,9 +98,12 @@ export class PVViewAgenda extends LitElement {
         gap: 0.5rem;
       }
 
+      /* Headings and numbers in the rounded face (spec 11.2). */
       .day-name {
+        font-family: var(--pv-font-heading, inherit);
         font-size: 1.0625rem;
-        font-weight: 700;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
       }
 
@@ -104,9 +112,39 @@ export class PVViewAgenda extends LitElement {
       }
 
       .day-relative {
-        font-size: 0.75rem;
-        color: var(--pv-text-muted);
-        font-weight: 400;
+        font-size: 0.8125rem;
+        color: var(--pv-text-secondary);
+        font-weight: 600;
+      }
+
+      .day-card-tools {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      /* New event on that day: a 48 px target (spec 11.8). */
+      .add-btn {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--pv-accent-ink, var(--pv-accent));
+        cursor: pointer;
+        --mdc-icon-size: 22px;
+      }
+
+      .add-btn:hover {
+        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
+      }
+
+      .add-btn:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: -4px;
       }
 
       .day-weather {
@@ -126,30 +164,6 @@ export class PVViewAgenda extends LitElement {
         font-weight: 500;
       }
 
-      .day-subheader {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.25rem 0.75rem 0.375rem;
-        font-size: 0.6875rem;
-        color: var(--pv-text-muted);
-      }
-
-      .add-event-link {
-        color: var(--pv-accent-ink, var(--pv-accent));
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.6875rem;
-        background: none;
-        border: none;
-        padding: 0;
-        font-family: inherit;
-      }
-
-      .add-event-link:hover {
-        text-decoration: underline;
-      }
-
       .day-events {
         display: flex;
         flex-direction: column;
@@ -159,10 +173,9 @@ export class PVViewAgenda extends LitElement {
 
       .empty-day {
         color: var(--pv-text-muted);
-        font-size: 0.75rem;
+        font-size: 0.875rem;
         padding: 0.75rem;
         text-align: center;
-        font-style: italic;
       }
 
       .load-more {
@@ -171,7 +184,9 @@ export class PVViewAgenda extends LitElement {
         justify-content: center;
         flex-shrink: 0;
         gap: 0.5rem;
+        min-height: 48px;
         padding: 1rem;
+        font-family: inherit;
         margin: 0 0.75rem 0.75rem;
         background: var(--pv-card-bg, #fff);
         border-radius: var(--pv-radius-md, 12px);
@@ -190,49 +205,53 @@ export class PVViewAgenda extends LitElement {
       /* ═══════════ RESPONSIVE ═══════════ */
 
       /* SM/XS: phones */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .day-card { margin: 0 0.5rem 0.5rem; }
         .day-name { font-size: 0.9375rem; }
-        .day-card-header { padding: 0.5rem 0.625rem 0.25rem; }
-        .day-subheader { padding: 0.125rem 0.625rem 0.25rem; }
       }
 
       /* MD+: constrain width */
-      @media (min-width: 768px) {
+      @container pv-calendar (min-width: 768px) {
         .agenda-container { max-width: 800px; margin: 0 auto; width: 100%; }
       }
 
       /* LG: large screens */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .day-name { font-size: 1.125rem; }
-        .day-card-header { padding: 0.75rem 1rem 0.5rem; }
         .day-events { padding: 0.5rem 0.625rem 0.625rem; gap: 0.5rem; }
       }
 
       /* XL: wall displays, ~50% larger */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .agenda-container { max-width: 960px; }
         .day-name { font-size: 1.5rem; }
         .day-relative { font-size: 1rem; }
         .day-weather svg { width: 32px; height: 32px; }
         .day-weather-temps { font-size: 0.9375rem; }
-        .day-subheader { font-size: 0.9375rem; }
-        .add-event-link { font-size: 0.9375rem; }
-        .day-card-header { padding: 0.875rem 1.125rem 0.5rem; }
         .day-events { padding: 0.75rem 1rem 1rem; gap: 0.625rem; }
         .load-more { font-size: 1.125rem; padding: 1.25rem; }
       }
     `,
   ];
 
-  render() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    // Previous, Next, and Today move where the list starts: it opens at that day, not partway down.
+    // Instant, since the view's slide is the motion (and the list scrolls smoothly otherwise).
+    const before = changed.get('currentDate') as Date | undefined;
+    if (before && getDateKey(before) !== getDateKey(this.currentDate)) {
+      this.renderRoot.querySelector('.agenda-container')?.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }
 
-    // Build day list: today + N days forward
+  render() {
+    // The list starts on the day shown, so Previous, Next, and Today move it.
+    const start = new Date(this.currentDate);
+    start.setHours(0, 0, 0, 0);
+
     const days: Date[] = [];
     for (let i = 0; i < this._daysLoaded; i++) {
-      const d = new Date(today);
+      const d = new Date(start);
       d.setDate(d.getDate() + i);
       days.push(d);
     }
@@ -245,12 +264,29 @@ export class PVViewAgenda extends LitElement {
     // Weather forecast
     const forecast = buildForecastMap(this.forecast);
 
-    return html`
-      <div class="agenda-container">
-        ${days.map(day => this._renderDayCard(day, grouped, forecast))}
-        <div class="load-more" @click=${this._loadMore}>
-          Load more days
+    // Nothing in the whole range: one designed state, not a stack of empty days (spec 11.6).
+    if (days.every(day => !(grouped.get(getDateKey(day))?.length))) {
+      const now = new Date(this.tick ? this.tick * 60000 : Date.now());
+      const empty = agendaEmpty(days[0], this._daysLoaded, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+      return html`
+        <div class="agenda-container" ${ref(this._scroll.attach)}>
+          <div class="state">
+            <div class="art" aria-hidden="true">🗓️</div>
+            <h2>${empty.heading}</h2>
+            <p>${empty.body}</p>
+            <div class="buttons">
+              <button class="pv-btn pv-btn-primary" type="button" @click=${() => this._addEvent(days[0])}>New event</button>
+              <button class="pv-btn pv-btn-secondary" type="button" @click=${this._loadMore}>Look further ahead</button>
+            </div>
+          </div>
         </div>
+      `;
+    }
+
+    return html`
+      <div class="agenda-container" ${ref(this._scroll.attach)}>
+        ${days.map((day, i) => this._renderDayCard(day, grouped, forecast, i === 0))}
+        <button class="load-more" type="button" @click=${this._loadMore}>Show more days</button>
       </div>
     `;
   }
@@ -259,13 +295,14 @@ export class PVViewAgenda extends LitElement {
     day: Date,
     grouped: Map<string, CalendarEvent[]>,
     forecast: Map<string, DayForecast>,
+    first: boolean,
   ) {
     const key = getDateKey(day);
     const events = (grouped.get(key) || []) as SharedEvent[];
     const today = isToday(day);
     const dayForecast = forecast.get(key);
-    const relativeLabel = getRelativeLabel(day);
-    const fullDate = formatDate(day, 'long');
+    const now = new Date(this.tick ? this.tick * 60000 : Date.now());
+    const note = agendaNote(day, new Date(now.getFullYear(), now.getMonth(), now.getDate()), first);
 
     // Sort: all-day first, then by start time
     const sorted = [...events].sort(compareEventsForDisplay);
@@ -277,20 +314,20 @@ export class PVViewAgenda extends LitElement {
             <span class="day-name ${today ? 'day-name--today' : ''}">
               ${WEEKDAY_SHORT[day.getDay()]} ${day.getDate()}
             </span>
-            ${relativeLabel
-              ? html`<span class="day-relative">${relativeLabel}</span>`
-              : html`<span class="day-relative">${fullDate}</span>`}
+            ${note ? html`<span class="day-relative">${note}</span>` : nothing}
           </div>
-          ${dayForecast ? html`
-            <div class="day-weather">
-              ${weatherIcon(dayForecast.condition as WeatherCondition, 20)}
-              <span class="day-weather-temps">${Math.round(dayForecast.tempHigh)}°/${Math.round(dayForecast.tempLow)}°</span>
-            </div>
-          ` : nothing}
-        </div>
-        <div class="day-subheader">
-          <span>${sorted.length} event${sorted.length !== 1 ? 's' : ''}</span>
-          <button class="add-event-link" @click=${() => this._addEvent(day)}>+ Add event</button>
+          <div class="day-card-tools">
+            ${dayForecast ? html`
+              <div class="day-weather">
+                ${weatherIcon(dayForecast.condition as WeatherCondition, 20)}
+                <span class="day-weather-temps">${Math.round(dayForecast.tempHigh)}°/${Math.round(dayForecast.tempLow)}°</span>
+              </div>
+            ` : nothing}
+            <button class="add-btn" type="button" aria-label=${newEventLabel(day, now)} title="New event"
+              @click=${() => this._addEvent(day)}>
+              <ha-icon icon="mdi:plus"></ha-icon>
+            </button>
+          </div>
         </div>
         <div class="day-events">
           ${sorted.length > 0
@@ -302,10 +339,11 @@ export class PVViewAgenda extends LitElement {
                   .timeFormat=${this.timeFormat}
                   .showStripes=${this.showStripes}
                   .tick=${this.tick}
-                  @event-click=${(e: CustomEvent) => this._onEventClick(e.detail.event)}
+                  .badge=${today ? eventStatus(event, now) : dayOfStatus(event, day)}
+                  @event-click=${(e: CustomEvent) => { e.stopPropagation(); this._onEventClick(e.detail.event); }}
                 ></pv-event-chip>
               `)
-            : html`<div class="empty-day">No events</div>`
+            : html`<div class="empty-day">Nothing planned</div>`
           }
         </div>
       </div>
