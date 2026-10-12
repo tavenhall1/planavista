@@ -158,3 +158,9 @@ describe("the editor says who can change an event (review)", () => {
     expect(editor).toMatch(/if \(this\.gate && !this\.gate\.allowed\(\[\.\.\.touched\]\)\) \{\s*this\._showError\(this\.gate\.note\(\[\.\.\.touched\]\)\);/);
   });
 });
+
+describe('the PIN sheet reads like the other sheets (review)', () => {
+  it('its why line sits on the left under its left title', () => {
+    expect(read('shell/pv-pin-sheet.ts').replace(/\r\n/g, '\n')).not.toMatch(/\.hint \{[^}]*text-align: center/);
+  });
+});

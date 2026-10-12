@@ -182,9 +182,9 @@ export class PvPinSheet extends LitElement {
         cursor: pointer;
       }
 
+      /* The why line belongs to the title, so it sits on the left under it (review). */
       .hint {
         margin: 0;
-        text-align: center;
         color: var(--pv-text-secondary, #6B7280);
       }
 
