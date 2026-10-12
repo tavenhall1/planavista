@@ -15,15 +15,21 @@ export interface ScreenInput {
   running: boolean;
   /** The calendars this card shows. */
   calendars: Pick<CalendarConfig, 'entity_id'>[];
+  /** How many calendars are set up, whether or not their entities exist yet (the sensor's calendars_configured). */
+  configured?: number;
   /** The ones the filter hides. */
   hidden: ReadonlySet<string>;
 }
 
-export function screenOf({ sensorState, running, calendars, hidden }: ScreenInput): CalendarScreen {
+export function screenOf({ sensorState, running, calendars, configured, hidden }: ScreenInput): CalendarScreen {
   if (sensorState === undefined || sensorState === 'unavailable' || sensorState === 'unknown') {
     return running ? 'unavailable' : 'loading';
   }
-  if (calendars.length === 0) return 'no-calendars';
+  if (calendars.length === 0) {
+    // While Home Assistant starts, calendars arrive after PlanaVista; set up but missing once it runs means their integration is down.
+    if (!running) return 'loading';
+    return (configured ?? 0) > 0 ? 'unavailable' : 'no-calendars';
+  }
   if (calendars.every(c => hidden.has(c.entity_id))) return 'all-hidden';
   return 'ready';
 }
@@ -54,17 +60,21 @@ export interface Banner {
 export interface BannerInput {
   /** hass.connected: false while the browser can't reach Home Assistant. */
   connected: boolean;
+  /** While Home Assistant starts, calendars report unavailable for a moment; nothing is called unreachable then. */
+  running?: boolean;
   calendars: CalendarConfig[];
   hidden: ReadonlySet<string>;
 }
 
 /** The banners over the views: Home Assistant out of reach, and the shown calendars it can't read. */
-export function bannersOf({ connected, calendars, hidden }: BannerInput): Banner[] {
+export function bannersOf({ connected, running = true, calendars, hidden }: BannerInput): Banner[] {
   const banners: Banner[] = [];
   if (!connected) {
     banners.push({ kind: 'offline', text: "Can't reach Home Assistant. These are the last events it sent, and they update when it's back." });
   }
-  const unreachable = calendars.filter(c => !hidden.has(c.entity_id) && (c.state === 'unavailable' || c.fetch_failed === true));
+  const unreachable = running
+    ? calendars.filter(c => !hidden.has(c.entity_id) && (c.state === 'unavailable' || c.fetch_failed === true))
+    : [];
   if (unreachable.length) banners.push({ kind: 'unreachable', text: unreachableText(unreachable.map(calendarLabel)) });
   return banners;
 }

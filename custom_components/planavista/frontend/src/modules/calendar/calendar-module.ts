@@ -678,13 +678,15 @@ export class PvCalendarModule extends LitElement {
     const store = this._pv.store;
     const display = this.display;
     const hidden = store.hiddenCalendars;
+    const running = this._running();
     const screen = screenOf({
       sensorState: this.hass.states[this.cardConfig?.entity || DEFAULT_ENTITY]?.state,
-      running: this._running(),
+      running,
       calendars,
+      configured: this.data?.calendars_configured,
       hidden,
     });
-    const banners = screen === 'ready' ? bannersOf({ connected: this.hass.connected !== false, calendars, hidden }) : [];
+    const banners = screen === 'ready' ? bannersOf({ connected: this.hass.connected !== false, running, calendars, hidden }) : [];
 
     return html`
       <div class="pvc-frame">

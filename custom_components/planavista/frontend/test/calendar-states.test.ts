@@ -25,9 +25,17 @@ describe('screenOf', () => {
   });
 
   it('tells a household with no calendars yet, and one that hid them all, what to do', () => {
-    expect(screenOf({ sensorState: 'configured', running: true, calendars: [], hidden: NONE })).toBe('no-calendars');
+    expect(screenOf({ sensorState: 'configured', running: true, calendars: [], configured: 0, hidden: NONE })).toBe('no-calendars');
     expect(screenOf({ sensorState: 'configured', running: true, calendars: [ALEX, BLAIR], hidden: new Set([ALEX.entity_id, BLAIR.entity_id]) }))
       .toBe('all-hidden');
+  });
+
+  it("doesn't call calendars that are set up but not loaded yet missing, nor ask for new ones", () => {
+    // Home Assistant starting: the sensor has no rows until the calendar entities arrive.
+    expect(screenOf({ sensorState: 'configured', running: false, calendars: [], configured: 2, hidden: NONE })).toBe('loading');
+    expect(screenOf({ sensorState: 'configured', running: false, calendars: [], configured: 0, hidden: NONE })).toBe('loading');
+    // Running, and still none of them there: their integration is down.
+    expect(screenOf({ sensorState: 'configured', running: true, calendars: [], configured: 2, hidden: NONE })).toBe('unavailable');
   });
 
   it('shows the views when there is something to show', () => {
@@ -67,6 +75,11 @@ describe('bannersOf', () => {
       hidden: NONE,
     });
     expect(banners).toEqual([{ kind: 'unreachable', text: unreachableText(["Alex's calendar", "Blair's calendar"]) }]);
+  });
+
+  it("doesn't call a calendar unreachable while Home Assistant is still starting", () => {
+    const starting = bannersOf({ connected: true, running: false, calendars: [calendar('calendar.test_alex', 'Alex', { state: 'unavailable' })], hidden: NONE });
+    expect(starting).toEqual([]);
   });
 
   it('leaves out a hidden calendar, and says nothing when all is well', () => {

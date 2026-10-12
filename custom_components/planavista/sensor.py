@@ -66,6 +66,9 @@ class PlanaVistaConfigSensor(CoordinatorEntity, SensorEntity):
             "display": self.coordinator.display_config,
             "onboarding_complete": self._entry.data.get("onboarding_complete", True),
             "version": self._entry.version,
+            # Set up, whether or not their entities exist yet, so the card can tell
+            # "still loading" from "none set up" (spec 11.6).
+            "calendars_configured": sum(1 for row in self.coordinator.calendars if row.get("entity_id")),
         }
 
 

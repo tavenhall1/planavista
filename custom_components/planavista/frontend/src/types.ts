@@ -123,6 +123,8 @@ export interface PlanaVistaData {
   events: CalendarEvent[];
   display: DisplayConfig;
   onboarding_complete?: boolean;
+  /** How many calendars are set up, whether or not their entities exist yet. */
+  calendars_configured?: number;
   version?: number;
 }
 
