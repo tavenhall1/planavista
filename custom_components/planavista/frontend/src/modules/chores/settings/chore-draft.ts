@@ -69,10 +69,15 @@ function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** Shares split evenly in 5-minute steps; what's left over goes to the first person. */
+/**
+ * Shares split evenly, in 5-minute steps while everyone gets at least 5 and
+ * by the minute for shorter chores (the backend refuses a share of 0);
+ * what's left over goes to the first person.
+ */
 export function evenShares(assignees: string[], minutes: number): Record<string, number> {
   if (!assignees.length) return {};
-  const each = Math.floor(minutes / assignees.length / 5) * 5;
+  const step = minutes / assignees.length >= 5 ? 5 : 1;
+  const each = Math.floor(minutes / assignees.length / step) * step;
   const shares: Record<string, number> = {};
   for (const id of assignees) shares[id] = each;
   shares[assignees[0]] += minutes - each * assignees.length;
@@ -188,6 +193,7 @@ export function choreChanges(record: ChoreRecord): Partial<Activity> {
 
 /** How the shares stand (spec 14.4: "✓ The shares add up to 2 h."). */
 export function sharesStatus(d: ChoreDraft): { ok: boolean; text: string } {
+  if (d.assignees.some(id => (d.shares[id] ?? 0) <= 0)) return { ok: false, text: 'Give everyone some of the time.' };
   const total = d.assignees.reduce((sum, id) => sum + (d.shares[id] ?? 0), 0);
   const left = d.minutes - total;
   if (left === 0) return { ok: true, text: `✓ The shares add up to ${durationText(d.minutes)}.` };
@@ -201,8 +207,9 @@ export function choreProblem(d: ChoreDraft, today: string, startDate: string | n
   if (!d.name.trim()) return 'Add a name.';
   if (d.schedule === 'plan') {
     if (d.minutes <= 0) return 'Add how long it takes.';
-    if (d.split === 'shared' && d.assignees.length > 1 && !sharesStatus(d).ok) {
-      return 'Everyone\'s share has to add up to the time.';
+    if (d.split === 'shared' && d.assignees.length > 1) {
+      if (d.assignees.some(id => (d.shares[id] ?? 0) <= 0)) return 'Give everyone some of the time, or pick Each does it all.';
+      if (!sharesStatus(d).ok) return 'Everyone\'s share has to add up to the time.';
     }
   }
   if (d.schedule === 'once' && d.once_when !== 'any') {

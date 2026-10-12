@@ -108,6 +108,15 @@ describe('checks before saving', () => {
     expect(sharesStatus(edit(plan, { shares: { blair: 90, casey: 45 } }))).toEqual({ ok: false, text: '15 min over the time.' });
     expect(evenShares(['blair', 'casey', 'dana'], 100)).toEqual({ blair: 40, casey: 30, dana: 30 });
   });
+
+  it("never leaves anyone with no time: small chores split by the minute, and a share of 0 can't be saved", () => {
+    expect(evenShares(['casey', 'dana'], 5)).toEqual({ casey: 3, dana: 2 });
+    expect(evenShares(['blair', 'casey', 'dana'], 10)).toEqual({ blair: 4, casey: 3, dana: 3 });
+    expect(evenShares(['blair', 'casey', 'dana'], 2)).toEqual({ blair: 2, casey: 0, dana: 0 });
+    const tiny = edit(plan, { minutes: 2, shares: { blair: 2, casey: 0 } });
+    expect(sharesStatus(tiny)).toEqual({ ok: false, text: 'Give everyone some of the time.' });
+    expect(choreProblem(tiny, TODAY)).toBe('Give everyone some of the time, or pick Each does it all.');
+  });
 });
 
 describe('the editor\'s lines', () => {
