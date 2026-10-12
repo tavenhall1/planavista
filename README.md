@@ -252,8 +252,7 @@ A card-based grid showing the full week at a glance.
 - Event chips with multi-participant stripe gradients for shared events
 - Weather forecast per day with hi/lo temps and animated icons
 - Today's card highlighted with accent border
-- Quick "+ Add" button on each day card
-- Event count badges
+- A **+** on each day card adds an event on that day; a day with nothing on it says "Nothing planned"
 - Past events automatically dimmed
 
 ### Month View
@@ -269,12 +268,14 @@ Traditional calendar grid for long-range planning.
 
 ### Agenda View
 
-A scrolling list for quickly scanning upcoming events.
+A scrolling list for quickly scanning what's coming.
 
-- Sticky date headers with relative labels ("Today", "Tomorrow", "In 2 days")
+- Starts on the day shown, so the arrows step it a week at a time and **Today** brings it back
+- Sticky day headers that say "Today", "Tomorrow", or the month where the list starts and where a new month begins
+- Today's events say **Now** while they run and **In 12 min**, in amber, in the 15 minutes before they start; an event over several days says **Day 2 of 3**
 - Weather forecast per day
-- Lazy "Load more days" pagination (14 days at a time)
-- "+ Add event" button per day
+- **Show more days** at the end adds 14 more, and a stretch with nothing on it says so, with its dates
+- A **+** on each day adds an event on that day
 - Past events automatically dimmed
 
 ---
@@ -309,7 +310,7 @@ The event opens as a sheet: from the bottom in portrait and on phones, as a card
 
 - Tap any event to open its details, then tap **Edit**. **Cancel** goes back to the details
 - For shared Google Calendar events, edits are applied in-place via PATCH, with no need to delete and recreate
-- All fields are editable: title, time, location, description, and calendar
+- All fields are editable: title, who it's for, time, location, and description
 - Guests can be added or removed when editing shared events
 
 ### Deleting Events
