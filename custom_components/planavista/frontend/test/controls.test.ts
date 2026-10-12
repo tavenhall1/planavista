@@ -34,6 +34,8 @@ describe('one control for each kind of choice (milestone 8, spec 3.9)', () => {
     const button = /\.pv-seg > button \{([^}]*)\}/.exec(text)?.[1] ?? '';
     expect(button).toMatch(/height:\s*48px/);
     expect(button).toMatch(/min-width:\s*48px/);
+    // A choice never shrinks to cut its word (the bar's views on a phone).
+    expect(button).toMatch(/flex:\s*0 0 auto/);
   });
 
   it('every button looks like one family, and disabled buttons look disabled', () => {

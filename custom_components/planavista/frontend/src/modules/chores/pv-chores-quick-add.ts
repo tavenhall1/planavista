@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { segmentedStyles } from '../../styles/controls';
+import { personChipStyles, segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -50,6 +50,7 @@ export class PvChoresQuickAdd extends LitElement {
   private _closing = false;
 
   static styles = [
+    personChipStyles,
     formStyles,
     segmentedStyles,
     buttonStyles,
@@ -114,41 +115,9 @@ export class PvChoresQuickAdd extends LitElement {
         outline-offset: 1px;
       }
 
-      .faces {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
 
-      .face {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        min-width: 56px;
-        min-height: 48px;
-        padding: 4px;
-        border: none;
-        border-radius: 14px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        cursor: pointer;
-        opacity: 0.55;
-      }
 
-      .face[aria-pressed='true'] {
-        opacity: 1;
-        color: var(--pv-text, #1A1B1E);
-      }
 
-      .face[aria-pressed='true'] pv-member-avatar {
-        outline: 3px solid var(--face);
-        outline-offset: 2px;
-        border-radius: 50%;
-      }
 
 
 
@@ -281,11 +250,11 @@ export class PvChoresQuickAdd extends LitElement {
         </section>
         <section>
           <span class="title" id="who-title">Who</span>
-          <div class="faces" role="group" aria-labelledby="who-title">
+          <div class="pv-person-chips" role="group" aria-labelledby="who-title">
             ${this.people.map(person => html`
-              <button class="face" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'}
-                style="--face:${this.colorOf(person)}" @click=${() => this._toggle(person)}>
-                <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="40"></pv-member-avatar>
+              <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'}
+                style="--member:${this.colorOf(person)}" @click=${() => this._toggle(person)}>
+                <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="28"></pv-member-avatar>
                 ${person.name}
               </button>
             `)}

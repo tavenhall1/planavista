@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { personChipStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -42,6 +43,7 @@ export class PvChoresRewardSheet extends LitElement {
   private _started = false;
 
   static styles = [
+    personChipStyles,
     formStyles,
     buttonStyles,
     sheetStyles,
@@ -139,33 +141,8 @@ export class PvChoresRewardSheet extends LitElement {
         border: 2px solid var(--pv-accent, #5B5BD6);
       }
 
-      .faces {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
 
-      .face {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        min-height: 48px;
-        padding: 4px;
-        border: none;
-        background: transparent;
-        font: inherit;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: var(--pv-text-secondary, #5F6670);
-        cursor: pointer;
-        opacity: 0.55;
-      }
 
-      .face[aria-pressed='true'] {
-        opacity: 1;
-        color: var(--pv-text, #1A1B1E);
-      }
 
       .row {
         display: flex;
@@ -282,11 +259,11 @@ export class PvChoresRewardSheet extends LitElement {
           @click=${() => this._set({ needsOk: !d.needsOk })}></button>
       </div>
       <span class="title">Who can get it (nobody picked means everyone who earns stars)</span>
-      <div class="faces">
+      <div class="pv-person-chips" role="group" aria-label="Who can get it">
         ${this.people.filter(p => p.stars).map(person => html`
-          <button class="face" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'}
+          <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'} style="--member:${this.colorOf(person)}"
             @click=${() => this._set({ who: d.who.includes(person.id) ? d.who.filter(id => id !== person.id) : [...d.who, person.id] })}>
-            <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="36"></pv-member-avatar>
+            <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="28"></pv-member-avatar>
             ${person.name}
           </button>
         `)}

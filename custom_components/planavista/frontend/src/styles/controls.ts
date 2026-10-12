@@ -37,6 +37,8 @@ export const segmentedStyles = css`
   .pv-seg > button {
     position: relative;
     isolation: isolate;
+    /* Each choice keeps its width, so a long list scrolls (or wraps the bar) instead of cutting words. */
+    flex: 0 0 auto;
     min-width: 48px;
     height: 48px;
     padding: 0 14px;
@@ -192,5 +194,114 @@ export const tagStyles = css`
   .pv-tag.attention {
     background: var(--pv-warn-bg, #FDF1DC);
     color: var(--pv-warn-ink, #8A5A00);
+  }
+`;
+
+/**
+ * Two people patterns, by job (milestone 8):
+ * - `.pv-people` holding `.pv-person` buttons chooses whose view you're looking
+ *   at (the phone board, Day on a phone, My day). The one shown is filled with
+ *   its person's color (`--member` on the button). The strip never shrinks.
+ * - `.pv-person-chips` holding `.pv-person-chip` buttons chooses who something
+ *   is for (New event's Who, quick add, a chore's people, a reward's who): an
+ *   avatar chip that, chosen, takes a ring in the person's color and a check.
+ */
+export const peopleStripStyles = css`
+  .pv-people {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+    padding: 8px 12px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .pv-people::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pv-person {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 56px;
+    min-height: 56px;
+    padding: 4px 6px;
+    border: none;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--pv-text-secondary, #5F6670);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pv-person[aria-selected='true'],
+  .pv-person[aria-pressed='true'] {
+    color: var(--pv-text, #1A1B1E);
+    background: color-mix(in srgb, var(--member, var(--pv-accent, #5B5BD6)) 16%, var(--pv-card-bg, #FFFFFF));
+  }
+
+  .pv-person:focus-visible {
+    outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+    outline-offset: -2px;
+  }
+`;
+
+export const personChipStyles = css`
+  .pv-person-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pv-person-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 4px 14px 4px 6px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--pv-border, #E7E7E3);
+    border-radius: 999px;
+    background: var(--pv-card-bg, #FFFFFF);
+    color: var(--pv-text, #1A1B1E);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pv-person-chip .dot {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--member, var(--pv-accent, #5B5BD6));
+  }
+
+  .pv-person-chip[aria-pressed='true'] {
+    border-color: var(--member, var(--pv-accent, #5B5BD6));
+    background: color-mix(in srgb, var(--member, var(--pv-accent, #5B5BD6)) 12%, var(--pv-card-bg, #FFFFFF));
+  }
+
+  .pv-person-chip[aria-pressed='true']::after {
+    content: '✓';
+    font-weight: 800;
+  }
+
+  .pv-person-chip:focus-visible {
+    outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+    outline-offset: 2px;
+  }
+
+  .pv-person-chip:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 `;

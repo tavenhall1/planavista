@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { peopleStripStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -16,6 +17,7 @@ import {
 } from '../utils/event-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { contrastText } from '../../../core/color';
+import { stripStart } from '../../../core/people-strip';
 import type { Layout } from '../../../core/layout';
 import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
 
@@ -50,6 +52,8 @@ export class PVViewDay extends LitElement {
   @property({ type: Object }) hiddenCalendars: Set<string> = new Set();
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) hideColumnHeaders = false;
+  /** Whose lane a narrow card shows (milestone 8): picked on the strip, else the account's own person. */
+  @state() private _dayPick: string | null = null;
   @property({ attribute: false }) avatarBorderMode: string = 'primary';
   @property({ attribute: false }) sharedEventMap: Map<string, Array<{ entity_id: string; calendar_name: string; calendar_color: string; person_entity: string }>> = new Map();
   @property({ type: Number }) tick = 0;
@@ -70,6 +74,7 @@ export class PVViewDay extends LitElement {
   private _measured: HTMLElement | null = null;
 
   static styles = [
+    peopleStripStyles,
     baseStyles,
     eventStyles,
     nowIndicatorStyles,
@@ -526,9 +531,18 @@ export class PVViewDay extends LitElement {
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
-      /* xs: phones, hide column headers, compact events */
+      /* Wide enough for every lane's header: the strip stays out of the way. */
+      .day-people { display: none; }
+      .day-people .person-avatar,
+      .day-people .person-initial { width: 32px; height: 32px; font-size: 0.875rem; }
+
+      /* xs: phones, hide column headers, compact events; one person at a time with the strip (milestone 8) */
       @container pv-calendar (max-width: 479px) {
         .column-headers { display: none; }
+        .day-people { display: flex; }
+        .person-column:not(.chosen) { display: none; }
+        .all-day-chip.other,
+        .all-day-section.none-chosen { display: none; }
         .time-gutter { width: 40px; }
         .all-day-gutter { width: 40px; font-size: 0.5625rem; }
         .time-label { font-size: 0.5625rem; }
@@ -538,9 +552,13 @@ export class PVViewDay extends LitElement {
         .next-day-footer { padding: 10px; font-size: 0.8125rem; }
       }
 
-      /* sm: large phones, hide column headers, narrower gutter */
+      /* sm: large phones, hide column headers, narrower gutter; one person at a time with the strip */
       @container pv-calendar (min-width: 480px) and (max-width: 767px) {
         .column-headers { display: none; }
+        .day-people { display: flex; }
+        .person-column:not(.chosen) { display: none; }
+        .all-day-chip.other,
+        .all-day-section.none-chosen { display: none; }
         .time-gutter { width: 48px; }
         .all-day-gutter { width: 48px; }
         .positioned-event { padding: 4px 8px; }
@@ -686,6 +704,11 @@ export class PVViewDay extends LitElement {
     const visibleCalendars = this.calendars.filter(c => c.visible !== false && !this.hiddenCalendars.has(c.entity_id));
     const personGroups = groupEventsByPerson(timedEvents, visibleCalendars);
     const personKeys = Array.from(personGroups.keys());
+    const chosenKey = stripStart(personKeys, this._dayPick, this._ownPerson(personKeys));
+    const keyOf = (e: CalendarEvent): string | null => {
+      const cal = visibleCalendars.find(c => c.entity_id === e.calendar_entity_id);
+      return cal ? (cal.person_entity || cal.entity_id) : null;
+    };
 
     // Compute now indicator position
     const now = new Date();
@@ -705,13 +728,24 @@ export class PVViewDay extends LitElement {
 
     return html`
       <div class="day-container" style="--pv-hour-px: ${this._hourPx}px">
+        ${personKeys.length > 1 ? html`
+          <div class="pv-people day-people" role="tablist" aria-label="Whose day">
+            ${personKeys.map(key => {
+              const face = this._face(key, visibleCalendars);
+              return html`
+                <button type="button" class="pv-person" role="tab" aria-selected=${key === chosenKey ? 'true' : 'false'}
+                  style="--member:${face.color}" @click=${() => { this._dayPick = key; }}>${face.picture}${face.name}</button>
+              `;
+            })}
+          </div>
+        ` : nothing}
         ${allDayEvents.length > 0 ? html`
-          <div class="all-day-section">
+          <div class="all-day-section ${allDayEvents.some(e => keyOf(e) === chosenKey) ? '' : 'none-chosen'}">
             <div class="all-day-gutter">All day</div>
             <div class="all-day-events">
               ${allDayEvents.map(e => html`
                 <div
-                  class="all-day-chip${isEventPast(e) ? ' past' : ''}"
+                  class="all-day-chip${isEventPast(e) ? ' past' : ''}${keyOf(e) !== chosenKey ? ' other' : ''}"
                   role="button"
                   tabindex="0"
                   @click=${() => this._onEventClick(e)}
@@ -792,13 +826,34 @@ export class PVViewDay extends LitElement {
               ${nowPercent >= 0 && nowPercent <= 100 ? html`
                 <div class="pv-now-line" style="top: ${nowPercent}%"></div>
               ` : nothing}
-              ${personKeys.map(key => this._renderColumn(key, personGroups.get(key) || []))}
+              ${personKeys.map(key => this._renderColumn(key, personGroups.get(key) || [], key === chosenKey))}
             </div>
           </div>
           ${this._renderNextDayFooter()}
         </div>
       </div>
     `;
+  }
+
+  /** The account's own person, when one of the lanes is theirs. */
+  private _ownPerson(keys: string[]): string | null {
+    const user = this.hass?.user?.id;
+    if (!user) return null;
+    const person = Object.values(this.hass.states).find(s =>
+      s.entity_id.startsWith('person.') && (s.attributes as { user_id?: string }).user_id === user);
+    return person && keys.includes(person.entity_id) ? person.entity_id : null;
+  }
+
+  /** A lane's person as the strip draws them: their photo or initial, and name. */
+  private _face(key: string, calendars: CalendarConfig[]) {
+    const cal = calendars.find(c => (c.person_entity || c.entity_id) === key);
+    const avatar = cal?.person_entity ? getPersonAvatar(this.hass, cal.person_entity) : null;
+    const name = cal?.person_entity ? getPersonName(this.hass, cal.person_entity) : cal?.display_name || key;
+    const color = cal?.color || '#6366F1';
+    const picture = avatar
+      ? html`<img class="person-avatar" src="${avatar}" alt="" />`
+      : html`<div class="person-initial" style="background: ${color}; color: ${contrastText(color)}">${name[0]?.toUpperCase() || '?'}</div>`;
+    return { name, color, picture };
   }
 
   private _renderTimeLabels() {
@@ -875,11 +930,11 @@ export class PVViewDay extends LitElement {
     }));
   }
 
-  private _renderColumn(personKey: string, events: CalendarEvent[]) {
+  private _renderColumn(personKey: string, events: CalendarEvent[], chosen: boolean) {
     const positioned = detectOverlaps(events);
 
     return html`
-      <div class="person-column">
+      <div class="person-column ${chosen ? 'chosen' : ''}">
         ${positioned.map(event => {
           // Clip to the viewed day so overnight events draw their full portion
           const pos = getEventPosition(event, DAY_START_HOUR, DAY_END_HOUR, this.currentDate);

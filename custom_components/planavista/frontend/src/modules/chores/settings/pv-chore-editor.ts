@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { segmentedStyles } from '../../../styles/controls';
+import { personChipStyles, segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -119,6 +119,7 @@ export class PvChoreEditor extends LitElement {
   }
 
   static styles = [
+    personChipStyles,
     segmentedStyles,
     baseStyles,
     buttonStyles,
@@ -211,34 +212,9 @@ export class PvChoreEditor extends LitElement {
         outline: none;
       }
 
-      .people {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        padding: 12px 14px;
-      }
 
-      .person {
-        position: relative;
-        display: grid;
-        justify-items: center;
-        gap: 4px;
-        min-width: 56px;
-        border: none;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        font-size: 0.8125rem;
-        cursor: pointer;
-      }
 
-      .person[aria-pressed='false'] pv-member-avatar {
-        opacity: 0.4;
-      }
 
-      .person[aria-pressed='true'] .name {
-        font-weight: 700;
-      }
 
       .check {
         position: absolute;
@@ -315,6 +291,10 @@ export class PvChoreEditor extends LitElement {
 
       .gone {
         color: var(--pv-text-secondary, #6B7280);
+      }
+
+      .who {
+        padding: 12px 14px;
       }
     `,
   ];
@@ -412,14 +392,13 @@ export class PvChoreEditor extends LitElement {
     return html`
       <h2 class="section-label">Who</h2>
       <div class="group">
-        <div class="people" role="group" aria-label="Who">
+        <div class="pv-person-chips who" role="group" aria-label="Who">
           ${members.map(member => {
             const on = d.assignees.includes(member.id);
             return html`
-              <button class="person" type="button" aria-pressed=${on ? 'true' : 'false'} @click=${() => this._toggleMember(member.id)}>
-                <pv-member-avatar .member=${member} .hass=${this.hass} size="44"></pv-member-avatar>
-                ${on ? html`<span class="check" aria-hidden="true">✓</span>` : nothing}
-                <span class="name">${member.name}</span>
+              <button class="pv-person-chip" type="button" aria-pressed=${on ? 'true' : 'false'} style="--member:${member.color}"
+                @click=${() => this._toggleMember(member.id)}>
+                <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>${member.name}
               </button>
             `;
           })}

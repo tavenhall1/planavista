@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { segmentedStyles } from '../../styles/controls';
+import { peopleStripStyles, segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { keyed } from 'lit/directives/keyed.js';
@@ -63,6 +63,7 @@ export class PvChoresMyDay extends LitElement {
   @property({ attribute: false }) minute = 0;
 
   static styles = [
+    peopleStripStyles,
     segmentedStyles,
     choresStyles,
     css`
@@ -75,37 +76,8 @@ export class PvChoresMyDay extends LitElement {
         overscroll-behavior: contain;
       }
 
-      .picker {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        padding: 12px 12px 4px;
-        flex-wrap: wrap;
-      }
 
-      .face {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        min-width: 56px;
-        min-height: 48px;
-        padding: 2px 4px;
-        border: none;
-        border-radius: 12px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.75rem;
-        font-weight: 700;
-        cursor: pointer;
-        opacity: 0.6;
-      }
 
-      .face[aria-pressed='true'] {
-        opacity: 1;
-        color: var(--pv-text, #1A1B1E);
-      }
 
       .layout {
         display: grid;
@@ -413,10 +385,10 @@ export class PvChoresMyDay extends LitElement {
     const style = this._style();
     return html`
       ${this.columns.length > 1 ? html`
-        <div class="picker" role="group" aria-label="Whose day">
+        <div class="pv-people" role="group" aria-label="Whose day">
           ${this.columns.map(col => html`
-            <button class="face" type="button" aria-pressed=${col.member.id === member.id ? 'true' : 'false'}
-              @click=${() => this._fire('pv-my-day-member', { member: col.member.id })}>
+            <button class="pv-person" type="button" aria-pressed=${col.member.id === member.id ? 'true' : 'false'}
+              style="--member:${this.colorOf(col.member)}" @click=${() => this._fire('pv-my-day-member', { member: col.member.id })}>
               <pv-ring size="44" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${this.colorOf(col.member)}>
                 <pv-member-avatar .member=${{ ...col.member, color: this.colorOf(col.member) }} .hass=${this.hass} size="32"></pv-member-avatar>
               </pv-ring>

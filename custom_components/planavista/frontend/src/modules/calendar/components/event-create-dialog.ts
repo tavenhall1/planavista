@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { personChipStyles } from '../../../styles/controls';
 import { property, state, query } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -115,6 +116,7 @@ export class PVEventCreateDialog extends LitElement {
   @query('.end-time-display') private _endTimeEl?: HTMLElement;
 
   static styles = [
+    personChipStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -236,37 +238,11 @@ export class PVEventCreateDialog extends LitElement {
         padding-top: 12px;
       }
 
-      .cal-option {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.375rem 0.875rem;
-        border: 2px solid transparent;
-        border-radius: 9999px;
-        cursor: pointer;
-        transition: all var(--pv-transition);
-        font-size: 0.875rem;
-        font-weight: 600;
-        background: transparent;
-        font-family: inherit;
-        min-height: 48px;
-      }
 
-      .cal-option.selected {
-        color: white;
-        box-shadow: 0 2px 6px color-mix(in srgb, var(--cal-bg) 30%, transparent);
-      }
 
-      .cal-option:not(.selected) {
-        border-color: var(--pv-border);
-        color: var(--pv-text-secondary);
-      }
 
-      .cal-option:hover:not(.selected) {
-        border-color: var(--pv-text-muted);
-      }
 
-      .cal-option-wrap {
+      .who-wrap {
         position: relative;
         display: inline-flex;
       }
@@ -284,7 +260,7 @@ export class PVEventCreateDialog extends LitElement {
         pointer-events: none;
       }
 
-      .cal-option.locked {
+      .pv-person-chip.locked {
         cursor: default;
         opacity: 0.9;
       }
@@ -295,11 +271,6 @@ export class PVEventCreateDialog extends LitElement {
         opacity: 0.7;
       }
 
-      .cal-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-      }
 
       .show-more-btn {
         display: inline-flex;
@@ -828,26 +799,24 @@ export class PVEventCreateDialog extends LitElement {
                   Tap someone to take them off this event.
                 </div>
               ` : nothing}
-              <div class="calendar-select" role="group" aria-labelledby="who-label">
+              <div class="calendar-select pv-person-chips" role="group" aria-labelledby="who-label">
                 ${visibleCalendars.map(cal => {
                   const selected = this._selectedCalendars.has(cal.entity_id);
                   const isOrganizer = cal.entity_id === this._organizerEntityId;
                   const isLockedOrganizer = isEdit && isOrganizer;
                   return html`
-                    <div class="cal-option-wrap">
+                    <div class="who-wrap">
                       ${isOrganizer && selected
                         ? html`<span class="organizer-badge">Organizer</span>`
                         : nothing}
                       <button
                         type="button"
-                        class="cal-option ${selected ? 'selected' : ''} ${isLockedOrganizer ? 'locked' : ''}"
+                        class="pv-person-chip ${isLockedOrganizer ? 'locked' : ''}"
                         aria-pressed=${selected ? 'true' : 'false'}
-                        style="${selected
-                          ? `background: ${cal.color}; --cal-bg: ${cal.color}; color: ${contrastText(cal.color)}`
-                          : `--cal-bg: ${cal.color}`}"
+                        style="--member: ${cal.color}"
                         @click=${() => this._toggleCalendar(cal.entity_id)}
                       >
-                        <span class="cal-dot" style="background: ${cal.color}"></span>
+                        <span class="dot" aria-hidden="true"></span>
                         ${cal.display_name}
                         ${isLockedOrganizer
                           ? html`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`

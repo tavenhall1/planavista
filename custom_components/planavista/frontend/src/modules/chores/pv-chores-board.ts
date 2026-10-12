@@ -1,8 +1,10 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { peopleStripStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { keyed } from 'lit/directives/keyed.js';
 import type { HomeAssistant } from 'custom-card-helpers';
+import { stripStart } from '../../core/people-strip';
 import { defineElement } from '../../utils/define';
 import type { Layout } from '../../core/layout';
 import { HouseholdView, inOrder, memberColor } from '../../core/household';
@@ -51,6 +53,8 @@ export class PvChoresBoard extends LitElement {
 
   @state() private _width = 0;
   @state() private _phoneIndex = 0;
+  /** Someone tapped the strip or swiped: the board stays on their pick. */
+  private _phonePicked = false;
   @state() private _celebrate: Record<string, number> = {};
   @state() private _pulse: Record<string, number> = {};
   @state() private _family = false;
@@ -63,6 +67,7 @@ export class PvChoresBoard extends LitElement {
   private _touch: { x: number; y: number } | null = null;
 
   static styles = [
+    peopleStripStyles,
     choresStyles,
     css`
       :host {
@@ -92,36 +97,8 @@ export class PvChoresBoard extends LitElement {
         flex: 1 1 0;
       }
 
-      .people {
-        display: flex;
-        gap: 6px;
-        padding: 10px 12px 0;
-        overflow-x: auto;
-        scrollbar-width: none;
-      }
 
-      .person {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        min-width: 56px;
-        min-height: 48px;
-        padding: 2px 4px;
-        border: none;
-        border-radius: 12px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.75rem;
-        font-weight: 700;
-        cursor: pointer;
-      }
 
-      .person.on {
-        color: var(--pv-text, #1A1B1E);
-        background: var(--pv-card-bg, #FFFFFF);
-      }
 
       .phone {
         flex: 1 1 auto;
@@ -181,6 +158,11 @@ export class PvChoresBoard extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues): void {
+    if (!this._phonePicked && (changed.has('board') || changed.has('household'))) {
+      // Casey's phone opens on Casey; a shared or admin login opens on the first person (milestone 8).
+      const ids = this._columns().map(col => col.member.id);
+      this._phoneIndex = Math.max(0, ids.indexOf(stripStart(ids, null, this.household?.account?.member_id ?? null) ?? ''));
+    }
     if (!changed.has('board') && !changed.has('minute')) return;
     const columns = this._columns();
     const live = changed.get('board') !== undefined || this._closed.size > 0;
@@ -257,10 +239,10 @@ export class PvChoresBoard extends LitElement {
     const index = Math.min(this._phoneIndex, columns.length - 1);
     const current = columns[index];
     return html`
-      <div class="people" role="tablist" aria-label="Whose chores">
+      <div class="pv-people" role="tablist" aria-label="Whose chores">
         ${columns.map((col, i) => html`
-          <button type="button" class="person ${i === index ? 'on' : ''}" role="tab" aria-selected=${i === index ? 'true' : 'false'}
-            @click=${() => this._show(i)}>
+          <button type="button" class="pv-person" role="tab" aria-selected=${i === index ? 'true' : 'false'}
+            style="--member:${memberColor(col.member, this.mode)}" @click=${() => this._show(i)}>
             <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${memberColor(col.member, this.mode)}>
               <pv-member-avatar .member=${{ ...col.member, color: memberColor(col.member, this.mode) }} .hass=${this.hass} size="28"></pv-member-avatar>
             </pv-ring>
@@ -276,6 +258,7 @@ export class PvChoresBoard extends LitElement {
 
   private _show(index: number): void {
     const before = this._phoneIndex;
+    this._phonePicked = true;
     this._phoneIndex = index;
     if (before === index || motionOf(this) === 'reduced') return;
     this.updateComplete.then(() => {
