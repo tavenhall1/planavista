@@ -29,7 +29,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 - **Keyboards:** while a text field in the card has focus, height-only shrinks are ignored. Kiosk browsers shrink the page when the keyboard opens, which would otherwise flip portrait to landscape mid-word.
 - **Rotating keeps your place:** the view, the person, and the time at the top of the Day view stay put. The header, the module, and the bar are the same elements in every layout; only their order changes.
 - **Reference sizes:** 1280 × 800 (landscape), 800 × 1280 (portrait, a typical 10-inch tablet), and 390 × 844 (phone).
-- The calendar views still have a few window-width media queries for type sizes; they move to the card's own size in milestone 7.
+- The calendar's sizes for type, padding, and avatars measure the card too, with container queries on one frame that its sheets sit outside of, so a narrow card on a wide screen gets narrow sizes and a wall display's card gets the large ones.
 
 ### 2.2 Header and bar
 
@@ -42,6 +42,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 - Switching modules never moves the controls. With only one module there is no switcher.
 - `hide_header` hides the clock and weather header; the bar stays, because it holds the views and Settings.
 - The header's type scales with the card's width (container query units), not the window's.
+- In portrait the header shrinks to the phone's one row while the content below it is scrolled down (past 24 px) and grows back at the top (under 8 px), so a big household's board gets the room. A view that scrolls itself, like the Day view going to now, leaves it alone, and another view, module, or layout starts tall.
 
 ### 2.3 The calendar in each layout
 
@@ -54,7 +55,9 @@ The shell watches the card's own box, not the window or the device, and sets a `
 
 - In portrait and on phones a sheet rises from the bottom, only as tall as its content, with a grab handle. A finger drags it down; letting go past 90 px, or flicking faster than 0.6 px per ms, closes it, and anything less springs back.
 - In landscape a sheet is a centered card that pops in.
-- A sheet leaves before it reports why it closed, so whatever happens next never fights the exit.
+- A sheet leaves before it reports why it closed, so whatever happens next never fights the exit. A sheet the state lets go of (an event saved, a delete done) stays on screen while it leaves.
+- Escape steps back: an open picker first, then the sheet. Escape, a tap outside, or a drag ask before a sheet throws away what was typed ("Discard your changes?"); Cancel is the deliberate way out and doesn't ask.
+- A sheet opened from another (Edit over an event's details) stacks on it, and closing it goes back. Focus returns to whatever opened each one.
 - The same sheets take both shapes; no screen gets a portrait-only version.
 
 ---
@@ -216,6 +219,15 @@ One map, used by every view, sensor description, and notification:
 | Away | 🧳 | "Away · At Grandma's" | neutral |
 | Ring closed | check badge on the ring | "Ring closed for today" | member color |
 
+The calendar's rows, shown in Agenda and in an event's details (Day, Week, and Month keep the now line and dim what's past):
+
+| State | Glyph | Words | Color |
+|---|---|---|---|
+| Starting soon | none | "In 10 min" (the last 15 minutes) | amber |
+| Happening now | none | "Now" | neutral |
+| A multi-day event | none | "Day 2 of 3" | neutral |
+| Past | none | none: the event dims | muted |
+
 ---
 
 ## 7. Motion
@@ -238,6 +250,7 @@ Motion is part of the product, Apple style, in every module.
 - **Reduced motion keeps the meaning.** A ring still fills, because it is the feedback, but pops, flights, glides, and sweeps become quick fades, and a wrong PIN fades instead of shaking. It follows PlanaVista's Motion setting (Follow the device, Full, Reduced), because kiosk tablets often hide the system setting. The card sets `--pv-motion`, which reaches into every shadow root.
 - **Cheap to run.** Only transform, opacity, clip paths, masks, and stroke offsets animate, so older wall tablets stay smooth.
 - **Keyboard.** Space or Enter does what a hold does, with the same feedback.
+- **View changes.** Another view glides in on the smooth spring, with a short rise and a fade; the next or previous day, week, or month slides in from that side. A change nobody made, like the date turning over at midnight or a screen waking up, just switches.
 
 ---
 
@@ -246,14 +259,15 @@ Motion is part of the product, Apple style, in every module.
 - **Skeletons, not spinners,** in the shape of what is loading.
 - **Optimistic changes.** A check-off or an appearance change shows at once; if saving fails, it goes back, with a message that says what to do.
 - **Designed empty and error states** that say what to do next.
+- The calendar: a skeleton in the shape of the view while Home Assistant starts; "Can't load the calendar" with Try again; "No calendars yet" (a parent gets Add calendars) and "Every calendar is hidden" (Show all); a banner that names a calendar Home Assistant can't reach or whose events didn't arrive; "Nothing coming up" in Agenda; and a quiet line on a day with nothing on it.
 
 ---
 
 ## 9. Copy
 
-- Sentence case. One name per thing ("Waiting for OK" is the only name for pending).
+- Sentence case. One name per thing ("Waiting for OK" is the only name for pending; "New event", never New, Add event, or Create event).
 - No em dashes in product copy or public docs. The CI copy check (`scripts/check_copy.py`) enforces it.
-- Destructive actions are confirmed by name ("Remove Casey's PIN?", "Reset PlanaVista to its original colors?").
+- Destructive actions are confirmed by name, without quotes ("Remove Casey's PIN?", "Delete Team standup?", "Reset PlanaVista to its original colors?").
 - Every sub-screen has a back control naming its parent ("‹ Settings", "‹ Appearance"). A kiosk has no browser back button.
 - Errors say what happened and what to do next, in plain words.
 
@@ -283,6 +297,8 @@ Motion is part of the product, Apple style, in every module.
 ### 11.3 Sheets
 
 `pv-pin-sheet` (the keypad: tap your face, then your PIN; digits never reach the page) and `pv-notice-sheet` (a short message with buttons). Both move per section 2.4 and section 7, and fire their events after they've left.
+
+The calendar's event details (`pv-event-popup`) and New event and Edit event (`pv-event-create-dialog`) are sheets too, built on `SheetController`: the spring entrance, drag to dismiss, Escape, the focus trap, and leaving before saying it closed. The calendar keeps each one mounted while it leaves, so a sheet that a save or a delete closes still plays its exit.
 
 ### 11.4 Event blocks
 
@@ -340,6 +356,16 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-11: Changed: the calendar takes on the rest (1.4.0)
+
+- Event details, New event, and Edit event are sheets like the chores sheets, with focus traps, Escape, focus returned, and a question before typing is thrown away.
+- Rounded headings and tabular numbers throughout the calendar; the status map's calendar rows (Now, In 10 min, Day 2 of 3).
+- Designed loading, empty, and error states for the calendar, and banners for a calendar Home Assistant can't reach.
+- The copy rules in the calendar and its Settings: New event, Who, Starts and Ends, sentence case, deletes asked by name.
+- Springs for view changes in the calendar and chores.
+- The calendar's sizes follow the card's width, and every control is a 48 px target.
+- The portrait header shrinks to one line while the content scrolls.
 
 ### 2026-10-10: Changed: the new look (1.2.0)
 

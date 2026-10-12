@@ -287,7 +287,7 @@ PlanaVista goes beyond Home Assistant's built-in calendar services to provide de
 - **In-Place Event Editing**: Shared events are updated via PATCH requests, preserving event links and attendee lists (no delete-and-recreate)
 - **Real Organizer Detection**: Each event's true organizer is fetched from the Google Calendar API, enabling accurate "who created this?" display
 - **Shared Event Deduplication**: When the same event appears on multiple family members' calendars, PlanaVista detects and displays it once with participant indicators
-- **Smart Delete**: The organizer sees "Delete Event" (removes for everyone); attendees see "Remove Me" (removes only their copy)
+- **Smart Delete**: An event on several people's calendars can be deleted for everyone at once, or one person can be taken off it, and a delete that misses a calendar names it
 - **Graceful Fallback**: Non-Google calendars (Local Calendar, CalDAV, etc.) work normally using standard Home Assistant services
 
 ---
@@ -296,25 +296,27 @@ PlanaVista goes beyond Home Assistant's built-in calendar services to provide de
 
 ### Creating Events
 
-1. Click the **+ New** button in the card header (or the "+ Add" button on any day in week/agenda view)
-2. Enter a title, select one or more calendars, and pick start/end times
-3. Optionally add a location or description. Locations are plain text unless you turn on **Address suggestions** (see below)
-4. Click **Add**. For multi-calendar events on Google Calendar, attendees are automatically invited via the API
+1. Tap **New event** under the header (or the **+** on any day in Week or Agenda)
+2. Enter a title, pick who it's for, and pick when it starts and ends
+3. Optionally add a description or location. Locations are plain text unless you turn on **Address suggestions** (see below)
+4. Tap **Add**. For an event for several people on Google Calendar, they're invited through the API
+
+The event opens as a sheet: from the bottom in portrait and on phones, as a card in landscape. Closing it by tapping outside, pressing Escape, or dragging it down after typing something asks first; **Cancel** closes it straight away.
 
 **Address suggestions** are **off by default**. A parent can turn them on in the card's **Settings, Calendar options**. When on, the location text you type (and nothing else) is sent to [Photon](https://photon.komoot.io) (OpenStreetMap data) to suggest addresses. When off, locations are plain text and nothing is sent.
 
 ### Editing Events
 
-- Tap any event to open its detail popup, then click **Edit**
+- Tap any event to open its details, then tap **Edit**. **Cancel** goes back to the details
 - For shared Google Calendar events, edits are applied in-place via PATCH, with no need to delete and recreate
 - All fields are editable: title, time, location, description, and calendar
 - Guests can be added or removed when editing shared events
 
 ### Deleting Events
 
-- From the event detail popup, click **Delete**
-- If you're the organizer, the event is deleted for all attendees
-- If you're an attendee, you're removed from the event without affecting others
+- From an event's details, tap **Delete**. PlanaVista asks by name first ("Delete Dentist?")
+- An event on several people's calendars offers **Delete for everyone**, or **Remove someone** to take one person off it
+- An event on a calendar PlanaVista can't change says so, and can be changed in that calendar's own app
 
 Events sync two-way with your calendar provider (Google Calendar, Local Calendar, etc.).
 
