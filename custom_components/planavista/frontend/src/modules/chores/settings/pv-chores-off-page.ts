@@ -3,8 +3,10 @@ import { property } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles } from '../../../styles/shared';
 import type { Layout } from '../../../core/layout';
+import type { ModuleService } from '../../../core/module-registry';
 import { RUN_SETUP, RunSetupDetail } from '../../../core/settings-registry';
-import { CHORES_SETUP_FLOW } from '../definition';
+import type { ChoresService } from '../chores-service';
+import { choresSetupFlow } from '../definition';
 import { choresSettingsStyles } from './settings-styles';
 
 const FEATURES: Array<[string, string, string]> = [
@@ -20,6 +22,7 @@ const FEATURES: Array<[string, string, string]> = [
  */
 export class PvChoresOffPage extends LitElement {
   @property({ type: String }) layout: Layout = 'landscape';
+  @property({ attribute: false }) services: Record<string, ModuleService> = {};
 
   static styles = [
     baseStyles,
@@ -94,7 +97,7 @@ export class PvChoresOffPage extends LitElement {
   }
 
   private _start = (): void => {
-    const detail: RunSetupDetail = { steps: CHORES_SETUP_FLOW };
+    const detail: RunSetupDetail = choresSetupFlow(this.services?.chores as ChoresService | undefined);
     this.dispatchEvent(new CustomEvent(RUN_SETUP, { detail, bubbles: true, composed: true }));
   };
 }

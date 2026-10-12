@@ -1,8 +1,8 @@
 import { ModuleDefinition, ModuleRegistry, moduleRegistry } from '../../core/module-registry';
 import { PageRegistry } from '../../core/page-registry';
 import {
-  DonePart, PersonSection, SettingsContext, SettingsPage, SetupContext, SetupStep, doneParts, personSections,
-  settingsRegistry, setupRegistry,
+  DonePart, PersonSection, RunSetupDetail, SettingsContext, SettingsPage, SetupContext, SetupStep, doneParts,
+  personSections, settingsRegistry, setupRegistry,
 } from '../../core/settings-registry';
 import { ChoresService, choresEnabled } from './chores-service';
 import type { Board, ChoresFeed } from './chores-types';
@@ -197,8 +197,23 @@ export const choresSetupSteps: SetupStep[] = [
   },
 ];
 
-/** The short setup that Settings' Chores row runs for a calendar-only home (spec 14.7). */
-export const CHORES_SETUP_FLOW = ['chores', 'chores-common', 'chores-plan', 'shared-screen'];
+/**
+ * The short setup that Settings' Chores row runs for a calendar-only home
+ * (spec 14.1: people and PINs; spec 14.7): who lives here (people migrated
+ * from calendars are all grown-ups until someone says otherwise), the chores
+ * question, common chores or the plan, and the shared screen.
+ */
+export const CHORES_SETUP_FLOW = ['people', 'chores', 'chores-common', 'chores-plan', 'shared-screen'];
+
+/** The Chores row's short setup; backing out of it turns chores off again, as Not now does. */
+export function choresSetupFlow(service: Pick<ChoresService, 'api'> | undefined): RunSetupDetail {
+  return {
+    steps: CHORES_SETUP_FLOW,
+    cancel: async () => {
+      await service?.api.enable(false);
+    },
+  };
+}
 
 /** What chores add to setup's last step: the board, two tips, and Open the board. */
 export const choresDoneParts: DonePart[] = [

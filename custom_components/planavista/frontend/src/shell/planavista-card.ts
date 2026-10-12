@@ -71,6 +71,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _settingsTarget: SettingsTarget | null = null;
   /** Setup's steps that Settings asked to run (the Chores row's short setup, spec 14.7); null when none run. */
   @state() private _flow: string[] | null = null;
+  /** How to undo the short setup when a parent backs out of it. */
+  private _flowCancel: RunSetupDetail['cancel'];
   @state() private _sheet: CardSheet | null = null;
   private _sheetOpener: HTMLElement | null = null;
   /** Drafts of person edits; they outlive Settings until the page reloads (spec 9.4). */
@@ -597,6 +599,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   private _onRunSetup(event: CustomEvent<RunSetupDetail>) {
     event.stopPropagation();
     this._flow = [...event.detail.steps];
+    this._flowCancel = event.detail.cancel;
     this._settingsOpen = false;
     this._settingsTarget = null;
   }
@@ -605,12 +608,20 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   private _onFlowComplete(event: CustomEvent<{ module?: string }>) {
     event.stopPropagation();
     this._flow = null;
+    this._flowCancel = undefined;
     if (event.detail?.module) this._moduleId = event.detail.module;
   }
 
   /** Back from the short setup's first step: Settings again, where it started. */
-  private _onFlowCancel() {
+  private async _onFlowCancel() {
+    const cancel = this._flowCancel;
     this._flow = null;
+    this._flowCancel = undefined;
+    try {
+      await cancel?.();
+    } catch {
+      // Chores stay as the steps left them; Settings shows which.
+    }
     this._openSettings(new CustomEvent('pv-open-settings', { detail: { page: 'chores-off' } }));
   }
 

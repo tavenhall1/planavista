@@ -6,7 +6,7 @@ import {
 } from '../src/core/settings-registry';
 import { onlySteps } from '../src/core/setup-flow';
 import { registerShellSettings, shellSettingsPages } from '../src/shell/definition';
-import { CHORES_SETUP_FLOW, choresSettingsPages, registerChoresSettings } from '../src/modules/chores/definition';
+import { CHORES_SETUP_FLOW, choresSettingsPages, choresSetupFlow, registerChoresSettings } from '../src/modules/chores/definition';
 import { registerCalendarSettings } from '../src/modules/calendar/definition';
 import { IMPORT_EXPORT, choreEditor, editChore } from '../src/modules/chores/settings/targets';
 import type { Board, ChoresFeed } from '../src/modules/chores/chores-types';
@@ -139,11 +139,19 @@ describe('the Chores row for a calendar-only home (spec 14.7)', () => {
     return onlySteps(setup.pages({ household: view, data: {} as never }), CHORES_SETUP_FLOW);
   }
 
-  it('runs a short setup: the chores question, then common chores or the plan, then the shared screen', () => {
-    expect(flow(household(false)).map(s => s.id)).toEqual(['chores']);
-    expect(flow(household(true, 'common')).map(s => s.id)).toEqual(['chores', 'chores-common', 'shared-screen']);
-    expect(flow(household(true, 'plan')).map(s => s.id)).toEqual(['chores', 'chores-plan', 'shared-screen']);
-    expect(flow(household(true, 'empty')).map(s => s.id)).toEqual(['chores', 'shared-screen']);
+  it('runs a short setup for people and PINs (spec 14.1): who lives here, the chores question, common chores or the plan, the shared screen', () => {
+    expect(flow(household(false)).map(s => s.id)).toEqual(['people', 'chores']);
+    expect(flow(household(true, 'common')).map(s => s.id)).toEqual(['people', 'chores', 'chores-common', 'shared-screen']);
+    expect(flow(household(true, 'plan')).map(s => s.id)).toEqual(['people', 'chores', 'chores-plan', 'shared-screen']);
+    expect(flow(household(true, 'empty')).map(s => s.id)).toEqual(['people', 'chores', 'shared-screen']);
+  });
+
+  it('turns chores off again when a parent backs out of it', async () => {
+    const calls: boolean[] = [];
+    const run = choresSetupFlow({ api: { enable: async (on: boolean) => { calls.push(on); return { state: 'off' }; } } } as never);
+    expect(run.steps).toBe(CHORES_SETUP_FLOW);
+    await run.cancel!();
+    expect(calls).toEqual([false]);
   });
 
   it('ends on the shared screen with Open the board', () => {

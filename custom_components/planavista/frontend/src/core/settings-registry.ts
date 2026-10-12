@@ -120,6 +120,8 @@ export const RUN_SETUP = 'pv-run-setup';
 
 export interface RunSetupDetail {
   steps: string[];
+  /** Backing out of the short setup: undo what it turned on (the Chores row turns chores off again). */
+  cancel?: () => Promise<unknown> | void;
 }
 
 /** A step asks its host to draw again (its button's label or readiness changed). */
