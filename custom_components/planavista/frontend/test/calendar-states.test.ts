@@ -56,7 +56,7 @@ describe('unreachableText', () => {
 describe('bannersOf', () => {
   it('says when Home Assistant is out of reach', () => {
     expect(bannersOf({ connected: false, calendars: [ALEX], hidden: NONE })).toEqual([
-      { kind: 'offline', text: "Can't reach Home Assistant. These are the last events it sent." },
+      { kind: 'offline', text: "Can't reach Home Assistant. These are the last events it sent, and they update when it's back." },
     ]);
   });
 

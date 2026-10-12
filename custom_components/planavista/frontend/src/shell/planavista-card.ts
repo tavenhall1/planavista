@@ -8,7 +8,7 @@ import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../
 import { statusStyles } from '../styles/status';
 import { getPlanaVistaData } from '../utils/ha-utils';
 import { todayHighLow } from '../utils/weather-subscription';
-import { memoizeOne, statesChanged } from '../utils/render-cache';
+import { homeChanged, memoizeOne, statesChanged } from '../utils/render-cache';
 import { resolveDisplay } from '../core/display';
 import {
   GlanceChip,
@@ -289,6 +289,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       const darkMode = (hass: HomeAssistant | undefined) =>
         !!(hass as unknown as { themes?: { darkMode?: boolean } } | undefined)?.themes?.darkMode;
       if (appearanceDependencies(this._appearance.settings).haDarkMode && darkMode(prev) !== darkMode(this.hass)) return true;
+      // Losing Home Assistant, or its start finishing, changes what the modules show.
+      if (homeChanged(prev, this.hass)) return true;
       return statesChanged(prev, this.hass, this._watchedEntityIds());
     }
     return true;

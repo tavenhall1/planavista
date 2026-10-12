@@ -62,7 +62,7 @@ export interface BannerInput {
 export function bannersOf({ connected, calendars, hidden }: BannerInput): Banner[] {
   const banners: Banner[] = [];
   if (!connected) {
-    banners.push({ kind: 'offline', text: "Can't reach Home Assistant. These are the last events it sent." });
+    banners.push({ kind: 'offline', text: "Can't reach Home Assistant. These are the last events it sent, and they update when it's back." });
   }
   const unreachable = calendars.filter(c => !hidden.has(c.entity_id) && (c.state === 'unavailable' || c.fetch_failed === true));
   if (unreachable.length) banners.push({ kind: 'unreachable', text: unreachableText(unreachable.map(calendarLabel)) });

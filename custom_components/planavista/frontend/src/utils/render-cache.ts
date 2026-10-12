@@ -31,3 +31,14 @@ export function statesChanged(prev: StatesHolder, next: StatesHolder, entityIds:
   if (!prev || !next) return prev !== next;
   return entityIds.some(id => prev.states[id] !== next.states[id]);
 }
+
+type HomeHolder = { connected?: boolean; config?: { state?: string } } | null | undefined;
+
+/**
+ * True when Home Assistant went out of reach or came back, or finished
+ * starting. The card shows both (spec 11.6) though no entity changed:
+ * Home Assistant's frontend reports them as a new hass with the same states.
+ */
+export function homeChanged(prev: HomeHolder, next: HomeHolder): boolean {
+  return prev?.connected !== next?.connected || prev?.config?.state !== next?.config?.state;
+}

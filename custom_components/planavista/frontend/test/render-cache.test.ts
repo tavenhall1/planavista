@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { memoizeOne, statesChanged } from '../src/utils/render-cache';
+import { homeChanged, memoizeOne, statesChanged } from '../src/utils/render-cache';
 
 describe('memoizeOne', () => {
   it('reuses the last result while every argument is identical', () => {
@@ -44,5 +44,22 @@ describe('statesChanged', () => {
 
   it('treats the first hass as a change', () => {
     expect(statesChanged(undefined, { states: {} }, ['sensor.planavista_config'])).toBe(true);
+  });
+});
+
+describe('homeChanged', () => {
+  const states = {};
+
+  it('notices Home Assistant going out of reach and coming back, with the same states', () => {
+    expect(homeChanged({ connected: true, states }, { connected: false, states })).toBe(true);
+    expect(homeChanged({ connected: false, states }, { connected: true, states })).toBe(true);
+  });
+
+  it('notices Home Assistant finishing its start', () => {
+    expect(homeChanged({ connected: true, config: { state: 'STARTING' } }, { connected: true, config: { state: 'RUNNING' } })).toBe(true);
+  });
+
+  it('stays quiet when neither changed', () => {
+    expect(homeChanged({ connected: true, config: { state: 'RUNNING' } }, { connected: true, config: { state: 'RUNNING' } })).toBe(false);
   });
 });
