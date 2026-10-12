@@ -525,6 +525,11 @@ async def ws_config_save(
 
 # PIN fields accept any value; the handler checks the format with a fixed
 # message, so Home Assistant's error logging can never quote a PIN.
+def _whole_seconds(seconds: float) -> int:
+    """Seconds for the card, rounded up, after the clock's float noise is gone (60.000000000007 is 60)."""
+    return max(0, math.ceil(round(seconds, 3)))
+
+
 INVALID_PIN = "PINs are 4 to 6 digits."
 EASY_PIN = "That PIN is easy to guess: the same digit, a run, or straight down the keypad. Try another."
 
@@ -613,9 +618,9 @@ async def ws_pin_unlock(
             "session": session.token,
             "member_id": member_id,
             "parent": session.parent,
-            "expires_in": math.ceil(household.sessions.expires_in(session, now)),
-            "idle_seconds": math.ceil(idle),
-            "cap_in": math.ceil(cap),
+            "expires_in": _whole_seconds(household.sessions.expires_in(session, now)),
+            "idle_seconds": _whole_seconds(idle),
+            "cap_in": _whole_seconds(cap),
         },
     )
 
@@ -739,7 +744,7 @@ def ws_pin_touch(
     if session is None:
         send_refusal(connection, msg, "session_ended", "The PIN session ended.")
         return
-    connection.send_result(msg["id"], {"expires_in": math.ceil(household.sessions.expires_in(session, now))})
+    connection.send_result(msg["id"], {"expires_in": _whole_seconds(household.sessions.expires_in(session, now))})
 
 
 HOUSEHOLD_COMMANDS = (

@@ -335,3 +335,15 @@ async def test_parent_mode_ends_at_its_cap(
     clock[0] += 61
     reply = await ws_command(kitchen, {"type": "planavista/pin/touch", "session": token})
     assert reply["error"]["code"] == "session_ended"
+
+
+async def test_session_seconds_are_whole_even_when_the_clock_is_not(
+    hass: HomeAssistant, household: Any, kitchen: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A monotonic clock like 1000.3000000000001 must not turn 60 seconds into 61."""
+    monkeypatch.setattr(household_ws, "_monotonic", lambda: 1000.3000000000001)
+    household.data["security"]["session_idle_seconds"] = 60
+    result = await _unlock(kitchen, "blair", PIN)
+    assert result["expires_in"] == 60
+    touch = await ws_command(kitchen, {"type": "planavista/pin/touch", "session": result["session"]})
+    assert touch["result"]["expires_in"] == 60
