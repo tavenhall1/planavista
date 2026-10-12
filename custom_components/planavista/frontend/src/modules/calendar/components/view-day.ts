@@ -88,8 +88,7 @@ export class PVViewDay extends LitElement {
       .all-day-section {
         display: flex;
         border-bottom: 1px solid var(--pv-border);
-        padding: 0.5rem 0;
-        min-height: 40px;
+        min-height: 48px;
         flex-shrink: 0;
       }
 
@@ -109,7 +108,7 @@ export class PVViewDay extends LitElement {
       .all-day-events {
         flex: 1;
         display: flex;
-        gap: 0.375rem;
+        gap: 0 0.375rem;
         flex-wrap: wrap;
         padding: 0 0.5rem;
       }
@@ -129,32 +128,41 @@ export class PVViewDay extends LitElement {
         font-weight: 700;
       }
 
-      .all-day-chip:focus-visible,
+      .all-day-chip:focus-visible .all-day-pill,
       .positioned-event:focus-visible {
         outline: 2px solid var(--pv-accent-ink, #5B5BD6);
         outline-offset: 1px;
       }
 
+      /* A 48 px target with the pill drawn inside, like the header's chips. */
       .all-day-chip {
         display: inline-flex;
         align-items: center;
+        min-height: 48px;
+        max-width: 200px;
+        cursor: pointer;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .all-day-pill {
+        display: block;
+        min-width: 0;
         padding: 6px 14px;
         border-radius: 9999px;
         font-size: 0.8125rem;
         font-weight: 600;
         color: white;
-        cursor: pointer;
         transition: all 200ms ease;
-        max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
       }
 
-      .all-day-chip.past { opacity: 0.45; }
+      .all-day-chip.past .all-day-pill { opacity: 0.45; }
 
-      .all-day-chip:hover {
+      .all-day-chip:hover .all-day-pill {
         transform: scale(1.03);
         box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
         filter: brightness(1.05);
@@ -565,7 +573,7 @@ export class PVViewDay extends LitElement {
         .time-label { font-size: 0.8125rem; }
         .all-day-gutter { width: 72px; font-size: 0.8125rem; }
         .header-gutter { width: 72px; }
-        .all-day-chip { font-size: 0.9375rem; min-height: 30px; }
+        .all-day-pill { font-size: 0.9375rem; }
         .positioned-event { min-height: 30px; }
         .positioned-event .event-title { font-size: 1.0625rem; }
         .positioned-event .event-time { font-size: 0.9375rem; }
@@ -579,7 +587,7 @@ export class PVViewDay extends LitElement {
         .time-label { font-size: 0.9375rem; }
         .all-day-gutter { width: 84px; font-size: 0.9375rem; }
         .header-gutter { width: 84px; }
-        .all-day-chip { font-size: 1.0625rem; min-height: 34px; padding: 6px 14px; }
+        .all-day-pill { font-size: 1.0625rem; }
         .positioned-event { min-height: 34px; padding: 8px 12px; }
         .positioned-event .event-title { font-size: 1.1875rem; }
         .positioned-event .event-time { font-size: 1.0625rem; }
@@ -706,12 +714,11 @@ export class PVViewDay extends LitElement {
               ${allDayEvents.map(e => html`
                 <div
                   class="all-day-chip${isEventPast(e) ? ' past' : ''}"
-                  style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
                   role="button"
                   tabindex="0"
                   @click=${() => this._onEventClick(e)}
                   @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, e)}
-                >${e.summary}</div>
+                ><span class="all-day-pill" style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}">${e.summary}</span></div>
               `)}
             </div>
           </div>

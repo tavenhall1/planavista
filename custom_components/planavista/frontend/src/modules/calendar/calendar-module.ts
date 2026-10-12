@@ -523,7 +523,7 @@ export class PvCalendarModule extends LitElement {
         .pvc-toolbar { padding: 14px 20px; gap: 10px; }
         .pvc-filter-btn { padding: 10px 20px; font-size: 1rem; min-height: 48px; }
         .pvc-new-btn { padding: 11px 22px; font-size: 1.0625rem; min-height: 48px; }
-        .pvc-today-btn { padding: 8px 18px; font-size: 1rem; min-height: 44px; }
+        .pvc-today-btn { padding: 8px 18px; font-size: 1rem; min-height: 48px; }
         .pvc-nav-btn { width: 48px; height: 48px; --mdc-icon-size: 24px; }
       }
 
