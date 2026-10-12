@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { personChipStyles, segmentedStyles } from '../../styles/controls';
+import { chipStyles, personChipStyles, segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import '../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -51,6 +51,7 @@ export class PvChoresQuickAdd extends LitElement {
   private _closing = false;
 
   static styles = [
+    chipStyles,
     personChipStyles,
     formStyles,
     segmentedStyles,
@@ -123,30 +124,8 @@ export class PvChoresQuickAdd extends LitElement {
 
 
 
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
 
-      .chip {
-        min-height: 48px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--pv-border, #E7E7E3);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .chip[aria-pressed='true'] {
-        border-color: var(--pv-accent, #5B5BD6);
-        background: var(--pv-accent-tint, #EEEEFC);
-        color: var(--pv-accent-tint-ink, #3B3BB0);
-      }
 
       .switch-row {
         display: flex;

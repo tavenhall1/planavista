@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { personChipStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -75,6 +76,7 @@ export class PvRewardEditor extends LitElement {
   }
 
   static styles = [
+    personChipStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -226,11 +228,11 @@ export class PvRewardEditor extends LitElement {
       </div>
       <h2 class="section-label">Who can get it</h2>
       <div class="group">
-        <div class="people chips" role="group" aria-label="Who can get it">
-          <button class="chip chip--plain" type="button" aria-pressed=${d.who.length === 0 ? 'true' : 'false'}
+        <div class="pv-person-chips" role="group" aria-label="Who can get it">
+          <button class="chip" type="button" aria-pressed=${d.who.length === 0 ? 'true' : 'false'}
             @click=${() => this._change({ who: [] })}>Everyone</button>
           ${earners.map(member => html`
-            <button class="chip" type="button" aria-pressed=${d.who.includes(member.id) ? 'true' : 'false'}
+            <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(member.id) ? 'true' : 'false'} style="--member:${member.color}"
               @click=${() => this._change({ who: d.who.includes(member.id) ? d.who.filter(id => id !== member.id) : [...d.who, member.id] })}>
               <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>${member.name}
             </button>

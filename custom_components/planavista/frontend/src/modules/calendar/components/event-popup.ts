@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
+import { tagStyles } from '../../../styles/controls';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent } from '../../../types';
 import type { Layout } from '../../../core/layout';
@@ -65,6 +66,7 @@ export class PVEventPopup extends LitElement {
   private _lastOrganizerUid = '';
 
   static styles = [
+    tagStyles,
     buttonStyles,
     sheetStyles,
     statusStyles,
@@ -97,12 +99,6 @@ export class PVEventPopup extends LitElement {
         border-radius: 9999px;
         font-size: 0.8125rem;
         font-weight: 700;
-      }
-
-      .person .tag {
-        font-size: 0.75rem;
-        font-weight: 600;
-        opacity: 0.85;
       }
 
       .status {
@@ -207,10 +203,8 @@ export class PVEventPopup extends LitElement {
         <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>
         <div class="people">
           ${people.map(p => html`
-            <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
-              ${p.calendar_name}
-              ${people.length > 1 && p.entity_id === this._organizerEntityId ? html`<span class="tag">Organizer</span>` : nothing}
-            </span>
+            <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">${p.calendar_name}</span>
+            ${people.length > 1 && p.entity_id === this._organizerEntityId ? html`<span class="pv-tag muted">Organizer</span>` : nothing}
           `)}
         </div>
         ${status ? html`<div class="status"><span class="badge ${status.tone}">${status.words}</span></div>` : nothing}

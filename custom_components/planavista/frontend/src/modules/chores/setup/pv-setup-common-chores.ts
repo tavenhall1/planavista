@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { chipStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -82,6 +83,7 @@ export class PvSetupCommonChores extends LitElement {
   }
 
   static styles = [
+    chipStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -168,28 +170,8 @@ export class PvSetupCommonChores extends LitElement {
         background: color-mix(in srgb, var(--pv-text, #1A1B1E) 4%, transparent);
       }
 
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
 
-      .chip {
-        min-height: 48px;
-        padding: 0 12px;
-        border-radius: 999px;
-        border: 1px solid var(--pv-border-subtle, #E5E7EB);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-      }
 
-      .chip[aria-pressed='true'] {
-        border-color: var(--pv-accent, #6366F1);
-        background: color-mix(in srgb, var(--pv-accent, #6366F1) 12%, var(--pv-card-bg, #FFFFFF));
-        font-weight: 600;
-      }
 
       .hint {
         margin: 10px 0 0;

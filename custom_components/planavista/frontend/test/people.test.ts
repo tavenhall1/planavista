@@ -38,7 +38,7 @@ describe('two people patterns, by job (milestone 8, spec 3.9)', () => {
 
   it('person chips choose who something is for: New event, quick add, a chore, a reward', () => {
     for (const path of ['modules/calendar/components/event-create-dialog.ts', 'modules/chores/pv-chores-quick-add.ts',
-      'modules/chores/settings/pv-chore-editor.ts', 'modules/chores/pv-chores-reward-sheet.ts']) {
+      'modules/chores/settings/pv-chore-editor.ts', 'modules/chores/pv-chores-reward-sheet.ts', 'modules/chores/settings/pv-reward-editor.ts']) {
       expect(read(path), path).toMatch(/class="pv-person-chip/);
       expect(read(path), path).not.toMatch(/class="face"|class="cal-option/);
     }

@@ -1,5 +1,5 @@
 import { css } from 'lit';
-import { tagStyles } from '../../../styles/controls';
+import { chipStyles, tagStyles } from '../../../styles/controls';
 
 /**
  * The chores Settings pages' look (the approved settings-editors mockup):
@@ -7,6 +7,7 @@ import { tagStyles } from '../../../styles/controls';
  * steppers, and segmented controls. Built on the card's theme tokens.
  */
 export const choresSettingsStyles = [
+  chipStyles,
   tagStyles,
   css`
   :host {
@@ -136,35 +137,9 @@ export const choresSettingsStyles = [
     color: var(--pv-text-secondary, #6B7280);
   }
 
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
 
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 48px;
-    padding: 0 14px 0 6px;
-    border-radius: 999px;
-    border: 1px solid var(--pv-border-subtle, #E5E7EB);
-    background: var(--pv-card-bg, #FFFFFF);
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
 
-  .chip--plain {
-    padding: 0 14px;
-  }
 
-  .chip[aria-pressed='true'] {
-    border-color: var(--pv-accent, #6366F1);
-    background: color-mix(in srgb, var(--pv-accent, #6366F1) 12%, var(--pv-card-bg, #FFFFFF));
-    font-weight: 600;
-  }
 
 
   .row > .pv-seg {

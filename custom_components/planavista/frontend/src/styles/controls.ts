@@ -305,3 +305,52 @@ export const personChipStyles = css`
     cursor: default;
   }
 `;
+
+/**
+ * Chips (review): pick one or several of a row that may wrap (quick add's
+ * When and minutes, the editor's estimate, setup's rhythms, the options
+ * sheet's days, the inbox's reasons). One look everywhere: 48 px pills,
+ * the chosen one on the accent tint; a chip with a face starts closer to it.
+ */
+export const chipStyles = css`
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 48px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    border: 1px solid var(--pv-border, #E7E7E3);
+    background: var(--pv-card-bg, #FFFFFF);
+    color: var(--pv-text, #1A1B1E);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 650;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chip:has(pv-member-avatar) {
+    padding-left: 6px;
+  }
+
+  .chip:hover,
+  .chip:focus-visible {
+    border-color: var(--pv-accent, #5B5BD6);
+    outline: none;
+  }
+
+  .chip[aria-pressed='true'] {
+    border-color: var(--pv-accent, #5B5BD6);
+    background: var(--pv-accent-tint, #EEEEFC);
+    color: var(--pv-accent-tint-ink, #3B3BB0);
+  }
+`;

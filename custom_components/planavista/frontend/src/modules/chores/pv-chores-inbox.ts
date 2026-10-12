@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { chipStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -45,6 +46,7 @@ export class PvChoresInbox extends LitElement {
   private _closing = false;
 
   static styles = [
+    chipStyles,
     buttonStyles,
     sheetStyles,
     statusStyles,
@@ -188,17 +190,6 @@ export class PvChoresInbox extends LitElement {
         font-size: 0.8125rem;
       }
 
-      .chip {
-        min-height: 48px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--pv-border, #E7E7E3);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
       input {
         min-height: 48px;

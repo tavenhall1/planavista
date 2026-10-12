@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { tagStyles } from '../../styles/controls';
+import { chipStyles, tagStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import '../../core/pv-date-field';
 import { defineElement } from '../../utils/define';
@@ -50,6 +50,7 @@ export class PvChoreOptions extends LitElement {
   private _closing = false;
 
   static styles = [
+    chipStyles,
     tagStyles,
     buttonStyles,
     sheetStyles,
@@ -173,23 +174,7 @@ export class PvChoreOptions extends LitElement {
         padding: 0 2px 14px 42px;
       }
 
-      .chip {
-        min-height: 48px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--pv-border, #E7E7E3);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .chip:hover,
-      .chip:focus-visible {
-        border-color: var(--pv-accent, #5B5BD6);
-        outline: none;
-      }
 
       input[type='date'],
       input[type='text'] {

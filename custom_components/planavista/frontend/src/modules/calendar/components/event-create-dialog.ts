@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
-import { personChipStyles } from '../../../styles/controls';
+import { personChipStyles, tagStyles } from '../../../styles/controls';
 import { property, state, query } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -131,6 +131,7 @@ export class PVEventCreateDialog extends LitElement {
   static styles = [
     pickerStyles,
     personChipStyles,
+    tagStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -259,19 +260,6 @@ export class PVEventCreateDialog extends LitElement {
       .who-wrap {
         position: relative;
         display: inline-flex;
-      }
-
-      .organizer-badge {
-        position: absolute;
-        top: -10px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 0.6875rem;
-        font-weight: 700;
-        color: var(--pv-accent-ink, var(--pv-accent));
-        line-height: 1;
-        white-space: nowrap;
-        pointer-events: none;
       }
 
       .pv-person-chip.locked {
@@ -674,9 +662,6 @@ export class PVEventCreateDialog extends LitElement {
                   const isLockedOrganizer = isEdit && isOrganizer;
                   return html`
                     <div class="who-wrap">
-                      ${isOrganizer && selected
-                        ? html`<span class="organizer-badge">Organizer</span>`
-                        : nothing}
                       <button
                         type="button"
                         class="pv-person-chip ${isLockedOrganizer ? 'locked' : ''}"
@@ -686,6 +671,7 @@ export class PVEventCreateDialog extends LitElement {
                       >
                         <span class="dot" aria-hidden="true"></span>
                         ${cal.display_name}
+                        ${isOrganizer && selected ? html`<span class="pv-tag muted">Organizer</span>` : nothing}
                         ${isLockedOrganizer
                           ? html`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`
                           : nothing}
