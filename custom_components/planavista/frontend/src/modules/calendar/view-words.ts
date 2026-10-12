@@ -22,6 +22,20 @@ export function newEventLabel(day: Date, now: Date): string {
 }
 
 /**
+ * Agenda's empty state, named for the days it covers (spec 11.6): the next
+ * days when the list starts today, or the dates themselves once the arrows
+ * have moved it, in the past tense for days that are over.
+ */
+export function agendaEmpty(first: Date, days: number, today: Date): { heading: string; body: string } {
+  const ahead = calendarDaysBetween(today, first);
+  if (ahead === 0) return { heading: 'Nothing coming up', body: `Nothing is on the calendar for the next ${days} days.` };
+  const last = new Date(first.getFullYear(), first.getMonth(), first.getDate() + days - 1);
+  const range = `from ${longDate(first, today)} to ${longDate(last, today)}`;
+  if (calendarDaysBetween(today, last) < 0) return { heading: 'Nothing on the calendar', body: `Nothing was on the calendar ${range}.` };
+  return { heading: ahead > 0 ? 'Nothing coming up' : 'Nothing on the calendar', body: `Nothing is on the calendar ${range}.` };
+}
+
+/**
  * The quiet word beside an Agenda day's name ("Tue 13"): Today, Tomorrow,
  * or the month where the list starts or a new one begins; otherwise
  * nothing, since the day's name already says it.

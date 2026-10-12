@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -214,6 +214,15 @@ export class PVViewWeek extends LitElement {
       }
     `,
   ];
+
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    // The arrows and Today move the week: it opens at its top, as Agenda does.
+    const before = changed.get('currentDate') as Date | undefined;
+    if (before && getDateKey(getStartOfWeek(before, this.firstDay)) !== getDateKey(getStartOfWeek(this.currentDate, this.firstDay))) {
+      this.renderRoot.querySelector('.week-container')?.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }
 
   private _getWeekDays(): Date[] {
     const start = getStartOfWeek(this.currentDate, this.firstDay);

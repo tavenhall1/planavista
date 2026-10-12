@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -17,7 +17,7 @@ import {
 import { weatherIcon } from '../../../utils/weather-icons';
 import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 import { dayOfStatus, eventStatus } from '../event-words';
-import { agendaNote, newEventLabel } from '../view-words';
+import { agendaEmpty, agendaNote, newEventLabel } from '../view-words';
 import { ref } from 'lit/directives/ref.js';
 import { ScrollReporter } from '../../../core/content-scroll';
 
@@ -234,6 +234,16 @@ export class PVViewAgenda extends LitElement {
     `,
   ];
 
+  protected updated(changed: PropertyValues): void {
+    super.updated(changed);
+    // Previous, Next, and Today move where the list starts: it opens at that day, not partway down.
+    // Instant, since the view's slide is the motion (and the list scrolls smoothly otherwise).
+    const before = changed.get('currentDate') as Date | undefined;
+    if (before && getDateKey(before) !== getDateKey(this.currentDate)) {
+      this.renderRoot.querySelector('.agenda-container')?.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }
+
   render() {
     // The list starts on the day shown, so Previous, Next, and Today move it.
     const start = new Date(this.currentDate);
@@ -256,12 +266,14 @@ export class PVViewAgenda extends LitElement {
 
     // Nothing in the whole range: one designed state, not a stack of empty days (spec 11.6).
     if (days.every(day => !(grouped.get(getDateKey(day))?.length))) {
+      const now = new Date(this.tick ? this.tick * 60000 : Date.now());
+      const empty = agendaEmpty(days[0], this._daysLoaded, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
       return html`
         <div class="agenda-container" ${ref(this._scroll.attach)}>
           <div class="state">
             <div class="art" aria-hidden="true">🗓️</div>
-            <h2>Nothing coming up</h2>
-            <p>Nothing is on the calendar for the next ${this._daysLoaded} days.</p>
+            <h2>${empty.heading}</h2>
+            <p>${empty.body}</p>
             <div class="buttons">
               <button class="pv-btn pv-btn-primary" type="button" @click=${() => this._addEvent(days[0])}>New event</button>
               <button class="pv-btn pv-btn-secondary" type="button" @click=${this._loadMore}>Look further ahead</button>
