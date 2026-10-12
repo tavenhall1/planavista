@@ -201,24 +201,24 @@ export class PVViewAgenda extends LitElement {
       /* ═══════════ RESPONSIVE ═══════════ */
 
       /* SM/XS: phones */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .day-card { margin: 0 0.5rem 0.5rem; }
         .day-name { font-size: 0.9375rem; }
       }
 
       /* MD+: constrain width */
-      @media (min-width: 768px) {
+      @container pv-calendar (min-width: 768px) {
         .agenda-container { max-width: 800px; margin: 0 auto; width: 100%; }
       }
 
       /* LG: large screens */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .day-name { font-size: 1.125rem; }
         .day-events { padding: 0.5rem 0.625rem 0.625rem; gap: 0.5rem; }
       }
 
       /* XL: wall displays, ~50% larger */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .agenda-container { max-width: 960px; }
         .day-name { font-size: 1.5rem; }
         .day-relative { font-size: 1rem; }

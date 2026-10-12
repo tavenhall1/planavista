@@ -518,28 +518,28 @@ export class PVViewDay extends LitElement {
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
       /* xs: phones, hide column headers, compact events */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .column-headers { display: none; }
         .time-gutter { width: 40px; }
         .all-day-gutter { width: 40px; font-size: 0.5625rem; }
         .time-label { font-size: 0.5625rem; }
         .positioned-event { padding: 3px 6px; }
-        .event-title { font-size: 0.75rem; }
-        .event-time { display: none; }
+        .positioned-event .event-title { font-size: 0.75rem; }
+        .positioned-event .event-time { display: none; }
         .next-day-footer { padding: 10px; font-size: 0.8125rem; }
       }
 
       /* sm: large phones, hide column headers, narrower gutter */
-      @media (min-width: 480px) and (max-width: 767px) {
+      @container pv-calendar (min-width: 480px) and (max-width: 767px) {
         .column-headers { display: none; }
         .time-gutter { width: 48px; }
         .all-day-gutter { width: 48px; }
         .positioned-event { padding: 4px 8px; }
-        .event-title { font-size: 0.875rem; }
+        .positioned-event .event-title { font-size: 0.875rem; }
       }
 
       /* md: tablets, smaller avatars */
-      @media (min-width: 768px) and (max-width: 1023px) {
+      @container pv-calendar (min-width: 768px) and (max-width: 1023px) {
         .person-avatar, .person-initial { width: 48px; height: 48px; font-size: 1.125rem; }
         .person-name { font-size: 0.8125rem; }
       }
@@ -557,29 +557,29 @@ export class PVViewDay extends LitElement {
       }
 
       /* lg: large screens (1024–1439px), scale up ~20% */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .time-gutter { width: 72px; }
         .time-label { font-size: 0.8125rem; }
         .all-day-gutter { width: 72px; font-size: 0.8125rem; }
         .header-gutter { width: 72px; }
         .all-day-chip { font-size: 0.9375rem; min-height: 30px; }
         .positioned-event { min-height: 30px; }
-        .event-title { font-size: 1.0625rem; }
-        .event-time { font-size: 0.9375rem; }
+        .positioned-event .event-title { font-size: 1.0625rem; }
+        .positioned-event .event-time { font-size: 0.9375rem; }
         .person-name { font-size: 1rem; }
         .next-day-footer { font-size: 1.0625rem; }
       }
 
       /* xl: wall displays (1440px+), scale up ~40% */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .time-gutter { width: 84px; }
         .time-label { font-size: 0.9375rem; }
         .all-day-gutter { width: 84px; font-size: 0.9375rem; }
         .header-gutter { width: 84px; }
         .all-day-chip { font-size: 1.0625rem; min-height: 34px; padding: 6px 14px; }
         .positioned-event { min-height: 34px; padding: 8px 12px; }
-        .event-title { font-size: 1.1875rem; }
-        .event-time { font-size: 1.0625rem; }
+        .positioned-event .event-title { font-size: 1.1875rem; }
+        .positioned-event .event-time { font-size: 1.0625rem; }
         .person-avatar, .person-initial { width: 72px; height: 72px; font-size: 1.5rem; }
         .person-name { font-size: 1.125rem; }
         .next-day-footer { font-size: 1.1875rem; padding: 18px; }

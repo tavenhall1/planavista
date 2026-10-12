@@ -180,7 +180,7 @@ export class PVViewWeek extends LitElement {
       /* ═══════════ RESPONSIVE ═══════════ */
 
       /* SM/XS: small screens, tighter cards */
-      @media (max-width: 767px) {
+      @container pv-calendar (max-width: 767px) {
         .day-grid {
           gap: 0.375rem;
           padding: 0 0.5rem 0.5rem;
@@ -192,14 +192,14 @@ export class PVViewWeek extends LitElement {
       }
 
       /* LG: large screens */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .week-label { font-size: 1.0625rem; }
         .day-name { font-size: 1rem; }
         .day-card { min-height: 140px; }
       }
 
       /* XL: wall displays, ~50% larger */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .week-label { font-size: 1.5rem; }
         .day-name { font-size: 1.375rem; }
         .day-weather svg { width: 36px; height: 36px; }

@@ -167,7 +167,7 @@ export class PVEventChip extends LitElement {
       }
 
       /* Responsive: small screens */
-      @media (max-width: 479px) {
+      @container pv-calendar (max-width: 479px) {
         .chip { padding: 0.375rem 0.5rem; }
         .chip-title { font-size: 0.8125rem; }
         .chip-time { font-size: 0.6875rem; }
@@ -175,7 +175,7 @@ export class PVEventChip extends LitElement {
       }
 
       /* Large screens */
-      @media (min-width: 1024px) {
+      @container pv-calendar (min-width: 1024px) {
         .chip { padding: 0.625rem 0.75rem; }
         .chip-title { font-size: 0.9375rem; }
         .chip-time { font-size: 0.8125rem; }
@@ -183,7 +183,7 @@ export class PVEventChip extends LitElement {
       }
 
       /* XL screens: ~50% larger for wall displays */
-      @media (min-width: 1440px) {
+      @container pv-calendar (min-width: 1440px) {
         .chip { padding: 1rem 1.25rem; gap: 0.75rem; border-left-width: 4px; }
         .chip-title { font-size: 1.375rem; }
         .chip-time { font-size: 1.125rem; }

@@ -115,6 +115,16 @@ export class PvCalendarModule extends LitElement {
         min-height: 0;
       }
 
+      /* The card measures itself (DESIGN_SYSTEM 2.1): the toolbar and the views size
+         against this frame's width. The sheets sit outside it, so it never holds them in. */
+      .pvc-frame {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        container: pv-calendar / inline-size;
+      }
+
 /* ================================================================
          TOOLBAR: avatars left, controls right
          ================================================================ */
@@ -503,7 +513,7 @@ export class PvCalendarModule extends LitElement {
 
 /* lg: large desktops / small wall displays (1024–1439px), scale up ~20% */
 
-      @media (min-width: 1024px){
+      @container pv-calendar (min-width: 1024px){
         .pvc-toolbar { padding: 14px 20px; gap: 10px; }
         .pvc-filter-btn { padding: 10px 20px; font-size: 1rem; min-height: 48px; }
         .pvc-new-btn { padding: 11px 22px; font-size: 1.0625rem; min-height: 48px; }
@@ -513,7 +523,7 @@ export class PvCalendarModule extends LitElement {
 
 /* xl: wall-mounted touch displays (1440px+, 27"+), scale up ~40% */
 
-      @media (min-width: 1440px){
+      @container pv-calendar (min-width: 1440px){
         .pvc-toolbar { padding: 16px 24px; gap: 12px; }
         .pvc-filter-btn { padding: 12px 24px; font-size: 1.125rem; min-height: 56px; }
         .pvc-filter-badge { min-width: 24px; height: 24px; font-size: 0.8125rem; }
@@ -651,6 +661,7 @@ export class PvCalendarModule extends LitElement {
     const banners = screen === 'ready' ? bannersOf({ connected: this.hass.connected !== false, calendars, hidden }) : [];
 
     return html`
+      <div class="pvc-frame">
       ${screen === 'no-calendars' || screen === 'unavailable' ? nothing : this._renderToolbar(calendars)}
       ${banners.map(banner => html`
         <div class="banner" role="status">
@@ -670,6 +681,7 @@ export class PvCalendarModule extends LitElement {
       >
         ${screen === 'ready' ? this._renderView(store.currentView, visibleEvents, calendars, display) : this._renderScreen(screen, calendars)}
       </div>
+      </div><!-- .pvc-frame -->
 
       ${this._details.value ? keyed(this._detailsMount, html`
         <pv-event-popup
