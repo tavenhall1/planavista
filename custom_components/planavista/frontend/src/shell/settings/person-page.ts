@@ -232,12 +232,10 @@ export class PvSettingsPerson extends LitElement {
         padding-left: 18px;
       }
 
-      .remove {
-        min-height: 48px;
-        margin-top: 8px;
-        background: transparent;
-        border: 1.5px solid var(--pv-danger, #DC2626);
-        color: var(--pv-danger, #DC2626);
+      /* The one delete in place (the sheets' danger button), across the end of the page (review). */
+      .end-delete {
+        width: 100%;
+        margin-top: 24px;
       }
 
       .gone {
@@ -292,7 +290,7 @@ export class PvSettingsPerson extends LitElement {
       ${this._renderHomeAssistant()}
       ${this._renderSections('links', member)}
       ${member ? html`
-        <button class="pv-btn remove" type="button" @click=${() => { this._notice = 'remove'; }}>Remove ${member.name}</button>
+        <button class="pv-btn pv-btn-secondary danger apart end-delete" type="button" @click=${() => { this._notice = 'remove'; }}>Remove from household</button>
       ` : nothing}
       ${this._renderNotice(member)}
     `;

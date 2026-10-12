@@ -147,7 +147,7 @@ export class PvSettingsPeople extends LitElement {
     return html`
       <div class="head">
         <p class="lead">This is the order people appear in. Drag ≡ to change it.</p>
-        ${editable ? html`<button class="pv-btn pv-btn-secondary add" type="button" @click=${this._add}>+ New person</button>` : nothing}
+        ${editable ? html`<button class="pv-btn pv-btn-primary add" type="button" @click=${this._add}>+ New person</button>` : nothing}
       </div>
       ${members.length === 0 ? html`<p class="empty">No one here yet.</p>` : nothing}
       <ul>

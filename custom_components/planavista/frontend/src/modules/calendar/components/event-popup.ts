@@ -249,14 +249,14 @@ export class PVEventPopup extends LitElement {
           .layout=${this.layout}
           .heading=${question.heading}
           .body=${question.body}
-          .actions=${this._deleteActions(question.shared)}
+          .actions=${this._deleteActions(question.shared, eventName(event))}
           @pv-sheet-action=${this._onDeleteChoice}
         ></pv-notice-sheet>
       ` : nothing}
     `;
   }
 
-  private _deleteActions(shared: boolean): NoticeAction[] {
+  private _deleteActions(shared: boolean, name: string): NoticeAction[] {
     return shared
       ? [
           { id: 'everyone', label: 'Delete for everyone', kind: 'destructive' },
@@ -264,7 +264,7 @@ export class PVEventPopup extends LitElement {
           { id: 'cancel', label: 'Cancel', kind: 'secondary' },
         ]
       : [
-          { id: 'delete', label: 'Delete', kind: 'destructive' },
+          { id: 'delete', label: `Delete ${eventName({ summary: name })}`, kind: 'destructive' },
           { id: 'cancel', label: 'Cancel', kind: 'secondary' },
         ];
   }

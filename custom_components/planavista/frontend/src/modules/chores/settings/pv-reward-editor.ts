@@ -238,7 +238,7 @@ export class PvRewardEditor extends LitElement {
         </div>
       </div>
       <p class="hint">${whoText(d.who, earners)}. People earn stars when Stars is on for them on their page.</p>
-      ${this._reward ? html`<button class="destructive" type="button" @click=${() => { this._notice = 'delete'; }}>Delete ${this._reward.name}…</button>` : nothing}
+      ${this._reward ? html`<button class="pv-btn pv-btn-secondary danger apart end-delete" type="button" @click=${() => { this._notice = 'delete'; }}>Delete reward</button>` : nothing}
       ${this._renderNotice()}
     `;
   }

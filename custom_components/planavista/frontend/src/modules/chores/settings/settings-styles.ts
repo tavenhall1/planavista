@@ -220,18 +220,10 @@ export const choresSettingsStyles = [
     color: var(--pv-success-ink, #2F7D4F);
   }
 
-  .destructive {
+  /* The one delete in place (the sheets' danger button), across the end of an editor (review). */
+  .end-delete {
     width: 100%;
-    min-height: 52px;
     margin-top: 24px;
-    border-radius: 14px;
-    border: none;
-    background: var(--pv-card-bg, #FFFFFF);
-    box-shadow: inset 0 0 0 1px var(--pv-border-subtle, #E5E7EB);
-    color: var(--pv-danger, #DC2626);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
   }
 
   .empty {

@@ -108,3 +108,29 @@ describe("Customize shows what applies (milestone 8)", () => {
     expect(text).toMatch(/key: 'shadow_depth', label: 'Shadows', options: \[\['', 'Theme'\]/);
   });
 });
+
+describe('one delete in place, named confirmations (review)', () => {
+  it('Settings editors and PINs use the sheets\u2019 delete button, naming the kind of thing', () => {
+    const chore = read('modules/chores/settings/pv-chore-editor.ts');
+    const reward = read('modules/chores/settings/pv-reward-editor.ts');
+    const person = read('shell/settings/person-page.ts');
+    const pins = read('shell/settings/pin-actions.ts');
+    for (const [path, text] of [['chore', chore], ['reward', reward], ['person', person], ['pins', pins]] as const) {
+      expect(text, path).not.toMatch(/class="destructive"|class="pv-btn remove"/);
+    }
+    expect(chore).toMatch(/class="pv-btn pv-btn-secondary danger apart end-delete"[^\n]*>Delete chore</);
+    expect(reward).toMatch(/class="pv-btn pv-btn-secondary danger apart end-delete"[^\n]*>Delete reward</);
+    expect(person).toMatch(/class="pv-btn pv-btn-secondary danger apart end-delete"[^\n]*>Remove from household</);
+    expect(pins).toMatch(/class="pv-btn pv-btn-secondary danger"[^\n]*\n[^\n]*>Remove PIN</);
+  });
+
+  it("the event's delete question names the event on its button", () => {
+    expect(read('modules/calendar/components/event-popup.ts')).toMatch(/\{ id: 'delete', label: `Delete \$\{eventName\(/);
+  });
+
+  it('New ... is the page\u2019s primary everywhere, and setup adds one New person at a time', () => {
+    expect(read('shell/settings/people-page.ts')).toMatch(/class="pv-btn pv-btn-primary add"[^\n]*>\+ New person</);
+    expect(read('shell/setup/people-step.ts')).not.toMatch(/Add someone/);
+    expect(read('modules/chores/settings/pv-chore-editor.ts')).not.toMatch(/Other\u2026/);
+  });
+});

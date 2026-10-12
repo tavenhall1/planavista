@@ -175,7 +175,7 @@ export class PvSetupPeople extends LitElement {
           .value=${this._name}
           @input=${(e: Event) => { this._name = (e.target as HTMLInputElement).value; }}
           @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this._add(); }} />
-        <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${!this._name.trim()} @click=${this._add}>Add someone</button>
+        <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${!this._name.trim()} @click=${this._add}>+ New person</button>
       </div>
       ${this._message ? html`<p class="message" role="alert">${this._message}</p>` : nothing}
     `;

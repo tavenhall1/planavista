@@ -356,7 +356,7 @@ export class PvChoreEditor extends LitElement {
       ${this._renderBoard(board, members)}
       ${this._activity ? this._renderAutomations(this._activity, members) : nothing}
       ${this._activity ? html`
-        <button class="destructive" type="button" @click=${() => { this._notice = 'delete'; }}>Delete ${this._activity.name}…</button>
+        <button class="pv-btn pv-btn-secondary danger apart end-delete" type="button" @click=${() => { this._notice = 'delete'; }}>Delete chore</button>
       ` : nothing}
       ${this._renderNotice()}
     `;
@@ -522,7 +522,7 @@ export class PvChoreEditor extends LitElement {
                   @click=${() => { this._otherEstimate = false; this._change({ estimate: minutes }); }}>${durationText(minutes)}</button>
               `)}
               <button class="chip chip--plain" type="button" aria-pressed=${other ? 'true' : 'false'}
-                @click=${() => { this._otherEstimate = true; }}>Other…</button>
+                @click=${() => { this._otherEstimate = true; }}>Other</button>
             </div>
             ${other ? html`
               <label class="row" style="padding: 0">

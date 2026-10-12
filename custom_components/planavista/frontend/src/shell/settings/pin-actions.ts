@@ -96,7 +96,7 @@ export class PvPinActions extends LitElement {
             ${this.member.has_pin ? 'Change PIN' : 'Set PIN'}
           </button>
           ${this.member.has_pin ? html`
-            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy}
+            <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${this._busy}
               @click=${() => { this._message = ''; this._confirmingRemove = true; }}>Remove PIN</button>
           ` : nothing}
           ${this._paused() ? html`
