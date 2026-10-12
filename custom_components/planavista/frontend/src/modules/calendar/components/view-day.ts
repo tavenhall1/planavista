@@ -111,6 +111,12 @@ export class PVViewDay extends LitElement {
         padding: 0 0.5rem;
       }
 
+      .all-day-chip:focus-visible,
+      .positioned-event:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 1px;
+      }
+
       .all-day-chip {
         display: inline-flex;
         align-items: center;
@@ -658,7 +664,10 @@ export class PVViewDay extends LitElement {
                 <div
                   class="all-day-chip${isEventPast(e) ? ' past' : ''}"
                   style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}"
+                  role="button"
+                  tabindex="0"
                   @click=${() => this._onEventClick(e)}
+                  @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, e)}
                 >${e.summary}</div>
               `)}
             </div>
@@ -835,7 +844,10 @@ export class PVViewDay extends LitElement {
                 --event-color-light: ${event.calendar_color_light || ''};
                 --event-text: ${contrastText(event.calendar_color_light || event.calendar_color)};
               "
+              role="button"
+              tabindex="0"
               @click=${() => this._onEventClick(event)}
+              @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, event)}
             >
               <div class="event-title">${event.summary}</div>
               <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
@@ -861,6 +873,13 @@ export class PVViewDay extends LitElement {
         })}
       </div>
     `;
+  }
+
+  /** Enter or Space opens an event, as a tap does (spec 11.8). */
+  private _onEventKey(ev: KeyboardEvent, event: CalendarEvent) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    this._onEventClick(event);
   }
 
   private _onEventClick(event: CalendarEvent) {

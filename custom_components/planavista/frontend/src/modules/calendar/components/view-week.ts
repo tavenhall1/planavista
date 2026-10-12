@@ -289,7 +289,7 @@ export class PVViewWeek extends LitElement {
                 .timeFormat=${this.timeFormat}
                 .showStripes=${this.showStripes}
                 .tick=${this.tick}
-                @event-click=${(e: CustomEvent) => this._onEventClick(e.detail.event)}
+                @event-click=${(e: CustomEvent) => { e.stopPropagation(); this._onEventClick(e.detail.event); }}
               ></pv-event-chip>
             `)}
           </div>

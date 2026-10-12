@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
@@ -15,6 +16,8 @@ import { CalendarDerived, deriveCalendarData, eventForPopup } from './calendar-d
 import { withModeColors } from './mode-colors';
 import { contrastText } from '../../core/color';
 import type { ModuleService } from '../../core/module-registry';
+import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
+import { deepActiveElement } from '../../core/focus';
 
 import './components/view-day';
 import './components/view-week';
@@ -63,6 +66,12 @@ export class PvCalendarModule extends LitElement {
   private _progressOf = (memberId: string) => this.services?.chores?.memberProgress?.(memberId) ?? null;
   /** What pv-overlay-change last said, so the card hears each change once. */
   private _overlayOpen = false;
+  /** The event sheet: mounted while the store wants it and while it leaves. */
+  private _details: Presence<CalendarEvent> = GONE;
+  /** Bumped for each new details sheet, so one reopened mid-exit starts fresh. */
+  private _detailsMount = 0;
+  /** What had focus when the details sheet opened; it gets focus back when the sheet has left (spec 11.8). */
+  private _detailsOpener: HTMLElement | null = null;
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
@@ -513,7 +522,7 @@ export class PvCalendarModule extends LitElement {
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
     const store = this._pv.store;
-    const open = !!(store.selectedEvent || store.dialogOpen);
+    const open = !!(this._details.value || store.dialogOpen);
     if (open !== this._overlayOpen) {
       this._overlayOpen = open;
       this._fireOverlay(open);
@@ -536,7 +545,28 @@ export class PvCalendarModule extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     // The shell owns which view shows (the bar); the store follows it.
     if (changed.has('view') && this.view) this._pv.store.setView(this.view);
+    const details = nextPresence(this._details, this._pv.store.selectedEvent);
+    if (details.value && (!this._details.value || this._details.leaving)) {
+      this._detailsMount += 1;
+      this._detailsOpener = deepActiveElement();
+    }
+    this._details = details;
   }
+
+  /** Now, to the minute the views last moved to. */
+  private _now = memoizeOne((tick: number) => new Date(tick * 60000));
+
+  /** The details sheet left: the store lets go too, and focus goes back to the event that opened it. */
+  private _onDetailsClosed = (): void => {
+    this._details = GONE;
+    if (this._pv.store.selectedEvent) this._pv.store.selectEvent(null);
+    this.requestUpdate();
+    const opener = this._detailsOpener;
+    this._detailsOpener = null;
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  };
 
   /** Cached until the data, the card config, the calendar filter, or the mode changes. */
   private _derive = memoizeOne((
@@ -569,14 +599,19 @@ export class PvCalendarModule extends LitElement {
         ${this._renderView(store.currentView, visibleEvents, calendars, display)}
       </div>
 
-      ${store.selectedEvent ? html`
+      ${this._details.value ? keyed(this._detailsMount, html`
         <pv-event-popup
+          layout=${this.layout}
           .store=${store}
           .hass=${this.hass}
-          .event=${store.selectedEvent}
+          .event=${this._details.value}
+          .leaving=${this._details.leaving}
+          .calendars=${calendars}
+          .now=${this._now(this._tick)}
           .timeFormat=${display?.time_format || '12h'}
+          @pv-sheet-close=${this._onDetailsClosed}
         ></pv-event-popup>
-      ` : nothing}
+      `) : nothing}
 
       ${store.dialogOpen ? html`
         <pv-event-create-dialog

@@ -47,6 +47,11 @@ export class PVEventChip extends LitElement {
         transform: scale(0.98);
       }
 
+      .chip:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: 1px;
+      }
+
       .chip-body {
         flex: 1;
         min-width: 0;
@@ -211,7 +216,10 @@ export class PVEventChip extends LitElement {
       <div
         class="${chipClass}"
         style="${bgStyle}; --chip-border-color: ${borderColor}; --chip-text: ${textColor}"
+        role="button"
+        tabindex="0"
         @click=${this._onClick}
+        @keydown=${this._onKey}
       >
         <div class="chip-body">
           <div class="${titleClass}">${event.summary}</div>
@@ -246,6 +254,13 @@ export class PVEventChip extends LitElement {
         ${overflow > 0 ? html`<div class="chip-overflow">+${overflow}</div>` : nothing}
       </div>
     `;
+  }
+
+  /** Enter or Space opens the event, as a tap does (spec 11.8). */
+  private _onKey(e: KeyboardEvent) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    this._onClick();
   }
 
   private _onClick() {
