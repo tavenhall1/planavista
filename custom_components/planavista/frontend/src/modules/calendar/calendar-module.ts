@@ -28,6 +28,12 @@ import './components/event-create-dialog';
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
 
+/** What the editor sheet shows: New event, or Edit event with what it starts from. */
+interface EditorWant {
+  mode: 'create' | 'edit';
+  prefill: Partial<CalendarEvent> | null;
+}
+
 /**
  * pv-calendar-module: the calendar's toolbar, its four views, and the event
  * popup and dialog. The shell renders it inside the card and hands it the
@@ -72,6 +78,12 @@ export class PvCalendarModule extends LitElement {
   private _detailsMount = 0;
   /** What had focus when the details sheet opened; it gets focus back when the sheet has left (spec 11.8). */
   private _detailsOpener: HTMLElement | null = null;
+  /** The editor sheet (New event, Edit event), mounted the same way. */
+  private _editor: Presence<EditorWant> = GONE;
+  private _editorMount = 0;
+  private _editorOpener: HTMLElement | null = null;
+  /** The store's editor choice as one object, so the presence sees the same value while it stands. */
+  private _editorWant: EditorWant | null = null;
   private _tickTimer: ReturnType<typeof setTimeout> | null = null;
   /** Where the current one-finger touch began; null when there's no swipe in progress. */
   private _touchStart: { x: number; y: number } | null = null;
@@ -522,7 +534,7 @@ export class PvCalendarModule extends LitElement {
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
     const store = this._pv.store;
-    const open = !!(this._details.value || store.dialogOpen);
+    const open = !!(this._details.value || this._editor.value);
     if (open !== this._overlayOpen) {
       this._overlayOpen = open;
       this._fireOverlay(open);
@@ -551,7 +563,36 @@ export class PvCalendarModule extends LitElement {
       this._detailsOpener = deepActiveElement();
     }
     this._details = details;
+    const editor = nextPresence(this._editor, this._wantedEditor());
+    if (editor.value && (!this._editor.value || this._editor.leaving)) {
+      this._editorMount += 1;
+      this._editorOpener = deepActiveElement();
+    }
+    this._editor = editor;
   }
+
+  /** The store's editor choice, the same object while it stands. */
+  private _wantedEditor(): EditorWant | null {
+    const store = this._pv.store;
+    if (!store.dialogOpen) return (this._editorWant = null);
+    const want = this._editorWant;
+    if (want && want.mode === store.dialogOpen && want.prefill === store.createPrefill) return want;
+    return (this._editorWant = { mode: store.dialogOpen, prefill: store.createPrefill });
+  }
+
+  /** The editor left: the store lets go, and focus goes back to what opened it (Edit, or New event). */
+  private _onEditorClosed = (): void => {
+    this._editor = GONE;
+    if (this._pv.store.dialogOpen) this._pv.store.closeDialog();
+    this.requestUpdate();
+    const opener = this._editorOpener;
+    this._editorOpener = null;
+    // A details sheet leaving too (a saved edit) takes focus back to the event itself.
+    if (this._details.value && this._details.leaving) return;
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  };
 
   /** Now, to the minute the views last moved to. */
   private _now = memoizeOne((tick: number) => new Date(tick * 60000));
@@ -613,18 +654,21 @@ export class PvCalendarModule extends LitElement {
         ></pv-event-popup>
       `) : nothing}
 
-      ${store.dialogOpen ? html`
+      ${this._editor.value ? keyed(this._editorMount, html`
         <pv-event-create-dialog
+          layout=${this.layout}
           .store=${store}
           .hass=${this.hass}
           .calendars=${calendars}
           .open=${true}
-          .mode=${store.dialogOpen}
-          .prefill=${store.createPrefill}
+          .mode=${this._editor.value.mode}
+          .prefill=${this._editor.value.prefill}
+          .leaving=${this._editor.leaving}
           .timeFormat=${display?.time_format || '12h'}
           .locationAutocomplete=${display.location_autocomplete === true}
+          @pv-sheet-close=${this._onEditorClosed}
         ></pv-event-create-dialog>
-      ` : nothing}
+      `) : nothing}
     `;
   }
 

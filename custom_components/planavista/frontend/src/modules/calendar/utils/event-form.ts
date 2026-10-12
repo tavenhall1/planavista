@@ -120,12 +120,12 @@ export function formEndDate(f: EventFormDates): string {
 
 /** Error text for invalid dates, or null when the form can be saved. */
 export function validateFormDates(f: EventFormDates): string | null {
-  if (!isDateOnly(f.date)) return 'Please pick a date';
+  if (!isDateOnly(f.date)) return 'Pick a date.';
   if (f.allDay) return null;
-  if (!TIME_RE.test(f.startTime) || !TIME_RE.test(f.endTime)) return 'Please pick a start and end time';
+  if (!TIME_RE.test(f.startTime) || !TIME_RE.test(f.endTime)) return 'Pick when it starts and ends.';
   const start = localDateTime(f.date, f.startTime);
   const end = localDateTime(shiftDateKey(f.date, f.endDayOffset), f.endTime);
-  return end > start ? null : 'End time must be after start time';
+  return end > start ? null : 'Make it end after it starts.';
 }
 
 /**
@@ -197,7 +197,7 @@ export function buildDeleteData(
   entityId: string = event.calendar_entity_id,
 ): DeleteEventData {
   if (!event.uid) {
-    throw new Error('This event has no unique ID, so it can only be changed in its calendar app.');
+    throw new Error("This event can only be changed in its calendar's own app.");
   }
   const data: DeleteEventData = { entity_id: entityId, uid: event.uid };
   if (event.recurrence_id) data.recurrence_id = event.recurrence_id;
@@ -266,16 +266,18 @@ export async function runEditWithRestore(steps: {
   try {
     await steps.create();
   } catch (createErr) {
+    // Home Assistant's own words go to the log; people get plain ones (spec 11.7).
     const reason = errorText(createErr);
     try {
       await steps.restore();
     } catch (restoreErr) {
+      console.warn(`[PlanaVista] The edit failed (${reason}) and the original couldn't be put back (${errorText(restoreErr)})`);
       throw new EditRestoreError(
-        `Your changes couldn't be saved (${reason}), and the original event couldn't be put back ` +
-        `(${errorText(restoreErr)}). Please re-create it in your calendar app.`,
+        "Your changes couldn't be saved, and the event couldn't be put back. Add it again in its calendar's own app.",
         false,
       );
     }
-    throw new EditRestoreError(`Your changes couldn't be saved (${reason}). The original event was restored.`, true);
+    console.warn(`[PlanaVista] The edit failed (${reason}); the original is back`);
+    throw new EditRestoreError("Your changes couldn't be saved, so the event is back as it was. Try again in a moment.", true);
   }
 }

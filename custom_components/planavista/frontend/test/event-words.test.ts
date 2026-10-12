@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CalendarEvent } from '../src/types';
 import {
-  calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, longDate, namesList,
+  calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, longDate, namesList, saveFailedText,
 } from '../src/modules/calendar/event-words';
 
 const NOW = new Date(2026, 9, 12, 8, 50); // Mon Oct 12, 8:50 AM
@@ -109,5 +109,32 @@ describe('calendarCan', () => {
     expect(calendarCan(3)).toEqual({ delete: true, edit: true });
     expect(calendarCan(0)).toEqual({ delete: false, edit: false });
     expect(calendarCan(undefined)).toEqual({ delete: true, edit: true });
+  });
+});
+
+describe('formSignature', () => {
+  const fields = {
+    title: 'Dentist', calendars: ['calendar.test_alex', 'calendar.test_blair'], date: '2026-10-12', allDay: false,
+    startTime: '09:00', endTime: '10:00', spanDays: 1, endDayOffset: 0, description: '', location: '',
+  };
+
+  it('stays the same when nothing changed, whatever order people were picked in', () => {
+    expect(formSignature({ ...fields, calendars: ['calendar.test_blair', 'calendar.test_alex'], title: 'Dentist ' })).toBe(formSignature(fields));
+  });
+
+  it('changes with anything a person would lose', () => {
+    const base = formSignature(fields);
+    expect(formSignature({ ...fields, title: 'Dentist at 4' })).not.toBe(base);
+    expect(formSignature({ ...fields, calendars: ['calendar.test_alex'] })).not.toBe(base);
+    expect(formSignature({ ...fields, startTime: '09:30' })).not.toBe(base);
+    expect(formSignature({ ...fields, allDay: true })).not.toBe(base);
+    expect(formSignature({ ...fields, location: 'Main St' })).not.toBe(base);
+  });
+});
+
+describe('saveFailedText', () => {
+  it('says what happened and what to do next', () => {
+    expect(saveFailedText('Dentist', true)).toBe("Couldn't save Dentist. Check that Home Assistant is reachable, then try again.");
+    expect(saveFailedText('', false)).toBe("Couldn't add this event. Check that Home Assistant is reachable, then try again.");
   });
 });

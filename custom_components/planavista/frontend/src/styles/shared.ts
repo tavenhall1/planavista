@@ -320,7 +320,9 @@ export const formStyles = css`
     position: relative;
     width: 44px;
     height: 24px;
-    background: var(--pv-border);
+    flex-shrink: 0;
+    /* Off reads at about 3:1 on the card, like a control should (spec 11.8). */
+    background: var(--pv-text-muted, #8E949C);
     border-radius: var(--pv-radius, 12px);
     cursor: pointer;
     transition: background var(--pv-transition, 200ms ease);

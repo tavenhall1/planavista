@@ -122,3 +122,38 @@ export function calendarCan(features: unknown): { delete: boolean; edit: boolean
     edit: (features & UPDATE) !== 0 || ((features & CREATE) !== 0 && (features & DELETE) !== 0),
   };
 }
+
+export interface FormFields {
+  title: string;
+  calendars: Iterable<string>;
+  date: string;
+  allDay: boolean;
+  startTime: string;
+  endTime: string;
+  spanDays: number;
+  endDayOffset: number;
+  description: string;
+  location: string;
+}
+
+/**
+ * What the editor's fields say, to tell whether anything changed before a
+ * tap outside, Escape, or a drag throws it away. The order people were
+ * picked in doesn't matter, and nor do spaces at either end.
+ */
+export function formSignature(f: FormFields): string {
+  return JSON.stringify([
+    f.title.trim(),
+    [...f.calendars].sort(),
+    f.date,
+    f.allDay,
+    f.allDay ? f.spanDays : [f.startTime, f.endTime, f.endDayOffset],
+    f.description.trim(),
+    f.location.trim(),
+  ]);
+}
+
+/** What a failed save says: what happened and what to do next. */
+export function saveFailedText(title: string, editing: boolean): string {
+  return `Couldn't ${editing ? 'save' : 'add'} ${eventName({ summary: title })}. Check that Home Assistant is reachable, then try again.`;
+}

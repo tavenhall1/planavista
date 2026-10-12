@@ -128,7 +128,7 @@ describe('toLocalIsoString', () => {
 describe('validateFormDates', () => {
   it('rejects a same-day end at or before the start', () => {
     const f = formDatesFromEvent('2026-10-09T10:00:00-05:00', '2026-10-09T11:00:00-05:00');
-    expect(validateFormDates({ ...f, endTime: '10:00' })).toBe('End time must be after start time');
+    expect(validateFormDates({ ...f, endTime: '10:00' })).toBe('Make it end after it starts.');
     expect(validateFormDates(f)).toBeNull();
   });
 

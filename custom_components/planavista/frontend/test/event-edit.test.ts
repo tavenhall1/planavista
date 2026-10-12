@@ -56,7 +56,7 @@ describe('buildDeleteData', () => {
   });
 
   it('refuses events without a uid', () => {
-    expect(() => buildDeleteData({ ...weekendTrip, uid: undefined })).toThrow('no unique ID');
+    expect(() => buildDeleteData({ ...weekendTrip, uid: undefined })).toThrow("its calendar's own app");
   });
 });
 
@@ -128,7 +128,8 @@ describe('runEditWithRestore', () => {
     expect(calls).toEqual(['remove', 'create']);
   });
 
-  it('puts the original back when the new event cannot be created', async () => {
+  it('puts the original back when the new event cannot be created, keeping the reason for the log', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const restore = vi.fn(async () => {});
     const run = runEditWithRestore({
       remove: async () => {},
@@ -136,17 +137,22 @@ describe('runEditWithRestore', () => {
       restore,
     });
     await expect(run).rejects.toBeInstanceOf(EditRestoreError);
-    await expect(run).rejects.toThrow("Your changes couldn't be saved (End must be after start). The original event was restored.");
+    await expect(run).rejects.toThrow("Your changes couldn't be saved, so the event is back as it was. Try again in a moment.");
     expect(restore).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('End must be after start'));
+    warn.mockRestore();
   });
 
   it('says so when the original cannot be put back either', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const run = runEditWithRestore({
       remove: async () => {},
       create: async () => { throw new Error('create failed'); },
       restore: async () => { throw new Error('restore failed'); },
     });
-    await expect(run).rejects.toThrow(/couldn't be put back \(restore failed\)/);
+    await expect(run).rejects.toThrow("Your changes couldn't be saved, and the event couldn't be put back. Add it again in its calendar's own app.");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('restore failed'));
+    warn.mockRestore();
   });
 
   it('creates nothing when the delete fails', async () => {

@@ -287,7 +287,11 @@ export class PVEventPopup extends LitElement {
     this._asking = false;
     const id = e.detail.id;
     if (id === 'delete' || id === 'everyone') void this._delete(id === 'everyone');
-    else if (id === 'remove' && this.event) this.store.openEditDialog(this.event, { removeGuests: true });
+    else if (id === 'remove' && this.event) {
+      // Delete gets focus first, so it gets it back when the editor closes.
+      this.renderRoot.querySelector<HTMLElement>('.danger')?.focus();
+      this.store.openEditDialog(this.event, { removeGuests: true });
+    }
     else void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.danger')?.focus());
   };
 
