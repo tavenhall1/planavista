@@ -228,7 +228,7 @@ export class PvChoreOptions extends LitElement {
     const backdrop = this.renderRoot.querySelector<HTMLElement>('.backdrop')!;
     this._motion.open(panel, backdrop);
     this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
-    this.renderRoot.querySelector<HTMLElement>('.option > button')?.focus();
+    this.renderRoot.querySelector<HTMLElement>('#options-title')?.focus();
   }
 
   disconnectedCallback(): void {
@@ -255,14 +255,20 @@ export class PvChoreOptions extends LitElement {
         aria-busy=${this.busy ? 'true' : 'false'}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <div class="top">
-          <h2 id="options-title">${model.title}</h2>
+          <h2 id="options-title" tabindex="-1">${model.title}</h2>
           <div class="meta-line">${model.meta}</div>
           ${model.added ? html`<div class="added">${model.added}</div>` : nothing}
           ${model.note ? html`<div class="note"><span class="badge ${model.note.startsWith('Sent back') ? 'bad' : 'act'}">${model.note}</span></div>` : nothing}
         </div>
-        ${model.member.map(option => this._option(option))}
-        ${model.parent.length ? html`<div class="group">For parents</div>${model.parent.map(option => this._option(option))}` : nothing}
+        ${model.member.filter(option => !option.destructive).map(option => this._option(option))}
+        ${model.parent.some(option => !option.destructive)
+          ? html`<div class="group">For parents</div>${model.parent.filter(option => !option.destructive).map(option => this._option(option))}`
+          : nothing}
         <div class="actions">
+          ${[...model.member, ...model.parent].filter(option => option.destructive).map(option => html`
+            <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${option.disabled || this.busy}
+              @click=${() => this._tap(option, false)}>${option.label}${option.tag ? html` <span class="pv-tag muted">${option.tag}</span>` : nothing}</button>
+          `)}
           <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
         </div>
       </div>

@@ -203,7 +203,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }
     parent.push({ id: 'edit', label: 'Edit the chore', tag: parentTag, hint: 'Opens it in Settings.' });
-    parent.push({ id: 'delete', label: 'Delete the chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
+    parent.push({ id: 'delete', label: 'Delete chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
   }
 
   const minutes = item.window === 'once' && activity?.once ? activity.once.estimate_minutes : item.credit_minutes;

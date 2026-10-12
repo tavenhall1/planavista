@@ -3,6 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import type { HomeAssistant } from 'custom-card-helpers';
+import '../../core/pv-toast';
 import { defineElement } from '../../utils/define';
 import { baseStyles, buttonStyles } from '../../styles/shared';
 import type { HouseholdView, Member } from '../../core/household';
@@ -276,20 +277,6 @@ export class PvSettings extends LitElement {
         background: color-mix(in srgb, #F59E0B 14%, transparent);
       }
 
-      .toast {
-        position: absolute;
-        left: 16px;
-        right: 16px;
-        bottom: 20px;
-        margin: 0 auto;
-        max-width: 480px;
-        padding: 12px 16px;
-        border-radius: 12px;
-        background: var(--pv-text, #1A1B1E);
-        color: var(--pv-card-bg, #FFFFFF);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        text-align: center;
-      }
     `,
   ];
 
@@ -325,7 +312,7 @@ export class PvSettings extends LitElement {
         ${this._split || !current ? this._renderList(pages, current) : nothing}
         ${current ? this._renderPage(current, top) : nothing}
       </div>
-      ${this._toast ? html`<div class="toast" role="status">${this._toast}</div>` : nothing}
+      <pv-toast .toast=${this._toast ? { id: this._toast, text: this._toast, tone: 'bad' } : null}></pv-toast>
     `;
   }
 

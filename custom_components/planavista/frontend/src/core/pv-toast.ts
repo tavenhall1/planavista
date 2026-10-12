@@ -53,8 +53,8 @@ export class PvToast extends LitElement {
       box-sizing: border-box;
       padding: 6px 8px 6px 16px;
       border-radius: 14px;
-      background: #1F2023;
-      color: #F4F4F2;
+      background: var(--pv-toast-bg, #1F2023);
+      color: var(--pv-toast-text, #F4F4F2);
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
       font-size: 0.9375rem;
       line-height: 1.3;
@@ -85,7 +85,7 @@ export class PvToast extends LitElement {
       border: none;
       border-radius: 10px;
       background: transparent;
-      color: #A9A9FF;
+      color: var(--pv-toast-action, #A9A9FF);
       font: inherit;
       font-weight: 700;
       cursor: pointer;

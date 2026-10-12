@@ -50,8 +50,36 @@ export const sheetStyles = css`
     font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
     margin: 0 0 6px;
     font-size: 1.25rem;
-    font-weight: 700;
-    text-align: center;
+    font-weight: 800;
+    text-align: left;
+  }
+
+  .heading:focus,
+  h2[tabindex='-1']:focus {
+    outline: none;
+  }
+
+  /* An editing sheet ends with Cancel, then its action (Add or Save). */
+  .sheet-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .sheet-footer > .pv-btn {
+    flex: 1 1 0;
+  }
+
+  /* Delete in place: a secondary button in red, set apart at the end. */
+  .sheet-delete {
+    display: flex;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--pv-border, #E7E7E3);
+  }
+
+  .sheet-delete > .pv-btn {
+    flex: 1;
   }
 
   .body {

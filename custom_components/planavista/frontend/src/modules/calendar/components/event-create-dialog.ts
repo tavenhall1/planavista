@@ -33,7 +33,7 @@ import { calendarCan, formSignature, saveFailedText } from '../event-words';
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const DISCARD_ACTIONS: NoticeAction[] = [
-  { id: 'discard', label: 'Discard', kind: 'destructive' },
+  { id: 'discard', label: 'Discard changes', kind: 'destructive' },
   { id: 'keep', label: 'Keep editing', kind: 'secondary' },
 ];
 

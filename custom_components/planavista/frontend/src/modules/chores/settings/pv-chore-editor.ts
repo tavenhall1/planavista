@@ -694,7 +694,7 @@ export class PvChoreEditor extends LitElement {
     if (this._notice === 'discard') {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Discard changes?"
-          .actions=${[{ id: 'keep', label: 'Keep editing', kind: 'secondary' }, { id: 'discard', label: 'Discard', kind: 'destructive' }]}
+          .actions=${[{ id: 'discard', label: 'Discard changes', kind: 'destructive' }, { id: 'keep', label: 'Keep editing', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDiscardChoice}></pv-notice-sheet>
       `;
     }
@@ -702,7 +702,7 @@ export class PvChoreEditor extends LitElement {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Delete ${this._activity.name}?"
           body="It leaves the board at once. Past weeks still show what was done, and stars stay earned."
-          .actions=${[{ id: 'cancel', label: 'Cancel', kind: 'secondary' }, { id: 'delete', label: 'Delete', kind: 'destructive' }]}
+          .actions=${[{ id: 'delete', label: `Delete ${this._activity.name}`, kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDeleteChoice}></pv-notice-sheet>
       `;
     }

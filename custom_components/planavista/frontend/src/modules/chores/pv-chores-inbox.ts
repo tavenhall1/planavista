@@ -91,6 +91,19 @@ export class PvChoresInbox extends LitElement {
         font-weight: 800;
       }
 
+      .actions {
+        display: flex;
+        margin-top: 16px;
+      }
+
+      .actions .pv-btn {
+        flex: 1;
+      }
+
+      h2[tabindex='-1']:focus {
+        outline: none;
+      }
+
       .done {
         min-height: 48px;
         font-weight: 750;
@@ -221,7 +234,7 @@ export class PvChoresInbox extends LitElement {
       this._motion.open(panel, backdrop);
       this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
     }
-    this.renderRoot.querySelector<HTMLElement>('.answers button, .done')?.focus();
+    this.renderRoot.querySelector<HTMLElement>('#inbox-title')?.focus();
   }
 
   protected updated(changed: PropertyValues): void {
@@ -263,8 +276,7 @@ export class PvChoresInbox extends LitElement {
         @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <div class="top">
-          <h2 id="inbox-title">Waiting for OK${g.count ? ` · ${g.count}` : ''}</h2>
-          <button class="pv-btn pv-btn-ghost done" type="button" @click=${() => void this.close()}>Done</button>
+          <h2 id="inbox-title" tabindex="-1">Waiting for OK${g.count ? ` · ${g.count}` : ''}</h2>
         </div>
         ${g.count === 0 ? html`
           <div class="empty"><div class="art" aria-hidden="true">✅</div>Nothing is waiting. Check-offs that need a parent's OK, requests, and rewards land here.</div>
@@ -278,6 +290,9 @@ export class PvChoresInbox extends LitElement {
         ` : nothing}
         ${g.requests.length ? html`<div class="group"><span>Requests</span></div>${g.requests.map(row => this._row(row))}` : nothing}
         ${g.rewards.length ? html`<div class="group"><span>Rewards</span></div>${g.rewards.map(row => this._row(row))}` : nothing}
+        <div class="actions">
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
+        </div>
       </div>
     `;
   }
@@ -295,7 +310,7 @@ export class PvChoresInbox extends LitElement {
         <div class="answers">
           <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${busy}
             @click=${() => this._decline(row)}>${row.decline}</button>
-          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${busy || row.blocked}
+          <button class="pv-btn pv-btn-secondary accent" type="button" ?disabled=${busy || row.blocked}
             @click=${() => this._review(row, true)}>${busy ? 'Saving…' : row.allow}</button>
         </div>
       </div>

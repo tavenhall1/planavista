@@ -71,7 +71,7 @@ export class PvChoresPeopleSheet extends LitElement {
     const backdrop = this.renderRoot.querySelector<HTMLElement>('.backdrop')!;
     this._motion.open(panel, backdrop);
     this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => this._pick(null));
-    this.renderRoot.querySelector<HTMLElement>('.face')?.focus();
+    this.renderRoot.querySelector<HTMLElement>('#people-heading')?.focus();
   }
 
   disconnectedCallback(): void {
@@ -84,7 +84,7 @@ export class PvChoresPeopleSheet extends LitElement {
       <div class="backdrop" @click=${() => this._pick(null)}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="people-heading" @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <h2 class="heading" id="people-heading">${this.heading}</h2>
+        <h2 class="heading" id="people-heading" tabindex="-1">${this.heading}</h2>
         ${this.body ? html`<p class="body">${this.body}</p>` : nothing}
         <div class="faces">
           ${this.people.map(person => html`

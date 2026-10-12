@@ -125,8 +125,8 @@ export class PvPinActions extends LitElement {
             ? `On a shared screen, ${this.member.name} will need a new PIN to start parent mode.`
             : 'You can set a new one any time.'}
           .actions=${[
+            { id: 'remove', label: `Remove ${this.member.name}'s PIN`, kind: 'destructive' },
             { id: 'cancel', label: 'Cancel', kind: 'secondary' },
-            { id: 'remove', label: 'Remove PIN', kind: 'destructive' },
           ]}
           @pv-sheet-action=${this._onRemoveChoice}
         ></pv-notice-sheet>

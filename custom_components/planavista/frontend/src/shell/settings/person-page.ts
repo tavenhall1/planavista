@@ -491,8 +491,8 @@ export class PvSettingsPerson extends LitElement {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Discard changes?"
           .actions=${[
+            { id: 'discard', label: 'Discard changes', kind: 'destructive' },
             { id: 'keep', label: 'Keep editing', kind: 'secondary' },
-            { id: 'discard', label: 'Discard', kind: 'destructive' },
           ]}
           @pv-sheet-action=${this._onDiscardChoice}></pv-notice-sheet>
       `;
@@ -502,8 +502,8 @@ export class PvSettingsPerson extends LitElement {
         <pv-notice-sheet .layout=${this.layout} heading="Remove ${member.name}?"
           body="Their calendars stay, and won't belong to anyone."
           .actions=${[
+            { id: 'remove', label: `Remove ${member.name}`, kind: 'destructive' },
             { id: 'cancel', label: 'Cancel', kind: 'secondary' },
-            { id: 'remove', label: 'Remove', kind: 'destructive' },
           ]}
           @pv-sheet-action=${this._onRemoveChoice}></pv-notice-sheet>
       `;

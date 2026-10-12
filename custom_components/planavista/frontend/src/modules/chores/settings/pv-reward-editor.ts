@@ -235,7 +235,7 @@ export class PvRewardEditor extends LitElement {
     if (this._notice === 'discard') {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Discard changes?"
-          .actions=${[{ id: 'keep', label: 'Keep editing', kind: 'secondary' }, { id: 'discard', label: 'Discard', kind: 'destructive' }]}
+          .actions=${[{ id: 'discard', label: 'Discard changes', kind: 'destructive' }, { id: 'keep', label: 'Keep editing', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDiscard}></pv-notice-sheet>
       `;
     }
@@ -243,7 +243,7 @@ export class PvRewardEditor extends LitElement {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Delete ${this._reward.name}?"
           body="Rewards already given stay in everyone's history."
-          .actions=${[{ id: 'cancel', label: 'Cancel', kind: 'secondary' }, { id: 'delete', label: 'Delete', kind: 'destructive' }]}
+          .actions=${[{ id: 'delete', label: `Delete ${this._reward.name}`, kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDelete}></pv-notice-sheet>
       `;
     }

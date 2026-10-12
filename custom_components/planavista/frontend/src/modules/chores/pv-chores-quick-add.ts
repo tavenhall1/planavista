@@ -59,24 +59,8 @@ export class PvChoresQuickAdd extends LitElement {
         width: min(480px, calc(100vw - 32px));
       }
 
-      .bar {
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
-        align-items: center;
-        margin: -4px -6px 10px;
-      }
 
-      .bar h2 {
-        margin: 0;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1.125rem;
-        font-weight: 800;
-      }
 
-      .bar .add {
-        justify-self: end;
-        font-weight: 800;
-      }
 
       .text {
         min-height: 48px;
@@ -288,11 +272,7 @@ export class PvChoresQuickAdd extends LitElement {
       <div class="backdrop" @click=${() => void this.close()}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="add-title" @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <div class="bar">
-          <button class="text" type="button" @click=${() => void this.close()}>Cancel</button>
-          <h2 id="add-title">New chore</h2>
-          <button class="text add" type="button" ?disabled=${this.busy} @click=${this._add}>${this.busy ? 'Adding…' : 'Add'}</button>
-        </div>
+        <h2 class="heading" id="add-title">New chore</h2>
         <section>
           <label class="title" for="name">What needs doing?</label>
           <input id="name" type="text" maxlength="60" placeholder="Clean out the garage" autocomplete="off" .value=${d.name}
@@ -371,6 +351,10 @@ export class PvChoresQuickAdd extends LitElement {
           ` : nothing}
           ${this._problem ? html`<div class="problem" role="alert">${this._problem}</div>` : nothing}
         </section>
+        <div class="sheet-footer">
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Cancel</button>
+          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this.busy} @click=${this._add}>${this.busy ? 'Adding…' : 'Add'}</button>
+        </div>
       </div>
     `;
   }

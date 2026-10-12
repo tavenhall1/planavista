@@ -44,7 +44,8 @@ export class SheetController implements ReactiveController {
     this._opened = true;
     this._motion.open(parts.panel, parts.backdrop);
     this._detach = this._motion.attachDrag(parts.zone, parts.panel, () => this.dismiss());
-    (this._options.initialFocus?.() ?? parts.panel.querySelector<HTMLElement>('.actions button'))?.focus();
+    (this._options.initialFocus?.() ?? parts.panel.querySelector<HTMLElement>('h2[tabindex="-1"]')
+      ?? parts.panel.querySelector<HTMLElement>('.actions button'))?.focus();
   }
 
   hostDisconnected(): void {

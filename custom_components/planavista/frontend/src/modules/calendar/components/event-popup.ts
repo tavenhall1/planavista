@@ -168,18 +168,8 @@ export class PVEventPopup extends LitElement {
         line-height: 1.4;
       }
 
-      .pair {
-        display: flex;
-        gap: 10px;
-      }
 
-      .pair button {
-        flex: 1 1 0;
-      }
 
-      .danger {
-        color: var(--pv-bad-ink, #A12828);
-      }
     `,
   ];
 
@@ -253,16 +243,12 @@ export class PVEventPopup extends LitElement {
         ` : nothing}
 
         <div class="actions">
-          ${changeable && (can.edit || can.delete) ? html`
-            <div class="pair">
-              ${can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
-              ${can.delete ? html`
-                <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${this._deleting}
-                  @click=${() => { this._asking = true; }}>${this._deleting ? 'Deleting…' : 'Delete'}</button>
-              ` : nothing}
-            </div>
+          ${changeable && can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
+          ${changeable && can.delete ? html`
+            <button class="pv-btn pv-btn-secondary danger apart" type="button" ?disabled=${this._deleting}
+              @click=${() => { this._asking = true; }}>${this._deleting ? 'Deleting…' : 'Delete event'}</button>
           ` : nothing}
-          <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
+          <button class="pv-btn pv-btn-secondary ${changeable && can.delete ? 'apart' : ''}" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
         </div>
       </div>
       ${this._asking ? html`

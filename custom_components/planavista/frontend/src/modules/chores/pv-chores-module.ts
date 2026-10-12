@@ -638,7 +638,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const name = doneBy && doneBy !== member ? this._member(doneBy)?.name : null;
     this.showToast({
       id,
-      text: waits ? `${row.name}: waiting for OK` : name ? `Done by ${name}` : 'Done',
+      text: waits ? `${row.name}: waiting for OK.` : name ? `Done by ${name}.` : 'Done.',
       actions: [{ id: 'undo', label: 'Undo' }, ...(doneBy ? [] : [{ id: 'someone', label: 'Someone else did it?' }])],
       ms: 6000,
     });

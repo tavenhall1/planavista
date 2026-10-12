@@ -185,9 +185,6 @@ export class PvChoresRewardSheet extends LitElement {
         font-weight: 650;
       }
 
-      .danger {
-        color: var(--pv-danger, #C62828);
-      }
     `,
   ];
 
@@ -203,7 +200,7 @@ export class PvChoresRewardSheet extends LitElement {
     const backdrop = this.renderRoot.querySelector<HTMLElement>('.backdrop')!;
     this._motion.open(panel, backdrop);
     this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
-    this.renderRoot.querySelector<HTMLElement>('input, button')?.focus();
+    (this.renderRoot.querySelector<HTMLElement>('input') ?? this.renderRoot.querySelector<HTMLElement>('#reward-title'))?.focus();
   }
 
   disconnectedCallback(): void {
@@ -236,7 +233,7 @@ export class PvChoresRewardSheet extends LitElement {
     const reward = card.reward;
     return html`
       <div class="icon" aria-hidden="true">${pictureOf(reward.icon)}</div>
-      <h2 class="heading" id="reward-title">${reward.name}</h2>
+      <h2 class="heading" id="reward-title" tabindex="-1">${reward.name}</h2>
       <div class="cost">★ ${reward.cost}${reward.needs_ok ? ' · needs a parent\'s OK' : ''}</div>
       ${card.people.map(p => html`
         <div class="person">
@@ -253,8 +250,8 @@ export class PvChoresRewardSheet extends LitElement {
       `)}
       ${card.people.length === 0 ? html`<p class="body">Nobody who earns stars can get this one yet.</p>` : nothing}
       <div class="actions">
-        ${this.canEdit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${() => { this._editing = true; }}>Edit reward</button>` : nothing}
-        <button class="pv-btn pv-btn-ghost" type="button" @click=${() => void this.close()}>Done</button>
+        ${this.canEdit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${() => { this._editing = true; }}>Edit</button>` : nothing}
+        <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
       </div>
     `;
   }
@@ -268,7 +265,7 @@ export class PvChoresRewardSheet extends LitElement {
     const d = this._draft;
     const editing = !!this.card;
     return html`
-      <h2 class="heading" id="reward-title">${editing ? 'Edit reward' : 'Add a reward'}</h2>
+      <h2 class="heading" id="reward-title">${editing ? 'Edit reward' : 'New reward'}</h2>
       <span class="title">Picture</span>
       <div class="pictures">
         ${REWARD_PICTURES.map(p => html`<button type="button" aria-pressed=${d.icon === p ? 'true' : 'false'} aria-label=${p} @click=${() => this._set({ icon: p })}>${p}</button>`)}
@@ -295,11 +292,15 @@ export class PvChoresRewardSheet extends LitElement {
         `)}
       </div>
       ${this._problem ? html`<div class="problem" role="alert">${this._problem}</div>` : nothing}
-      <div class="actions">
-        <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this.busy} @click=${this._save}>${this.busy ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
+      <div class="sheet-footer">
         <button class="pv-btn pv-btn-secondary" type="button" @click=${() => (editing ? (this._editing = false) : void this.close())}>Cancel</button>
-        ${editing ? html`<button class="pv-btn pv-btn-ghost danger" type="button" @click=${() => this._fire('pv-reward-delete', {})}>Delete reward</button>` : nothing}
+        <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this.busy} @click=${this._save}>${this.busy ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
       </div>
+      ${editing ? html`
+        <div class="sheet-delete">
+          <button class="pv-btn pv-btn-secondary danger" type="button" @click=${() => this._fire('pv-reward-delete', {})}>Delete reward</button>
+        </div>
+      ` : nothing}
     `;
   }
 

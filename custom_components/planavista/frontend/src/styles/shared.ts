@@ -152,6 +152,15 @@ export const buttonStyles = css`
     color: var(--pv-danger-ink, #A12828);
   }
 
+  /* An answer that moves things on, in a list where nothing is filled (one primary per screen). */
+  .pv-btn.accent {
+    color: var(--pv-accent-ink, #5B5BD6);
+  }
+
+  .pv-btn.apart {
+    margin-top: 12px;
+  }
+
   .pv-btn-icon {
     background: transparent;
     color: var(--pv-text-secondary);
