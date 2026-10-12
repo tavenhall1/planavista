@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
+import { ref } from 'lit/directives/ref.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
@@ -48,7 +49,7 @@ import './pv-pin-sheet';
 import './pv-notice-sheet';
 import './settings/pv-settings';
 import './setup/pv-setup';
-import { ContentScrollDetail, compactHeader } from '../core/content-scroll';
+import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/content-scroll';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
@@ -87,7 +88,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _moduleId: string | null = null;
   /** Portrait with the content scrolled down: the header shows one line (spec 12.2). */
   @state() private _compactHeader = false;
-  private _headerLayout: string | null = null;
+  /** The header's two heights, for how much its step to one line gives the content. */
+  private _headerHeights = new HeaderHeights();
   /** Where a glance chip or a ring sent the card last (a module and view, perhaps one person). */
   @state() private _openTarget: OpenTarget | null = null;
   /** Bumped whenever a module's service has news, so the modules and the header redraw. */
@@ -390,10 +392,9 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (mod && data && !(mod.id in this._views)) {
       this._views = { ...this._views, [mod.id]: initialModuleView(mod, { config: this._config, data }) };
     }
-    // Another view, module, or layout starts at its top, so the header starts tall again.
-    const layout = this._layout.layout;
-    if (changed.has('_views') || changed.has('_moduleId') || layout !== this._headerLayout) this._compactHeader = false;
-    this._headerLayout = layout;
+    // Another view or module starts at its top, so the header starts tall again. Turning the
+    // tablet keeps the content's place (spec 12.1), so it keeps the header's shape too.
+    if (changed.has('_views') || changed.has('_moduleId')) this._compactHeader = false;
   }
 
   private _setView(id: string): void {
@@ -402,10 +403,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._views = { ...this._views, [mod.id]: id };
   }
 
-  /** A module's content scrolled: in portrait the header shrinks past the top and grows back at it. */
+  /**
+   * A module's content scrolled: the header shrinks past the top and grows back at it. Only
+   * portrait shows it, but every layout keeps it, so a turn to portrait finds it in step.
+   */
   private _onContentScroll = (e: CustomEvent<ContentScrollDetail>): void => {
-    if (this._layout.layout !== 'portrait') return;
-    this._compactHeader = compactHeader(this._compactHeader, e.detail.top);
+    this._compactHeader = compactHeader(this._compactHeader, e.detail, this._headerHeights.change);
   };
 
   connectedCallback(): void {
@@ -790,6 +793,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const weather = this._config?.hide_weather ? null : this._getWeatherEntity();
     return html`
       <pv-glance-header
+        ${ref(this._headerHeights.attach)}
         layout=${this._layout.layout}
         ?compact=${this._layout.layout === 'portrait' && this._compactHeader}
         .timeFormat=${display.time_format || '12h'}

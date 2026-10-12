@@ -42,7 +42,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 - Switching modules never moves the controls. With only one module there is no switcher.
 - `hide_header` hides the clock and weather header; the bar stays, because it holds the views and Settings.
 - The header's type scales with the card's width (container query units), not the window's.
-- In portrait the header shrinks to the phone's one row while the content below it is scrolled down (past 24 px) and grows back at the top (under 8 px), so a big household's board gets the room. A view that scrolls itself, like the Day view going to now, leaves it alone, and another view, module, or layout starts tall.
+- In portrait the header shrinks to the phone's one row while the content below it is scrolled down (past 24 px) and grows back at the top (under 8 px), so a big household's board gets the room. The step gives the content the header's change in height (52 px on an 800 px tablet, measured as drawn), so content that would then have 24 px or less to scroll keeps the tall header; otherwise the browser pulls it back to its top and the two take turns. The Day view, whose hours already fit the space, leaves it alone. Another view or module starts tall; turning the tablet keeps the header's shape along with the content's place.
 
 ### 2.3 The calendar in each layout
 
