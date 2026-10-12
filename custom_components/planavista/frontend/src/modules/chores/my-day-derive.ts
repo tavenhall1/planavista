@@ -28,7 +28,7 @@ export interface DayContext {
 }
 
 function range(event: DayEvent, format: '12h' | '24h'): string {
-  return `${clockTime(event.start, format, format === '12h')} to ${clockTime(event.end, format, format === '12h')}`;
+  return `${clockTime(event.start, format, format === '12h')} – ${clockTime(event.end, format, format === '12h')}`;
 }
 
 /** The person's bedtime tonight (spec 7.2: weeknights, and Friday and Saturday nights). */

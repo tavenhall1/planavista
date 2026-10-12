@@ -5,7 +5,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles, animationStyles } from '../../../styles/shared';
 import type { Layout } from '../../../core/layout';
-import { getStartOfWeek, isToday, getDateKey } from '../../../utils/date-utils';
+import { getStartOfWeek, isToday, getDateKey , weekRangeLabel } from '../../../utils/date-utils';
 import {
   compareEventsForDisplay,
   getEventsForDateRange,
@@ -236,12 +236,7 @@ export class PVViewWeek extends LitElement {
   private _getWeekLabel(days: Date[]): string {
     const first = days[0];
     const last = days[6];
-    const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric' };
-
-    if (first.getMonth() === last.getMonth()) {
-      return `${first.toLocaleDateString('en-US', { month: 'long' })} ${first.getDate()} – ${last.getDate()}`;
-    }
-    return `${first.toLocaleDateString('en-US', opts)} – ${last.toLocaleDateString('en-US', opts)}`;
+    return weekRangeLabel(first, last);
   }
 
   render() {

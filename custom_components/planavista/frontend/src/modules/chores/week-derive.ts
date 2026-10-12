@@ -1,4 +1,5 @@
 import type { Member } from '../../core/household';
+import { weekRangeLabel } from '../../utils/date-utils';
 import { dayDate, minutesText } from '../../core/status-map';
 import type { PastItem, WeekDay, WeekView, WeeklyEntry } from './chores-types';
 import { dayWords, addDays } from './options-derive';
@@ -28,10 +29,10 @@ export interface WeekRow {
   weekly: { text: string; badge: string | null; badgeTone: 'neutral' | 'act' | 'time'; progress: number } | null;
 }
 
-/** "Week of October 12". */
+/** "October 12 – 18": the week by its range, as the calendar's Week names it. */
 export function weekTitle(view: Pick<WeekView, 'week'>): string {
   const start = dayDate(view.week.start);
-  return `Week of ${MONTHS[start.getMonth()]} ${start.getDate()}`;
+  return weekRangeLabel(start, new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6));
 }
 
 /** The column heads: "Mon", "Tue" (with "Today" under today's). */

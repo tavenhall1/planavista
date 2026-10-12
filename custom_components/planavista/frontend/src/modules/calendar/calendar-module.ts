@@ -25,7 +25,7 @@ import { parentAccess } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
 import { calendarSkeleton, skeletonStyles } from './components/calendar-skeleton';
-import { navLabels } from './view-words';
+import { navLabels , showsToday } from './view-words';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
 import { motionOf, supportsLinearEasing } from '../../core/motion';
 
@@ -361,7 +361,12 @@ export class PvCalendarModule extends LitElement {
         -webkit-tap-highlight-color: transparent;
       }
 
-      .pvc-today-btn:hover {
+      .pvc-today-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      .pvc-today-btn:hover:not(:disabled) {
         background: var(--pv-accent);
         color: var(--pv-accent-text);
         border-color: var(--pv-accent);
@@ -799,6 +804,7 @@ export class PvCalendarModule extends LitElement {
   private _renderToolbar(calendars: CalendarConfig[]) {
     const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
     const arrows = navLabels(this._pv.store.currentView);
+    const onToday = showsToday(this._pv.store.currentView, this._pv.store.currentDate, new Date(), this.display?.first_day || 'sunday');
 
     return html`
       <div class="pvc-toolbar">
@@ -888,7 +894,7 @@ export class PvCalendarModule extends LitElement {
               @click=${() => this._navigate('prev')}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="pvc-today-btn" type="button" @click=${() => this._navigate('today')}>
+            <button class="pvc-today-btn" type="button" ?disabled=${onToday} @click=${() => this._navigate('today')}>
               Today
             </button>
             <button class="pvc-nav-btn" type="button" aria-label=${arrows.next} title=${arrows.next}

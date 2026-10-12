@@ -224,3 +224,10 @@ export function navigateDate(date: Date, view: ViewType, direction: 'prev' | 'ne
   }
   return d;
 }
+
+/** A week by its range, as both Week views name it: "October 12 – 18", "September 28 – October 4" (milestone 8). */
+export function weekRangeLabel(first: Date, last: Date): string {
+  const month = (d: Date) => d.toLocaleDateString('en-US', { month: 'long' });
+  if (first.getMonth() === last.getMonth()) return `${month(first)} ${first.getDate()} – ${last.getDate()}`;
+  return `${month(first)} ${first.getDate()} – ${month(last)} ${last.getDate()}`;
+}

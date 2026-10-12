@@ -1,5 +1,5 @@
 import type { ViewType } from '../../types';
-import { calendarDaysBetween } from '../../utils/date-utils';
+import { calendarDaysBetween, getDateKey, getStartOfWeek } from '../../utils/date-utils';
 import { longDate } from './event-words';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -47,4 +47,11 @@ export function agendaNote(day: Date, today: Date, first: boolean): string {
   if (!first && day.getDate() !== 1) return '';
   const month = MONTHS[day.getMonth()];
   return day.getFullYear() === today.getFullYear() ? month : `${month} ${day.getFullYear()}`;
+}
+
+/** Whether the view already shows today, so Today has nothing to do and goes quiet (milestone 8). Agenda starts on its day. */
+export function showsToday(view: ViewType, shown: Date, today: Date, firstDay: 'monday' | 'sunday'): boolean {
+  if (view === 'week') return getDateKey(getStartOfWeek(shown, firstDay)) === getDateKey(getStartOfWeek(today, firstDay));
+  if (view === 'month') return shown.getFullYear() === today.getFullYear() && shown.getMonth() === today.getMonth();
+  return getDateKey(shown) === getDateKey(today);
 }

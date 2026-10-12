@@ -57,8 +57,8 @@ export class PVViewMonth extends LitElement {
         font-weight: 800;
         font-variant-numeric: tabular-nums;
         color: var(--pv-text);
-        padding: 0.5rem 0.75rem;
-        text-align: center;
+        padding: 0.75rem 1rem 0.5rem;
+        text-align: left;
         flex-shrink: 0;
       }
 

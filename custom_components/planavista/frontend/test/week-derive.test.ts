@@ -62,7 +62,7 @@ describe('weekHighlights', () => {
 
 describe('the rest of the Week view', () => {
   it('heads the week and its days', () => {
-    expect(weekTitle(WEEK)).toBe('Week of October 12');
+    expect(weekTitle(WEEK)).toBe('October 12 – 18');
     expect(weekDays(WEEK).map(d => `${d.label}${d.today ? '*' : ''}`)).toEqual(['Mon', 'Tue*', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
   });
 
