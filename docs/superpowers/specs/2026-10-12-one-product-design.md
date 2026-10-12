@@ -94,7 +94,8 @@ Release 1.4.0 works end to end, but underneath it is still two products in one s
 - **People:** two patterns, by job.
   - A **people strip** chooses whose view you're looking at: the phone board, Day on a phone, and My day. It uses round faces with names, and the one shown is filled with its color.
   - **Person chips** choose who something is for: New event's Who, quick add, a chore's people, and a reward's who. They are avatar chips, selected with the person's color ring and a check.
-- **Tags** (Parent, Needs an OK, Plan only, Waiting for OK on a tile): one pill style in sentence case.
+- **Rows that may wrap** (quick add's When, repeat, and minutes, the chore editor's estimate, setup's rhythms): one chip look, 48 px pills with the chosen one on the accent tint. The segmented control doesn't wrap, so these stay chips.
+- **Tags** (Parent, Needs an OK, Plan only, Organizer, Waiting for OK on a tile): one pill style in sentence case.
 - **Status badges** keep the status map, in sentence case.
 - **Section heads:** sentence case everywhere (no uppercase), 0.8125rem 750 in the muted text color.
 - **Switches:** one size (the 44 by 24 toggle with a 48 px hit area) for every on/off setting.
@@ -106,12 +107,12 @@ Release 1.4.0 works end to end, but underneath it is still two products in one s
 ### 3.10 Sheets and editors
 
 - **Editing sheets** (New event and Edit event, quick add, a reward's editor sheet) end with a footer: Cancel on the left as secondary, and the action on the right as primary (Add or Save).
-- **Read-only sheets** (an event's details, a chore's options, a past day, a reward, the inbox, Who did it?) end with a full-width secondary Done. The sheet's own actions sit above it.
+- **Read-only sheets** (an event's details, a chore's options, a past day, a reward, the inbox) end with a full-width secondary Done. The sheet's own actions sit above it. A sheet that asks you to pick someone (Who did it?, Who's getting ...?) acts on the pick, so it ends with Cancel.
 - **Settings editors** (a person's page, the chore editor, the reward editor): while one is open, the Settings header holds Cancel on the left and Save on the right, so Save stays in view however long the page is.
   - Save is the one primary on screen, enabled once something changed.
   - Settings' own Done is a text button and steps aside while an editor is open.
 - **Sheet titles:** one style. Left aligned, the rounded face at 1.25rem 800, under the grabber.
-- **Confirmations:** the named destructive action comes first, then Cancel, everywhere: "Delete Laundry", "Delete for everyone", "Remove Alex", "Discard changes".
+- **Confirmations:** the named destructive action comes first, then Cancel, everywhere: "Delete Laundry", "Delete School drop-off", "Delete for everyone", "Remove Alex", "Discard changes". The button in place names the kind of thing ("Delete chore", "Remove from household"); its question names the thing.
 - **Delete in place:** one style. A secondary button with red text at the end of the sheet or editor, set apart from the other actions.
   - One red pair of tokens serves every destructive use: `--pv-danger` for fills and `--pv-danger-ink` for text, light and dark.
 - **Naming:** creating something is "New ..." everywhere: New event, New chore, New reward, New person.
