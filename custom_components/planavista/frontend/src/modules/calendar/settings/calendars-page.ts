@@ -4,14 +4,14 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { animationStyles, baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { settingsPageStyles } from '../../../styles/settings';
-import type { HouseholdView } from '../../../core/household';
+import type { HouseholdView, Member } from '../../../core/household';
 import { HouseholdApi, errorCode } from '../../../core/household-client';
 import type { Layout } from '../../../core/layout';
-import { PAGE_ERROR, saveErrorMessage } from '../../../core/page-host';
+import { PAGE_ERROR, saveErrorMessage, PUSH_PAGE, PushPageDetail } from '../../../core/page-host';
 import { inOrder } from '../../../core/household';
 import { PvColorSwatchPicker } from '../../../core/color-swatch-picker';
 import type { PlanaVistaData } from '../../../types';
-import { CalendarRow, belongsTo, buildCalendarRows, toSavedCalendars } from '../calendar-rows';
+import { CalendarRow, belongsTo, buildCalendarRows, toSavedCalendars, rowColor } from '../calendar-rows';
 
 /**
  * pv-calendar-calendars-page: which calendars show, how each looks, and who
@@ -197,15 +197,7 @@ export class PvCalendarCalendarsPage extends LitElement {
               />
             </div>
 
-            <!-- Color picker -->
-            <div class="cal-field">
-              <label class="pv-label">Color</label>
-              <pv-color-swatch-picker
-                .value=${cal.color}
-                .valueLight=${cal.color_light}
-                @color-change=${(e: CustomEvent) => this._onCalendarColorChange(idx, e)}
-              ></pv-color-swatch-picker>
-            </div>
+            ${this._renderColor(cal, idx)}
 
             <!-- Person entity link -->
             <div class="cal-field">
@@ -230,6 +222,40 @@ export class PvCalendarCalendarsPage extends LitElement {
     `;
   }
 
+
+  /** One color per person (milestone 8, spec 3.1): a calendar that belongs to someone shows theirs, set in People. */
+  private _renderColor(cal: CalendarRow, idx: number) {
+    const members = this.household?.available ? inOrder(this.household.members) : [];
+    const { owner } = rowColor(cal, members);
+    if (owner) {
+      return html`
+        <div class="cal-field">
+          <span class="pv-label">Color</span>
+          <div class="cal-owned-color">
+            <span class="cal-color-dot" style="background: ${owner.color}" aria-hidden="true"></span>
+            <span class="cal-owned-name">${owner.name}'s color</span>
+            <button class="pv-btn pv-btn-secondary" type="button"
+              @click=${() => this._openPerson(owner)}>Set in People</button>
+          </div>
+        </div>
+      `;
+    }
+    return html`
+      <div class="cal-field">
+        <label class="pv-label">Color</label>
+        <pv-color-swatch-picker
+          .value=${cal.color}
+          .valueLight=${cal.color_light}
+          @color-change=${(e: CustomEvent) => this._onCalendarColorChange(idx, e)}
+        ></pv-color-swatch-picker>
+      </div>
+    `;
+  }
+
+  private _openPerson(member: Member): void {
+    const detail: PushPageDetail = { tag: 'pv-settings-person', title: member.name, back: 'Calendars', props: { memberId: member.id } };
+    this.dispatchEvent(new CustomEvent(PUSH_PAGE, { detail, bubbles: true, composed: true }));
+  }
 
   /** Belongs to: fixed by a linked person who is in the household, else a choice (spec 14.5). */
   private _renderBelongsTo(cal: CalendarRow, idx: number) {
@@ -273,6 +299,23 @@ export class PvCalendarCalendarsPage extends LitElement {
         font-size: 0.875rem;
         color: var(--pv-text-muted, #9CA3AF);
         margin: 0.5rem 0 0;
+      }
+.cal-owned-color {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 12px;
+        min-height: 48px;
+      }
+.cal-color-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+      }
+.cal-owned-name {
+        flex: 1 1 auto;
+        font-weight: 600;
       }
 /* ── Calendar list (page 1) ─────────────────────────────── */
 .calendar-list {

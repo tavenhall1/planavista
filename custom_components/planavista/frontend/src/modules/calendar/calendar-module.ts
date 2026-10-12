@@ -19,7 +19,7 @@ import { contrastText } from '../../core/color';
 import type { ModuleService } from '../../core/module-registry';
 import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
 import { deepActiveElement } from '../../core/focus';
-import type { HouseholdView } from '../../core/household';
+import type { HouseholdView, Member } from '../../core/household';
 import type { Session } from '../../core/session';
 import type { PinGate } from '../../core/pin-gate';
 import { eventGate } from './event-gate';
@@ -45,6 +45,9 @@ interface EditorWant {
   mode: 'create' | 'edit';
   prefill: Partial<CalendarEvent> | null;
 }
+
+/** Nobody linked yet: one array, so the cached colors aren't worked out again on every render. */
+const NO_PEOPLE: readonly Member[] = [];
 
 /**
  * pv-calendar-module: the calendar's toolbar, its four views, and the event
@@ -669,16 +672,17 @@ export class PvCalendarModule extends LitElement {
     });
   };
 
-  /** Cached until the data, the card config, the calendar filter, or the mode changes. */
+  /** Cached until the data, the card config, the calendar filter, the mode, or the people change. */
   private _derive = memoizeOne((
     data: PlanaVistaData | null,
     config: PlanaVistaCardConfig | undefined,
     hidden: Set<string>,
     mode: Mode,
-  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode), config, hidden));
+    members: readonly Member[],
+  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode, members), config, hidden));
 
   private _derived(): CalendarDerived {
-    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode);
+    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode, this.household?.members ?? NO_PEOPLE);
   }
 
   render() {
@@ -1027,7 +1031,7 @@ export class PvCalendarModule extends LitElement {
   private _onEventClick(e: CustomEvent) {
     const clicked: CalendarEvent = e.detail.event;
     // The mode's colors, so the popup's people match the views.
-    const allEvents = withModeColors(this.data, this.mode)?.events || [];
+    const allEvents = withModeColors(this.data, this.mode, this.household?.members ?? NO_PEOPLE)?.events || [];
     this._pv.store.selectEvent(eventForPopup(clicked, allEvents));
   }
 
