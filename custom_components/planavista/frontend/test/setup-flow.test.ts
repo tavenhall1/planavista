@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PageRegistry } from '../src/core/page-registry';
 import type { DonePart, SetupContext, SetupStep } from '../src/core/settings-registry';
-import { mergePatch, stepAfter, withPatch } from '../src/core/setup-flow';
+import { mergePatch, stepAfter, stepButton, withPatch } from '../src/core/setup-flow';
 import { registerShellSettings, shellSetupSteps } from '../src/shell/definition';
 import { registerChoresSettings } from '../src/modules/chores/definition';
 import { registerCalendarSettings } from '../src/modules/calendar/definition';
@@ -67,5 +67,24 @@ describe('the setup host\'s patches', () => {
     expect(stepAfter(now, 'chores')).toBe(1);
     expect(stepAfter(now, 'look')).toBeNull();
     expect(stepAfter(now, 'gone')).toBe(1);
+  });
+});
+
+describe("setup's main button (spec 14.7)", () => {
+  const choice = { id: 'chores', primary: 'Continue' };
+  const shared = { id: 'shared-screen', primary: 'Continue', finish: 'Open the board' };
+
+  it("uses the step's own element once it's drawn, never the step's before it", () => {
+    const common = { step: 'chores-common', primaryLabel: 'Add 8 chores', ready: false };
+    expect(stepButton(choice, common, { last: false, short: true })).toEqual({ label: 'Continue', ready: true });
+    expect(stepButton({ id: 'chores-common' }, common, { last: false, short: true })).toEqual({ label: 'Add 8 chores', ready: false });
+    expect(stepButton(shared, common, { last: true, short: true })).toEqual({ label: 'Open the board', ready: true });
+  });
+
+  it("ends a short setup with the step's finish label, and otherwise says Next or Finish", () => {
+    expect(stepButton(shared, null, { last: true, short: true }).label).toBe('Open the board');
+    expect(stepButton(shared, null, { last: false, short: false }).label).toBe('Continue');
+    expect(stepButton({ id: 'look' }, null, { last: false, short: false }).label).toBe('Next');
+    expect(stepButton({ id: 'done' }, null, { last: true, short: false }).label).toBe('Finish');
   });
 });

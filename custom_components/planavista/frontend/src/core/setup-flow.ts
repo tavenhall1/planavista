@@ -36,3 +36,26 @@ export function stepAfter(steps: Array<{ id: string }>, current: string | undefi
 export function onlySteps<S extends { id: string }>(steps: S[], only: readonly string[] | null | undefined): S[] {
   return only ? steps.filter(step => only.includes(step.id)) : steps;
 }
+
+/** What a step's element says about the main button, and which step it belongs to. */
+export interface StepButtonSource {
+  step?: string;
+  primaryLabel?: string;
+  ready?: boolean;
+}
+
+/**
+ * Setup's main button for the step on screen: its own element's label and
+ * readiness once that element is drawn (an element still on screen from the
+ * step before doesn't count), else the step's own label; a short setup ends
+ * on the last step's finish label.
+ */
+export function stepButton(
+  step: { id: string; primary?: string; finish?: string },
+  element: StepButtonSource | null,
+  { last, short }: { last: boolean; short: boolean },
+): { label: string; ready: boolean } {
+  const own = element && element.step === step.id ? element : null;
+  const label = own?.primaryLabel ?? (short && last ? step.finish : undefined) ?? step.primary ?? (last ? 'Finish' : 'Next');
+  return { label, ready: own?.ready !== false };
+}

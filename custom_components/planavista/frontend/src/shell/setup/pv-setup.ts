@@ -13,7 +13,7 @@ import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import { saveErrorMessage } from '../../core/page-host';
 import { STEP_CHANGE, SetupContext, SetupPatch, SetupStep, resumeIndex, setupRegistry } from '../../core/settings-registry';
-import { mergePatch, onlySteps, stepAfter, withPatch } from '../../core/setup-flow';
+import { mergePatch, onlySteps, stepAfter, stepButton, withPatch } from '../../core/setup-flow';
 import type { PlanaVistaData } from '../../types';
 import './welcome-step';
 import './people-step';
@@ -281,8 +281,9 @@ export class PvSetup extends LitElement {
     const tag = unsafeStatic(step.tag);
     const element = this._element;
     const short = !!this.only;
-    const label = element?.primaryLabel ?? (short && last ? step.finish : undefined) ?? step.primary ?? (last ? 'Finish' : 'Next');
-    const ready = element?.ready !== false;
+    const { label, ready } = stepButton(step, element
+      ? { step: element.dataset.step, primaryLabel: element.primaryLabel, ready: element.ready }
+      : null, { last, short });
     const context = this._context();
     const leave = index === 0 && short && !!this.cancelLabel;
     const noBack = index === 0 && !leave;
@@ -305,6 +306,7 @@ export class PvSetup extends LitElement {
           ${keyed(step.id, staticHtml`
             <${tag}
               class="step-el"
+              data-step=${step.id}
               .hass=${this.hass}
               .data=${this.data}
               .household=${context.household}
@@ -333,11 +335,12 @@ export class PvSetup extends LitElement {
   }
 
   protected updated(): void {
-    // A step's label and readiness live on its element, which exists only after the first render.
+    // A step's label and readiness live on its element, which exists only after the render that adds it,
+    // so a new step's element always gets one more render (until then the step's own label shows).
     const element = this._element;
     if (element && !(element as unknown as { _hostSeen?: boolean })._hostSeen) {
       (element as unknown as { _hostSeen?: boolean })._hostSeen = true;
-      if (element.primaryLabel !== undefined || element.ready !== undefined) this.requestUpdate();
+      this.requestUpdate();
     }
   }
 
