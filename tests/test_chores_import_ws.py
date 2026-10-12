@@ -43,7 +43,7 @@ async def test_the_preview_is_a_parents_and_says_where_things_go(
     result = reply["result"]["preview"]
     assert result["file"]["label"] == "Household Hours plan, version 1"
     assert [p["match"] for p in result["people"]] == ["alex", "blair", "casey", "dana"]
-    assert result["starts_over"] is False
+    assert result["fills_in"] is False
     assert chores.engine.activity("vacuum") is None  # nothing saved
 
 
@@ -124,7 +124,7 @@ async def test_export_then_restore_brings_chores_back_after_they_need_a_look(
     chores.problem = STATE_NEEDS_A_LOOK
     chores.engine.plan["activities"] = []
     looked = await ws_command(alex, {"type": "planavista/import/preview", "text": json.dumps(file)})
-    assert looked["result"]["preview"]["starts_over"] is True
+    assert looked["result"]["preview"]["fills_in"] is True
     plan_text = await ws_command(alex, {"type": "planavista/import/apply", "text": PLAN_TEXT})
     assert plan_text["error"]["code"] == "chores_need_a_look"
     restored = await ws_command(alex, {"type": "planavista/import/apply", "text": json.dumps(file)})
@@ -165,3 +165,55 @@ async def test_the_export_action_is_for_admins_and_automations(
         await hass.services.async_call(DOMAIN, "export_household", {}, blocking=True, return_response=True,
                                        context=Context(user_id=accounts["alex"].id))
     assert err.value.translation_key == "not_allowed"
+
+
+async def test_a_restore_with_problems_while_chores_need_a_look_changes_nothing(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    alex = await _alex(hass, hass_ws_client, accounts)
+    file = (await ws_command(alex, {"type": "planavista/export"}))["result"]["file"]
+    chores.engine.award_stars(chores.now(), member="casey", stars=3, reason="Helped out", by="alex")
+    ledger = list(chores.engine.rewards["ledger"])
+    chores.problem, chores.missing = STATE_NEEDS_A_LOOK, frozenset({"log"})
+    file["members"][2]["bedtime"] = {"weeknight": "late", "weekend": "late"}
+    out = await ws_command(alex, {"type": "planavista/import/apply", "text": json.dumps(file)})
+    assert out["result"]["problem"]["message"] == "This file has problems, so nothing was imported."
+    assert chores.state == STATE_NEEDS_A_LOOK
+    assert len(chores.engine.plan["activities"]) == 16
+    assert chores.engine.rewards["ledger"] == ledger
+
+
+async def test_a_restore_while_chores_need_a_look_keeps_what_could_be_read(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    alex = await _alex(hass, hass_ws_client, accounts)
+    file = (await ws_command(alex, {"type": "planavista/export"}))["result"]["file"]
+    chores.engine.award_stars(chores.now(), member="casey", stars=3, reason="Helped out", by="alex")
+    ledger = list(chores.engine.rewards["ledger"])
+    active_from = chores.engine.log["active_from"]
+    chores.problem, chores.missing = STATE_NEEDS_A_LOOK, frozenset({"plan"})
+    chores.engine.plan["activities"] = []  # the plan came back empty; the log and the rewards could be read
+    looked = await ws_command(alex, {"type": "planavista/import/preview", "text": json.dumps(file)})
+    assert looked["result"]["preview"]["fills_in"] is True
+    restored = await ws_command(alex, {"type": "planavista/import/apply", "text": json.dumps(file)})
+    assert restored["result"]["summary"]["activities_added"] == 16
+    assert chores.state == "ok"
+    assert chores.engine.rewards["ledger"] == ledger
+    assert chores.engine.log["active_from"] == active_from
+
+
+async def test_a_restore_may_swap_two_peoples_colors(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    alex = await _alex(hass, hass_ws_client, accounts)
+    file = (await ws_command(alex, {"type": "planavista/export"}))["result"]["file"]
+    colors = {m["name"]: m["color"] for m in file["members"]}
+    file["members"][0]["color"], file["members"][1]["color"] = colors["Blair"], colors["Alex"]
+    jordan = {**deepcopy(file["members"][3]), "id": "jordan", "name": "Jordan", "color": colors["Casey"]}
+    jordan["links"] = {"person": None, "calendars": [], "phones": []}
+    file["members"][2]["color"] = "#F9C74F"
+    file["members"].append(jordan)
+    out = await ws_command(alex, {"type": "planavista/import/apply", "text": json.dumps(file)})
+    assert "summary" in out["result"], out
+    now = {m["name"]: m["color"] for m in chores.household.members}
+    assert (now["Alex"], now["Blair"], now["Casey"], now["Jordan"]) == (colors["Blair"], colors["Alex"], "#F9C74F", colors["Casey"])

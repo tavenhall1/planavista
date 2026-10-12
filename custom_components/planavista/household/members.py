@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Mapping
 from datetime import date
+import math
 import re
 from typing import Any
 import unicodedata
@@ -65,12 +66,13 @@ _NOTIFY_SERVICE = re.compile(r"notify\.[a-z0-9_]+")
 
 
 class MemberError(ValueError):
-    """A change that breaks a household rule. `code` names the rule."""
+    """A change that breaks a household rule. `code` names the rule; `member` whose change broke it, when known."""
 
-    def __init__(self, code: str) -> None:
-        """Remember which rule was broken."""
+    def __init__(self, code: str, member: str | None = None) -> None:
+        """Remember which rule was broken, and by whom."""
         super().__init__(code)
         self.code = code
+        self.member = member
 
 
 def slug(name: str) -> str:
@@ -97,6 +99,32 @@ def palette_color(color: object) -> str | None:
         return None
     wanted = color.strip().upper()
     return next((c for c in PALETTE if c.upper() == wanted), None)
+
+
+_HEX = re.compile(r"#[0-9A-Fa-f]{6}")
+
+
+def _rgb(color: str) -> tuple[int, int, int]:
+    return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+
+
+def _distance(a: str, b: str) -> float:
+    """How far apart two colors look (a weighted RGB distance; good enough to pick a palette neighbor)."""
+    (r1, g1, b1), (r2, g2, b2) = _rgb(a), _rgb(b)
+    mean = (r1 + r2) / 2
+    return math.sqrt((2 + mean / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - mean) / 256) * (b1 - b2) ** 2)
+
+
+def nearest_palette_color(color: object, taken: Collection[str]) -> str | None:
+    """The free palette color nearest `color` (a #RRGGBB from elsewhere, such as a planner), else the first free one."""
+    used = {c.upper() for c in taken}
+    free = [c for c in PALETTE if c.upper() not in used]
+    if not free:
+        return None
+    if not isinstance(color, str) or not _HEX.fullmatch(color.strip()):
+        return free[0]
+    wanted = color.strip()
+    return min(free, key=lambda c: _distance(wanted, c))
 
 
 def next_free_color(
@@ -326,6 +354,51 @@ def update_member(
     updated = list(members)
     updated[index] = member
     return updated, member
+
+
+def import_members(
+    members: list[dict[str, Any]],
+    adds: Iterable[Mapping[str, Any]],
+    updates: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """An import's people as one change (spec 7.9): the household after it, or MemberError naming who breaks a rule.
+
+    Updates come first, each checked against the people the import leaves
+    alone, then the people it adds, then names, colors, and Home Assistant
+    people across everyone, so two people may trade colors in a restore.
+    `members` itself is left as it was.
+    """
+    final = [dict(m) for m in members]
+    untouched = [m for m in final if m["id"] not in updates]
+    for member_id, changes in updates.items():
+        index = next((i for i, m in enumerate(final) if m["id"] == member_id), None)
+        if index is None:
+            raise MemberError("unknown_member")
+        existing = final[index]
+        try:
+            member = build_member(existing, changes, untouched)
+        except MemberError as err:
+            raise MemberError(err.code, str(changes.get("name") or existing.get("name"))) from err
+        member["id"], member["order"] = existing["id"], existing.get("order", index)
+        member["rev"] = int(existing.get("rev", 1)) + 1
+        final[index] = member
+    seen: dict[str, set[str]] = {"name": set(), "color": set(), "person": set()}
+    codes = {"name": "name_taken", "color": "color_taken", "person": "person_taken"}
+    for member in final:
+        for key, values in seen.items():
+            value = member.get(key)
+            if not value:
+                continue
+            folded = str(value).casefold()
+            if folded in values:
+                raise MemberError(codes[key], str(member.get("name")))
+            values.add(folded)
+    for record in adds:
+        try:
+            final, _ = add_member(final, record, member_id=record.get("id"))
+        except MemberError as err:
+            raise MemberError(err.code, str(record.get("name"))) from err
+    return final
 
 
 def set_prefs(

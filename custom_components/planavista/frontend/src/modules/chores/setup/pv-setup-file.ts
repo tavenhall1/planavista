@@ -10,7 +10,7 @@ import { STEP_CHANGE, SetupPatch } from '../../../core/settings-registry';
 import { errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
-import { ImportChoices, ImportPreview, emptyChoices, fileLine, importSummary, missingAges } from '../settings/import-derive';
+import { ImportChoices, ImportPreview, emptyChoices, fileLine, importNote, importSummary, missingAges } from '../settings/import-derive';
 import '../settings/pv-import-preview';
 
 /**
@@ -181,7 +181,7 @@ export class PvSetupFile extends LitElement {
         <pv-import-preview .hass=${this.hass} .preview=${this._preview} .members=${inOrder(this.household?.members ?? [])}
           .choices=${this._choices} .layout=${this.layout} .timeFormat=${this.data?.display?.time_format ?? '12h'}
           @pv-import-choices=${(e: CustomEvent<ImportChoices>) => { this._choices = e.detail; this._changed(); }}></pv-import-preview>
-        <p class="summary">${importSummary(this._preview, this._choices)} Nothing is deleted.</p>
+        <p class="summary">${importSummary(this._preview, this._choices)} ${importNote(this._preview)}</p>
       ` : nothing}
     `;
   }

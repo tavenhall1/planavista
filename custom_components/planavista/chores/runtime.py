@@ -94,6 +94,8 @@ class ChoresRuntime:
         self.household = household
         self.stores = stores
         self.problem = problem
+        # The files that came back empty while chores need a look (each held as a fresh one meanwhile).
+        self.missing: frozenset[str] = frozenset()
         self.engine = ChoresEngine(
             documents["plan"], documents["log"], documents["rewards"], household.members,
             tz=dt_util.get_default_time_zone(), new_id=ulid_now,
@@ -466,6 +468,24 @@ class ChoresRuntime:
         self._schedule_boundary()
         self.async_notify()
 
+    async def async_recover(self) -> None:
+        """Chores need a look and a parent restores a PlanaVista file (spec 15.3): the files that came back
+        empty start fresh and the ones that could still be read stay, stars and history among them."""
+        if self.state != STATE_NEEDS_A_LOOK:
+            raise ChoresUnavailable(translation_domain=DOMAIN, translation_key="chores_unavailable")
+        self.problem = None
+        ir.async_delete_issue(self.hass, DOMAIN, ISSUE_MISSING)
+        if "log" in self.missing:
+            self.engine.start(self.now())
+        self._sync_first_day()
+        for name in STORE_KEYS:
+            if name in self.missing:
+                await self.stores.async_save(name, getattr(self.engine, name))
+        self.missing = frozenset()
+        self._check_writes()
+        self._schedule_boundary()
+        self.async_notify()
+
     async def _async_load_platforms(self) -> None:
         entry = self.entry
         if entry is None or entry.state is not ConfigEntryState.LOADED:
@@ -532,5 +552,7 @@ async def async_get_chores(hass: HomeAssistant, household: Household) -> ChoresR
         for name in STORE_KEYS
     }
     runtime = ChoresRuntime(hass, household, stores, documents, problem)
+    if problem == STATE_NEEDS_A_LOOK:
+        runtime.missing = frozenset(name for name in STORE_KEYS if raw[name] is None)
     hass.data[DATA_CHORES] = runtime
     return runtime

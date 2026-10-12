@@ -10,7 +10,7 @@ import { PAGE_ERROR, POP_PAGE } from '../../../core/page-host';
 import { errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
-import { ImportChoices, ImportPreview, emptyChoices, fileLine, importSummary, importedText, missingAges } from './import-derive';
+import { ImportChoices, ImportPreview, emptyChoices, fileLine, importNote, importSummary, importedText, missingAges } from './import-derive';
 import { choresSettingsStyles } from './settings-styles';
 import './pv-import-preview';
 
@@ -139,7 +139,7 @@ export class PvImportReview extends LitElement {
       <div class="bar">
         <span class="text">
           ${missing.length ? `Pick an age group for ${missing.map(p => p.name).join(' and ')} to import.` : importSummary(preview, this._choices)}
-          <span class="sub">Nothing is deleted. Stars, rewards, and history stay as they are.</span>
+          <span class="sub">${importNote(preview)}</span>
         </span>
         <button class="pv-btn pv-btn-secondary" type="button" @click=${this._pop}>Cancel</button>
         <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._importing || missing.length > 0}

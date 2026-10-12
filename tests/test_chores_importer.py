@@ -320,3 +320,26 @@ def test_the_preview_the_card_reads_keeps_its_shape() -> None:
     """test/import-derive.test.ts reads tests/fixtures/import_preview_sample.json; this keeps it current."""
     fixture = json.loads((Path(__file__).parent / "fixtures" / "import_preview_sample.json").read_text("utf-8"))
     assert _sample_preview() == fixture["preview"]
+
+
+def test_a_restore_may_swap_two_peoples_colors() -> None:
+    members = _household("Alex", "Blair", "Casey", "Dana")
+    file = _export(members)
+    file["members"][0]["color"], file["members"][1]["color"] = members[1]["color"], members[0]["color"]
+    result = plan_import(read_file(json.dumps(file)), {}, members, [], [], {}, persons=set(), calendars=set())
+    updates = result["members_update"]
+    assert (updates["alex"]["color"], updates["blair"]["color"]) == (members[1]["color"], members[0]["color"])
+
+
+def test_plan_colors_come_in_as_the_nearest_free_palette_colors() -> None:
+    """Spec 7.9: people bring their color. A planner color PlanaVista doesn't have becomes the nearest free one."""
+    plan = json.loads(PLAN_TEXT)
+    for ref, name in (("p_jordan", "Jordan"), ("p_sam", "Sam")):
+        plan["people"].append({"id": ref, "name": name, "color": "#2A7FA3", "bedWk": "21:00", "bedWe": "21:30"})
+    parsed = read_file(json.dumps(plan))
+    members = _household("Alex", "Blair", "Casey", "Dana")
+    colors = {p["name"]: p["color"] for p in preview(parsed, members, [], [])["people"]}
+    assert (colors["Alex"], colors["Jordan"], colors["Sam"]) == (members[0]["color"], "#277DA1", "#4D908E")
+    choices = {"people": {"p_jordan": {"age_group": "teen"}, "p_sam": {"age_group": "teen"}}}
+    added = {m["name"]: m["color"] for m in plan_import(parsed, choices, members, [], [], {})["members_add"]}
+    assert added == {"Jordan": "#277DA1", "Sam": "#4D908E"}

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  activityLine, byCategory, emptyChoices, fileLine, importedText, ImportPreview, importSummary, lookLines, matchOf, missingAges, onBoardOf, peopleHint, personLine, sections, tiles,
+  activityLine, byCategory, emptyChoices, fileLine, importedText, importNote, ImportPreview, importSummary, lookLines, matchOf, missingAges, onBoardOf, peopleHint, personLine, sections, tiles,
 } from '../src/modules/chores/settings/import-derive';
 import { MEMBERS } from './chores-fixtures';
 
@@ -85,5 +85,23 @@ describe('the people hint', () => {
   it('says where bedtimes and sleep came from: the plan, or the PlanaVista file', () => {
     expect(peopleHint('household-hours/v1')).toBe('Matched by name; pick someone else to change it. Bedtimes and sleep come from the plan.');
     expect(peopleHint('planavista.household/v1')).toBe('Matched by name; pick someone else to change it. Bedtimes and sleep come from the file.');
+  });
+});
+
+describe('what the Import bar says stays (spec 14.6, 15.3)', () => {
+  const restore = { ...PREVIEW, file: { ...PREVIEW.file, format: 'planavista.household/v1' } };
+
+  it('says a plan leaves stars, rewards, and history as they are', () => {
+    expect(importNote(PREVIEW)).toBe('Nothing is deleted. Stars, rewards, and history stay as they are.');
+  });
+
+  it("says a restore updates the household's chores, rewards, and rules, and keeps stars and history", () => {
+    expect(importNote(restore)).toBe("Nothing is deleted. The file's chores, rewards, and rules update the ones here, and stars and history stay.");
+  });
+
+  it('says a restore while chores need a look fills in only what could not be read', () => {
+    expect(importNote({ ...restore, fills_in: true })).toBe(
+      "Nothing is deleted. The file fills in what couldn't be read, and stars and history that could still be read stay.",
+    );
   });
 });

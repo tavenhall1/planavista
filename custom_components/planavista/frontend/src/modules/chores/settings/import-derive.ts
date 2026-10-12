@@ -45,7 +45,8 @@ export interface ImportPreview {
   rewards: Array<{ ref: string; name: string; icon: string | null; match: string | null }>;
   settings: boolean;
   needs_a_look: NeedsALook[];
-  starts_over?: boolean;
+  /** A restore while chores need a look: it fills in the files that couldn't be read and keeps the rest (spec 15.3). */
+  fills_in?: boolean;
 }
 
 /** The parent's picks on the review page; sent with Import. */
@@ -56,6 +57,17 @@ export interface ImportChoices {
 }
 
 export const RESTORE_FORMAT = 'planavista.household/v1';
+
+/** What the Import bar says stays (spec 14.6): nothing is deleted, and what a plan, a restore, or a fill-in changes. */
+export function importNote(preview: Pick<ImportPreview, 'file' | 'fills_in'>): string {
+  if (preview.fills_in) {
+    return "Nothing is deleted. The file fills in what couldn't be read, and stars and history that could still be read stay.";
+  }
+  if (preview.file.format === RESTORE_FORMAT) {
+    return "Nothing is deleted. The file's chores, rewards, and rules update the ones here, and stars and history stay.";
+  }
+  return 'Nothing is deleted. Stars, rewards, and history stay as they are.';
+}
 
 /** The line under People: how matching works, and where bedtimes and sleep came from. */
 export function peopleHint(format: string): string {

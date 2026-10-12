@@ -21,7 +21,7 @@ from homeassistant.util import dt as dt_util
 
 from ..const import CONF_CALENDARS, VERSION
 from ..coordinator import async_apply_config
-from ..household.members import MemberError, add_member, check_parent_pins, update_member
+from ..household.members import MemberError, check_parent_pins, import_members
 from ..household.permissions import member_level
 from ..household.store import Household
 from ..household.websocket import (
@@ -528,13 +528,10 @@ def ws_import_preview(hass: HomeAssistant, connection: websocket_api.ActiveConne
     except ImportProblem as err:
         connection.send_result(msg["id"], {"problem": _problem(err)})
         return
-    # Chores that need a look start over with a restore, so nothing is matched against them.
-    fresh = runtime.state == STATE_NEEDS_A_LOOK
     engine = runtime.engine
-    result = preview(
-        parsed, household.members, [] if fresh else engine.plan["activities"], [] if fresh else engine.rewards["rewards"],
-    )
-    result["starts_over"] = fresh
+    result = preview(parsed, household.members, engine.plan["activities"], engine.rewards["rewards"])
+    # Chores that need a look: a restore fills in the files that couldn't be read and keeps the rest (spec 15.3).
+    result["fills_in"] = runtime.state == STATE_NEEDS_A_LOOK
     connection.send_result(msg["id"], {"preview": result})
 
 
@@ -560,13 +557,14 @@ async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveC
     except ImportProblem as err:
         connection.send_result(msg["id"], {"problem": _problem(err)})
         return
-    if runtime.state == STATE_NEEDS_A_LOOK:
-        if parsed["format"] != FORMAT_HOUSEHOLD:
-            connection.send_error(
-                msg["id"], "chores_need_a_look", "Restore from a PlanaVista file, or start over, before importing a plan."
-            )
-            return
-        await runtime.async_start_over()
+    fills_in = runtime.state == STATE_NEEDS_A_LOOK
+    if fills_in and parsed["format"] != FORMAT_HOUSEHOLD:
+        connection.send_error(
+            msg["id"], "chores_need_a_look", "Restore from a PlanaVista file, or start over, before importing a plan."
+        )
+        return
+    # Everything is checked first, against what's here now (files that couldn't be read are empty), and nothing
+    # is written until it all passes: a file with problems leaves chores that need a look as they were.
     engine = runtime.engine
     entry = runtime.entry
     rows = list(entry.data.get(CONF_CALENDARS, [])) if entry is not None else []
@@ -579,22 +577,20 @@ async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveC
     except ImportProblem as err:
         connection.send_result(msg["id"], {"problem": _problem(err)})
         return
-    members = household.members
     try:
-        for record in changes["members_add"]:
-            members, _ = add_member(members, record, member_id=record["id"])
-        for member_id, update in changes["members_update"].items():
-            members, _ = update_member(members, member_id, update, None)
+        members = import_members(household.members, changes["members_add"], changes["members_update"])
         check_parent_pins(
             household.members, members, household.pins, household.pins, _screens_need_parent_pin(hass, household, connection)
         )
     except MemberError as err:
         problem = ImportProblem(
             "invalid_file", "This file has problems, so nothing was imported.",
-            [{"item": "People", "code": err.code, "of": "member"}],
+            [{"item": err.member or "People", "code": err.code, "of": "member"}],
         )
         connection.send_result(msg["id"], {"problem": _problem(problem)})
         return
+    if fills_in:
+        await runtime.async_recover()
     if members != household.members:
         household.members = members
         await household.async_save()

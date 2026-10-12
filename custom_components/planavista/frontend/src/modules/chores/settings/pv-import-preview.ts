@@ -173,7 +173,7 @@ export class PvImportPreview extends LitElement {
     const s = sections(p, this.choices);
     const restoring = p.file.format === RESTORE_FORMAT;
     return html`
-      ${p.starts_over ? html`<p class="warning" role="note">Chores need a look, so this restore replaces them with the file's chores, rewards, and rules.</p>` : nothing}
+      ${p.fills_in ? html`<p class="warning" role="note">Chores need a look, so this restore fills in the chores files that couldn't be read. What could still be read, such as stars and history, stays.</p>` : nothing}
       <div class="tiles">
         ${tiles(p, this.choices).map(t => html`<div class="tile"><strong>${t.value}</strong><span>${t.label}</span></div>`)}
       </div>

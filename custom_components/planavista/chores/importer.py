@@ -22,10 +22,11 @@ from ..household.members import (
     AGE_GROUPS,
     EDITABLE_FIELDS,
     MemberError,
-    PALETTE,
     build_member,
     make_id as make_member_id,
     ordered,
+    import_members,
+    nearest_palette_color,
     palette_color,
 )
 from .model import ACTIVITY_FIELDS, CATEGORIES, ChoreError, build_activity, build_reward, build_settings, make_id
@@ -148,8 +149,10 @@ def _read_plan(data: Mapping[str, Any]) -> dict[str, Any]:
             problems.append({"item": f"Person {n}", "code": "name_required"})
             continue
         ref = _text(raw.get("id")) or f"person_{n}"
+        color = raw.get("color")
         people.append({
-            "ref": ref, "name": name, "color": palette_color(raw.get("color")),
+            # The planner's own color; it comes in as the nearest free palette color (spec 7.9).
+            "ref": ref, "name": name, "color": color.strip() if isinstance(color, str) else None,
             "bedtime": {
                 "weeknight": _clock(raw.get("bedWk")) or DEFAULT_BEDTIME["weeknight"],
                 "weekend": _clock(raw.get("bedWe")) or DEFAULT_BEDTIME["weekend"],
@@ -328,6 +331,29 @@ def _kind(record: Mapping[str, Any], on_board: bool) -> str:
     return "board" if on_board else "plan_only"
 
 
+def _people_colors(
+    parsed: Mapping[str, Any], members: list[dict[str, Any]], matches: Mapping[str, str | None]
+) -> dict[str, str | None]:
+    """Each file person's color after the import: a matched member keeps theirs (a restore brings the file's),
+    and a new person gets the free palette color nearest the file's."""
+    by_id = {m["id"]: m for m in members}
+    restoring = parsed["format"] == FORMAT_HOUSEHOLD
+    colors: dict[str, str | None] = {}
+    for person in parsed["people"]:
+        member = by_id.get(matches[person["ref"]] or "")
+        if member is not None:
+            colors[person["ref"]] = palette_color(person["color"]) if restoring and palette_color(person["color"]) else member.get("color")
+    used = [c for ref, c in colors.items() if c] + [
+        str(m.get("color")) for m in members if m.get("color") and m["id"] not in set(matches.values())
+    ]
+    for person in parsed["people"]:
+        if person["ref"] not in colors:
+            colors[person["ref"]] = nearest_palette_color(person["color"], used)
+            if colors[person["ref"]]:
+                used.append(colors[person["ref"]])
+    return colors
+
+
 def preview(
     parsed: Mapping[str, Any], members: list[dict[str, Any]], activities: list[dict[str, Any]],
     rewards: list[dict[str, Any]],
@@ -335,10 +361,11 @@ def preview(
     """Where everything in the file would go (spec 14.6). Nothing is saved."""
     matches = _match_people(parsed, members)
     names = {m["id"]: m["name"] for m in members}
+    colors = _people_colors(parsed, members, matches)
     people = [
         {
             "ref": p["ref"], "name": p["name"], "match": matches[p["ref"]],
-            "match_name": names.get(matches[p["ref"]] or ""), "color": p["color"], "bedtime": p["bedtime"],
+            "match_name": names.get(matches[p["ref"]] or ""), "color": colors[p["ref"]], "bedtime": p["bedtime"],
             "sleep_hours": p["sleep_hours"], "age_group": p["age_group"], "parent": p["parent"],
         }
         for p in parsed["people"]
@@ -443,6 +470,7 @@ def plan_import(
     members_update: dict[str, dict[str, Any]] = {}
     calendar_links: dict[str, str] = {}
     after: list[dict[str, Any]] = [dict(m) for m in members]
+    colors = _people_colors(parsed, members, matches)
     for person in parsed["people"]:
         ref = person["ref"]
         member_id = matches[ref]
@@ -460,9 +488,9 @@ def plan_import(
             if not restoring or changes.get("person") is None:
                 changes.pop("person", None)  # a link the file can't make keeps the one there is
             ids[ref] = member_id
-            others = [m for m in after if m["id"] != member_id]
             try:
-                build_member(by_id[member_id], changes, others)
+                # Each change on its own here; names, colors, and people are checked across everyone below.
+                build_member(by_id[member_id], changes, [])
             except MemberError as err:
                 problems.append({"item": person["name"], "code": err.code, "of": "member"})
             members_update[member_id] = changes
@@ -478,13 +506,9 @@ def plan_import(
             changes = {**changes, "name": person["name"], "age_group": age_group}
             if not restoring:
                 changes["parent"] = False
-            used = {m["color"].upper() for m in after if m.get("color")}
-            if person["color"] and person["color"].upper() not in used:
-                changes["color"] = person["color"]
-            else:
-                changes["color"] = next((c for c in PALETTE if c.upper() not in used), None)
+            changes["color"] = colors[ref]
             try:
-                record = build_member(None, changes, after)
+                record = build_member(None, changes, [])
             except MemberError as err:
                 problems.append({"item": person["name"], "code": err.code, "of": "member"})
                 continue
@@ -496,6 +520,11 @@ def plan_import(
             for entity_id in links.get("calendars") or []:
                 if entity_id in calendars:
                     calendar_links[entity_id] = ids[ref]
+    if not any(p.get("of") == "member" for p in problems):
+        try:
+            import_members(members, members_add, members_update)
+        except MemberError as err:
+            problems.append({"item": err.member or "People", "code": err.code, "of": "member"})
     member_ids = {m["id"] for m in after}
 
     # Chores, with the plan's people named by member id now.
