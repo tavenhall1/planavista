@@ -18,6 +18,8 @@ import { weatherIcon } from '../../../utils/weather-icons';
 import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 import { dayOfStatus, eventStatus } from '../event-words';
 import { agendaNote, newEventLabel } from '../view-words';
+import { ref } from 'lit/directives/ref.js';
+import { ScrollReporter } from '../../../core/content-scroll';
 
 const DAYS_PER_PAGE = 14;
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -35,6 +37,8 @@ export class PVViewAgenda extends LitElement {
   @property({ type: Number }) tick = 0;
   /** The card's layout (spec 12.1). */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
 
   @state() private _daysLoaded = DAYS_PER_PAGE;
 
@@ -253,7 +257,7 @@ export class PVViewAgenda extends LitElement {
     // Nothing in the whole range: one designed state, not a stack of empty days (spec 11.6).
     if (days.every(day => !(grouped.get(getDateKey(day))?.length))) {
       return html`
-        <div class="agenda-container">
+        <div class="agenda-container" ${ref(this._scroll.attach)}>
           <div class="state">
             <div class="art" aria-hidden="true">🗓️</div>
             <h2>Nothing coming up</h2>
@@ -268,7 +272,7 @@ export class PVViewAgenda extends LitElement {
     }
 
     return html`
-      <div class="agenda-container">
+      <div class="agenda-container" ${ref(this._scroll.attach)}>
         ${days.map((day, i) => this._renderDayCard(day, grouped, forecast, i === 0))}
         <button class="load-more" type="button" @click=${this._loadMore}>Show more days</button>
       </div>

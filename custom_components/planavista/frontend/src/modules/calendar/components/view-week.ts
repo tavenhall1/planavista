@@ -16,6 +16,8 @@ import {
 import { newEventLabel } from '../view-words';
 import { weatherIcon } from '../../../utils/weather-icons';
 import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
+import { ref } from 'lit/directives/ref.js';
+import { ScrollReporter } from '../../../core/content-scroll';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -33,6 +35,8 @@ export class PVViewWeek extends LitElement {
   @property({ type: Number }) tick = 0;
   /** The card's layout: four days across in landscape, two in portrait, one on a phone (spec 12.3). */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
 
 
   static styles = [
@@ -243,7 +247,7 @@ export class PVViewWeek extends LitElement {
     const forecasts = buildForecastMap(this.forecast);
 
     return html`
-      <div class="week-container">
+      <div class="week-container" ${ref(this._scroll.attach)}>
         <div class="week-label">${this._getWeekLabel(days)}</div>
         <div class="day-grid">
           ${days.map(day => this._renderDayCard(day, deduped, forecasts))}

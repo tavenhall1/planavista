@@ -9,6 +9,7 @@ import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
 import type { Balance, RewardCard } from './rewards-derive';
 import { pictureOf } from './pv-chore-tile';
+import { ScrollReporter } from '../../core/content-scroll';
 
 /**
  * pv-chores-rewards: what stars are for (spec 13.6). Balances and goals on
@@ -20,6 +21,9 @@ import { pictureOf } from './pv-chore-tile';
  * @fires pv-reward-open - { reward } a card was tapped (its sheet), or { reward: null } for Add a reward
  */
 export class PvChoresRewards extends LitElement {
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
+
   @property({ attribute: false }) balances: Balance[] = [];
   @property({ attribute: false }) cards: RewardCard[] = [];
   @property({ attribute: false }) recent: string | null = null;
@@ -204,6 +208,16 @@ export class PvChoresRewards extends LitElement {
       }
     `,
   ];
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._scroll.attach(this);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._scroll.attach(undefined);
+  }
 
   render() {
     return html`

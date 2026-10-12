@@ -23,6 +23,7 @@ import {
 import { pictureOf } from './pv-chore-tile';
 import './pv-chore-item';
 import './pv-chore-tile';
+import { ScrollReporter } from '../../core/content-scroll';
 
 export type MyDayStyle = 'timeline' | 'list' | 'pictures';
 const STYLES: Array<{ id: MyDayStyle; label: string }> = [
@@ -42,6 +43,9 @@ const STYLES: Array<{ id: MyDayStyle; label: string }> = [
  * @fires pv-my-day-style - { member, style } a style was picked
  */
 export class PvChoresMyDay extends LitElement {
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
+
   @property({ attribute: false }) column!: ColumnModel;
   @property({ attribute: false }) columns: ColumnModel[] = [];
   @property({ attribute: false }) board!: Board;
@@ -413,6 +417,16 @@ export class PvChoresMyDay extends LitElement {
   private _style(): MyDayStyle {
     const style = this.column.member.my_day;
     return style === 'list' || style === 'pictures' ? style : 'timeline';
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._scroll.attach(this);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._scroll.attach(undefined);
   }
 
   render() {

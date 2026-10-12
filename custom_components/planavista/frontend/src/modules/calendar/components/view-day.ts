@@ -18,6 +18,8 @@ import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { contrastText } from '../../../core/color';
 import type { Layout } from '../../../core/layout';
 import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
+import { ref } from 'lit/directives/ref.js';
+import { ScrollReporter } from '../../../core/content-scroll';
 
 /** Today's chore progress for one person (spec 13.9: rings in the Day view). */
 export type ProgressOf = (memberId: string) => { done: number; pending: number; due: number } | null;
@@ -55,6 +57,8 @@ export class PVViewDay extends LitElement {
   @property({ type: Number }) tick = 0;
   /** The card's layout: portrait fits about 14 hours on screen (spec 12.2). */
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
+  private _scroll = new ScrollReporter();
   /** Today's chore progress per person, when Chores is on: each column header gets a ring. */
   @property({ attribute: false }) progress: ProgressOf | null = null;
   /** Bumped when chores change, so the rings redraw. */
@@ -774,7 +778,7 @@ export class PVViewDay extends LitElement {
           </div>
         ` : nothing}
 
-        <div class="time-grid-wrapper">
+        <div class="time-grid-wrapper" ${ref(this._scroll.attach)}>
           <div class="time-grid">
             <div class="time-gutter">
               ${this._renderTimeLabels()}

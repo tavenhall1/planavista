@@ -48,6 +48,7 @@ import './pv-pin-sheet';
 import './pv-notice-sheet';
 import './settings/pv-settings';
 import './setup/pv-setup';
+import { ContentScrollDetail, compactHeader } from '../core/content-scroll';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
@@ -84,6 +85,9 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _views: Record<string, string> = {};
   /** The module the switcher picked; null for the card's first. */
   @state() private _moduleId: string | null = null;
+  /** Portrait with the content scrolled down: the header shows one line (spec 12.2). */
+  @state() private _compactHeader = false;
+  private _headerLayout: string | null = null;
   /** Where a glance chip or a ring sent the card last (a module and view, perhaps one person). */
   @state() private _openTarget: OpenTarget | null = null;
   /** Bumped whenever a module's service has news, so the modules and the header redraw. */
@@ -384,6 +388,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (mod && data && !(mod.id in this._views)) {
       this._views = { ...this._views, [mod.id]: initialModuleView(mod, { config: this._config, data }) };
     }
+    // Another view, module, or layout starts at its top, so the header starts tall again.
+    const layout = this._layout.layout;
+    if (changed.has('_views') || changed.has('_moduleId') || layout !== this._headerLayout) this._compactHeader = false;
+    this._headerLayout = layout;
   }
 
   private _setView(id: string): void {
@@ -391,6 +399,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (!mod || this._views[mod.id] === id) return;
     this._views = { ...this._views, [mod.id]: id };
   }
+
+  /** A module's content scrolled: in portrait the header shrinks past the top and grows back at it. */
+  private _onContentScroll = (e: CustomEvent<ContentScrollDetail>): void => {
+    if (this._layout.layout !== 'portrait') return;
+    this._compactHeader = compactHeader(this._compactHeader, e.detail.top);
+  };
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -763,6 +777,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         .openTarget=${this._openTarget}
         @pv-view-change=${(e: CustomEvent<{ view: string }>) => this._setView(e.detail.view)}
         @pv-overlay-change=${(e: CustomEvent<{ open: boolean }>) => { this._moduleOverlay = e.detail.open; }}
+        @pv-content-scroll=${this._onContentScroll}
         @pv-open=${(e: CustomEvent<OpenTarget>) => this._open(e.detail)}
         @pv-open-settings=${this._openSettings}
       ></${tag}>
@@ -774,6 +789,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return html`
       <pv-glance-header
         layout=${this._layout.layout}
+        ?compact=${this._layout.layout === 'portrait' && this._compactHeader}
         .timeFormat=${display.time_format || '12h'}
         .weather=${weather ?? null}
         .weatherEntity=${display.weather_entity}
