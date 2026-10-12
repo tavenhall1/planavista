@@ -69,7 +69,13 @@ ERROR_MESSAGES = {
     "needs_parent_pin": "Set a PIN for a parent first, so someone can open Settings here.",
     "invalid_away": "Pick the first and last days away.",
     "invalid_goal": "Pick a reward to save up for.",
+    "invalid_bedtime": "Pick a bedtime, such as 9:00 PM.",
+    "invalid_sleep": "Pick between 1 and 16 hours of sleep.",
+    "invalid_phones": "Pick up to 5 phones from Home Assistant.",
+    "invalid_notify": "Requests and reminders are on or off.",
 }
+
+SETUP_STARTS = ("restore", "plan", "common", "empty", "calendar")
 
 MEMBER_FIELDS = vol.Schema(
     {
@@ -83,6 +89,11 @@ MEMBER_FIELDS = vol.Schema(
         vol.Optional("needs_ok_for"): str,
         vol.Optional("stars"): bool,
         vol.Optional("away"): vol.Any(None, [dict]),
+        vol.Optional("goal"): vol.Any(None, str),
+        vol.Optional("bedtime"): vol.Any(None, dict),
+        vol.Optional("sleep_hours"): vol.Any(None, vol.Coerce(float)),
+        vol.Optional("phones"): [str],
+        vol.Optional("notify"): dict,
     }
 )
 
@@ -460,6 +471,8 @@ async def ws_settings_save(
         vol.Required("type"): "planavista/household/setup/save",
         vol.Optional("step"): vol.Any(None, str),
         vol.Optional("completed"): bool,
+        # How the household started (spec 14.7): restoring a file, a plan, common chores, empty, or just the calendar.
+        vol.Optional("start"): vol.Any(None, vol.In(SETUP_STARTS)),
         vol.Optional("session"): str,
     }
 )
@@ -472,7 +485,7 @@ async def ws_setup_save(
     if context is None:
         return
     household, _by = context
-    for key in ("step", "completed"):
+    for key in ("step", "completed", "start"):
         if key in msg:
             household.data["setup"][key] = msg[key]
     await household.async_save()

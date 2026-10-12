@@ -44,10 +44,30 @@ export interface HouseholdView {
   account: AccountView;
   security: { shuffle_keypad: boolean; shared_screens: number };
   modules: Record<string, unknown>;
-  setup: { completed: boolean; step: string | null };
+  /** Where setup stands; `start` is how the household started (restore, plan, common, empty, calendar). */
+  setup: { completed: boolean; step: string | null; start?: string | null };
 }
 
-/** The fields the person page and setup change. */
+/** What a person's phones get (spec 7.2): Waiting for OK requests (parents) and evening reminders. */
+export interface NotifyChoice {
+  requests: boolean;
+  reminders: boolean;
+}
+
+/** A time away (spec 8.11): first and last chore days, inclusive. */
+export interface AwayRange {
+  from: string;
+  to: string;
+  note?: string | null;
+}
+
+/** Bedtimes on weeknights, and on Friday and Saturday nights (HH:MM). */
+export interface Bedtime {
+  weeknight: string;
+  weekend: string;
+}
+
+/** The fields the person page, setup, Reminders, and imports change. */
 export interface MemberChanges {
   name?: string;
   color?: string;
@@ -55,6 +75,15 @@ export interface MemberChanges {
   age_group?: AgeGroup;
   parent?: boolean;
   person?: string | null;
+  needs_ok_for?: string;
+  my_day?: string;
+  stars?: boolean;
+  goal?: string | null;
+  away?: AwayRange[];
+  bedtime?: Bedtime | null;
+  sleep_hours?: number | null;
+  phones?: string[];
+  notify?: NotifyChoice;
 }
 
 /** The part of a calendar row the people pages read. */
@@ -85,6 +114,14 @@ export const AGE_GROUP_CHOICES: Array<{ id: AgeGroup; label: string; hint: strin
   { id: 'teen', label: 'Teen', hint: '' },
   { id: 'adult', label: 'Adult', hint: '' },
 ];
+
+/** What each age group means once chores are on (the approved person page). */
+export const AGE_GROUP_CHORES_HINTS: Record<AgeGroup, string> = {
+  young_child: 'Pictures and big buttons. Every chore needs an OK.',
+  older_child: 'A list with pictures. Chores marked Needs an OK wait for one.',
+  teen: 'The full list and a timeline. Chores marked Needs an OK wait for one.',
+  adult: 'The full list and a timeline. No OKs needed.',
+};
 
 /** The role chips of setup's "Who lives here?" (spec 14.7). */
 export const ROLES: Array<{ id: Role; label: string }> = [
@@ -132,6 +169,16 @@ export function settingsAccess(view: HouseholdView | null, isAdmin: boolean): Se
     return parentsWithPins(view.members).length > 0 ? 'pin' : 'no_pin';
   }
   return 'none';
+}
+
+/**
+ * Whether setup, open on this screen, has to ask for a parent's PIN to keep
+ * saving (spec 9.4, 14.7): on a shared screen setup runs in parent mode, and
+ * parent mode ends after two quiet minutes. Without a parent's PIN to ask
+ * for, there's nothing to ask.
+ */
+export function setupNeedsPin(view: HouseholdView | null, parentSession: boolean): boolean {
+  return !parentSession && settingsAccess(view, false) === 'pin';
 }
 
 export function calendarsOf(memberId: string, calendars: CalendarLink[]): CalendarLink[] {

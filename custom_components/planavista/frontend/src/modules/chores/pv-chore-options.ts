@@ -11,7 +11,7 @@ import type { OptionId, OptionModel, OptionsModel } from './options-derive';
 
 const ICONS: Record<OptionId, string> = {
   plan_day: '📅', more_time: '⏰', skip: '🛌', done_by: '🙋', history: '📜', undo: '↩️',
-  change_due: '🗓️', hand_off: '🔁', excuse: '🤒', delete: '🗑️', approve: '✅', send_back: '↩️',
+  change_due: '🗓️', hand_off: '🔁', excuse: '🤒', edit: '✏️', delete: '🗑️', approve: '✅', send_back: '↩️',
 };
 
 /** Quick reasons for Send back (spec 13.7). */

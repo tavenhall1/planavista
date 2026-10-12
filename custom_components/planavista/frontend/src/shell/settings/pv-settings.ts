@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
@@ -8,9 +8,12 @@ import { baseStyles, buttonStyles } from '../../styles/shared';
 import type { HouseholdView, Member } from '../../core/household';
 import type { HouseholdApi } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
-import { PAGE_ERROR, POP_PAGE, PUSH_PAGE, PushPageDetail } from '../../core/page-host';
+import type { ModuleService, OpenTarget } from '../../core/module-registry';
+import { OPEN_TARGET, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PushPageDetail } from '../../core/page-host';
 import type { Session } from '../../core/session';
-import { SettingsContext, SettingsPage, groupPages, settingsRegistry } from '../../core/settings-registry';
+import {
+  LookItem, SettingsContext, SettingsPage, SettingsTarget, groupPages, needsALook, settingsAt, settingsRegistry,
+} from '../../core/settings-registry';
 import type { PlanaVistaData } from '../../types';
 import '../pv-parent-strip';
 import './people-page';
@@ -30,7 +33,11 @@ const TOAST_MS = 4000;
  * iPad Settings in landscape; a stack with back controls in portrait and on
  * phones. The parent-mode strip stays on top while parent mode is on.
  *
+ * Problems that need a person sit under Needs a look at the top of the list
+ * (spec 15.4); each opens the page that fixes it.
+ *
  * @fires pv-settings-close - Done
+ * @fires pv-settings-open-target - a page asked for a module's view (Open Dana's day); Settings closes
  */
 export class PvSettings extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -42,6 +49,11 @@ export class PvSettings extends LitElement {
   @property({ type: Number }) sessionEndsAt = 0;
   @property({ attribute: false }) parent: Member | null = null;
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
+  /** The card's module services, and a number that changes whenever one of them does. */
+  @property({ attribute: false }) services: Record<string, ModuleService> = {};
+  @property({ type: Number }) revision = 0;
+  /** Where Settings opens (the board's Edit, Import a plan); the list when null. */
+  @property({ attribute: false }) target: SettingsTarget | null = null;
 
   /** The page picked in the sidebar (the stack starts at the list). */
   @state() private _selected: string | null = null;
@@ -55,6 +67,7 @@ export class PvSettings extends LitElement {
     this.addEventListener(PUSH_PAGE, this._onPush as EventListener);
     this.addEventListener(POP_PAGE, this._onPop);
     this.addEventListener(PAGE_ERROR, this._onError as EventListener);
+    this.addEventListener(OPEN_TARGET, this._onOpen as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -62,7 +75,16 @@ export class PvSettings extends LitElement {
     this.removeEventListener(PUSH_PAGE, this._onPush as EventListener);
     this.removeEventListener(POP_PAGE, this._onPop);
     this.removeEventListener(PAGE_ERROR, this._onError as EventListener);
+    this.removeEventListener(OPEN_TARGET, this._onOpen as EventListener);
     window.clearTimeout(this._toastTimer);
+  }
+
+  protected willUpdate(changed: PropertyValues): void {
+    if (changed.has('target') && this.target) {
+      const at = settingsAt(settingsRegistry.pages(this._context()), this.target);
+      this._selected = at.selected;
+      this._stack = at.stack;
+    }
   }
 
   static styles = [
@@ -196,6 +218,42 @@ export class PvSettings extends LitElement {
         font-size: 1.25rem;
       }
 
+      .look-row {
+        align-items: flex-start;
+        background: color-mix(in srgb, #F59E0B 12%, transparent);
+      }
+
+      .look-row:hover {
+        background: color-mix(in srgb, #F59E0B 18%, transparent);
+      }
+
+      .look-row + .look-row {
+        margin-top: 6px;
+      }
+
+      .look-icon {
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        margin-top: 1px;
+        border-radius: 50%;
+        background: #B45309;
+        color: #FFFFFF;
+        font-size: 0.875rem;
+        font-weight: 800;
+      }
+
+      .look-text {
+        font-size: 0.9375rem;
+        line-height: 1.35;
+      }
+
+      .look-row .chevron {
+        align-self: center;
+      }
+
       .page {
         flex: 1;
         min-width: 0;
@@ -236,7 +294,7 @@ export class PvSettings extends LitElement {
   ];
 
   private _context(): SettingsContext {
-    return { household: this.household, data: this.data };
+    return { household: this.household, data: this.data, services: this.services, hass: this.hass };
   }
 
   private get _split(): boolean {
@@ -273,8 +331,21 @@ export class PvSettings extends LitElement {
 
   private _renderList(pages: SettingsPage[], current: SettingsPage | undefined) {
     const context = this._context();
+    const looks = needsALook(pages, context);
     return html`
       <nav class="list" aria-label="Settings">
+        ${looks.length ? html`
+          <section class="group">
+            <h2 class="group-label">Needs a look</h2>
+            ${looks.map(item => html`
+              <button class="row look-row" type="button" @click=${() => this._look(item)}>
+                <span class="look-icon" aria-hidden="true">!</span>
+                <span class="row-text"><span class="look-text">${item.text}</span></span>
+                <span class="chevron" aria-hidden="true">›</span>
+              </button>
+            `)}
+          </section>
+        ` : nothing}
         ${groupPages(pages).map(({ group, pages: rows }) => html`
           <section class="group">
             ${group.label ? html`<h2 class="group-label">${group.label}</h2>` : nothing}
@@ -320,6 +391,8 @@ export class PvSettings extends LitElement {
             mode="settings"
             .pageProps=${top?.props ?? {}}
             .drafts=${this.drafts}
+            .services=${this.services}
+            .revision=${this.revision}
           ></${tag}>
         `)}
       </section>
@@ -337,6 +410,13 @@ export class PvSettings extends LitElement {
     if (!(await this._mayLeave())) return;
     this._stack = [];
     this._selected = id;
+  }
+
+  /** A Needs a look row: the page that fixes it, with its editor on top when it has one. */
+  private async _look(item: LookItem & { page: string }): Promise<void> {
+    if (!(await this._mayLeave())) return;
+    this._selected = item.page;
+    this._stack = item.stack ?? [];
   }
 
   private _back = async (): Promise<void> => {
@@ -359,6 +439,16 @@ export class PvSettings extends LitElement {
     event.stopPropagation();
     this._stack = this._stack.slice(0, -1);
   };
+
+  private _onOpen = (event: CustomEvent<OpenTarget>): void => {
+    event.stopPropagation();
+    void this._openTarget(event.detail);
+  };
+
+  private async _openTarget(target: OpenTarget): Promise<void> {
+    if (!(await this._mayLeave())) return;
+    this.dispatchEvent(new CustomEvent('pv-settings-open-target', { detail: target, bubbles: true, composed: true }));
+  }
 
   private _onError = (event: CustomEvent<{ message: string }>): void => {
     event.stopPropagation();

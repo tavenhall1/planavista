@@ -17,11 +17,24 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 
+from homeassistant.util import dt as dt_util
+
+from ..const import CONF_CALENDARS, VERSION
+from ..coordinator import async_apply_config
+from ..household.members import MemberError, check_parent_pins, import_members
 from ..household.permissions import member_level
 from ..household.store import Household
-from ..household.websocket import account_for, parent_for, refuse, session_for
-from .access import message, source_of
+from ..household.websocket import (
+    ERROR_MESSAGES,
+    _screens_need_parent_pin,
+    account_for,
+    parent_for,
+    refuse,
+    session_for,
+)
+from .access import MESSAGES, message, source_of
 from .engine import ChoresEngine, Item, Outcome
+from .importer import FORMAT_HOUSEHOLD, ImportProblem, export_household, plan_import, preview, read_file
 from .model import ChoreError
 from .runtime import DATA_CHORES, STATE_NEEDS_A_LOOK, STATE_NEWER, STATE_OFF, ChoresRuntime, ChoresUnavailable
 
@@ -457,6 +470,167 @@ async def ws_stars_award(hass: HomeAssistant, connection: websocket_api.ActiveCo
         connection.send_result(msg["id"], out.data)
 
 
+@websocket_api.websocket_command({vol.Required("type"): "planavista/stars/history", vol.Required("member"): str})
+@callback
+def ws_stars_history(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """A member's latest stars, newest first (a person's page: Stars)."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None:
+        return
+    try:
+        history = runtime.engine.star_history(msg["member"])
+    except ChoreError as err:
+        connection.send_error(msg["id"], err.code, message(err))
+        return
+    connection.send_result(msg["id"], {"balance": runtime.engine.balance(msg["member"]), "history": history})
+
+
+# Import, restore, and export (spec 7.9, 14.6, 15.5) ---------------------------------------------
+
+MAX_FILE_LENGTH = 2_000_000
+# What stops an import, item by item, in plain words.
+IMPORT_PROBLEMS = {
+    "name_required": "{item} has no name.",
+    "invalid_hours": "{item}: set how long it takes.",
+    "invalid_list": "{item} can't be read.",
+    "matched_twice": "{item} and {other} can't both be the same person.",
+    "age_group_required": "Pick an age group for {item}.",
+}
+
+
+def _problem_text(problem: dict[str, Any]) -> str:
+    code, item = problem["code"], problem["item"]
+    if code in IMPORT_PROBLEMS:
+        return IMPORT_PROBLEMS[code].format(item=item, other=problem.get("other", ""))
+    table = ERROR_MESSAGES if problem.get("of") == "member" else MESSAGES
+    text = problem.get("detail") or table.get(code) or "That can't be imported."
+    return f"{item}: {text}"
+
+
+def _problem(err: ImportProblem) -> dict[str, Any]:
+    return {"code": err.code, "message": err.message, "problems": [_problem_text(p) for p in err.problems]}
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "planavista/import/preview",
+    vol.Required("text"): vol.All(str, vol.Length(max=MAX_FILE_LENGTH)),
+    SESSION: str,
+})
+@callback
+def ws_import_preview(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Read a plan or a PlanaVista file and say where everything would go. Nothing is saved."""
+    runtime = _runtime(hass, connection, msg, ready=False)
+    if runtime is None or (context := parent_for(hass, connection, msg)) is None:
+        return
+    household, _by = context
+    try:
+        parsed = read_file(msg["text"])
+    except ImportProblem as err:
+        connection.send_result(msg["id"], {"problem": _problem(err)})
+        return
+    engine = runtime.engine
+    result = preview(parsed, household.members, engine.plan["activities"], engine.rewards["rewards"])
+    # Chores that need a look: a restore fills in the files that couldn't be read and keeps the rest (spec 15.3).
+    result["fills_in"] = runtime.state == STATE_NEEDS_A_LOOK
+    connection.send_result(msg["id"], {"preview": result})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "planavista/import/apply",
+    vol.Required("text"): vol.All(str, vol.Length(max=MAX_FILE_LENGTH)),
+    vol.Optional("choices", default={}): dict,
+    SESSION: str,
+})
+@websocket_api.async_response
+async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Import what the preview showed, with the parent's choices: people first, then chores, rewards, and rules."""
+    runtime = _runtime(hass, connection, msg, ready=False)
+    if runtime is None or (context := parent_for(hass, connection, msg)) is None:
+        return
+    household, by = context
+    if runtime.state == STATE_NEWER:
+        code, text = STATE_MESSAGES[STATE_NEWER]
+        connection.send_error(msg["id"], code, text)
+        return
+    try:
+        parsed = read_file(msg["text"])
+    except ImportProblem as err:
+        connection.send_result(msg["id"], {"problem": _problem(err)})
+        return
+    fills_in = runtime.state == STATE_NEEDS_A_LOOK
+    if fills_in and parsed["format"] != FORMAT_HOUSEHOLD:
+        connection.send_error(
+            msg["id"], "chores_need_a_look", "Restore from a PlanaVista file, or start over, before importing a plan."
+        )
+        return
+    # Everything is checked first, against what's here now (files that couldn't be read are empty), and nothing
+    # is written until it all passes: a file with problems leaves chores that need a look as they were.
+    engine = runtime.engine
+    entry = runtime.entry
+    rows = list(entry.data.get(CONF_CALENDARS, [])) if entry is not None else []
+    try:
+        changes = plan_import(
+            parsed, msg["choices"], household.members, engine.plan["activities"], engine.rewards["rewards"],
+            engine.settings, persons={s.entity_id for s in hass.states.async_all("person")},
+            calendars={row["entity_id"] for row in rows},
+        )
+    except ImportProblem as err:
+        connection.send_result(msg["id"], {"problem": _problem(err)})
+        return
+    try:
+        members = import_members(household.members, changes["members_add"], changes["members_update"])
+        check_parent_pins(
+            household.members, members, household.pins, household.pins, _screens_need_parent_pin(hass, household, connection)
+        )
+    except MemberError as err:
+        problem = ImportProblem(
+            "invalid_file", "This file has problems, so nothing was imported.",
+            [{"item": err.member or "People", "code": err.code, "of": "member"}],
+        )
+        connection.send_result(msg["id"], {"problem": _problem(problem)})
+        return
+    if fills_in:
+        await runtime.async_recover()
+    if members != household.members:
+        household.members = members
+        await household.async_save()
+    if not runtime.enabled:
+        await runtime.async_set_enabled(True)  # importing chores turns chores on
+    await runtime.async_sync_members()
+    source = _source(hass, household, connection)
+    out = await _apply(connection, msg, runtime, lambda e, now: e.apply_import(now, changes, by=by, source=source))
+    if out is None:
+        return
+    if changes["calendars"] and entry is not None:
+        linked = [
+            {**row, "member_id": changes["calendars"][row["entity_id"]]} if row["entity_id"] in changes["calendars"] else row
+            for row in rows
+        ]
+        await async_apply_config(hass, entry, {**entry.data, CONF_CALENDARS: linked})
+    connection.send_result(msg["id"], {"summary": changes["summary"]})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "planavista/export", SESSION: str})
+@callback
+def ws_export(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """The household as a PlanaVista file: people, chores, rewards, and rules (never PINs, stars, or history)."""
+    runtime = _runtime(hass, connection, msg, ready=False)
+    if runtime is None or (context := parent_for(hass, connection, msg, needs_file=False)) is None:
+        return
+    household, _by = context
+    if runtime.state in (STATE_NEEDS_A_LOOK, STATE_NEWER):
+        code, text = STATE_MESSAGES[runtime.state]
+        connection.send_error(msg["id"], code, text)
+        return
+    rows = runtime.entry.data.get(CONF_CALENDARS, []) if runtime.entry is not None else []
+    now = dt_util.now()
+    file = export_household(
+        household.members, rows, runtime.engine.plan, runtime.engine.rewards,
+        version=VERSION, exported=now.isoformat(timespec="seconds"),
+    )
+    connection.send_result(msg["id"], {"file": file, "name": f"planavista-household-{now.date().isoformat()}.json"})
+
+
 CHORES_COMMANDS = (
     ws_chores_subscribe,
     ws_chores_week,
@@ -477,6 +651,10 @@ CHORES_COMMANDS = (
     ws_reward_delete,
     ws_reward_redeem,
     ws_stars_award,
+    ws_stars_history,
+    ws_import_preview,
+    ws_import_apply,
+    ws_export,
 )
 
 

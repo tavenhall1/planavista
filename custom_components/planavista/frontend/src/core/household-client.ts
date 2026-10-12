@@ -34,9 +34,13 @@ export interface UnlockResult {
 /** The household and PIN commands, with this card's session token added when it has one (see WsApi). */
 export class HouseholdApi extends WsApi {
 
-  saveMember(changes: MemberChanges, existing?: { id: string; rev: number }): Promise<{ member: Member }> {
+  /** Add someone, or change them; with a revision, a newer one saved meanwhile is refused (changed). */
+  saveMember(changes: MemberChanges, existing?: { id: string; rev?: number }): Promise<{ member: Member }> {
     const fields: Record<string, unknown> = { member: changes };
-    if (existing) Object.assign(fields, { member_id: existing.id, rev: existing.rev });
+    if (existing) {
+      fields.member_id = existing.id;
+      if (existing.rev !== undefined) fields.rev = existing.rev;
+    }
     return this.call('planavista/household/member/save', fields);
   }
 
@@ -56,7 +60,7 @@ export class HouseholdApi extends WsApi {
     return this.call('planavista/household/settings/save', settings);
   }
 
-  saveSetup(progress: { step?: string | null; completed?: boolean }): Promise<void> {
+  saveSetup(progress: { step?: string | null; completed?: boolean; start?: string | null }): Promise<void> {
     return this.call('planavista/household/setup/save', progress);
   }
 

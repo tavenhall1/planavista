@@ -1,0 +1,9 @@
+{
+  "description": "What each age group starts a person with (spec 7.2). The household rules and the person page both read this table.",
+  "defaults": {
+    "young_child": {"my_day": "pictures", "needs_ok_for": "all", "stars": true},
+    "older_child": {"my_day": "list", "needs_ok_for": "marked", "stars": true},
+    "teen": {"my_day": "timeline", "needs_ok_for": "marked", "stars": true},
+    "adult": {"my_day": "timeline", "needs_ok_for": "none", "stars": false}
+  }
+}

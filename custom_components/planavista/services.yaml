@@ -470,3 +470,11 @@ award_stars:
       example: Helped a neighbor
       selector:
         text:
+
+export_household:
+  name: Export household
+  description: >-
+    The household as a PlanaVista file (planavista.household/v1): people, chores, rewards, and rules.
+    PINs, stars, history, and shared screens are left out; Home Assistant backups keep those.
+    For an admin or an automation; the file comes back as the action's response.
+  fields: {}

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Mapping
 from datetime import date
+import math
 import re
 from typing import Any
 import unicodedata
@@ -38,6 +39,11 @@ EDITABLE_FIELDS = (
     "needs_ok_for",
     "stars",
     "away",
+    "goal",
+    "bedtime",
+    "sleep_hours",
+    "phones",
+    "notify",
 )
 
 # Records name who acted with a member id or one of these words (spec 7.6).
@@ -50,15 +56,23 @@ NAME_MAX_LENGTH = 40
 EMOJI_MAX_LENGTH = 16
 AWAY_NOTE_MAX_LENGTH = 60
 MAX_AWAY_RANGES = 50
+GOAL_MAX_LENGTH = 60
+MAX_PHONES = 5
+SLEEP_HOURS = (1.0, 16.0)
+# Phone requests go to parents; reminders are each person's choice (spec 7.2, 10.5).
+NOTIFY_DEFAULTS = {"requests": True, "reminders": False}
+_CLOCK = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")
+_NOTIFY_SERVICE = re.compile(r"notify\.[a-z0-9_]+")
 
 
 class MemberError(ValueError):
-    """A change that breaks a household rule. `code` names the rule."""
+    """A change that breaks a household rule. `code` names the rule; `member` whose change broke it, when known."""
 
-    def __init__(self, code: str) -> None:
-        """Remember which rule was broken."""
+    def __init__(self, code: str, member: str | None = None) -> None:
+        """Remember which rule was broken, and by whom."""
         super().__init__(code)
         self.code = code
+        self.member = member
 
 
 def slug(name: str) -> str:
@@ -85,6 +99,32 @@ def palette_color(color: object) -> str | None:
         return None
     wanted = color.strip().upper()
     return next((c for c in PALETTE if c.upper() == wanted), None)
+
+
+_HEX = re.compile(r"#[0-9A-Fa-f]{6}")
+
+
+def _rgb(color: str) -> tuple[int, int, int]:
+    return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+
+
+def _distance(a: str, b: str) -> float:
+    """How far apart two colors look (a weighted RGB distance; good enough to pick a palette neighbor)."""
+    (r1, g1, b1), (r2, g2, b2) = _rgb(a), _rgb(b)
+    mean = (r1 + r2) / 2
+    return math.sqrt((2 + mean / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - mean) / 256) * (b1 - b2) ** 2)
+
+
+def nearest_palette_color(color: object, taken: Collection[str]) -> str | None:
+    """The free palette color nearest `color` (a #RRGGBB from elsewhere, such as a planner), else the first free one."""
+    used = {c.upper() for c in taken}
+    free = [c for c in PALETTE if c.upper() not in used]
+    if not free:
+        return None
+    if not isinstance(color, str) or not _HEX.fullmatch(color.strip()):
+        return free[0]
+    wanted = color.strip()
+    return min(free, key=lambda c: _distance(wanted, c))
 
 
 def next_free_color(
@@ -134,6 +174,60 @@ def _checked_away(away: object) -> list[dict[str, Any]]:
             raise MemberError("invalid_away")
         ranges.append({"from": first.isoformat(), "to": last.isoformat(), "note": note or None})
     return sorted(ranges, key=lambda span: span["from"])
+
+
+def _checked_goal(goal: object) -> str | None:
+    """The reward someone is saving up for (spec 8.15), by its id."""
+    if goal is not None and (not isinstance(goal, str) or not 0 < len(goal) <= GOAL_MAX_LENGTH):
+        raise MemberError("invalid_goal")
+    return goal
+
+
+def _checked_bedtime(bedtime: object) -> dict[str, str] | None:
+    """Bedtimes on weeknights and on Friday and Saturday nights (spec 7.2), as HH:MM."""
+    if bedtime is None:
+        return None
+    if not isinstance(bedtime, Mapping):
+        raise MemberError("invalid_bedtime")
+    weeknight = bedtime.get("weeknight")
+    weekend = bedtime.get("weekend", weeknight)
+    for value in (weeknight, weekend):
+        if not isinstance(value, str) or not _CLOCK.fullmatch(value):
+            raise MemberError("invalid_bedtime")
+    return {"weeknight": weeknight, "weekend": weekend}
+
+
+def _checked_sleep(hours: object) -> float | None:
+    """Hours of sleep a night, to the quarter hour."""
+    if hours is None:
+        return None
+    low, high = SLEEP_HOURS
+    if isinstance(hours, bool) or not isinstance(hours, (int, float)) or not low <= hours <= high:
+        raise MemberError("invalid_sleep")
+    return round(float(hours) * 4) / 4
+
+
+def _checked_phones(phones: object) -> list[str]:
+    """The notify services of someone's phones, such as notify.mobile_app_caseys_phone (spec 10.5)."""
+    if phones is None:
+        return []
+    if not isinstance(phones, list) or len(phones) > MAX_PHONES or len(set(phones)) != len(phones):
+        raise MemberError("invalid_phones")
+    if any(not isinstance(p, str) or not _NOTIFY_SERVICE.fullmatch(p) for p in phones):
+        raise MemberError("invalid_phones")
+    return list(phones)
+
+
+def _checked_notify(notify: object) -> dict[str, bool]:
+    """What someone's phones get: Waiting for OK requests (parents) and reminders."""
+    if notify is None:
+        return dict(NOTIFY_DEFAULTS)
+    if not isinstance(notify, Mapping):
+        raise MemberError("invalid_notify")
+    checked = {**NOTIFY_DEFAULTS, **{k: v for k, v in notify.items() if k in NOTIFY_DEFAULTS}}
+    if any(not isinstance(v, bool) for v in checked.values()):
+        raise MemberError("invalid_notify")
+    return checked
 
 
 def build_member(
@@ -200,6 +294,16 @@ def build_member(
     member["picture"] = _checked_picture(member.get("picture"), person)
     if "away" in member:
         member["away"] = _checked_away(member["away"])
+    # Checked when changed; a stored value is kept as it is (spec 7.8).
+    for key, check in (
+        ("goal", _checked_goal),
+        ("bedtime", _checked_bedtime),
+        ("sleep_hours", _checked_sleep),
+        ("phones", _checked_phones),
+        ("notify", _checked_notify),
+    ):
+        if key in changes:
+            member[key] = check(changes[key])
     return member
 
 
@@ -209,13 +313,21 @@ def ordered(members: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 def add_member(
-    members: list[dict[str, Any]], changes: Mapping[str, Any]
+    members: list[dict[str, Any]], changes: Mapping[str, Any], member_id: str | None = None
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Add someone at the end; returns the new list and the new member."""
+    """Add someone at the end; returns the new list and the new member.
+
+    `member_id` keeps an id worked out beforehand (an import names people in
+    its chores before they are added); otherwise one is made from the name.
+    """
     if len(members) >= MAX_MEMBERS:
         raise MemberError("too_many")
     member = build_member(None, changes, members)
-    member["id"] = make_id(member["name"], (m["id"] for m in members))
+    taken = {m["id"] for m in members}
+    if member_id is not None and member_id not in taken and member_id not in RESERVED_IDS and slug(member_id) == member_id:
+        member["id"] = member_id
+    else:
+        member["id"] = make_id(member["name"], taken)
     member["order"] = max((int(m.get("order", 0)) for m in members), default=-1) + 1
     member["rev"] = 1
     return [*members, member], member
@@ -244,7 +356,49 @@ def update_member(
     return updated, member
 
 
-GOAL_MAX_LENGTH = 60
+def import_members(
+    members: list[dict[str, Any]],
+    adds: Iterable[Mapping[str, Any]],
+    updates: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """An import's people as one change (spec 7.9): the household after it, or MemberError naming who breaks a rule.
+
+    Updates come first, each checked against the people the import leaves
+    alone, then the people it adds, then names, colors, and Home Assistant
+    people across everyone, so two people may trade colors in a restore.
+    `members` itself is left as it was.
+    """
+    final = [dict(m) for m in members]
+    untouched = [m for m in final if m["id"] not in updates]
+    for member_id, changes in updates.items():
+        index = next((i for i, m in enumerate(final) if m["id"] == member_id), None)
+        if index is None:
+            raise MemberError("unknown_member")
+        existing = final[index]
+        try:
+            member = build_member(existing, changes, untouched)
+        except MemberError as err:
+            raise MemberError(err.code, str(changes.get("name") or existing.get("name"))) from err
+        member["id"], member["order"] = existing["id"], existing.get("order", index)
+        member["rev"] = int(existing.get("rev", 1)) + 1
+        final[index] = member
+    seen: dict[str, set[str]] = {"name": set(), "color": set(), "person": set()}
+    codes = {"name": "name_taken", "color": "color_taken", "person": "person_taken"}
+    for member in final:
+        for key, values in seen.items():
+            value = member.get(key)
+            if not value:
+                continue
+            folded = str(value).casefold()
+            if folded in values:
+                raise MemberError(codes[key], str(member.get("name")))
+            values.add(folded)
+    for record in adds:
+        try:
+            final, _ = add_member(final, record, member_id=record.get("id"))
+        except MemberError as err:
+            raise MemberError(err.code, str(record.get("name"))) from err
+    return final
 
 
 def set_prefs(
@@ -260,10 +414,7 @@ def set_prefs(
             raise MemberError("invalid_my_day")
         member["my_day"] = changes["my_day"]
     if "goal" in changes:
-        goal = changes["goal"]
-        if goal is not None and (not isinstance(goal, str) or not 0 < len(goal) <= GOAL_MAX_LENGTH):
-            raise MemberError("invalid_goal")
-        member["goal"] = goal
+        member["goal"] = _checked_goal(changes["goal"])
     member["rev"] = int(member.get("rev", 1)) + 1
     updated = list(members)
     updated[index] = member

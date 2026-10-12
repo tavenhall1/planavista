@@ -10,7 +10,7 @@ import {
   withWho,
   worthLine,
 } from '../src/modules/chores/quick-add';
-import { pictureFor } from '../src/modules/chores/picture-words';
+import { chorePicture, pictureFor } from '../src/modules/chores/picture-words';
 import type { ChoreRequest } from '../src/modules/chores/chores-types';
 import { MEMBERS, TODAY } from './chores-fixtures';
 
@@ -112,5 +112,16 @@ describe('pictureFor', () => {
     expect(pictureFor('Rake the leaves')).toBe('🍂');
     expect(pictureFor('Something new')).toBe('⭐');
     expect(pictureFor('Book club', '📅')).toBe('📅');
+  });
+});
+
+describe('chorePicture (spec 13.4, 14.4)', () => {
+  it("shows the picture a parent chose, else one from the name, as Settings' From the name does", () => {
+    expect(chorePicture('🛏️', 'Make your bed')).toBe('🛏️');
+    expect(chorePicture(null, 'Set the table')).toBe('🍴');
+    expect(chorePicture(undefined, 'Tidy toys')).toBe('🧸');
+    expect(chorePicture('', 'Feed the fish')).toBe('🐠');
+    expect(chorePicture('mdi:broom', 'Sweep the porch')).toBe('🧹');
+    expect(chorePicture(null, 'Something new')).toBe('⭐');
   });
 });

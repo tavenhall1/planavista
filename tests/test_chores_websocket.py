@@ -53,7 +53,7 @@ async def test_subscribe_says_when_chores_are_off(hass: HomeAssistant, household
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": "planavista/chores/subscribe"})
     assert (await client.receive_json())["success"]
-    assert (await client.receive_json())["event"] == {"state": "off", "save_failed": False, "board": None}
+    assert (await client.receive_json())["event"] == {"state": "off", "save_failed": False, "board": None, "notify_problems": []}
     reply = await ws_command(client, {"type": "planavista/chores/complete", "occurrence": TRASH})
     assert reply["error"]["code"] == "chores_off"
 

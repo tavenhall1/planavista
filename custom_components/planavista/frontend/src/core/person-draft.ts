@@ -1,6 +1,6 @@
-import { AgeGroup, Member, MemberChanges, Picture, takenColors } from './household';
+import { AgeGroup, AwayRange, Bedtime, Member, MemberChanges, NotifyChoice, Picture, takenColors } from './household';
 
-/** What the person page edits. */
+/** What the person page edits, chores rows included (spec 14.2). */
 export interface PersonDraft {
   name: string;
   color: string;
@@ -8,17 +8,49 @@ export interface PersonDraft {
   age_group: AgeGroup;
   parent: boolean;
   person: string | null;
+  needs_ok_for: string;
+  my_day: string;
+  stars: boolean;
+  goal: string | null;
+  away: AwayRange[];
+  bedtime: Bedtime | null;
+  sleep_hours: number | null;
+  phones: string[];
+  notify: NotifyChoice;
 }
 
-const FIELDS: Array<keyof PersonDraft> = ['name', 'color', 'picture', 'age_group', 'parent', 'person'];
+const FIELDS: Array<keyof PersonDraft> = [
+  'name', 'color', 'picture', 'age_group', 'parent', 'person', 'needs_ok_for', 'my_day', 'stars', 'goal', 'away',
+  'bedtime', 'sleep_hours', 'phones', 'notify',
+];
+
+/**
+ * What each age group starts someone with (spec 7.2), the household rules'
+ * own table (household/members.py), checked against the same fixture:
+ * tests/fixtures/age_group_defaults.json.
+ */
+export const AGE_GROUP_DEFAULTS: Record<AgeGroup, { my_day: string; needs_ok_for: string; stars: boolean }> = {
+  young_child: { my_day: 'pictures', needs_ok_for: 'all', stars: true },
+  older_child: { my_day: 'list', needs_ok_for: 'marked', stars: true },
+  teen: { my_day: 'timeline', needs_ok_for: 'marked', stars: true },
+  adult: { my_day: 'timeline', needs_ok_for: 'none', stars: false },
+};
+
+export const NOTIFY_DEFAULTS: NotifyChoice = { requests: true, reminders: false };
 
 function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/** A new age group brings its starting points ("These start from the teen defaults"). */
+export function withAgeGroup(draft: PersonDraft, age: AgeGroup): PersonDraft {
+  return { ...draft, age_group: age, ...AGE_GROUP_DEFAULTS[age] };
+}
+
 /** The editor's starting point: the person as saved, or someone new with the first free color. */
 export function draftOf(member: Member | null, members: Member[], palette: string[]): PersonDraft {
   if (member) {
+    const notify = (member.notify ?? {}) as Partial<NotifyChoice>;
     return {
       name: member.name,
       color: member.color,
@@ -26,11 +58,24 @@ export function draftOf(member: Member | null, members: Member[], palette: strin
       age_group: member.age_group,
       parent: member.parent,
       person: member.person,
+      needs_ok_for: member.needs_ok_for,
+      my_day: member.my_day,
+      stars: member.stars,
+      goal: (member.goal as string | null | undefined) ?? null,
+      away: Array.isArray(member.away) ? (member.away as AwayRange[]) : [],
+      bedtime: (member.bedtime as Bedtime | null | undefined) ?? null,
+      sleep_hours: (member.sleep_hours as number | null | undefined) ?? null,
+      phones: Array.isArray(member.phones) ? (member.phones as string[]) : [],
+      notify: { ...NOTIFY_DEFAULTS, ...notify },
     };
   }
   const taken = takenColors(members);
   const color = palette.find(c => !taken.has(c.toUpperCase())) ?? palette[0];
-  return { name: '', color, picture: { initial: true }, age_group: 'adult', parent: false, person: null };
+  return {
+    name: '', color, picture: { initial: true }, age_group: 'adult', parent: false, person: null,
+    ...AGE_GROUP_DEFAULTS.adult, goal: null, away: [], bedtime: null, sleep_hours: null, phones: [],
+    notify: { ...NOTIFY_DEFAULTS },
+  };
 }
 
 /**
@@ -86,5 +131,7 @@ export function draftProblem(draft: PersonDraft, members: Member[], selfId: stri
     return 'Someone already has that name.';
   }
   const owner = others.find(m => m.color.toUpperCase() === draft.color.toUpperCase());
-  return owner ? `${owner.name} already has that color.` : null;
+  if (owner) return `${owner.name} already has that color.`;
+  if (draft.away.some(span => !span.from || !span.to || span.to < span.from)) return 'Pick the first and last days away.';
+  return null;
 }

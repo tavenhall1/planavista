@@ -15,7 +15,9 @@ from custom_components.planavista.household.members import (
     check_parent_pins,
     clear_missing_persons,
     link_calendars,
+    import_members,
     make_id,
+    nearest_palette_color,
     next_free_color,
     ordered,
     public_member,
@@ -250,3 +252,55 @@ def test_away_ranges_are_checked_and_kept_in_order() -> None:
         assert err.value.code == "invalid_away"
     # Members saved before Away existed get no new field.
     assert "away" not in update_member(members, "dana", {"name": "Dana"}, None)[1]
+
+
+def test_age_group_defaults_follow_the_shared_table() -> None:
+    """The person page starts people from the same table (test/person-draft.test.ts)."""
+    import json
+    from pathlib import Path
+
+    from custom_components.planavista.household.members import AGE_GROUP_DEFAULTS
+
+    table = json.loads((Path(__file__).parent / "fixtures" / "age_group_defaults.json").read_text("utf-8"))
+    assert table["defaults"] == AGE_GROUP_DEFAULTS
+
+
+def _three() -> list[dict[str, Any]]:
+    members: list[dict[str, Any]] = []
+    for name in ("Alex", "Blair", "Casey"):
+        members, _ = add_member(members, {"name": name})
+    return members
+
+
+def test_an_import_checks_its_people_as_one_household() -> None:
+    """Spec 7.9: an import's people are one change, so two people may trade colors."""
+    members = _three()
+    alex, blair, casey = (m["color"] for m in members)
+    swapped = import_members(members, [], {"alex": {"color": blair}, "blair": {"color": alex}})
+    assert [m["color"] for m in swapped] == [blair, alex, casey]
+    recolored = import_members(members, [{"id": "dana", "name": "Dana", "color": alex}], {"alex": {"color": PALETTE[10]}})
+    assert [(m["id"], m["color"]) for m in recolored] == [
+        ("alex", PALETTE[10]), ("blair", blair), ("casey", casey), ("dana", alex),
+    ]
+    assert [m["color"] for m in members] == [alex, blair, casey]  # the household it was given is left as it was
+
+
+def test_an_import_names_who_breaks_a_rule() -> None:
+    members = _three()
+    with pytest.raises(MemberError) as err:
+        import_members(members, [], {"alex": {"color": members[2]["color"]}})
+    assert (err.value.code, err.value.member) == ("color_taken", "Alex")
+    with pytest.raises(MemberError) as err:
+        import_members(members, [], {"alex": {"color": PALETTE[12]}, "blair": {"color": PALETTE[12]}})
+    assert (err.value.code, err.value.member) == ("color_taken", "Blair")
+    with pytest.raises(MemberError) as err:
+        import_members(members, [{"id": "casey_2", "name": "casey"}], {})
+    assert (err.value.code, err.value.member) == ("name_taken", "casey")
+
+
+def test_a_color_from_elsewhere_becomes_the_nearest_free_palette_color() -> None:
+    assert nearest_palette_color("#2A7FA3", set()) == "#277DA1"
+    assert nearest_palette_color("#2a7fa3", {"#277da1"}) == "#0A9396"
+    assert nearest_palette_color("#277DA1", set()) == "#277DA1"
+    assert nearest_palette_color("not a color", {PALETTE[0]}) == PALETTE[1]
+    assert nearest_palette_color(None, set(PALETTE)) is None

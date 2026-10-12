@@ -324,7 +324,7 @@ Motion is part of the product, Apple style, in every module.
 Settings are saved for the whole household; a card's YAML can override some for that card:
 
 ```yaml
-type: custom:planavista-calendar-card
+type: custom:planavista-card
 default_view: day
 modules: [calendar]
 theme: minimal
@@ -332,7 +332,7 @@ hide_weather: true
 hide_header: false
 ```
 
-- `planavista-card` is the card's newer name, from 1.2.0 on. Examples and the card picker use `planavista-calendar-card`, which 1.1.0 also knows, so stepping back a release keeps dashboards working.
+- `planavista-card` is the card's name from 1.2.0 on, and what the card picker writes from 1.3.0. Cards added before as `planavista-calendar-card` keep working.
 - `theme`: `light` or `dark` fixes the card to PlanaVista Light or Dark; a theme name (`planavista`, `minimal`, `vibrant`) picks the theme and follows the household's Light, Dark, or Automatic.
 - `hide_header` hides the clock and weather header; the bar stays.
 - Anything not set in YAML follows the household's settings.

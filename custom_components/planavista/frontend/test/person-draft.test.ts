@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { beginDraft, draftChanges, draftOf, draftProblem, isDirty, rebaseDraft } from '../src/core/person-draft';
+import {
+  AGE_GROUP_DEFAULTS, beginDraft, draftChanges, draftOf, draftProblem, isDirty, rebaseDraft, withAgeGroup,
+} from '../src/core/person-draft';
 import { Member } from '../src/core/household';
 
 const PALETTE = ['#F94144', '#277DA1', '#43AA8B'];
@@ -9,17 +12,41 @@ const ALEX = {
   has_pin: true, pin_length: 4, locked_until: null,
 } as Member;
 
+const CHORES = {
+  needs_ok_for: 'none', my_day: 'timeline', stars: false, goal: null, away: [], bedtime: null, sleep_hours: null,
+  phones: [], notify: { requests: true, reminders: false },
+};
+const AGES = JSON.parse(readFileSync(new URL('../../../../tests/fixtures/age_group_defaults.json', import.meta.url), 'utf-8')) as {
+  defaults: Record<string, unknown>;
+};
+
 describe('person drafts', () => {
   it('starts someone new with the first free color', () => {
     expect(draftOf(null, [ALEX], PALETTE)).toEqual({
-      name: '', color: '#277DA1', picture: { initial: true }, age_group: 'adult', parent: false, person: null,
+      name: '', color: '#277DA1', picture: { initial: true }, age_group: 'adult', parent: false, person: null, ...CHORES,
     });
   });
 
   it('starts from a saved person', () => {
     expect(draftOf(ALEX, [ALEX], PALETTE)).toEqual({
       name: 'Alex', color: '#F94144', picture: { initial: true }, age_group: 'adult', parent: true, person: 'person.alex',
+      ...CHORES,
     });
+    const casey = { ...ALEX, id: 'casey', bedtime: { weeknight: '22:00', weekend: '23:00' }, sleep_hours: 9,
+      phones: ['notify.mobile_app_caseys_phone'], notify: { reminders: true }, away: [{ from: '2026-10-14', to: '2026-10-15' }],
+      goal: 'movie_night_pick' } as Member;
+    expect(draftOf(casey, [casey], PALETTE)).toMatchObject({
+      bedtime: { weeknight: '22:00', weekend: '23:00' }, sleep_hours: 9, phones: ['notify.mobile_app_caseys_phone'],
+      notify: { requests: true, reminders: true }, away: [{ from: '2026-10-14', to: '2026-10-15' }], goal: 'movie_night_pick',
+    });
+  });
+
+  it("starts a new age group from its defaults, from the household rules' table", () => {
+    expect(AGE_GROUP_DEFAULTS).toEqual(AGES.defaults);
+    const teen = withAgeGroup(draftOf(null, [], PALETTE), 'teen');
+    expect([teen.age_group, teen.my_day, teen.needs_ok_for, teen.stars]).toEqual(['teen', 'timeline', 'marked', true]);
+    const young = withAgeGroup(teen, 'young_child');
+    expect([young.my_day, young.needs_ok_for, young.stars]).toEqual(['pictures', 'all', true]);
   });
 
   it('sends everything for someone new and only changes for someone saved', () => {
@@ -28,6 +55,7 @@ describe('person drafts', () => {
     const named = { ...fresh, draft: { ...fresh.draft, name: '  Dana ', age_group: 'young_child' as const } };
     expect(draftChanges(named)).toEqual({
       name: 'Dana', color: '#F94144', picture: { initial: true }, age_group: 'young_child', parent: false, person: null,
+      ...CHORES,
     });
     const saved = beginDraft(ALEX, [ALEX], PALETTE);
     const edited = { ...saved, draft: { ...saved.draft, picture: { emoji: '\u{1F996}' } } };

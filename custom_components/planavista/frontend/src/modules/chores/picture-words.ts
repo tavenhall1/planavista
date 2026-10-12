@@ -56,3 +56,11 @@ export function pictureFor(text: string, fallback = '⭐'): string {
   }
   return fallback;
 }
+
+/**
+ * A chore's picture: the one a parent chose, else one from its name, as the
+ * chore editor's "From the name" shows (imported and spoken chores have none).
+ */
+export function chorePicture(icon: string | null | undefined, name: string): string {
+  return icon && !icon.startsWith('mdi:') ? icon : pictureFor(name);
+}

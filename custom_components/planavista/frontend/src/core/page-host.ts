@@ -30,6 +30,16 @@ export const POP_PAGE = 'pv-pop-page';
 /** A page reports a failed save; the host shows the message. */
 export const PAGE_ERROR = 'pv-page-error';
 
+/** A page asks for a module's view (Open Dana's day): Settings closes and the card goes there. */
+export const OPEN_TARGET = 'pv-page-open';
+
+/**
+ * A module asks the card to open Settings, perhaps at a page (detail: a
+ * SettingsTarget, such as the board's Edit); the gear sends it with no detail.
+ * The card asks for a parent's PIN first when it must.
+ */
+export const OPEN_SETTINGS = 'pv-open-settings';
+
 /** Words for a failed save (spec 11.7: what happened and what to do). */
 export function saveErrorMessage(code: string): string {
   switch (code) {

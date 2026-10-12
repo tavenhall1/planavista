@@ -8,7 +8,8 @@ import {
   settingsRegistry,
   setupRegistry,
 } from '../core/settings-registry';
-import { appearanceSettings, appearanceSummary } from '../core/appearance';
+import { appearanceSettings, appearanceSummary, resolveMode } from '../core/appearance';
+import { sunOf } from '../core/appearance-deps';
 
 function count(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -35,6 +36,15 @@ export const shellSettingsPages: SettingsPage[] = [
     order: 400,
     tag: 'pv-settings-appearance',
     summary: ({ data }) => appearanceSummary(appearanceSettings(data.display)),
+    // Spec 15.4: automatic at sunset and sunrise without the Sun integration uses the schedule until it's fixed.
+    needsALook: ({ data, hass }) => {
+      const settings = appearanceSettings(data?.display);
+      const { sunMissing } = resolveMode(settings, { now: new Date(), sun: sunOf(hass?.states as never) });
+      return sunMissing ? [{
+        id: 'appearance-sun',
+        text: "Automatic appearance follows the sun, but Home Assistant's Sun integration isn't set up. The schedule's times are used until it is.",
+      }] : [];
+    },
   },
   {
     id: 'pins',
@@ -67,8 +77,9 @@ export const shellSetupSteps: SetupStep[] = [
     order: 0,
     tag: 'pv-setup-welcome',
     heading: 'Welcome to PlanaVista',
-    lead: 'About 5 minutes. Everything can change later in Settings.',
+    lead: "Your family's calendar and chores, together on one screen.",
     primary: 'Set up',
+    secondary: 'Restore from a PlanaVista file',
   },
   {
     id: 'people',
