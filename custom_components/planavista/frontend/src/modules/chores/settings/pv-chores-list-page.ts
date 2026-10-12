@@ -184,8 +184,12 @@ export class PvChoresListPage extends LitElement {
         <span class="row-text">
           <span class="row-title">${row.name}</span>
           <span class="row-sub">${row.rhythm}</span>
+          ${row.tags.length ? html`
+            <span class="row-tags">
+              ${row.tags.map(tag => html`<span class="tag ${tag === 'Plan only' ? 'tag--muted' : tag === 'No one yet' ? 'tag--attention' : ''}">${tag}</span>`)}
+            </span>
+          ` : nothing}
         </span>
-        ${row.tags.map(tag => html`<span class="tag ${tag === 'Plan only' ? 'tag--muted' : tag === 'No one yet' ? 'tag--attention' : ''}">${tag}</span>`)}
         ${row.stars !== null ? html`<span class="stars" aria-label="${row.stars} stars each">★ ${row.stars}</span>` : nothing}
         ${showPeople ? html`
           <span class="avatars">

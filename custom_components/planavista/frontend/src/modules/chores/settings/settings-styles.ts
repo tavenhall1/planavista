@@ -101,6 +101,14 @@ export const choresSettingsStyles = css`
     font-size: 1.375rem;
   }
 
+  /* Tags sit under a row's name, so a long name keeps the row's width. */
+  .row-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+
   .tag {
     flex-shrink: 0;
     padding: 3px 9px;

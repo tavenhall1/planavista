@@ -7777,6 +7777,14 @@ function e(e,t,s,i){var a,n=arguments.length,r=n<3?t:null===i?i=Object.getOwnPro
     font-size: 1.375rem;
   }
 
+  /* Tags sit under a row's name, so a long name keeps the row's width. */
+  .row-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+
   .tag {
     flex-shrink: 0;
     padding: 3px 9px;
@@ -8007,8 +8015,12 @@ function e(e,t,s,i){var a,n=arguments.length,r=n<3?t:null===i?i=Object.getOwnPro
         <span class="row-text">
           <span class="row-title">${e.name}</span>
           <span class="row-sub">${e.rhythm}</span>
+          ${e.tags.length?U`
+            <span class="row-tags">
+              ${e.tags.map(e=>U`<span class="tag ${"Plan only"===e?"tag--muted":"No one yet"===e?"tag--attention":""}">${e}</span>`)}
+            </span>
+          `:Y}
         </span>
-        ${e.tags.map(e=>U`<span class="tag ${"Plan only"===e?"tag--muted":"No one yet"===e?"tag--attention":""}">${e}</span>`)}
         ${null!==e.stars?U`<span class="stars" aria-label="${e.stars} stars each">★ ${e.stars}</span>`:Y}
         ${t?U`
           <span class="avatars">
