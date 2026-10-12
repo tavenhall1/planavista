@@ -178,13 +178,7 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       :host([layout='landscape']) .footer {
-        justify-content: flex-end;
         padding-bottom: 20px;
-      }
-
-      :host([layout='landscape']) .footer .pv-btn {
-        flex: 0 0 auto;
-        min-width: 120px;
       }
 
       :host([layout='phone']) .form-row {

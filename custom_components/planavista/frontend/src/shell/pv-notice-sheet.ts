@@ -42,7 +42,8 @@ export class PvNoticeSheet extends LitElement {
   ];
 
   firstUpdated(): void {
-    this.renderRoot.querySelector<HTMLElement>('.actions button')?.focus();
+    // The title, as every sheet opens: Enter can't take the first (often destructive) action unseen (review).
+    this.renderRoot.querySelector<HTMLElement>('#notice-heading')?.focus();
     const { panel, backdrop, zone } = this._parts();
     this._sheetMotion.open(panel, backdrop);
     this._detachDrag = this._sheetMotion.attachDrag(zone, panel, () => this._choose('cancel'));
@@ -68,7 +69,7 @@ export class PvNoticeSheet extends LitElement {
       <div class="backdrop" @click=${() => this._choose('cancel')}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="notice-heading" @keydown=${this._onKey}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <h2 class="heading" id="notice-heading">${this.heading}</h2>
+        <h2 class="heading" id="notice-heading" tabindex="-1">${this.heading}</h2>
         ${this.body ? html`<p class="body">${this.body}</p>` : nothing}
         <div class="actions">
           ${this.actions.map(action => html`

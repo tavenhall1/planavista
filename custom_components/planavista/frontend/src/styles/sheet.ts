@@ -86,7 +86,6 @@ export const sheetStyles = css`
     margin: 0 0 16px;
     color: var(--pv-text-secondary, #6B7280);
     line-height: 1.5;
-    text-align: center;
   }
 
   .actions {

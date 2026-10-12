@@ -134,3 +134,20 @@ describe('one delete in place, named confirmations (review)', () => {
     expect(read('modules/chores/settings/pv-chore-editor.ts')).not.toMatch(/Other\u2026/);
   });
 });
+
+describe('sheets open on their title, read from the left, and end alike (review)', () => {
+  it('the notice sheet opens with focus on its title, not on its first action', () => {
+    const notice = read('shell/pv-notice-sheet.ts');
+    expect(notice).toMatch(/<h2 class="heading" id="notice-heading" tabindex="-1">/);
+    expect(notice).toMatch(/querySelector<HTMLElement>\('#notice-heading'\)\?\.focus\(\)/);
+    expect(notice).not.toMatch(/querySelector<HTMLElement>\('\.actions button'\)\?\.focus\(\)/);
+  });
+
+  it('a sheet body sits on the left, under its left title', () => {
+    expect(read('styles/sheet.ts')).not.toMatch(/\.body \{[^}]*text-align: center/);
+  });
+
+  it("the event editor's Cancel and Save share the footer in halves, as quick add's do", () => {
+    expect(read('modules/calendar/components/event-create-dialog.ts')).not.toMatch(/:host\(\[layout='landscape'\]\) \.footer \.pv-btn/);
+  });
+});
