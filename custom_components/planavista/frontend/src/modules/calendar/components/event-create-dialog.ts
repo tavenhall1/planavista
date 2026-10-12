@@ -927,7 +927,7 @@ export class PVEventCreateDialog extends LitElement {
         </div>
 
         <div class="footer">
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${this._cancel}>Cancel</button>
+          <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._saving} @click=${this._cancel}>Cancel</button>
           <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._saving} @click=${this._save}>
             ${this._saving ? 'Saving…' : (isEdit ? 'Save' : 'Add')}
           </button>
@@ -964,21 +964,38 @@ export class PVEventCreateDialog extends LitElement {
     });
   }
 
-  /** Escape closes an open picker before the sheet; true when there was one. */
-  private _closePickers(): boolean {
+  /** Escape closes an open picker before the sheet; true when there was one. Focus goes back to its field unless a question takes it. */
+  private _closePickers(refocus = true): boolean {
     const open = this._datePickerOpen || this._activeTimePicker !== null || this._locationSuggestions.length > 0;
     if (!open) return false;
+    const field = this._datePickerOpen ? this._dateDisplay
+      : this._activeTimePicker === 'start' ? this._startTimeEl
+        : this._activeTimePicker === 'end' ? this._endTimeEl
+          : this._locationInput;
     this._datePickerOpen = false;
     this._activeTimePicker = null;
     this._resetLocationSearch();
+    if (refocus) this._focusAfterUpdate(() => field ?? null);
     return true;
+  }
+
+  /** An error shows at the top of the form, scrolled into view (on a phone the form may be scrolled down to Location). */
+  private _showError(text: string): void {
+    this._error = text;
+    void this.updateComplete.then(() => this.renderRoot.querySelector('.error-msg')?.scrollIntoView({ block: 'nearest' }));
+  }
+
+  /** Focus an element once the next render is in (a picker that closes takes its focused button with it). */
+  private _focusAfterUpdate(target: () => HTMLElement | null): void {
+    void this.updateComplete.then(() => target()?.focus());
   }
 
   /** A dismiss throws nothing away without asking (spec 11.7). */
   private _mayDismiss(): boolean {
     if (this._saving) return false;
     if (this._signature() === this._baseline) return true;
-    this._closePickers();
+    // The discard question takes focus, so the picker's field doesn't.
+    this._closePickers(false);
     this._askDiscard = true;
     return false;
   }
@@ -1027,6 +1044,7 @@ export class PVEventCreateDialog extends LitElement {
       <div
         class="date-picker-dropdown"
         style="top: ${top}px; left: ${rect.left}px;"
+        @keydown=${this._sheet.onKeydown}
       >
         <div class="picker-header">
           <span class="picker-month-label">
@@ -1071,6 +1089,12 @@ export class PVEventCreateDialog extends LitElement {
       this._pickerYear = y;
       this._pickerMonth = m - 1;
     }
+    if (this._datePickerOpen) {
+      this._focusAfterUpdate(() =>
+        this.renderRoot.querySelector<HTMLElement>('.picker-day.selected')
+        ?? this.renderRoot.querySelector<HTMLElement>('.picker-day.today')
+        ?? this.renderRoot.querySelector<HTMLElement>('.picker-day'));
+    }
   }
 
   private _pickerPrevMonth() {
@@ -1107,6 +1131,7 @@ export class PVEventCreateDialog extends LitElement {
   private _selectPickerDay(day: Date) {
     this._date = this._toDateStr(day);
     this._datePickerOpen = false;
+    this._focusAfterUpdate(() => this._dateDisplay ?? null);
   }
 
   // ==================================================================
@@ -1144,6 +1169,7 @@ export class PVEventCreateDialog extends LitElement {
         if (selected && dropdown) {
           dropdown.scrollTop = selected.offsetTop - dropdown.clientHeight / 2 + selected.clientHeight / 2;
         }
+        (selected ?? dropdown?.querySelector<HTMLElement>('.time-slot'))?.focus({ preventScroll: true });
       });
     }
   }
@@ -1161,7 +1187,9 @@ export class PVEventCreateDialog extends LitElement {
       this._endTime = next.endTime;
       this._endDayOffset = next.endDayOffset;
     }
+    const field = this._activeTimePicker === 'start' ? this._startTimeEl : this._endTimeEl;
     this._activeTimePicker = null;
+    this._focusAfterUpdate(() => field ?? null);
   }
 
   private _renderTimePickerDropdown() {
@@ -1182,6 +1210,7 @@ export class PVEventCreateDialog extends LitElement {
       <div
         class="time-picker-dropdown"
         style="top: ${top}px; left: ${rect.left}px; width: ${rect.width}px;"
+        @keydown=${this._sheet.onKeydown}
       >
         ${slots.map(slot => html`
           <button
@@ -1238,6 +1267,7 @@ export class PVEventCreateDialog extends LitElement {
       <div
         class="location-suggestions-fixed"
         style="top: ${rect.bottom}px; left: ${rect.left}px; width: ${rect.width}px;"
+        @keydown=${this._sheet.onKeydown}
       >
         ${this._locationLoading ? html`
           <div class="location-loading">Searching…</div>
@@ -1306,6 +1336,8 @@ export class PVEventCreateDialog extends LitElement {
 
   /** Cancel: the deliberate way out, so it doesn't ask first. */
   private _cancel = (): void => {
+    // A save that is running finishes first: it closes the sheet itself, and must not close one opened since.
+    if (this._saving) return;
     this._datePickerOpen = false;
     this._activeTimePicker = null;
     this._resetLocationSearch();
@@ -1370,17 +1402,17 @@ export class PVEventCreateDialog extends LitElement {
 
   private async _save() {
     if (!this._title.trim()) {
-      this._error = 'Give the event a title.';
+      this._showError('Give the event a title.');
       return;
     }
     if (this._selectedCalendars.size === 0) {
-      this._error = "Pick who it's for.";
+      this._showError("Pick who it's for.");
       return;
     }
 
     const dateError = validateFormDates(this._formDates);
     if (dateError) {
-      this._error = dateError;
+      this._showError(dateError);
       return;
     }
 
@@ -1524,7 +1556,7 @@ export class PVEventCreateDialog extends LitElement {
     } catch (err: any) {
       // Home Assistant's own words go to the log; people get plain ones (spec 11.7).
       console.error('PlanaVista: Saving the event failed', err);
-      this._error = err instanceof EditRestoreError ? err.message : saveFailedText(this._title, this.mode === 'edit');
+      this._showError(err instanceof EditRestoreError ? err.message : saveFailedText(this._title, this.mode === 'edit'));
       this._saving = false;
     }
   }

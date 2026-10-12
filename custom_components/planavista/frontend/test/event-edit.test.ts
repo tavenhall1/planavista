@@ -137,7 +137,8 @@ describe('runEditWithRestore', () => {
       restore,
     });
     await expect(run).rejects.toBeInstanceOf(EditRestoreError);
-    await expect(run).rejects.toThrow("Your changes couldn't be saved, so the event is back as it was. Try again in a moment.");
+    // The editor holds the deleted copy, so the advice is to open the event again, not to retry here.
+    await expect(run).rejects.toThrow("Your changes couldn't be saved, so the event is back as it was. Close this, then open the event again to try once more.");
     expect(restore).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('End must be after start'));
     warn.mockRestore();

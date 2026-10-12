@@ -278,6 +278,9 @@ export async function runEditWithRestore(steps: {
       );
     }
     console.warn(`[PlanaVista] The edit failed (${reason}); the original is back`);
-    throw new EditRestoreError("Your changes couldn't be saved, so the event is back as it was. Try again in a moment.", true);
+    throw new EditRestoreError(
+      "Your changes couldn't be saved, so the event is back as it was. Close this, then open the event again to try once more.",
+      true,
+    );
   }
 }

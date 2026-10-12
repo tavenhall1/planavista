@@ -58,7 +58,7 @@ export class PVEventPopup extends LitElement {
 
   /** Re-renders when that store changes (the controller registers itself with this element). */
   private _storeSubscription = new StoreSubscriber(this, () => this.store);
-  private _sheet = new SheetController(this);
+  private _sheet = new SheetController(this, { mayDismiss: () => !this._deleting });
   private _lastOrganizerUid = '';
 
   static styles = [
@@ -71,6 +71,10 @@ export class PVEventPopup extends LitElement {
         font-weight: 800;
         line-height: 1.25;
         overflow-wrap: anywhere;
+      }
+
+      .heading:focus {
+        outline: none;
       }
 
       .who {
@@ -215,7 +219,7 @@ export class PVEventPopup extends LitElement {
       <div class="backdrop" @click=${() => this._sheet.dismiss()}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="event-title" @keydown=${this._sheet.onKeydown}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <h2 class="heading" id="event-title">${event.summary?.trim() || 'Untitled event'}</h2>
+        <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>
         ${shared.length > 1 ? html`
           <div class="people">
             ${shared.map(p => html`
@@ -258,7 +262,7 @@ export class PVEventPopup extends LitElement {
               ` : nothing}
             </div>
           ` : nothing}
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this._sheet.close()}>Done</button>
+          <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
         </div>
       </div>
       ${this._asking ? html`
@@ -289,7 +293,10 @@ export class PVEventPopup extends LitElement {
   private _onDeleteChoice = (e: CustomEvent<{ id: string }>): void => {
     this._asking = false;
     const id = e.detail.id;
-    if (id === 'delete' || id === 'everyone') void this._delete(id === 'everyone');
+    if (id === 'delete' || id === 'everyone') {
+      void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('#event-title')?.focus());
+      void this._delete(id === 'everyone');
+    }
     else if (id === 'remove' && this.event) {
       // Delete gets focus first, so it gets it back when the editor closes.
       this.renderRoot.querySelector<HTMLElement>('.danger')?.focus();
