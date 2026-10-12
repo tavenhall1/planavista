@@ -30,7 +30,8 @@ export function choresLooks(feed: ChoresFeed | null, board: Board | null): LookI
 export function phoneLooks(feed: ChoresFeed | null, members: Member[]): LookItem[] {
   return (feed?.notify_problems ?? []).flatMap(problem => {
     const member = members.find(m => m.id === problem.member);
-    if (!member) return [];
+    // A phone just removed from the person goes at once, before the feed catches up.
+    if (!member || !(Array.isArray(member.phones) && (member.phones as string[]).includes(problem.phone))) return [];
     return [{
       id: `phone:${problem.phone}`,
       text: `${member.name}'s phone, ${phoneName(problem.phone)}, isn't in Home Assistant anymore, so nothing is sent to it.`,

@@ -127,8 +127,15 @@ class ChoresNotifier:
         self._reminder_at = None
 
     def problems(self) -> list[dict[str, str]]:
-        """Phones Home Assistant doesn't have anymore (Needs a look)."""
-        return [{"member": member, "phone": phone} for phone, member in sorted(self._missing.items())]
+        """Phones Home Assistant doesn't have anymore (Needs a look, spec 15.4): every phone someone lists
+        whose notify service is gone, from the start and until it's removed from them."""
+        found = []
+        for member in self.runtime.household.members:
+            for phone in member.get("phones") or []:
+                domain, _, service = str(phone).partition(".")
+                if not self.hass.services.has_service(domain, service):
+                    found.append({"member": member["id"], "phone": phone})
+        return sorted(found, key=lambda p: (p["phone"], p["member"]))
 
     # Requests ---------------------------------------------------------------------------------
 

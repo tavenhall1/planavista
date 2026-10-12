@@ -194,3 +194,12 @@ async def test_no_evening_check_means_no_reminders(hass: HomeAssistant, chores: 
     async_fire_time_changed(hass, seven)
     await hass.async_block_till_done()
     assert casey == []
+
+
+async def test_a_lost_phone_is_listed_from_the_start_until_it_is_removed(hass: HomeAssistant, chores: Any) -> None:
+    """Spec 15.4: Needs a look lists a phone Home Assistant doesn't have; removing it from the person clears it."""
+    _service(hass, "mobile_app_alex_phone")
+    await _phones(hass, chores, {"alex": ["notify.mobile_app_alex_phone", "notify.mobile_app_gone"]})
+    assert chores.notifier.problems() == [{"member": "alex", "phone": "notify.mobile_app_gone"}]
+    await _phones(hass, chores, {"alex": ["notify.mobile_app_alex_phone"]})
+    assert chores.notifier.problems() == []

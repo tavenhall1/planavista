@@ -15,7 +15,7 @@ import { activity, board } from './chores-fixtures';
 
 const MEMBERS = [
   { id: 'alex', name: 'Alex', parent: true, has_pin: true },
-  { id: 'blair', name: 'Blair', parent: true, has_pin: false },
+  { id: 'blair', name: 'Blair', parent: true, has_pin: false, phones: ['notify.mobile_app_blairs_phone'] },
 ];
 
 function household(enabled: boolean, start: string | null = null): HouseholdView {
@@ -80,6 +80,11 @@ describe('Needs a look at the top of Settings (spec 15.4)', () => {
       page: 'people',
       stack: [{ tag: 'pv-settings-person', title: 'Blair', back: 'People', props: { memberId: 'blair' } }],
     }]);
+  });
+
+  it("drops a phone at once when it's removed from the person, before the feed catches up", () => {
+    const ctx = context({ board: board({}), notify_problems: [{ member: 'alex', phone: 'notify.mobile_app_old' }] }, { hass: WITH_SUN });
+    expect(needsALook(pages(ctx), ctx)).toEqual([]);
   });
 
   it("says when automatic appearance follows the sun but there's no Sun integration", () => {
