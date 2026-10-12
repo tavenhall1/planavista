@@ -26,6 +26,8 @@ import { OPEN_SETTINGS } from '../../core/page-host';
 import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
 import { calendarSkeleton, skeletonStyles } from './components/calendar-skeleton';
 import { navLabels } from './view-words';
+import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
+import { motionOf, supportsLinearEasing } from '../../core/motion';
 
 import './components/view-day';
 import './components/view-week';
@@ -83,6 +85,10 @@ export class PvCalendarModule extends LitElement {
   private _progressOf = (memberId: string) => this.services?.chores?.memberProgress?.(memberId) ?? null;
   /** What pv-overlay-change last said, so the card hears each change once. */
   private _overlayOpen = false;
+  /** The view and day last drawn, to tell how the next change moves (spec 11.5). */
+  private _drawn: ViewPlace | null = null;
+  /** When a person last moved the calendar; a midnight rollover or a wake doesn't glide. */
+  private _movedAt = 0;
   /** The event sheet: mounted while the store wants it and while it leaves. */
   private _details: Presence<CalendarEvent> = GONE;
   /** Bumped for each new details sheet, so one reopened mid-exit starts fresh. */
@@ -564,6 +570,26 @@ export class PvCalendarModule extends LitElement {
       this._overlayOpen = open;
       this._fireOverlay(open);
     }
+    this._playViewChange();
+  }
+
+  /** Arrows, Today, and a swipe: a person moving the calendar, so the step slides in. */
+  private _navigate(direction: 'prev' | 'next' | 'today'): void {
+    this._movedAt = performance.now();
+    this._pv.store.navigateDate(direction);
+  }
+
+  /** The springs for view changes (spec 11.5): another view glides in, a step slides in from its side. */
+  private _playViewChange(): void {
+    const store = this._pv.store;
+    const day = new Date(store.currentDate);
+    day.setHours(0, 0, 0, 0);
+    const next: ViewPlace = { view: store.currentView, at: day.getTime() };
+    let change = viewChange(this._drawn, next);
+    this._drawn = next;
+    if ((change === 'forward' || change === 'back') && performance.now() - this._movedAt > 1000) change = 'none';
+    const motion = viewMotion(change, motionOf(this), supportsLinearEasing());
+    if (motion) this.renderRoot.querySelector<HTMLElement>('.pvc-body')?.animate(motion.keyframes, motion.options);
   }
 
   private _fireOverlay(open: boolean): void {
@@ -857,14 +883,14 @@ export class PvCalendarModule extends LitElement {
 
           <div class="pvc-nav">
             <button class="pvc-nav-btn" type="button" aria-label=${arrows.prev} title=${arrows.prev}
-              @click=${() => this._pv.store.navigateDate('prev')}>
+              @click=${() => this._navigate('prev')}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="pvc-today-btn" type="button" @click=${() => this._pv.store.navigateDate('today')}>
+            <button class="pvc-today-btn" type="button" @click=${() => this._navigate('today')}>
               Today
             </button>
             <button class="pvc-nav-btn" type="button" aria-label=${arrows.next} title=${arrows.next}
-              @click=${() => this._pv.store.navigateDate('next')}>
+              @click=${() => this._navigate('next')}>
               <ha-icon icon="mdi:chevron-right"></ha-icon>
             </button>
           </div>
@@ -1003,6 +1029,7 @@ export class PvCalendarModule extends LitElement {
   }
 
   private _onDayClick(e: CustomEvent) {
+    this._movedAt = performance.now();
     this._pv.store.setDate(e.detail.date);
     this.dispatchEvent(new CustomEvent('pv-view-change', { detail: { view: 'day' }, bubbles: true, composed: true }));
   }
@@ -1020,7 +1047,7 @@ export class PvCalendarModule extends LitElement {
     if (!start || e.touches.length > 0 || e.changedTouches.length !== 1) return;
     const end = e.changedTouches[0];
     const direction = swipeDirection(end.clientX - start.x, end.clientY - start.y);
-    if (direction) this._pv.store.navigateDate(direction);
+    if (direction) this._navigate(direction);
   }
 
   private _onTouchCancel() {
