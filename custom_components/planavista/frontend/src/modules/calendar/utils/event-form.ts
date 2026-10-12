@@ -118,6 +118,19 @@ export function formEndDate(f: EventFormDates): string {
     : shiftDateKey(f.date, f.endDayOffset);
 }
 
+/** An all-day event's new first day (milestone 8, spec 3.4): the end moves along, so it keeps its length. */
+export function withAllDayStart(f: EventFormDates, date: string): EventFormDates {
+  return { ...f, date };
+}
+
+/** An all-day event's last day, as the editor's Ends shows it; Home Assistant's end is the day after. Never before the start. */
+export function withAllDayEnd(f: EventFormDates, lastDay: string): EventFormDates {
+  const [y, m, d] = f.date.split('-').map(Number);
+  const [ly, lm, ld] = lastDay.split('-').map(Number);
+  const days = calendarDaysBetween(new Date(y, m - 1, d), new Date(ly, lm - 1, ld));
+  return { ...f, spanDays: Math.max(1, days + 1) };
+}
+
 /** Error text for invalid dates, or null when the form can be saved. */
 export function validateFormDates(f: EventFormDates): string | null {
   if (!isDateOnly(f.date)) return 'Pick a date.';

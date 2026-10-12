@@ -20,6 +20,8 @@ import {
   runEditWithRestore,
   validateFormDates,
   withEndTime,
+  withAllDayEnd,
+  withAllDayStart,
   withStartTime,
 } from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, animationStyles } from '../../../styles/shared';
@@ -92,6 +94,8 @@ export class PVEventCreateDialog extends LitElement {
 
   // Date picker state
   @state() private _datePickerOpen = false;
+  /** Which date the month grid is picking: the start, or an all-day event's last day (spec 3.4). */
+  @state() private _dateTarget: 'start' | 'end' = 'start';
   @state() private _pickerMonth = 0;
   @state() private _pickerYear = 0;
 
@@ -120,6 +124,7 @@ export class PVEventCreateDialog extends LitElement {
   @query('#title-input') private _titleInput?: HTMLInputElement;
   @query('.location-input') private _locationInput?: HTMLInputElement;
   @query('.date-display') private _dateDisplay?: HTMLElement;
+  @query('.end-date-display') private _endDateDisplay?: HTMLElement;
   @query('.start-time-display') private _startTimeEl?: HTMLElement;
   @query('.end-time-display') private _endTimeEl?: HTMLElement;
 
@@ -612,14 +617,13 @@ export class PVEventCreateDialog extends LitElement {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  /** "Through Mon, Oct 12 (3 days)" / "Ends Sat, Oct 10" for events that run past the start date. */
+  /** "Ends Sat, Oct 10" for a timed event that runs past midnight (an all-day event shows its Ends date). */
   private _renderEndsHint() {
     const f = this._formDates;
-    const multiDay = f.allDay ? f.spanDays > 1 : f.endDayOffset > 0;
-    if (!multiDay) return nothing;
+    if (f.allDay || f.endDayOffset <= 0) return nothing;
     const [y, m, d] = formEndDate(f).split('-').map(Number);
     const label = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    return html`<div class="ends-hint">${f.allDay ? `Through ${label} (${f.spanDays} days)` : `Ends ${label}`}</div>`;
+    return html`<div class="ends-hint">Ends ${label}</div>`;
   }
 
   private _formatDateDisplay(): string {
@@ -692,11 +696,24 @@ export class PVEventCreateDialog extends LitElement {
               </div>
             </div>
 
-            <div class="form-field">
-              <label class="pv-label" for="date-button">Date</label>
-              ${this._renderDatePicker()}
-              ${this._renderEndsHint()}
-            </div>
+            ${this._allDay ? html`
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="pv-label" for="date-button">Starts</label>
+                  ${this._renderDatePicker()}
+                </div>
+                <div class="form-field">
+                  <label class="pv-label" for="end-date-button">Ends</label>
+                  ${this._renderEndDatePicker()}
+                </div>
+              </div>
+            ` : html`
+              <div class="form-field">
+                <label class="pv-label" for="date-button">Date</label>
+                ${this._renderDatePicker()}
+                ${this._renderEndsHint()}
+              </div>
+            `}
 
             <div class="all-day-row" @click=${this._toggleAllDay}>
               <span class="all-day-label" id="all-day-label">All day</span>
@@ -801,7 +818,7 @@ export class PVEventCreateDialog extends LitElement {
   private _closePickers(refocus = true): boolean {
     const open = this._datePickerOpen || this._activeTimePicker !== null || this._locationSuggestions.length > 0;
     if (!open) return false;
-    const field = this._datePickerOpen ? this._dateDisplay
+    const field = this._datePickerOpen ? (this._dateTarget === 'end' ? this._endDateDisplay : this._dateDisplay)
       : this._activeTimePicker === 'start' ? this._startTimeEl
         : this._activeTimePicker === 'end' ? this._endTimeEl
           : this._locationInput;
@@ -851,9 +868,22 @@ export class PVEventCreateDialog extends LitElement {
     return html`
       <div class="date-picker-wrap">
         <button type="button" id="date-button" class="date-display"
-          aria-expanded=${this._datePickerOpen ? 'true' : 'false'} @click=${this._toggleDatePicker}>
+          aria-expanded=${this._datePickerOpen && this._dateTarget === 'start' ? 'true' : 'false'} @click=${() => this._toggleDatePicker('start')}>
           <ha-icon icon="mdi:calendar"></ha-icon>
           ${this._formatDateDisplay()}
+        </button>
+      </div>
+    `;
+  }
+
+  /** An all-day event's last day (Home Assistant stores the day after). */
+  private _renderEndDatePicker() {
+    return html`
+      <div class="date-picker-wrap">
+        <button type="button" id="end-date-button" class="date-display end-date-display"
+          aria-expanded=${this._datePickerOpen && this._dateTarget === 'end' ? 'true' : 'false'} @click=${() => this._toggleDatePicker('end')}>
+          <ha-icon icon="mdi:calendar"></ha-icon>
+          ${this._date ? dateLabel(formEndDate(this._formDates)) : 'Pick a date'}
         </button>
       </div>
     `;
@@ -862,7 +892,8 @@ export class PVEventCreateDialog extends LitElement {
   private _renderDatePickerDropdown() {
     if (!this._datePickerOpen) return nothing;
 
-    const el = this._dateDisplay;
+    const end = this._dateTarget === 'end';
+    const el = end ? this._endDateDisplay : this._dateDisplay;
     if (!el) return nothing;
     const rect = el.getBoundingClientRect();
 
@@ -880,7 +911,9 @@ export class PVEventCreateDialog extends LitElement {
         @keydown=${this._sheet.onKeydown}
       >
         ${monthGrid({
-          year: this._pickerYear, month: this._pickerMonth, selected: this._date,
+          year: this._pickerYear, month: this._pickerMonth,
+          selected: end ? formEndDate(this._formDates) : this._date,
+          min: end ? this._date : undefined,
           onPick: day => this._selectPickerDay(day),
           onPrev: () => this._pickerPrevMonth(),
           onNext: () => this._pickerNextMonth(),
@@ -889,11 +922,13 @@ export class PVEventCreateDialog extends LitElement {
     `;
   }
 
-  private _toggleDatePicker() {
+  private _toggleDatePicker(target: 'start' | 'end' = 'start') {
     this._activeTimePicker = null;
-    this._datePickerOpen = !this._datePickerOpen;
-    if (this._datePickerOpen && this._date) {
-      const [y, m] = this._date.split('-').map(Number);
+    this._datePickerOpen = !(this._datePickerOpen && this._dateTarget === target);
+    this._dateTarget = target;
+    const shown = target === 'end' ? formEndDate(this._formDates) : this._date;
+    if (this._datePickerOpen && shown) {
+      const [y, m] = shown.split('-').map(Number);
       this._pickerYear = y;
       this._pickerMonth = m - 1;
     }
@@ -922,9 +957,12 @@ export class PVEventCreateDialog extends LitElement {
   }
 
   private _selectPickerDay(day: string) {
-    this._date = day;
+    const end = this._dateTarget === 'end';
+    // A new start keeps the event's length; a new last day changes it (spec 3.4).
+    if (end) this._spanDays = withAllDayEnd(this._formDates, day).spanDays;
+    else this._date = withAllDayStart(this._formDates, day).date;
     this._datePickerOpen = false;
-    this._focusAfterUpdate(() => this._dateDisplay ?? null);
+    this._focusAfterUpdate(() => (end ? this._endDateDisplay : this._dateDisplay) ?? null);
   }
 
   // ==================================================================
