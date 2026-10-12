@@ -141,3 +141,15 @@ describe("Appearance's Automatic rules (review)", () => {
     expect(text).not.toMatch(/class="row" type="button" role="radio"/);
   });
 });
+
+describe('targets and roles (review)', () => {
+  it("every bar button is at least 48 px wide, the short + too", () => {
+    const bar = readFileSync(new URL('../src/shell/pv-nav-bar.ts', import.meta.url), 'utf-8');
+    expect(/\.action \{([^}]*)\}/.exec(bar)?.[1] ?? '').toMatch(/min-width: 48px/);
+  });
+
+  it('every segmented control carries its own role and label', () => {
+    const customize = readFileSync(new URL('../src/shell/settings/pv-settings-customize.ts', import.meta.url), 'utf-8');
+    expect(customize).not.toMatch(/<div class="pv-seg">/);
+  });
+});

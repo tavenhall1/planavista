@@ -111,7 +111,12 @@ export class PvNavBar extends LitElement {
       flex-shrink: 0;
     }
 
+    /* Every bar button is a 48 px target, the short "+" too (review); the pill is drawn inside. */
     .action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
       min-height: 48px;
       flex-shrink: 0;
     }

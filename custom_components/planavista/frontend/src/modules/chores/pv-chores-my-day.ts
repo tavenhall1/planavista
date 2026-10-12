@@ -387,12 +387,12 @@ export class PvChoresMyDay extends LitElement {
     const style = this._style();
     return html`
       ${this.columns.length > 1 ? html`
-        <div class="pv-people" role="group" aria-label="Whose day">
+        <div class="pv-people" role="tablist" aria-label="Whose day">
           ${this.columns.map(col => html`
-            <button class="pv-person" type="button" aria-pressed=${col.member.id === member.id ? 'true' : 'false'}
+            <button class="pv-person" type="button" role="tab" aria-selected=${col.member.id === member.id ? 'true' : 'false'}
               style="--member:${this.colorOf(col.member)}" @click=${() => this._fire('pv-my-day-member', { member: col.member.id })}>
-              <pv-ring size="44" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${this.colorOf(col.member)}>
-                <pv-member-avatar .member=${{ ...col.member, color: this.colorOf(col.member) }} .hass=${this.hass} size="32"></pv-member-avatar>
+              <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${this.colorOf(col.member)}>
+                <pv-member-avatar .member=${{ ...col.member, color: this.colorOf(col.member) }} .hass=${this.hass} size="28"></pv-member-avatar>
               </pv-ring>
               ${col.member.name}
             </button>

@@ -50,3 +50,12 @@ describe('two people patterns, by job (milestone 8, spec 3.9)', () => {
     expect(day).toMatch(/\.person-column:not\(\.chosen\) \{ display: none; \}/);
   });
 });
+
+describe('one strip, one face, one role (review)', () => {
+  it('every strip is a tablist, with the same ring and face size', () => {
+    const myDay = read('modules/chores/pv-chores-my-day.ts');
+    expect(myDay).toMatch(/class="pv-people" role="tablist" aria-label="Whose day"/);
+    expect(myDay).toMatch(/<pv-ring size="40"[^\n]*\n\s*<pv-member-avatar[^\n]*size="28"/);
+    expect(read('modules/calendar/components/view-day.ts')).toMatch(/\.day-people \.person-initial \{ width: 28px; height: 28px; margin: 6px;/);
+  });
+});

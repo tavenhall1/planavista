@@ -358,8 +358,8 @@ export class PvSettingsCustomize extends LitElement {
     const unset = mode === 'light' ? 'Original' : 'Matched';
     const hex = own && own.startsWith('#') ? own : '';
     return html`
-      <div class="editor" aria-label=${`${ROWS.find(r => r.key === key)?.label} for ${VERSION_LABELS[mode]}`} role="group">
-        <div class="pv-seg">
+      <div class="editor">
+        <div class="pv-seg" role="group" aria-label=${`${ROWS.find(r => r.key === key)?.label} for ${VERSION_LABELS[mode]}`}>
           <button type="button"
             aria-pressed=${own === undefined ? 'true' : 'false'}
             @click=${(e: Event) => this._setColor(mode, key, undefined, e)}>${unset}</button>
@@ -389,9 +389,9 @@ export class PvSettingsCustomize extends LitElement {
           // Events start as Stripes; corners and shadows start as the theme's own ("Theme").
           const chosen = shape[group.key] ?? (group.key === 'event_style' ? 'stripes' : '');
           return html`
-            <div role="group" aria-label=${group.label}>
+            <div>
               <span class="shape-label">${group.label}</span>
-              <div class="pv-seg">
+              <div class="pv-seg" role="group" aria-label=${group.label}>
                 ${group.options.map(([value, label]) => html`
                   <button type="button"
                     aria-pressed=${chosen === value ? 'true' : 'false'}
@@ -401,9 +401,9 @@ export class PvSettingsCustomize extends LitElement {
             </div>
           `;
         })}
-        <div role="group" aria-label="Avatar border">
+        <div>
           <span class="shape-label">Avatar border</span>
-          <div class="pv-seg">
+          <div class="pv-seg" role="group" aria-label="Avatar border">
             <button type="button"
               aria-pressed=${border === 'primary' ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: 'primary' }, e)}>Their color</button>

@@ -587,7 +587,7 @@ export class PVViewDay extends LitElement {
       /* Wide enough for every lane's header: the strip stays out of the way. */
       .day-people { display: none; }
       .day-people .person-avatar,
-      .day-people .person-initial { width: 32px; height: 32px; font-size: 0.875rem; }
+      .day-people .person-initial { width: 28px; height: 28px; margin: 6px; font-size: 0.75rem; }
 
       /* xs: phones, hide column headers, compact events; one person at a time with the strip (milestone 8) */
       @container pv-calendar (max-width: 479px) {
