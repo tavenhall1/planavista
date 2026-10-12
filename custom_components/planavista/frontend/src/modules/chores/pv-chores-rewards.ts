@@ -8,6 +8,7 @@ import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
 import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
+import { goalWords } from './my-day-derive';
 import { redeemLabel } from './rewards-derive';
 import type { Balance, RewardCard } from './rewards-derive';
 import { pictureOf } from './pv-chore-tile';
@@ -222,7 +223,7 @@ export class PvChoresRewards extends LitElement {
                 <span class="stars num" aria-label=${`${b.member.name}: ${b.stars} stars`}>★ ${b.stars}</span>
                 <div class="goal">
                   ${b.goal ? html`
-                    Goal: ${pictureOf(b.goal.reward.icon)} ${b.goal.reward.name} · ${b.goal.need > 0 ? `${b.goal.need} more` : 'enough stars!'}
+                    Goal: ${pictureOf(b.goal.reward.icon)} ${b.goal.reward.name} · ${goalWords(b.goal)}
                     <div class="bar"><span style="width:${Math.round(b.goal.progress * 100)}%"></span></div>
                   ` : html`No goal yet`}
                 </div>

@@ -179,7 +179,7 @@ export class PvSettings extends LitElement {
       }
 
       .group {
-        margin-bottom: 14px;
+        margin-bottom: 10px;
       }
 
       .group-label {
@@ -240,8 +240,11 @@ export class PvSettings extends LitElement {
         font-size: 1.25rem;
       }
 
+      /* Compact, so the page list fits a landscape screen 800 px tall (milestone 8); the whole list scrolls. */
       .look-row {
         align-items: flex-start;
+        min-height: 48px;
+        padding: 6px 12px;
         background: color-mix(in srgb, #F59E0B 12%, transparent);
       }
 
@@ -268,7 +271,11 @@ export class PvSettings extends LitElement {
       }
 
       .look-text {
-        font-size: 0.9375rem;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: 0.875rem;
         line-height: 1.35;
       }
 
@@ -282,6 +289,12 @@ export class PvSettings extends LitElement {
         box-sizing: border-box;
         overflow-y: auto;
         padding: 12px 20px 40px;
+      }
+
+      /* Every page the same column (milestone 8): 640 px at most, from the left. */
+      .page-el {
+        display: block;
+        max-width: 640px;
       }
 
       .page-heading {

@@ -26,7 +26,7 @@ import {
   resolveModules,
 } from '../core/module-registry';
 import { HouseholdView, Member, SettingsAccess, parentsWithPins, settingsAccess, setupNeedsPin } from '../core/household';
-import type { PinGate } from '../core/pin-gate';
+import { PinGate, pinReason } from '../core/pin-gate';
 import type { Session } from '../core/session';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { AppearanceEdits } from '../core/appearance-edits';
@@ -639,7 +639,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         mode="unlock"
         .members=${sheet.purpose === 'module' ? sheet.members : view ? parentsWithPins(view.members) : []}
         .heading=${sheet.heading}
-        .reason=${sheet.purpose === 'module' ? sheet.reason ?? '' : ''}
+        .reason=${(sheet.purpose === 'module' ? sheet.reason : undefined) ?? pinReason(sheet.heading) ?? ''}
         .shuffle=${!!view?.security.shuffle_keypad}
         @pv-unlocked=${this._onUnlocked}
         @pv-sheet-close=${this._onSheetCancel}

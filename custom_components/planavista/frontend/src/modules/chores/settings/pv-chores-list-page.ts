@@ -127,6 +127,7 @@ export class PvChoresListPage extends LitElement {
     }
     const list = choresList(board.chores, members, board.settings, {
       member: this._member, search: this._search, today: board.today, timeFormat: this.data?.display?.time_format,
+      items: Object.values(board.members).flatMap(m => m.items),
     });
     const filtered = members.find(m => m.id === this._member) ?? null;
     return html`

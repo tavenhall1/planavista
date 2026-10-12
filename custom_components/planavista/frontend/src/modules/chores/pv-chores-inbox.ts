@@ -4,6 +4,7 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { buttonStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
+import { statusStyles } from '../../styles/status';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
@@ -46,6 +47,7 @@ export class PvChoresInbox extends LitElement {
   static styles = [
     buttonStyles,
     sheetStyles,
+    statusStyles,
     css`
       :host([layout='landscape']) {
         position: absolute;
@@ -208,16 +210,6 @@ export class PvChoresInbox extends LitElement {
         font: inherit;
       }
 
-      .empty {
-        padding: 32px 24px;
-        text-align: center;
-        color: var(--pv-text-secondary, #5F6670);
-        line-height: 1.5;
-      }
-
-      .empty .art {
-        font-size: 32px;
-      }
     `,
   ];
 
@@ -279,7 +271,11 @@ export class PvChoresInbox extends LitElement {
           <h2 id="inbox-title" tabindex="-1">Waiting for OK${g.count ? ` · ${g.count}` : ''}</h2>
         </div>
         ${g.count === 0 ? html`
-          <div class="empty"><div class="art" aria-hidden="true">✅</div>Nothing is waiting. Check-offs that need a parent's OK, requests, and rewards land here.</div>
+          <div class="state">
+            <div class="art" aria-hidden="true">✅</div>
+            <h2>Nothing is waiting</h2>
+            <p>Check-offs that need a parent's OK, requests, and rewards land here.</p>
+          </div>
         ` : nothing}
         ${g.chores.length ? html`
           <div class="group"><span>Chores to check</span>

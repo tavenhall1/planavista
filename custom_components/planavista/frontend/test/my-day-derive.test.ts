@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { columnFor, type DeriveContext } from '../src/modules/chores/board-derive';
-import { bedtimeOn, fairShares, fitsIn, goalFor, nextLine, picturesFor, timelineFor } from '../src/modules/chores/my-day-derive';
+import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, nextLine, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
 import type { DayEvent } from '../src/modules/chores/calendar-ties';
 import { MEMBERS, NOW, TODAY, board, column, item } from './chores-fixtures';
 
@@ -50,6 +50,21 @@ describe('timelineFor (spec 13.4)', () => {
     const labels = timelineFor(col, { now: late, events: [], timeFormat: '12h', bedtime: null })
       .flatMap(e => (e.kind === 'band' ? [e.label] : e.kind === 'chore' ? [e.row.name] : []));
     expect(labels).toEqual(['Evening', 'Tidy toys']);
+  });
+
+  it('puts a check-off waiting for OK at the time it was done, with that time once (milestone 8)', () => {
+    const waiting = { id: 'w', done_by: 'dana', by: 'dana', at: '2026-10-13T08:51:00-05:00', source: 'tablet', state: 'pending', review: null, stars: 1 } as const;
+    const items = [
+      item('feed_the_fish|dana|day:2026-10-13|0', { band: 'morning', status: 'pending', completion: waiting }),
+      item('tidy_toys|dana|day:2026-10-13|0', { band: 'evening' }),
+    ];
+    const ctx: DeriveContext = { today: TODAY, now: NOW, events: [], timeFormat: '12h', activities: new Map(), members: MEMBERS };
+    const col = columnFor(dana, column(items), board({ dana: column(items) }), ctx);
+    const entries = timelineFor(col, { now: NOW, events: [], timeFormat: '12h', bedtime: null });
+    const shown = entries.flatMap(e => (e.kind === 'band' ? [`== ${e.label}`] : e.kind === 'chore' ? [`${e.time ?? '·'} ${e.row.name}`] : e.kind === 'now' ? ['NOW'] : []));
+    expect(shown).toEqual(['== Morning', '8:51 Feed the fish', '== Afternoon', 'NOW', '== Evening', '· Tidy toys']);
+    const fish = entries.find(e => e.kind === 'chore' && e.row.name === 'Feed the fish');
+    expect(fish && fish.kind === 'chore' ? fish.row.doneAt : 'missing').toBeUndefined();
   });
 
   it('says it is free for the rest of the day when nothing else is on the calendar', () => {
@@ -109,6 +124,21 @@ describe('small helpers', () => {
       casey: column([], { contribution: { minutes: 0, shared_minutes: 0 } }),
     });
     expect(fairShares(b, [alex, blair, casey, dana]).map(s => [s.member.id, s.percent])).toEqual([['alex', 25], ['blair', 75]]);
+    expect(fairShares(b, [alex, blair, casey, dana]).map(s => s.text)).toEqual(['Alex 30 min · 25%', 'Blair 1.5 h · 75%']);
     expect(fairShares(board({}), MEMBERS)).toEqual([]);
+  });
+});
+
+describe('a goal and stickers read one way (milestone 8)', () => {
+  const reward = { id: 'ice', name: 'Ice cream trip', icon: '🍦', cost: 25, needs_ok: true, who: [] };
+
+  it("says how many more stars, or that there are enough", () => {
+    expect(goalWords({ reward, have: 7, need: 18, progress: 7 / 25 })).toBe('18 more ★');
+    expect(goalWords({ reward, have: 25, need: 0, progress: 1 })).toBe('Enough stars!');
+  });
+
+  it("names the week's stars the same on the board and in My day", () => {
+    expect(stickersLabel(5)).toBe('This week: 5 ★');
+    expect(stickersLabel(0)).toBe('This week: 0 ★');
   });
 });

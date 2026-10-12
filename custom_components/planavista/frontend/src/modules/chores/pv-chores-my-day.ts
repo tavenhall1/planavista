@@ -17,8 +17,10 @@ import {
   FairShare,
   GoalModel,
   TimelineEntry,
+  goalWords,
   nextLine,
   picturesFor,
+  stickersLabel,
   timelineFor,
 } from './my-day-derive';
 import { pictureOf } from './pv-chore-tile';
@@ -427,7 +429,7 @@ export class PvChoresMyDay extends LitElement {
       <div class="goal">
         <div class="text">
           <span>Goal: ${pictureOf(goal.reward.icon)} ${goal.reward.name}</span>
-          <span class="num">${goal.need > 0 ? `${goal.have} of ${goal.reward.cost} ★ · ${goal.need} more` : 'Enough stars!'}</span>
+          <span class="num">${goalWords(goal)}</span>
         </div>
         <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax=${goal.reward.cost} aria-valuenow=${goal.have}
           aria-label=${`${goal.reward.name}: ${goal.have} of ${goal.reward.cost} stars`}><span style="width:${Math.round(goal.progress * 100)}%"></span></div>
@@ -512,10 +514,10 @@ export class PvChoresMyDay extends LitElement {
     return html`
       <div class="fair">
         <div class="section-head" style="margin-left:0"><span>Shared chores this week, by time done</span></div>
-        <div class="bar" role="img" aria-label=${this.shares.map(s => `${s.member.name} ${s.percent}%`).join(', ')}>
+        <div class="bar" role="img" aria-label=${this.shares.map(s => s.text).join(', ')}>
           ${this.shares.map(s => html`<span style="width:${s.percent}%;background:${this.colorOf(s.member)}"></span>`)}
         </div>
-        <div class="legend">${this.shares.map(s => html`<span><i style="background:${this.colorOf(s.member)}"></i>${s.member.name} ${s.percent}%</span>`)}</div>
+        <div class="legend">${this.shares.map(s => html`<span><i style="background:${this.colorOf(s.member)}"></i>${s.text}</span>`)}</div>
       </div>
     `;
   }
@@ -551,7 +553,7 @@ export class PvChoresMyDay extends LitElement {
         </div>
       ` : nothing}
       ${this.column.member.stars ? html`
-        <div class="label">Stickers this week${this.goal ? html` → ${pictureOf(this.goal.reward.icon)} ${this.goal.reward.name} at ${this.goal.reward.cost}` : nothing}</div>
+        <div class="label">${stickersLabel(stars)}${this.goal ? html` · Goal: ${pictureOf(this.goal.reward.icon)} ${this.goal.reward.name} · ${goalWords(this.goal)}` : nothing}</div>
         <div class="stickers" role="img" aria-label=${`${stars} stars this week`}>
           ${Array.from({ length: Math.min(30, stars) }, () => html`<span aria-hidden="true">⭐</span>`)}
           ${stars === 0 ? html`<span class="meta">Stars show up here.</span>` : nothing}

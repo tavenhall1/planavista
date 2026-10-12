@@ -1,6 +1,7 @@
 import type { Member } from '../../core/household';
 import { weekRangeLabel } from '../../utils/date-utils';
 import { dayDate, minutesText } from '../../core/status-map';
+import { FairShare, fairnessShares } from './fairness';
 import type { PastItem, WeekDay, WeekView, WeeklyEntry } from './chores-types';
 import { dayWords, addDays } from './options-derive';
 
@@ -146,15 +147,10 @@ export function weekHighlights(view: WeekView, members: Member[], limit = 3): Hi
 }
 
 /** Shared chores this week, by time done: everyone's minutes, for the fairness bar. */
-export function weekShares(view: WeekView, members: Member[]): Array<{ member: Member; minutes: number; text: string; percent: number }> {
-  const shares = members
+export function weekShares(view: WeekView, members: Member[]): FairShare[] {
+  return fairnessShares(members
     .filter(m => view.members[m.id])
-    .map(member => ({ member, minutes: view.members[member.id].contribution.shared_minutes }));
-  const total = shares.reduce((sum, s) => sum + s.minutes, 0);
-  if (total <= 0) return [];
-  return shares
-    .filter(s => s.minutes > 0)
-    .map(s => ({ ...s, text: `${s.member.name} ${minutesText(s.minutes)}`, percent: (100 * s.minutes) / total }));
+    .map(member => ({ member, minutes: view.members[member.id].contribution.shared_minutes })));
 }
 
 export type { PastItem };

@@ -164,6 +164,8 @@ In Settings, Appearance shows Light, Dark, and Automatic as small pictures of th
 - **On a schedule**, with a time for light and a time for dark.
 - **Matching Home Assistant**: each screen follows its own Home Assistant theme setting. Handy for phones.
 
+**On a wall tablet**, Home Assistant's own header and menus keep Home Assistant's theme. So they don't glare around a dark card at night, set the tablet's Home Assistant profile to Dark, or to Auto with the tablet's own dark mode on a schedule.
+
 Night falls from the top of the screen and day rises from the bottom. A change never happens while someone is touching the screen or has a sheet open, and a screen that was asleep wakes up already changed.
 
 **Themes.** PlanaVista, Minimal, and Vibrant each have a light and a dark version. Dark is designed rather than inverted: people's colors brighten a little, and their events sit on dark tints.

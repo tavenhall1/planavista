@@ -1,6 +1,6 @@
 import type { Member } from '../../../core/household';
 import { parseRule, ruleText, shortDate } from '../../../core/recurrence';
-import type { Activity, Band, ChoresSettings } from '../chores-types';
+import type { Activity, Band, ChoresSettings, ItemView } from '../chores-types';
 import { chorePicture } from '../picture-words';
 import { checkoffStars } from '../worth';
 
@@ -124,9 +124,22 @@ export function rhythmText(activity: Activity, today: string, timeFormat = '12h'
   return when ? `${amount.join(', ')} · ${when}` : amount.join(', ');
 }
 
+/**
+ * A Once chore whose open occurrence a parent gave a new due date (more time,
+ * or a change) says so: "On Oct 11 · moved to Oct 12" (milestone 8).
+ */
+function withMoved(rhythm: string, activity: Activity, items: readonly ItemView[], today: string): string {
+  if (activity.schedule !== 'once' || !activity.once) return rhythm;
+  const own = activity.once.on ?? activity.once.by;
+  const open = items.find(i => i.chore === activity.id && i.due_day && i.status !== 'done' && i.status !== 'pending' && i.status !== 'excused');
+  if (!own || !open?.due_day || open.due_day === own) return rhythm;
+  return `${rhythm} · moved to ${dayText(open.due_day, today)}`;
+}
+
 /** A chore as a row of the Chores list. */
 export function choreRow(
   activity: Activity, members: Member[], settings: Pick<ChoresSettings, 'minutes_per_star'>, today: string, timeFormat = '12h',
+  items: readonly ItemView[] = [],
 ): ChoreRow {
   const tags: string[] = [];
   if (planOnly(activity)) tags.push('Plan only');
@@ -136,7 +149,7 @@ export function choreRow(
     id: activity.id,
     name: activity.name,
     picture: chorePicture(activity.icon, activity.name),
-    rhythm: rhythmText(activity, today, timeFormat),
+    rhythm: withMoved(rhythmText(activity, today, timeFormat), activity, items, today),
     tags,
     stars: planOnly(activity) ? null : checkoffStars(activity, settings.minutes_per_star),
     people: members.filter(m => activity.assignees?.includes(m.id)),
@@ -151,13 +164,13 @@ export function choresList(
   activities: Activity[],
   members: Member[],
   settings: Pick<ChoresSettings, 'minutes_per_star'>,
-  options: { member?: string | null; search?: string; today: string; timeFormat?: string },
+  options: { member?: string | null; search?: string; today: string; timeFormat?: string; items?: readonly ItemView[] },
 ): ChoreList {
   const query = (options.search ?? '').trim().toLocaleLowerCase();
   const shown = activities.filter(a =>
     (!options.member || a.assignees?.includes(options.member)) && (!query || a.name.toLocaleLowerCase().includes(query)));
   const active = activities.filter(a => !a.finished_at);
-  const row = (a: Activity) => choreRow(a, members, settings, options.today, options.timeFormat);
+  const row = (a: Activity) => choreRow(a, members, settings, options.today, options.timeFormat, options.items);
   const groups = ORDER.map(id => ({
     id,
     label: GROUP_LABELS[id],

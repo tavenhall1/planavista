@@ -194,7 +194,10 @@ export function calendarsOf(memberId: string, calendars: CalendarLink[]): Calend
 
 /** A People row's summary, such as "Parent · PIN on · Alex's calendar" (spec 14.2). */
 export function memberSummary(member: Member, calendars: CalendarLink[]): string {
-  const parts = [member.parent ? 'Parent' : AGE_GROUP_LABELS[member.age_group]];
+  // A parent who isn't an adult is named both ways: "Parent · Teen" (milestone 8).
+  const parts = member.parent
+    ? ['Parent', ...(member.age_group === 'adult' ? [] : [AGE_GROUP_LABELS[member.age_group]])]
+    : [AGE_GROUP_LABELS[member.age_group]];
   if (member.has_pin) parts.push('PIN on');
   const own = calendarsOf(member.id, calendars);
   if (own.length === 0) parts.push('no calendar');

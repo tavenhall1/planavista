@@ -26,4 +26,10 @@ describe('page styles', () => {
     expect(transitionCss(['planavista-1'], 'none')).toBe('');
     expect(transitionCss([], 'dusk')).toBe('');
   });
+
+  it('lets a tap during the change reach the card underneath (milestone 8)', () => {
+    for (const kind of ['dusk', 'dawn', 'reveal', 'fade'] as const) {
+      expect(transitionCss(['pv-card-1'], kind)).toContain('html[data-pv-vt]::view-transition{pointer-events:none}');
+    }
+  });
 });

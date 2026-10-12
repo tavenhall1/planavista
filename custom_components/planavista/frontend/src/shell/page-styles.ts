@@ -66,6 +66,8 @@ export function transitionCss(names: string[], kind: TransitionKind): string {
   if (names.length === 0 || kind === 'none') return '';
   const each = (pseudo: string) => names.map(name => `html[data-pv-vt]::view-transition-${pseudo}(${name})`).join(',');
   const rules = [
+    // The snapshots sit over the page while the change plays; a tap goes through them to the card (milestone 8).
+    'html[data-pv-vt]::view-transition{pointer-events:none}',
     'html[data-pv-vt]::view-transition-old(root),html[data-pv-vt]::view-transition-new(root){animation:none}',
     `${each('group')}{animation:none}`,
     `${each('old')},${each('new')}{animation:none;mix-blend-mode:normal}`,

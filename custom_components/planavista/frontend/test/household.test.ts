@@ -121,6 +121,8 @@ describe('people helpers', () => {
     ];
     expect(memberSummary(ALEX, calendars)).toBe("Parent · PIN on · Alex's calendar");
     expect(memberSummary(CASEY, calendars)).toBe('Teen · 2 calendars');
+    // A parent who isn't an adult is named both ways (milestone 8).
+    expect(memberSummary({ ...CASEY, parent: true }, calendars)).toBe('Parent · Teen · 2 calendars');
     expect(memberSummary(DANA, calendars)).toBe('Young child · no calendar');
   });
 

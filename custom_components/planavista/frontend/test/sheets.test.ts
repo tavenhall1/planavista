@@ -78,3 +78,33 @@ describe('sheets and editors (milestone 8, spec 3.10)', () => {
     expect(module).toMatch(/creditedText\(/);
   });
 });
+
+describe('empty states (milestone 8, spec 3.12)', () => {
+  it('the inbox and the Day view use the shared designed state', () => {
+    for (const path of ['modules/chores/pv-chores-inbox.ts', 'modules/calendar/components/view-day.ts']) {
+      const text = read(path);
+      expect(text, path).toMatch(/class="state"/);
+      expect(text, path).not.toMatch(/class="empty(-state)?"/);
+      expect(text, path).toMatch(/statusStyles/);
+    }
+  });
+});
+
+describe('Settings pages share one layout (milestone 8)', () => {
+  it('one column, 640 px at most, from the left, on every page', () => {
+    const host = read('shell/settings/pv-settings.ts');
+    expect(host).toMatch(/\.page-el \{[^}]*max-width: 640px/);
+    const shared = read('styles/settings.ts');
+    const content = /\.page-content \{([^}]*)\}/.exec(shared)?.[1] ?? '';
+    expect(content).not.toMatch(/margin: 0 auto/);
+    expect(content).not.toMatch(/max-width: 560px/);
+  });
+});
+
+describe("Customize shows what applies (milestone 8)", () => {
+  it("Corners and Shadows offer the theme's own, chosen until another is picked", () => {
+    const text = read('shell/settings/pv-settings-customize.ts');
+    expect(text).toMatch(/key: 'corner_style', label: 'Corners', options: \[\['', 'Theme'\]/);
+    expect(text).toMatch(/key: 'shadow_depth', label: 'Shadows', options: \[\['', 'Theme'\]/);
+  });
+});

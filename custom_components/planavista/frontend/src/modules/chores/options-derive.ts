@@ -144,8 +144,8 @@ function names(people: Member[]): string {
 function addedLine(activity: Activity | undefined, members: Member[], today: string): string | null {
   const created = activity?.created;
   if (!created?.at) return null;
-  const who = members.find(m => m.id === created.by)?.name ??
-    (created.by === 'automation' ? 'an automation' : created.by === 'admin' ? 'an admin' : null);
+  // A person, or an automation; an admin account isn't a person, so it goes unnamed (milestone 8).
+  const who = members.find(m => m.id === created.by)?.name ?? (created.by === 'automation' ? 'an automation' : null);
   const day = created.at.slice(0, 10);
   const when = daysBetween(day, today) === 0 ? 'today' : `on ${dayWords(day, today)}`;
   return who ? `Added by ${who} ${when}` : `Added ${when}`;

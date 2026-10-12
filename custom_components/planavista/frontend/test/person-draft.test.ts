@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  AGE_GROUP_DEFAULTS, beginDraft, draftChanges, draftOf, draftProblem, isDirty, rebaseDraft, withAgeGroup,
+  AGE_GROUP_DEFAULTS, ageGroupNote, beginDraft, draftChanges, draftOf, draftProblem, isDirty, rebaseDraft, withAgeGroup,
 } from '../src/core/person-draft';
 import { Member } from '../src/core/household';
 
@@ -95,5 +95,21 @@ describe('person drafts', () => {
     expect(draftProblem({ ...draft, name: 'Dana', color: '#43aa8b' }, [ALEX, casey], null)).toBe('Casey already has that color.');
     expect(draftProblem({ ...draft, name: 'Dana' }, [ALEX, casey], null)).toBeNull();
     expect(draftProblem(draftOf(ALEX, [ALEX], PALETTE), [ALEX, casey], 'alex')).toBeNull();
+  });
+});
+
+describe('a new age group says what it changed (milestone 8)', () => {
+  const casey = { my_day: 'list', needs_ok_for: 'marked', stars: true };
+
+  it('names the new style, OKs, and stars', () => {
+    expect(ageGroupNote(casey, { my_day: 'timeline', needs_ok_for: 'marked', stars: true })).toBe('Now Timeline.');
+    expect(ageGroupNote({ my_day: 'timeline', needs_ok_for: 'none', stars: false }, { my_day: 'timeline', needs_ok_for: 'marked', stars: true }))
+      .toBe('Now an OK for chores marked Needs an OK, and earns stars.');
+    expect(ageGroupNote(casey, { my_day: 'pictures', needs_ok_for: 'all', stars: true })).toBe('Now Pictures, and an OK for every chore.');
+    expect(ageGroupNote(casey, { my_day: 'timeline', needs_ok_for: 'none', stars: false })).toBe('Now Timeline, no OKs, and no stars.');
+  });
+
+  it('says nothing when nothing changed', () => {
+    expect(ageGroupNote(casey, casey)).toBeNull();
   });
 });

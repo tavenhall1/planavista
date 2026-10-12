@@ -71,6 +71,7 @@ describe('the rest of the Week view', () => {
   });
 
   it('shares out shared chores by time done', () => {
-    expect(weekShares(WEEK, [alex, blair, casey, dana]).map(s => s.text)).toEqual(['Alex 2.5 h', 'Blair 3 h 42 min', 'Casey 2 h 12 min']);
+    // The same words as My day's (milestone 8): time and share.
+    expect(weekShares(WEEK, [alex, blair, casey, dana]).map(s => s.text)).toEqual(['Alex 2.5 h · 30%', 'Blair 3 h 42 min · 44%', 'Casey 2 h 12 min · 26%']);
   });
 });

@@ -38,8 +38,9 @@ const VERSION_LABELS: Record<Mode, string> = { light: 'Light', dark: 'Dark' };
 
 type ShapeKey = 'corner_style' | 'shadow_depth' | 'event_style';
 const SHAPE_CHOICES: Array<{ key: ShapeKey; label: string; options: Array<[string, string]> }> = [
-  { key: 'corner_style', label: 'Corners', options: [['sharp', 'Sharp'], ['rounded', 'Rounded'], ['pill', 'Pill']] },
-  { key: 'shadow_depth', label: 'Shadows', options: [['none', 'None'], ['subtle', 'Subtle'], ['bold', 'Bold']] },
+  // "Theme" is the theme's own corners or shadows, which may be none of the others (milestone 8).
+  { key: 'corner_style', label: 'Corners', options: [['', 'Theme'], ['sharp', 'Sharp'], ['rounded', 'Rounded'], ['pill', 'Pill']] },
+  { key: 'shadow_depth', label: 'Shadows', options: [['', 'Theme'], ['none', 'None'], ['subtle', 'Subtle'], ['bold', 'Bold']] },
   { key: 'event_style', label: 'Events', options: [['stripes', 'Stripes'], ['solid', 'Solid']] },
 ];
 
@@ -385,8 +386,8 @@ export class PvSettingsCustomize extends LitElement {
     return html`
       <div class="shape">
         ${SHAPE_CHOICES.map(group => {
-          // Events start as Stripes; corners and shadows start as the theme's own, which may be none of these.
-          const chosen = shape[group.key] ?? (group.key === 'event_style' ? 'stripes' : undefined);
+          // Events start as Stripes; corners and shadows start as the theme's own ("Theme").
+          const chosen = shape[group.key] ?? (group.key === 'event_style' ? 'stripes' : '');
           return html`
             <div role="group" aria-label=${group.label}>
               <span class="shape-label">${group.label}</span>
@@ -394,7 +395,7 @@ export class PvSettingsCustomize extends LitElement {
                 ${group.options.map(([value, label]) => html`
                   <button type="button"
                     aria-pressed=${chosen === value ? 'true' : 'false'}
-                    @click=${(e: Event) => this._setShape({ [group.key]: value } as Partial<ThemeShape>, e)}>${label}</button>
+                    @click=${(e: Event) => this._setShape({ [group.key]: value || undefined } as Partial<ThemeShape>, e)}>${label}</button>
                 `)}
               </div>
             </div>

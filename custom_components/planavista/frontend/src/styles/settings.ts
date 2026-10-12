@@ -3,8 +3,6 @@ import { css } from 'lit';
 /** Styles that Settings pages and setup steps share (moved from the setup wizard). */
 export const settingsPageStyles = css`
 .page-content {
-        max-width: 560px;
-        margin: 0 auto;
         animation: pv-slideLeft 250ms ease forwards;
       }
 .page-title {

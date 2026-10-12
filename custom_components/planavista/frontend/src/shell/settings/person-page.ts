@@ -8,6 +8,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../styles/shared';
 import {
   AGE_GROUP_CHOICES,
   AGE_GROUP_CHORES_HINTS,
+  AgeGroup,
   HouseholdView,
   Member,
   Picture,
@@ -19,7 +20,7 @@ import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import { POP_PAGE, announceEditor, saveErrorMessage } from '../../core/page-host';
 import {
-  DraftRecord, PersonDraft, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft, withAgeGroup,
+  DraftRecord, PersonDraft, ageGroupNote, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft, withAgeGroup,
 } from '../../core/person-draft';
 import type { ModuleService } from '../../core/module-registry';
 import { PERSON_CHANGE, PersonSection, personSections } from '../../core/settings-registry';
@@ -52,6 +53,8 @@ export class PvSettingsPerson extends LitElement {
   @property({ type: Number }) revision = 0;
 
   @state() private _draft!: PersonDraft;
+  /** What the last age group change changed. */
+  @state() private _ageNote: string | null = null;
   @state() private _start!: PersonDraft;
   /** The revision the edit began from (null for someone new); Save sends it. */
   private _rev: number | null = null;
@@ -347,18 +350,21 @@ export class PvSettingsPerson extends LitElement {
     const kind = typeof picture.emoji === 'string' ? 'emoji' : picture.person ? 'photo' : 'initial';
     const photo = this._personPicture();
     // Photo means "their Home Assistant person's photo": it needs a linked
-    // person, and shows the initial until that person has a photo.
+    // person who has one, so it can't be picked before (milestone 8). A Photo
+    // saved before the photo exists shows the initial until it does.
     const linked = !!this._draft.person;
+    const usable = linked && !!photo;
+    const shown = kind === 'photo' && !usable ? 'initial' : kind;
     const choose = (next: Picture) => this._change({ picture: next });
     return html`
       <fieldset class="field">
         <legend>Picture</legend>
         <div class="pv-seg stretch" role="group" aria-label="Picture">
-          <button type="button" aria-pressed=${kind === 'initial' ? 'true' : 'false'}
+          <button type="button" aria-pressed=${shown === 'initial' ? 'true' : 'false'}
             @click=${() => choose({ initial: true })}>Initial</button>
-          <button type="button" aria-pressed=${kind === 'emoji' ? 'true' : 'false'}
+          <button type="button" aria-pressed=${shown === 'emoji' ? 'true' : 'false'}
             @click=${() => choose({ emoji: typeof picture.emoji === 'string' ? picture.emoji : '🙂' })}>Emoji</button>
-          <button type="button" aria-pressed=${kind === 'photo' ? 'true' : 'false'} ?disabled=${!linked}
+          <button type="button" aria-pressed=${shown === 'photo' ? 'true' : 'false'} ?disabled=${!usable}
             @click=${() => choose({ person: true })}>Photo</button>
         </div>
         ${kind === 'emoji' ? html`
@@ -369,8 +375,8 @@ export class PvSettingsPerson extends LitElement {
         ` : nothing}
         ${!linked
           ? html`<p class="hint">Link a Home Assistant person to use their photo.</p>`
-          : kind === 'photo' && !photo
-            ? html`<p class="hint">Their Home Assistant person has no photo yet, so their initial shows.</p>`
+          : !photo
+            ? html`<p class="hint">Their Home Assistant person has no photo yet. Add one there to use it here.</p>`
             : nothing}
       </fieldset>
     `;
@@ -391,15 +397,23 @@ export class PvSettingsPerson extends LitElement {
             return html`
               <label class="pv-choice">
                 <input type="radio" name="age-group" .checked=${this._draft.age_group === choice.id}
-                  @change=${() => this._changeDraft(withAgeGroup(this._draft, choice.id))} />
+                  @change=${() => this._pickAgeGroup(choice.id)} />
                 <span class="choice-text"><span class="choice-title">${choice.label}</span>${hint ? html`<span class="choice-sub">${hint}</span>` : nothing}</span>
                 <span class="choice-check" aria-hidden="true">✓</span>
               </label>
             `;
           })}
         </div>
+        ${this._choresOn && this._ageNote ? html`<p class="hint" role="status">${this._ageNote}</p>` : nothing}
       </fieldset>
     `;
+  }
+
+  /** A new age group brings its defaults, and says what they changed (milestone 8). */
+  private _pickAgeGroup(age: AgeGroup): void {
+    const next = withAgeGroup(this._draft, age);
+    this._ageNote = ageGroupNote(this._draft, next);
+    this._changeDraft(next);
   }
 
   /** The parts modules add at one slot of the page, such as the chores rows. */

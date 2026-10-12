@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { peopleStripStyles } from '../../../styles/controls';
+import { statusStyles } from '../../../styles/status';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -83,6 +84,7 @@ export class PVViewDay extends LitElement {
 
   static styles = [
     peopleStripStyles,
+    statusStyles,
     baseStyles,
     eventStyles,
     nowIndicatorStyles,
@@ -579,22 +581,6 @@ export class PVViewDay extends LitElement {
         --mdc-icon-size: 20px;
       }
 
-      /* Empty state */
-      .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 3rem;
-        color: var(--pv-text-muted);
-        text-align: center;
-      }
-
-      .empty-state ha-icon {
-        --mdc-icon-size: 48px;
-        opacity: 0.3;
-        margin-bottom: 1rem;
-      }
 
       /* ═══════════ RESPONSIVE BREAKPOINTS ═══════════ */
 
@@ -814,9 +800,10 @@ export class PVViewDay extends LitElement {
 
     if (visibleCalendars.length === 0) {
       return html`
-        <div class="empty-state">
-          <ha-icon icon="mdi:calendar-blank"></ha-icon>
-          <p>No calendars visible</p>
+        <div class="state">
+          <div class="art" aria-hidden="true">📅</div>
+          <h2>Every calendar is hidden</h2>
+          <p>Show them again to see what's coming up.</p>
         </div>
       `;
     }
