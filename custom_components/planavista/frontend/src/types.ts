@@ -77,6 +77,8 @@ export interface CalendarConfig {
   visible: boolean;
   state?: string;
   attributes?: Record<string, any>;
+  /** Set by the coordinator when this calendar's events couldn't be read on the last refresh. */
+  fetch_failed?: boolean;
 }
 
 export interface CalendarEvent {

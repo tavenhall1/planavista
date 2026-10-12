@@ -397,6 +397,31 @@ export class PVViewDay extends LitElement {
       }
 
       /* Date banner (shown when viewing a day other than today) */
+      /* A quiet line on a day with nothing on it (spec 11.6); the lanes stay. */
+      .day-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 48px;
+        padding: 0 16px;
+        color: var(--pv-text-secondary);
+        font-size: 0.9375rem;
+        border-bottom: 1px solid var(--pv-border-subtle, rgba(0, 0, 0, 0.04));
+        flex-shrink: 0;
+      }
+
+      .day-empty-add {
+        min-height: 48px;
+        padding: 0 12px;
+        border: none;
+        background: transparent;
+        color: var(--pv-accent-ink, var(--pv-accent));
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
       .date-banner {
         display: flex;
         align-items: center;
@@ -725,6 +750,15 @@ export class PVViewDay extends LitElement {
           </div>
         ` : nothing}
 
+        ${dayEvents.length === 0 ? html`
+          <div class="day-empty" role="status">
+            <span>${isCurrentDay
+              ? 'Nothing on the calendar today.'
+              : `Nothing on the calendar on ${this.currentDate.toLocaleDateString('en-US', { weekday: 'long' })}.`}</span>
+            <button class="day-empty-add" type="button" @click=${this._addEvent}>New event</button>
+          </div>
+        ` : nothing}
+
         <div class="time-grid-wrapper">
           <div class="time-grid">
             <div class="time-gutter">
@@ -794,6 +828,11 @@ export class PVViewDay extends LitElement {
       </div>
     `;
   }
+
+  /** New event on the day shown (the module opens the editor). */
+  private _addEvent = (): void => {
+    this.dispatchEvent(new CustomEvent('create-event', { detail: { date: this.currentDate }, bubbles: true, composed: true }));
+  };
 
   private _goToToday() {
     this.dispatchEvent(new CustomEvent('day-click', {

@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -75,3 +76,38 @@ async def test_sensor_exposes_calendars_and_events(
     assert state.attributes["onboarding_complete"] is False
 
     assert hass.states.get("sensor.planavista_upcoming_events").state == "2"
+
+
+def _rows(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
+    state = hass.states.get("sensor.planavista_config")
+    return {row["entity_id"]: row for row in state.attributes["calendars"]}
+
+
+async def test_a_calendar_whose_events_cant_be_read_is_marked(
+    hass: HomeAssistant,
+    setup_calendars: dict[str, FakeCalendar],
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """The card can name a calendar whose events didn't arrive (spec 11.6); the others carry no mark."""
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = mock_config_entry.runtime_data
+    real_fetch = coordinator._fetch_calendar_events
+
+    async def fetch(entity_id: str, start: datetime, end: datetime) -> list[dict]:
+        if entity_id == "calendar.test_blair":
+            raise RuntimeError("token expired")
+        return await real_fetch(entity_id, start, end)
+
+    with patch.object(coordinator, "_fetch_calendar_events", side_effect=fetch):
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+    rows = _rows(hass)
+    assert rows["calendar.test_blair"]["fetch_failed"] is True
+    assert "fetch_failed" not in rows["calendar.test_alex"]
+
+    # The next refresh that reads it clears the mark.
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert "fetch_failed" not in _rows(hass)["calendar.test_blair"]

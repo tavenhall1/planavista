@@ -3,7 +3,8 @@ import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig, WeatherCondition } from '../../../types';
-import { baseStyles, animationStyles } from '../../../styles/shared';
+import { baseStyles, animationStyles, buttonStyles } from '../../../styles/shared';
+import { statusStyles } from '../../../styles/status';
 import type { Layout } from '../../../core/layout';
 import {
   formatDate,
@@ -43,6 +44,8 @@ export class PVViewAgenda extends LitElement {
   static styles = [
     baseStyles,
     animationStyles,
+    buttonStyles,
+    statusStyles,
     css`
       :host { display: block; height: 100%; overflow: hidden; }
 
@@ -244,6 +247,23 @@ export class PVViewAgenda extends LitElement {
 
     // Weather forecast
     const forecast = buildForecastMap(this.forecast);
+
+    // Nothing in the whole range: one designed state, not a stack of empty days (spec 11.6).
+    if (days.every(day => !(grouped.get(getDateKey(day))?.length))) {
+      return html`
+        <div class="agenda-container">
+          <div class="state">
+            <div class="art" aria-hidden="true">🗓️</div>
+            <h2>Nothing coming up</h2>
+            <p>Nothing is on the calendar for the next ${this._daysLoaded} days.</p>
+            <div class="buttons">
+              <button class="pv-btn pv-btn-primary" type="button" @click=${() => this._addEvent(days[0])}>New event</button>
+              <button class="pv-btn pv-btn-secondary" type="button" @click=${this._loadMore}>Look further ahead</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     return html`
       <div class="agenda-container">

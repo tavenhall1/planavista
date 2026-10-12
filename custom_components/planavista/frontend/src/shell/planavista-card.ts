@@ -5,6 +5,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
+import { statusStyles } from '../styles/status';
 import { getPlanaVistaData } from '../utils/ha-utils';
 import { todayHighLow } from '../utils/weather-subscription';
 import { memoizeOne, statesChanged } from '../utils/render-cache';
@@ -172,6 +173,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     buttonStyles,
     typographyStyles,
     animationStyles,
+    statusStyles,
     css`
       :host {
         display: block;
@@ -213,14 +215,6 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
       :host([layout='landscape']) pv-nav-bar {
         order: 2;
-      }
-
-/* Empty state */
-
-      .pvc-empty {
-        padding: 2rem;
-        text-align: center;
-        color: var(--pv-text-muted);
       }
 
 /* Setup-pending placeholder shown in card editor preview */
@@ -294,6 +288,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       return statesChanged(prev, this.hass, this._watchedEntityIds());
     }
     return true;
+  }
+
+  /** True while Home Assistant is still starting (the config sensor may not exist yet). */
+  private _starting(): boolean {
+    const state = (this.hass?.config as { state?: string } | undefined)?.state;
+    return state !== undefined && state !== 'RUNNING';
   }
 
   private _entityId(): string {
@@ -642,10 +642,19 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (!data) {
       return html`
         <ha-card>
-          <div class="pvc-empty">
-            <p>PlanaVista entity not found</p>
-            <p style="font-size: 0.8rem;">Check that the PlanaVista integration is configured.</p>
-          </div>
+          ${this._starting() ? html`
+            <div class="state" role="status">
+              <div class="art" aria-hidden="true">⏳</div>
+              <h2>Home Assistant is starting</h2>
+              <p>The calendar shows up here as soon as it's ready.</p>
+            </div>
+          ` : html`
+            <div class="state" role="alert">
+              <div class="art" aria-hidden="true">🧩</div>
+              <h2>PlanaVista isn't set up yet</h2>
+              <p>Add PlanaVista in Settings, Devices and services, then reload this page.</p>
+            </div>
+          `}
         </ha-card>
       `;
     }

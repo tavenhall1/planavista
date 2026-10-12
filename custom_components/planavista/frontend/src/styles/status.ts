@@ -108,7 +108,9 @@ export const statusStyles = css`
   }
 
   .banner button {
-    min-height: 40px;
+    flex-shrink: 0;
+    min-height: 48px;
+    white-space: nowrap;
   }
 
   /* Skeletons stay neutral: a tint of the text color, never a brand fill (spec 11.6). */

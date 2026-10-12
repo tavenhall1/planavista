@@ -188,6 +188,8 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             event["calendar_color_light"] = color_light
                             data["events"].append(event)
                     except Exception as err:
+                        # The card names it, so a family knows its events may be missing (spec 11.6).
+                        calendar_data["fetch_failed"] = True
                         _LOGGER.warning(
                             "Failed to fetch events from %s: %s", entity_id, err
                         )

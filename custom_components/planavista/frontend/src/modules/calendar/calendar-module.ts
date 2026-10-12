@@ -7,6 +7,7 @@ import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, Pla
 import type { Layout } from '../../core/layout';
 import type { Mode, ThemeShape } from '../../styles/theme-pairs';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../../styles/shared';
+import { statusStyles } from '../../styles/status';
 import { getPersonAvatar, getPersonName } from '../../utils/ha-utils';
 import { swipeDirection } from '../../utils/gestures';
 import { memoizeOne } from '../../utils/render-cache';
@@ -18,6 +19,12 @@ import { contrastText } from '../../core/color';
 import type { ModuleService } from '../../core/module-registry';
 import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
 import { deepActiveElement } from '../../core/focus';
+import type { HouseholdView } from '../../core/household';
+import type { Session } from '../../core/session';
+import { parentAccess } from '../../core/access';
+import { OPEN_SETTINGS } from '../../core/page-host';
+import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
+import { calendarSkeleton, skeletonStyles } from './components/calendar-skeleton';
 
 import './components/view-day';
 import './components/view-week';
@@ -61,6 +68,9 @@ export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) services: Record<string, ModuleService> = {};
   /** Bumped by the card when a module's service has news. */
   @property({ attribute: false }) revision = 0;
+  /** The household and parent mode, for what the empty states offer (a parent adds calendars). */
+  @property({ attribute: false }) household: HouseholdView | null = null;
+  @property({ attribute: false }) session: Session | null = null;
 
   /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
   @state() private _tick = Math.floor(Date.now() / 60000);
@@ -94,6 +104,8 @@ export class PvCalendarModule extends LitElement {
     buttonStyles,
     typographyStyles,
     animationStyles,
+    statusStyles,
+    skeletonStyles,
     css`
       :host {
         display: flex;
@@ -626,9 +638,25 @@ export class PvCalendarModule extends LitElement {
     const { calendars, visibleEvents } = this._derived();
     const store = this._pv.store;
     const display = this.display;
+    const hidden = store.hiddenCalendars;
+    const screen = screenOf({
+      sensorState: this.hass.states[this.cardConfig?.entity || DEFAULT_ENTITY]?.state,
+      running: this._running(),
+      calendars,
+      hidden,
+    });
+    const banners = screen === 'ready' ? bannersOf({ connected: this.hass.connected !== false, calendars, hidden }) : [];
 
     return html`
-      ${this._renderToolbar(calendars)}
+      ${screen === 'no-calendars' || screen === 'unavailable' ? nothing : this._renderToolbar(calendars)}
+      ${banners.map(banner => html`
+        <div class="banner" role="status">
+          <span class="text">${banner.text}</span>
+          ${banner.kind === 'unreachable' ? html`
+            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._refreshing} @click=${this._refreshCalendars}>Try again</button>
+          ` : nothing}
+        </div>
+      `)}
       <div class="pvc-body"
         @touchstart=${this._onTouchStart}
         @touchend=${this._onTouchEnd}
@@ -637,7 +665,7 @@ export class PvCalendarModule extends LitElement {
         @day-click=${this._onDayClick}
         @create-event=${this._onCreateEvent}
       >
-        ${this._renderView(store.currentView, visibleEvents, calendars, display)}
+        ${screen === 'ready' ? this._renderView(store.currentView, visibleEvents, calendars, display) : this._renderScreen(screen, calendars)}
       </div>
 
       ${this._details.value ? keyed(this._detailsMount, html`
@@ -671,6 +699,59 @@ export class PvCalendarModule extends LitElement {
       `) : nothing}
     `;
   }
+
+  /** Whether Home Assistant has finished starting (an older frontend without the state counts as running). */
+  private _running(): boolean {
+    const state = (this.hass.config as { state?: string } | undefined)?.state;
+    return state === undefined || state === 'RUNNING';
+  }
+
+  /** The designed states (spec 11.6): what's loading, what's missing, and what to do next. */
+  private _renderScreen(screen: CalendarScreen, calendars: CalendarConfig[]) {
+    if (screen === 'loading') return calendarSkeleton(this._pv.store.currentView, this.layout, calendars.length);
+    if (screen === 'unavailable') {
+      return html`
+        <div class="state" role="alert">
+          <div class="art" aria-hidden="true">📡</div>
+          <h2>Can't load the calendar</h2>
+          <p>PlanaVista couldn't read the calendars just now, and tries again every minute. If this stays, check Settings, System, Logs for PlanaVista.</p>
+          <div class="buttons">
+            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._refreshing} @click=${this._refreshCalendars}>Try again</button>
+          </div>
+        </div>
+      `;
+    }
+    if (screen === 'no-calendars') {
+      const parent = parentAccess(this.household, this.session) !== 'no';
+      return html`
+        <div class="state">
+          <div class="art" aria-hidden="true">📅</div>
+          <h2>No calendars yet</h2>
+          <p>${parent ? "Add your family's calendars, and say whose each one is." : 'A parent can add calendars in Settings.'}</p>
+          ${parent ? html`
+            <div class="buttons">
+              <button class="pv-btn pv-btn-primary" type="button" @click=${this._openCalendarsPage}>Add calendars</button>
+            </div>
+          ` : nothing}
+        </div>
+      `;
+    }
+    return html`
+      <div class="state">
+        <div class="art" aria-hidden="true">📅</div>
+        <h2>Every calendar is hidden</h2>
+        <p>Show them again to see what's coming up.</p>
+        <div class="buttons">
+          <button class="pv-btn pv-btn-primary" type="button" @click=${() => this._pv.store.showAllCalendars()}>Show all</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Settings, Calendars (the card asks for a parent's PIN first where it needs one). */
+  private _openCalendarsPage = (): void => {
+    this.dispatchEvent(new CustomEvent(OPEN_SETTINGS, { detail: { page: 'calendars' }, bubbles: true, composed: true }));
+  };
 
   private _renderToolbar(calendars: CalendarConfig[]) {
     const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
@@ -918,7 +999,7 @@ export class PvCalendarModule extends LitElement {
     this._touchStart = null;
   }
 
-  private async _refreshCalendars() {
+  private _refreshCalendars = async (): Promise<void> => {
     if (this._refreshing) return;
     this._refreshing = true;
     try {
@@ -934,7 +1015,7 @@ export class PvCalendarModule extends LitElement {
     }
     // Keep spinner for at least 800ms so the animation completes
     setTimeout(() => { this._refreshing = false; }, 800);
-  }
+  };
 }
 
 defineElement('pv-calendar-module', PvCalendarModule);
