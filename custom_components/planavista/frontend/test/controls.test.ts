@@ -132,3 +132,12 @@ describe('one chip look, and the tags (review)', () => {
     }
   });
 });
+
+describe("Appearance's Automatic rules (review)", () => {
+  it('are choice rows around real radios, like Age group', () => {
+    const text = readFileSync(new URL('../src/shell/settings/pv-appearance-editor.ts', import.meta.url), 'utf-8');
+    expect(text).toMatch(/class="pv-choices" role="radiogroup" aria-labelledby="switch-heading"/);
+    expect(text).toMatch(/<input type="radio" name="appearance-switch"/);
+    expect(text).not.toMatch(/class="row" type="button" role="radio"/);
+  });
+});

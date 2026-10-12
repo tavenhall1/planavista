@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { segmentedStyles } from '../../styles/controls';
+import { choiceStyles, segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import '../../core/pv-time-field';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -78,6 +78,7 @@ export class PvAppearanceEditor extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    choiceStyles,
     segmentedStyles,
     buttonStyles,
     formStyles,
@@ -251,43 +252,9 @@ export class PvAppearanceEditor extends LitElement {
       }
 
       /* When to switch */
-      .rows {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
 
-      .row {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        width: 100%;
-        min-height: 56px;
-        padding: 12px 14px;
-        border: 1.5px solid var(--pv-border, #E7E7E3);
-        border-radius: var(--pv-radius, 12px);
-        background: var(--pv-card-bg, #FFFFFF);
-        text-align: left;
-        cursor: pointer;
-      }
 
-      .row[aria-checked='true'] {
-        border-color: var(--pv-accent, #5B5BD6);
-      }
 
-      .dot {
-        flex-shrink: 0;
-        width: 20px;
-        height: 20px;
-        margin-top: 1px;
-        box-sizing: border-box;
-        border-radius: 50%;
-        border: 2px solid var(--pv-text-secondary, #5F6670);
-      }
-
-      .row[aria-checked='true'] .dot {
-        border: 6px solid var(--pv-accent, #5B5BD6);
-      }
 
       .row-text {
         display: flex;
@@ -483,33 +450,31 @@ export class PvAppearanceEditor extends LitElement {
       : "Home Assistant's Sun integration isn't set up, so the schedule's times are used until it is.";
     const help: Record<AppearanceSwitch, string> = { ...SWITCH_HELP, sun: sunLine };
     return html`
-      <div class="rows" role="radiogroup" aria-labelledby="switch-heading"
-        @keydown=${(e: KeyboardEvent) => this._arrows(e, SWITCHES, chosen, value => this._page.set({ appearance_switch: value }, e))}>
+      <div class="pv-choices" role="radiogroup" aria-labelledby="switch-heading">
         ${SWITCHES.map(rule => html`
-          <button class="row" type="button" role="radio" data-value=${rule}
-            aria-checked=${rule === chosen ? 'true' : 'false'}
-            tabindex=${rule === chosen ? '0' : '-1'}
-            @click=${(e: Event) => this._page.set({ appearance_switch: rule }, e)}>
-            <span class="dot" aria-hidden="true"></span>
-            <span class="row-text">
-              <span class="row-title">${SWITCH_LABELS[rule]}</span>
-              ${help[rule] ? html`<span class="row-help">${help[rule]}</span>` : nothing}
+          <label class="pv-choice">
+            <input type="radio" name="appearance-switch" .checked=${rule === chosen}
+              @change=${(e: Event) => this._page.set({ appearance_switch: rule }, e)} />
+            <span class="choice-text">
+              <span class="choice-title">${SWITCH_LABELS[rule]}</span>
+              ${help[rule] ? html`<span class="choice-sub">${help[rule]}</span>` : nothing}
             </span>
-          </button>
-          ${rule === 'schedule' && chosen === 'schedule' ? html`
-            <div class="times">
-              <label>Light from
-                <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${lightFrom}
-                  @change=${(e: Event) => this._time('light_from', e)}></pv-time-field>
-              </label>
-              <label>Dark from
-                <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${darkFrom}
-                  @change=${(e: Event) => this._time('dark_from', e)}></pv-time-field>
-              </label>
-            </div>
-          ` : nothing}
+            <span class="choice-check" aria-hidden="true">✓</span>
+          </label>
         `)}
       </div>
+      ${chosen === 'schedule' ? html`
+        <div class="times">
+          <label>Light from
+            <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${lightFrom}
+              @change=${(e: Event) => this._time('light_from', e)}></pv-time-field>
+          </label>
+          <label>Dark from
+            <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${darkFrom}
+              @change=${(e: Event) => this._time('dark_from', e)}></pv-time-field>
+          </label>
+        </div>
+      ` : nothing}
     `;
   }
 
