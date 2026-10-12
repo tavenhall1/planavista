@@ -112,6 +112,7 @@ export class ChoresService implements ModuleService {
       { callWS: <T>(msg: Record<string, unknown>) => (this._host.hass as unknown as { callWS(m: unknown): Promise<T> }).callWS(msg) },
       () => this._host.pinSession?.token ?? null,
       token => this._host.sessionEnded(token),
+      token => this._host.sessionUsed?.(token),
     );
     this.queue = sharedQueue();
     this._subscription = new ChoresSubscription(

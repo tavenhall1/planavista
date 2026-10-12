@@ -54,7 +54,9 @@ async def test_subscribe_describes_the_account(
     assert view["account"]["parent_level"] is parent_level
     assert view["available"] is True
     assert [m["id"] for m in view["members"]] == ["alex", "blair", "casey", "dana"]
-    assert view["security"] == {"shuffle_keypad": False, "shared_screens": 1}
+    assert view["security"] == {
+        "shuffle_keypad": False, "shared_screens": 1, "session_idle_seconds": 120, "parent_mode_minutes": 10,
+    }
 
 
 async def test_subscribe_never_sends_pin_data(
@@ -282,3 +284,18 @@ async def test_commands_before_planavista_is_set_up(
     client = await hass_ws_client(hass)
     reply = await ws_command(client, {"type": "planavista/household/subscribe"})
     assert reply["error"]["code"] == "not_loaded"
+
+
+async def test_a_parent_sets_how_long_sessions_last(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, Any], household: Any
+) -> None:
+    client = await ws_client_for(hass, hass_ws_client, accounts["admin"])
+    reply = await ws_command(
+        client, {"type": "planavista/household/settings/save", "session_idle_seconds": 300, "parent_mode_minutes": 15}
+    )
+    assert reply["success"]
+    assert household.data["security"]["session_idle_seconds"] == 300
+    assert household.data["security"]["parent_mode_minutes"] == 15
+    for bad in ({"session_idle_seconds": 45}, {"session_idle_seconds": 0}, {"parent_mode_minutes": 0}, {"parent_mode_minutes": 60}):
+        refused = await ws_command(client, {"type": "planavista/household/settings/save", **bad})
+        assert not refused["success"], bad

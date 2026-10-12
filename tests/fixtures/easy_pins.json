@@ -1,0 +1,5 @@
+{
+  "_doc": "PINs turned away when one is chosen (milestone 8, D4): all one digit, a straight run up or down, or the keypad's middle column. Shared by tests/test_household_security.py and the card's test/pins.test.ts.",
+  "easy": ["0000", "1111", "9999", "777777", "1234", "0123", "3456", "6789", "12345", "123456", "4321", "9876", "98765", "987654", "2580", "0852"],
+  "fine": ["2468", "1357", "4826", "482613", "8642", "2024", "1470", "8901", "1212", "2581", "1235"]
+}

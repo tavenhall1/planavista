@@ -29,11 +29,25 @@ FIRST_PAUSE_SECONDS = 30
 MAX_PAUSE_SECONDS = 15 * 60
 
 SESSION_IDLE_SECONDS = 120
+PARENT_MODE_MINUTES = 10
+# The household's choices (milestone 8, D3): how long a quiet session lasts, and when any session ends.
+SESSION_IDLE_CHOICES = (30, 60, 120, 300)
+PARENT_MODE_CHOICES = (5, 10, 15, 30)
 
 
 def valid_pin(pin: object) -> bool:
     """4 to 6 ASCII digits."""
     return isinstance(pin, str) and PIN_PATTERN.fullmatch(pin) is not None
+
+
+def easy_pin(pin: str) -> bool:
+    """Easy to guess, so turned away when chosen (milestone 8, D4): all one digit, a straight run up or down, or the keypad's middle column."""
+    if len(set(pin)) == 1:
+        return True
+    steps = {int(b) - int(a) for a, b in zip(pin, pin[1:])}
+    if steps in ({1}, {-1}):
+        return True
+    return pin in ("2580", "0852")
 
 
 def _derive(pin: str, salt: bytes) -> bytes:
@@ -126,18 +140,26 @@ class Session:
     parent: bool
     last_active: float
     connection: object = field(repr=False)
-
-    def expires_in(self, now: float) -> float:
-        """Seconds of quiet left before the session ends."""
-        return max(0.0, self.last_active + SESSION_IDLE_SECONDS - now)
+    #: When the PIN opened it; no session outlives the household's cap.
+    started: float = 0.0
 
 
 class SessionManager:
     """Sessions live in memory only, so a restart or a closed connection forgets them."""
 
-    def __init__(self) -> None:
-        """Start with no sessions."""
+    def __init__(self, limits: Callable[[], tuple[float, float]] | None = None) -> None:
+        """Start with no sessions. `limits` gives (quiet seconds, cap seconds), read at each check."""
         self._sessions: dict[str, Session] = {}
+        self._limits = limits or (lambda: (float(SESSION_IDLE_SECONDS), PARENT_MODE_MINUTES * 60.0))
+
+    def _alive(self, session: Session, now: float) -> bool:
+        idle, cap = self._limits()
+        return now - session.last_active < idle and now - session.started < cap
+
+    def expires_in(self, session: Session, now: float) -> float:
+        """Seconds left: until the quiet time runs out or the cap arrives, whichever is first."""
+        idle, cap = self._limits()
+        return max(0.0, min(session.last_active + idle, session.started + cap) - now)
 
     def __len__(self) -> int:
         """How many sessions are open (some may have idled out without being asked yet)."""
@@ -145,8 +167,8 @@ class SessionManager:
 
     def start(self, member_id: str, parent: bool, connection: object, now: float) -> Session:
         """A new session for `member_id` on `connection`."""
-        self._drop(lambda s: now - s.last_active >= SESSION_IDLE_SECONDS)
-        session = Session(secrets.token_urlsafe(32), member_id, parent, now, connection)
+        self._drop(lambda s: not self._alive(s, now))
+        session = Session(secrets.token_urlsafe(32), member_id, parent, now, connection, started=now)
         self._sessions[session.token] = session
         return session
 
@@ -157,7 +179,7 @@ class SessionManager:
         session = self._sessions.get(token) if token else None
         if session is None or session.connection is not connection:
             return None
-        if now - session.last_active >= SESSION_IDLE_SECONDS:
+        if not self._alive(session, now):
             del self._sessions[session.token]
             return None
         if touch:

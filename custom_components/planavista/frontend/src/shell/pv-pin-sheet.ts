@@ -8,12 +8,15 @@ import { trapTab } from '../core/focus';
 import { Member } from '../core/household';
 import { HouseholdApi, errorCode } from '../core/household-client';
 import {
+  EASY_PIN_MESSAGE,
   MAX_PIN,
   PinEntry,
   canFinishChoosing,
+  easyPin,
   isComplete,
   keypadDigits,
   pressDelete,
+  pinHint,
   pressDigit,
   startEntry,
 } from '../core/keypad';
@@ -316,7 +319,7 @@ export class PvPinSheet extends LitElement {
         ? html`<button class="back" type="button" @click=${this._backToPicker}>‹ Someone else</button>`
         : nothing}
       <h2 class="heading" id="pin-heading">${heading}</h2>
-      ${this._step === 'choose' ? html`<p class="hint">4 to 6 digits.</p>` : nothing}
+      ${this._step === 'choose' ? html`<p class="hint">${pinHint(!!this.target?.parent)}</p>` : nothing}
       <div class="boxes ${this._shake ? 'shake' : ''}" aria-hidden="true">
         ${Array.from({ length: this._entry.length }, (_, i) => html`
           <span class="box ${i < this._entry.digits.length ? 'filled' : ''}"></span>
@@ -396,6 +399,11 @@ export class PvPinSheet extends LitElement {
   private _next(): void {
     if (this._step === 'choose') {
       if (!canFinishChoosing(this._entry)) return;
+      // Turned away before asking twice; the backend refuses the same PINs (D4).
+      if (easyPin(this._entry.digits)) {
+        this._restartChoosing(EASY_PIN_MESSAGE);
+        return;
+      }
       this._first = this._entry.digits;
       this._entry = startEntry(this._first.length);
       this._step = 'confirm';
@@ -453,7 +461,7 @@ export class PvPinSheet extends LitElement {
       await this.api.setPin(target.id, pin);
       void this._leave('pv-pin-set', { memberId: target.id });
     } catch (err) {
-      this._restartChoosing(saveErrorMessage(errorCode(err)));
+      this._restartChoosing(errorCode(err) === 'easy_pin' ? EASY_PIN_MESSAGE : saveErrorMessage(errorCode(err)));
     } finally {
       this._busy = false;
     }

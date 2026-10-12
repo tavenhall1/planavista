@@ -50,7 +50,13 @@ def test_normalize_fills_gaps_and_keeps_unknown_fields() -> None:
         "later": True,
         "shared_users": [],
         "shuffle_keypad": False,
+        "session_idle_seconds": 120,
+        "parent_mode_minutes": 10,
     }
+    assert normalize({"security": {"session_idle_seconds": 45, "parent_mode_minutes": 15}})["security"][
+        "session_idle_seconds"
+    ] == 120
+    assert normalize({"security": {"parent_mode_minutes": 15}})["security"]["parent_mode_minutes"] == 15
     assert doc["chores_hint"] == "x"
     assert doc["setup"] == {"completed": False, "step": None}
     assert normalize(None) == default_document()

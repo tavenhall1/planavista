@@ -3,6 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../styles/shared';
+import { segmentedStyles } from '../../styles/controls';
 import { HouseholdView, inOrder } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
@@ -13,8 +14,23 @@ import './pin-actions';
 
 /**
  * pv-settings-pins: PINs and parent mode (spec 14.5). Whether this screen is
- * a shared family screen, everyone's PIN, and Shuffle the keypad.
+ * a shared family screen, everyone's PIN, Shuffle the keypad, and how long a
+ * PIN's session lasts (milestone 8, D3: like a phone's Auto-Lock, with no
+ * Never).
  */
+const IDLE_CHOICES = [
+  { value: 30, label: '30 sec', spoken: '30 seconds' },
+  { value: 60, label: '1 min', spoken: '1 minute' },
+  { value: 120, label: '2 min', spoken: '2 minutes' },
+  { value: 300, label: '5 min', spoken: '5 minutes' },
+] as const;
+const CAP_CHOICES = [
+  { value: 5, label: '5 min', spoken: '5 minutes' },
+  { value: 10, label: '10 min', spoken: '10 minutes' },
+  { value: 15, label: '15 min', spoken: '15 minutes' },
+  { value: 30, label: '30 min', spoken: '30 minutes' },
+] as const;
+
 export class PvSettingsPins extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
@@ -30,6 +46,7 @@ export class PvSettingsPins extends LitElement {
     baseStyles,
     buttonStyles,
     formStyles,
+    segmentedStyles,
     css`
       :host {
         display: block;
@@ -97,6 +114,20 @@ export class PvSettingsPins extends LitElement {
         min-width: 0;
       }
 
+      .choice-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        min-height: 48px;
+        margin-top: 16px;
+      }
+
+      .choice-row:first-of-type {
+        margin-top: 0;
+      }
+
       .rule {
         font-size: 0.875rem;
         color: var(--pv-text-secondary, #6B7280);
@@ -148,6 +179,15 @@ export class PvSettingsPins extends LitElement {
         <p class="hint">The numbers move each time, so smudges and glances don't give a PIN away.</p>
       </section>
 
+      <section>
+        ${this._choices('Lock after no touches', 'idle-label', IDLE_CHOICES, household.security.session_idle_seconds ?? 120,
+          value => this.api.saveSecurity({ session_idle_seconds: value }))}
+        <p class="hint">After a PIN, the screen locks again once nobody has touched it this long.</p>
+        ${this._choices('Parent mode ends after', 'cap-label', CAP_CHOICES, household.security.parent_mode_minutes ?? 10,
+          value => this.api.saveSecurity({ parent_mode_minutes: value }))}
+        <p class="hint">However busy the screen is, parent mode and a child's unlocked time end this long after the PIN.</p>
+      </section>
+
       <p class="rule">
         After 5 wrong tries, a PIN pauses for 30 seconds, and each pause after that is twice as
         long, up to 15 minutes. A parent can clear a pause here. Forgot every parent's PIN? Sign in
@@ -175,6 +215,41 @@ export class PvSettingsPins extends LitElement {
             }
           }}
         ></div>
+      </div>
+    `;
+  }
+
+  /** One of a few: the segmented control, as everywhere (arrows move the choice). */
+  private _choices(
+    label: string,
+    id: string,
+    choices: readonly { value: number; label: string; spoken: string }[],
+    chosen: number,
+    save: (value: number) => Promise<void>,
+  ) {
+    const choose = (value: number, group?: HTMLElement): void => {
+      if (value !== chosen) void this._run(() => save(value));
+      void this.updateComplete.then(() => group?.querySelector<HTMLElement>(`[data-value='${value}']`)?.focus());
+    };
+    const arrows = (event: KeyboardEvent): void => {
+      const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      const index = Math.max(0, choices.findIndex(c => c.value === chosen));
+      choose(choices[(index + step + choices.length) % choices.length].value, event.currentTarget as HTMLElement);
+    };
+    return html`
+      <div class="choice-row">
+        <span class="label" id=${id}>${label}</span>
+        <div class="pv-seg" role="radiogroup" aria-labelledby=${id} @keydown=${arrows}>
+          ${choices.map(choice => html`
+            <button type="button" role="radio" data-value=${choice.value} aria-label=${choice.spoken}
+              aria-checked=${choice.value === chosen ? 'true' : 'false'}
+              tabindex=${choice.value === chosen ? '0' : '-1'}
+              ?disabled=${this._busy}
+              @click=${() => choose(choice.value)}>${choice.label}</button>
+          `)}
+        </div>
       </div>
     `;
   }

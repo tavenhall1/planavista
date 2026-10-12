@@ -295,3 +295,43 @@ async def test_a_pin_never_leaks(
     for where, text in haystacks.items():
         for secret in (PIN, "135791", "48a613"):
             assert secret not in text, f"{secret} found in {where}"
+
+
+@pytest.mark.parametrize("pin", ["1234", "0000", "987654", "2580"])
+async def test_an_easy_pin_is_turned_away_when_chosen(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, pin: str
+) -> None:
+    alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
+    reply = await ws_command(alex, {"type": "planavista/pin/set", "member_id": "dana", "pin": pin})
+    assert reply["error"]["code"] == "easy_pin"
+    assert pin not in json.dumps(reply)
+    assert "dana" not in household.pins
+
+
+async def test_an_easy_pin_set_before_still_unlocks(hass: HomeAssistant, household: Any, kitchen: Any) -> None:
+    await set_pin(hass, household, "alex", "1111")
+    assert (await _unlock(kitchen, "alex", "1111"))["ok"] is True
+
+
+async def test_unlocking_says_how_long_the_session_can_last(
+    hass: HomeAssistant, household: Any, kitchen: Any
+) -> None:
+    household.data["security"]["session_idle_seconds"] = 60
+    household.data["security"]["parent_mode_minutes"] = 5
+    result = await _unlock(kitchen, "blair", PIN)
+    assert (result["expires_in"], result["idle_seconds"], result["cap_in"]) == (60, 60, 300)
+
+
+async def test_parent_mode_ends_at_its_cap(
+    hass: HomeAssistant, household: Any, kitchen: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = [1000.0]
+    monkeypatch.setattr(household_ws, "_monotonic", lambda: clock[0])
+    household.data["security"]["parent_mode_minutes"] = 5
+    token = (await _unlock(kitchen, "blair", PIN))["session"]
+    for _ in range(4):
+        clock[0] += 60
+        assert (await ws_command(kitchen, {"type": "planavista/pin/touch", "session": token}))["success"]
+    clock[0] += 61
+    reply = await ws_command(kitchen, {"type": "planavista/pin/touch", "session": token})
+    assert reply["error"]["code"] == "session_ended"

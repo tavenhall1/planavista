@@ -42,3 +42,19 @@ export function isComplete(entry: PinEntry): boolean {
 export function canFinishChoosing(entry: PinEntry): boolean {
   return entry.digits.length >= MIN_PIN;
 }
+
+/** Easy to guess, so turned away when chosen (milestone 8, D4; the backend's rule): all one digit, a straight run, or the keypad's middle column. */
+export function easyPin(pin: string): boolean {
+  if (new Set(pin).size === 1) return true;
+  const steps = new Set([...pin].slice(1).map((digit, i) => Number(digit) - Number(pin[i])));
+  if (steps.size === 1 && (steps.has(1) || steps.has(-1))) return true;
+  return pin === '2580' || pin === '0852';
+}
+
+/** The backend's words for an easy PIN, so either one can say it. */
+export const EASY_PIN_MESSAGE = 'That PIN is easy to guess: the same digit, a run, or straight down the keypad. Try another.';
+
+/** Choosing a PIN: parents are nudged toward 6 digits. */
+export function pinHint(parent: boolean): string {
+  return parent ? '4 to 6 digits. 6 is much harder to guess.' : '4 to 6 digits.';
+}

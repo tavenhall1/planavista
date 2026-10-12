@@ -42,7 +42,14 @@ export interface HouseholdView {
   available: boolean;
   members: Member[];
   account: AccountView;
-  security: { shuffle_keypad: boolean; shared_screens: number };
+  security: {
+    shuffle_keypad: boolean;
+    shared_screens: number;
+    /** Lock after no touches (30, 60, 120, or 300); missing from older backends. */
+    session_idle_seconds?: number;
+    /** Parent mode ends after (5, 10, 15, or 30). */
+    parent_mode_minutes?: number;
+  };
   modules: Record<string, unknown>;
   /** Where setup stands; `start` is how the household started (restore, plan, common, empty, calendar). */
   setup: { completed: boolean; step: string | null; start?: string | null };

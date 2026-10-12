@@ -124,6 +124,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     { callWS: <T>(msg: Record<string, unknown>) => (this.hass as any).callWS(msg) as Promise<T> },
     () => this._session.token,
     token => this._session.ended(token),
+    token => this._session.used(token),
   );
 
   /** Each module's card-wide state (the chores feed), made once per card. */
@@ -167,6 +168,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   /** ServiceHost: the backend refused a command made with this session. */
   sessionEnded(token: string): void {
     this._session.ended(token);
+  }
+
+  /** ServiceHost: the backend accepted a command made with this session (a touch there). */
+  sessionUsed(token: string): void {
+    this._session.used(token);
   }
 
   /** ServiceHost: a module's service has news. */
@@ -395,6 +401,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     // Another view or module starts at its top, so the header starts tall again. Turning the
     // tablet keeps the content's place (spec 12.1), so it keeps the header's shape too.
     if (changed.has('_views') || changed.has('_moduleId')) this._compactHeader = false;
+    // Lock after no touches and Parent mode ends after apply to an open session as soon as they're saved.
+    this._session.follow(this._household.view?.security);
   }
 
   private _setView(id: string): void {
@@ -588,19 +596,21 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     `;
   }
 
-  /** Whose parent mode is on, with its countdown and Lock, even when the header is hidden. */
+  /** Whose session is open (parent mode, or a child's unlocked window), with its countdown and Lock, even when the header is hidden. */
   private _renderParentStrip() {
     const session = this._session.session;
-    if (!session?.parent) return nothing;
-    const parent = this._household.view?.members.find(m => m.id === session.memberId);
-    if (!parent) return nothing;
+    if (!session) return nothing;
+    const member = this._household.view?.members.find(m => m.id === session.memberId);
+    if (!member) return nothing;
     const active = this._activeModule();
-    const actions: ModuleAction[] = active ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
+    const actions: ModuleAction[] = active && session.parent ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
     return html`
       <pv-parent-strip
-        .member=${parent}
+        .member=${member}
         .hass=${this.hass}
         .endsAt=${this._session.endsAt ?? 0}
+        .span=${this._session.spanMs}
+        .parent=${session.parent}
         .actions=${actions}
         @pv-lock=${() => this._session.lock()}
         @pv-strip-action=${(e: CustomEvent<{ id: string }>) => this._moduleAction(e.detail.id)}
@@ -721,6 +731,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .layout=${this._layout.layout}
               .session=${this._session.session}
               .sessionEndsAt=${this._session.endsAt ?? 0}
+              .sessionSpan=${this._session.spanMs}
               .parent=${this._household.view?.members.find(m => m.id === this._session.session?.memberId) ?? null}
               .drafts=${this._drafts}
               .services=${this._services}

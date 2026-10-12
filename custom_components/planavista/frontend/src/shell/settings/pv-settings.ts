@@ -48,6 +48,8 @@ export class PvSettings extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) session: Session | null = null;
   @property({ type: Number }) sessionEndsAt = 0;
+  /** A full ring (ms): the household's Lock after no touches. */
+  @property({ type: Number }) sessionSpan = 0;
   @property({ attribute: false }) parent: Member | null = null;
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
   /** The card's module services, and a number that changes whenever one of them does. */
@@ -319,7 +321,7 @@ export class PvSettings extends LitElement {
     const stackedPage = !this._split && current;
     return html`
       ${this.session?.parent && this.parent ? html`
-        <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt}></pv-parent-strip>
+        <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt} .span=${this.sessionSpan}></pv-parent-strip>
       ` : nothing}
       <div class="bar">
         ${stackedPage && this._editor

@@ -67,6 +67,8 @@ export interface ServiceHost extends ReactiveControllerHost, HTMLElement {
   readonly planavistaData: PlanaVistaData | null;
   /** A command was refused although it carried this session: the backend already ended it. */
   sessionEnded(token: string): void;
+  /** The backend accepted a command made with this session (it counts as a touch there). */
+  sessionUsed?(token: string): void;
   /** The service has news: the card redraws the header, the bar, and the modules. */
   serviceChanged(): void;
 }

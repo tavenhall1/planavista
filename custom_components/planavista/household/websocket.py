@@ -35,8 +35,10 @@ from .members import (
 )
 from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
-    SESSION_IDLE_SECONDS,
+    PARENT_MODE_CHOICES,
+    SESSION_IDLE_CHOICES,
     after_failure,
+    easy_pin,
     after_success,
     hash_pin,
     pause_remaining,
@@ -220,6 +222,8 @@ def _view(hass: HomeAssistant, household: Household, user: User) -> dict[str, An
         "security": {
             "shuffle_keypad": household.data["security"]["shuffle_keypad"],
             "shared_screens": len(household.shared_users),
+            "session_idle_seconds": household.data["security"]["session_idle_seconds"],
+            "parent_mode_minutes": household.data["security"]["parent_mode_minutes"],
         },
         "modules": household.data["modules"],
         "setup": household.data["setup"],
@@ -448,6 +452,8 @@ async def ws_shared_screen(
     {
         vol.Required("type"): "planavista/household/settings/save",
         vol.Optional("shuffle_keypad"): bool,
+        vol.Optional("session_idle_seconds"): vol.In(SESSION_IDLE_CHOICES),
+        vol.Optional("parent_mode_minutes"): vol.In(PARENT_MODE_CHOICES),
         vol.Optional("session"): str,
     }
 )
@@ -455,13 +461,14 @@ async def ws_shared_screen(
 async def ws_settings_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Household-wide PIN settings (today, Shuffle the keypad)."""
+    """Household-wide PIN settings: Shuffle the keypad, Lock after no touches, Parent mode ends after."""
     context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
-    if "shuffle_keypad" in msg:
-        household.data["security"]["shuffle_keypad"] = msg["shuffle_keypad"]
+    for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
+        if key in msg:
+            household.data["security"][key] = msg[key]
     await household.async_save()
     connection.send_result(msg["id"])
 
@@ -523,6 +530,7 @@ async def ws_config_save(
 # PIN fields accept any value; the handler checks the format with a fixed
 # message, so Home Assistant's error logging can never quote a PIN.
 INVALID_PIN = "PINs are 4 to 6 digits."
+EASY_PIN = "That PIN is easy to guess: the same digit, a run, or straight down the keypad. Try another."
 
 
 @callback
@@ -597,9 +605,9 @@ async def ws_pin_unlock(
         if record.get("failures") or record.get("lockouts"):
             household.pins[member_id] = after_success(record)
             await household.async_save()
-    session = household.sessions.start(
-        member_id, bool(member.get("parent")), connection, _monotonic()
-    )
+    now = _monotonic()
+    session = household.sessions.start(member_id, bool(member.get("parent")), connection, now)
+    idle, cap = household.session_limits()
     connection.subscriptions[("planavista_session", session.token)] = partial(
         household.sessions.end, session.token
     )
@@ -610,7 +618,9 @@ async def ws_pin_unlock(
             "session": session.token,
             "member_id": member_id,
             "parent": session.parent,
-            "expires_in": SESSION_IDLE_SECONDS,
+            "expires_in": math.ceil(household.sessions.expires_in(session, now)),
+            "idle_seconds": math.ceil(idle),
+            "cap_in": math.ceil(cap),
         },
     )
 
@@ -634,6 +644,9 @@ async def ws_pin_set(
     household, token = context
     if not valid_pin(msg["pin"]):
         connection.send_error(msg["id"], "invalid_pin", INVALID_PIN)
+        return
+    if easy_pin(msg["pin"]):
+        connection.send_error(msg["id"], "easy_pin", EASY_PIN)
         return
     household.pins[msg["member_id"]] = await hass.async_add_executor_job(hash_pin, msg["pin"])
     household.sessions.end_member(msg["member_id"], keep=token)
@@ -726,10 +739,12 @@ def ws_pin_touch(
     household = household_for(hass, connection, msg)
     if household is None:
         return
-    if household.sessions.get(msg["session"], connection, _monotonic(), touch=True) is None:
+    now = _monotonic()
+    session = household.sessions.get(msg["session"], connection, now, touch=True)
+    if session is None:
         connection.send_error(msg["id"], "session_ended", "The PIN session ended.")
         return
-    connection.send_result(msg["id"], {"expires_in": SESSION_IDLE_SECONDS})
+    connection.send_result(msg["id"], {"expires_in": math.ceil(household.sessions.expires_in(session, now))})
 
 
 HOUSEHOLD_COMMANDS = (
