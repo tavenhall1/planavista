@@ -19,6 +19,9 @@ interface Participant {
   entity_id: string;
   calendar_name: string;
   calendar_color: string;
+  /** This person's own copy: off Google each copy has its own uid. */
+  uid?: string;
+  recurrence_id?: string;
 }
 
 function participantsOf(event: CalendarEvent): Participant[] {
@@ -307,11 +310,14 @@ export class PVEventPopup extends LitElement {
     const shared = participantsOf(event);
     try {
       if (everyone && shared.length > 1) {
-        // Each person's copy goes separately; any that stay are named.
+        // Each person's copy goes separately, by its own uid; any that stay are named.
         const failed: string[] = [];
         for (const participant of shared) {
+          const copy = participant.uid
+            ? { uid: participant.uid, recurrence_id: participant.recurrence_id }
+            : { uid: event.uid, recurrence_id: event.recurrence_id };
           try {
-            await deleteEvent(this.hass, { entity_id: participant.entity_id, uid: event.uid, recurrence_id: event.recurrence_id });
+            await deleteEvent(this.hass, { entity_id: participant.entity_id, ...copy });
           } catch (err) {
             console.warn(`[PlanaVista] Couldn't delete from ${participant.entity_id}:`, err);
             failed.push(participant.calendar_name);

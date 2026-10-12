@@ -1318,6 +1318,12 @@ export class PVEventCreateDialog extends LitElement {
     const uid = this.prefill?.uid;
     const recurrenceId = this.prefill?.recurrence_id;
     const primaryEntityId = this.prefill?.calendar_entity_id;
+    // Each person's own copy (off Google every copy has its own uid).
+    const copies = (this.prefill as { shared_calendars?: Array<{ entity_id: string; uid?: string; recurrence_id?: string }> } | null)?.shared_calendars ?? [];
+    const copyOn = (entityId: string): { uid?: string; recurrence_id?: string } => {
+      const copy = copies.find(c => c.entity_id === entityId);
+      return copy?.uid ? { uid: copy.uid, recurrence_id: copy.recurrence_id } : { uid, recurrence_id: recurrenceId };
+    };
 
     const added = [...selected].filter(id => !original.has(id));
     const removed = [...original].filter(id => !selected.has(id));
@@ -1332,9 +1338,10 @@ export class PVEventCreateDialog extends LitElement {
 
     for (const entityId of kept) {
       if (entityId === primaryEntityId) continue;
-      if (uid) {
+      const copy = copyOn(entityId);
+      if (copy.uid) {
         try {
-          await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+          await deleteEvent(this.hass, { entity_id: entityId, uid: copy.uid, recurrence_id: copy.recurrence_id });
         } catch { /* may not exist */ }
       }
       await createEvent(this.hass, { ...baseData, entity_id: entityId } as CreateEventData);
@@ -1346,9 +1353,10 @@ export class PVEventCreateDialog extends LitElement {
 
     for (const entityId of removed) {
       if (entityId === primaryEntityId) continue;
-      if (uid) {
+      const copy = copyOn(entityId);
+      if (copy.uid) {
         try {
-          await deleteEvent(this.hass, { entity_id: entityId, uid, recurrence_id: recurrenceId });
+          await deleteEvent(this.hass, { entity_id: entityId, uid: copy.uid, recurrence_id: copy.recurrence_id });
         } catch { /* may not exist */ }
       }
     }
