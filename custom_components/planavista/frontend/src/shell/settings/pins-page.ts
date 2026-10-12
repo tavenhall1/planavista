@@ -59,8 +59,9 @@ export class PvSettingsPins extends LitElement {
 
       h2 {
         margin: 0 0 10px;
-        font-size: 1rem;
-        font-weight: 700;
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .toggle-row {

@@ -183,11 +183,10 @@ export class PvSettings extends LitElement {
       }
 
       .group-label {
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 8px 12px 4px;
         font-size: 0.8125rem;
-        font-weight: 600;
-        color: var(--pv-text-secondary, #6B7280);
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .row {

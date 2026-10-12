@@ -153,3 +153,29 @@ describe('targets and roles (review)', () => {
     expect(customize).not.toMatch(/<div class="pv-seg">/);
   });
 });
+
+describe('one section head (review, spec 3.9)', () => {
+  const HEADS: Array<[string, string]> = [
+    ['styles/shared.ts', '.pv-label'], ['shell/settings/pv-settings.ts', '.group-label'],
+    ['shell/settings/person-page.ts', '.field > .label,\n      legend'], ['modules/chores/settings/pv-person-chores.ts', '.legend'],
+    ['modules/chores/settings/pv-person-phones.ts', '.legend'], ['modules/chores/settings/pv-person-sleep.ts', '.legend'],
+    ['shell/settings/pv-appearance-editor.ts', '.section-heading'], ['shell/settings/pv-settings-customize.ts', '.section-heading'],
+    ['shell/settings/pins-page.ts', 'h2'], ['modules/chores/settings/settings-styles.ts', '.section-label'],
+    ['modules/chores/chores-styles.ts', '.section-head'], ['modules/chores/pv-chores-quick-add.ts', '.title'],
+  ];
+
+  it.each(HEADS)('%s %s is 0.8125rem 750 in the secondary text color', (path, selector) => {
+    const text = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    const at = text.indexOf(`${selector} {`);
+    expect(at, `${path} ${selector}`).toBeGreaterThan(-1);
+    const rule = text.slice(at, text.indexOf('}', at));
+    expect(rule).toMatch(/font-size: 0\.8125rem/);
+    expect(rule).toMatch(/font-weight: 750/);
+    expect(rule).toMatch(/color: var\(--pv-text-secondary/);
+  });
+
+  it("My day's This week head is the same in every layout", () => {
+    const text = readFileSync(new URL('../src/modules/chores/pv-chores-my-day.ts', import.meta.url), 'utf-8');
+    expect(text).not.toMatch(/<h3[^>]*>This week</);
+  });
+});

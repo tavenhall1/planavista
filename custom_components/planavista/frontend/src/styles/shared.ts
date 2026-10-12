@@ -270,10 +270,10 @@ export const formStyles = css`
 
   .pv-label {
     display: block;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--pv-text-secondary);
     margin-bottom: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 750;
+    color: var(--pv-text-secondary, #5F6670);
   }
 
   .pv-select {

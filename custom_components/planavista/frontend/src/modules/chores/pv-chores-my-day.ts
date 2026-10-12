@@ -341,12 +341,6 @@ export class PvChoresMyDay extends LitElement {
         font-size: 22px;
       }
 
-      .side h3 {
-        margin: 0 0 8px;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1.0625rem;
-        font-weight: 800;
-      }
 
       .side .section + .section {
         margin-top: 16px;
@@ -572,13 +566,13 @@ export class PvChoresMyDay extends LitElement {
       <aside class="card side">
         ${column.member.stars ? html`
           <div class="section">
-            <h3>Stars</h3>
+            <div class="section-head"><span>Stars</span></div>
             <div class="stars-big num">★ ${column.entry.stars}</div>
             ${this.goal ? this._goal(this.goal) : nothing}
           </div>
         ` : nothing}
         <div class="section">
-          <h3>This week</h3>
+          <div class="section-head"><span>This week</span><span class="right">${this.board.week.days_left} days left</span></div>
           ${week.length ? repeat(week, r => r.key, r => this._row(r, 'week')) : html`<p class="meta">Nothing more this week.</p>`}
         </div>
       </aside>

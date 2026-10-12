@@ -167,8 +167,9 @@ export class PvSettingsPerson extends LitElement {
       legend {
         display: block;
         margin-bottom: 8px;
-        font-weight: 600;
-        font-size: 0.9375rem;
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .hint {

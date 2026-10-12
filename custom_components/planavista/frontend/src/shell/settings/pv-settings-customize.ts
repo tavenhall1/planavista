@@ -82,10 +82,9 @@ export class PvSettingsCustomize extends LitElement {
 
       .section-heading {
         margin: 0 0 10px;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--pv-text, #1A1B1E);
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .help {
