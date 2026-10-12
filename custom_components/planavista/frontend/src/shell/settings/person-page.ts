@@ -17,7 +17,7 @@ import {
 } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
-import { POP_PAGE, saveErrorMessage } from '../../core/page-host';
+import { POP_PAGE, announceEditor, saveErrorMessage } from '../../core/page-host';
 import {
   DraftRecord, PersonDraft, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft, withAgeGroup,
 } from '../../core/person-draft';
@@ -98,6 +98,7 @@ export class PvSettingsPerson extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._announced = '';
     this.removeEventListener(PERSON_CHANGE, this._onSectionChange as EventListener);
   }
 
@@ -242,6 +243,23 @@ export class PvSettingsPerson extends LitElement {
     `,
   ];
 
+  /** The editor's Cancel and Save, held in the Settings header (milestone 8). */
+  private _announced = '';
+
+  protected updated(): void {
+    const isNew = this._memberId === null;
+    const editor = {
+      label: isNew ? 'Add' : 'Save',
+      ready: !(this._saving || (!isNew && !isDirty(this._draft, this._start))),
+      save: () => void this._save(),
+      cancel: () => this._cancel(),
+    };
+    const said = `${editor.label}|${editor.ready}`;
+    if (said === this._announced) return;
+    this._announced = said;
+    announceEditor(this, editor);
+  }
+
   render() {
     if (!this._loaded || !this.household) return nothing;
     const member = this._member;
@@ -258,12 +276,6 @@ export class PvSettingsPerson extends LitElement {
           .hass=${this.hass}
           size="64"
         ></pv-member-avatar>
-        <div class="actions">
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${this._cancel}>Cancel</button>
-          <button class="pv-btn pv-btn-primary" type="button"
-            ?disabled=${this._saving || (!isNew && !dirty)}
-            @click=${this._save}>${isNew ? 'Add' : 'Save'}</button>
-        </div>
       </div>
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
       ${this._renderName()}

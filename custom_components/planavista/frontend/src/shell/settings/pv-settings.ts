@@ -10,7 +10,7 @@ import type { HouseholdView, Member } from '../../core/household';
 import type { HouseholdApi } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import type { ModuleService, OpenTarget } from '../../core/module-registry';
-import { OPEN_TARGET, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PushPageDetail } from '../../core/page-host';
+import { OPEN_TARGET, PAGE_EDITOR, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PageEditor, PushPageDetail } from '../../core/page-host';
 import type { Session } from '../../core/session';
 import {
   LookItem, SettingsContext, SettingsPage, SettingsTarget, groupPages, needsALook, settingsAt, settingsRegistry,
@@ -62,6 +62,8 @@ export class PvSettings extends LitElement {
   @state() private _stack: PushPageDetail[] = [];
   @state() private _toast = '';
   private _toastTimer: number | undefined;
+  /** The editor page open now, whose Cancel and Save the header holds. */
+  @state() private _editor: PageEditor | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -69,6 +71,7 @@ export class PvSettings extends LitElement {
     this.addEventListener(POP_PAGE, this._onPop);
     this.addEventListener(PAGE_ERROR, this._onError as EventListener);
     this.addEventListener(OPEN_TARGET, this._onOpen as EventListener);
+    this.addEventListener(PAGE_EDITOR, this._onEditor as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -77,10 +80,13 @@ export class PvSettings extends LitElement {
     this.removeEventListener(POP_PAGE, this._onPop);
     this.removeEventListener(PAGE_ERROR, this._onError as EventListener);
     this.removeEventListener(OPEN_TARGET, this._onOpen as EventListener);
+    this.removeEventListener(PAGE_EDITOR, this._onEditor as EventListener);
     window.clearTimeout(this._toastTimer);
   }
 
   protected willUpdate(changed: PropertyValues): void {
+    // Another page in view: the editor that was open has gone (it can't say so once it has left the page).
+    if (changed.has('_stack') || changed.has('_selected')) this._editor = null;
     if (changed.has('target') && this.target) {
       const at = settingsAt(settingsRegistry.pages(this._context()), this.target);
       this._selected = at.selected;
@@ -120,9 +126,22 @@ export class PvSettings extends LitElement {
         font-weight: 800;
       }
 
-      .done {
+      .done,
+      .cancel,
+      .save {
         min-height: 48px;
         min-width: 88px;
+      }
+
+      .done,
+      .cancel {
+        color: var(--pv-accent-ink, #5B5BD6);
+        font-weight: 700;
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: 8px;
       }
 
       .back {
@@ -303,10 +322,18 @@ export class PvSettings extends LitElement {
         <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt}></pv-parent-strip>
       ` : nothing}
       <div class="bar">
-        ${stackedPage
-          ? html`<button class="back" type="button" @click=${this._back}>‹ ${top ? top.back : 'Settings'}</button>`
-          : html`<h1 class="title">Settings</h1>`}
-        <button class="pv-btn pv-btn-primary done" type="button" @click=${this._done}>Done</button>
+        ${stackedPage && this._editor
+          ? html`<button class="pv-btn pv-btn-ghost cancel" type="button" @click=${() => this._editor?.cancel()}>Cancel</button>`
+          : stackedPage
+            ? html`<button class="back" type="button" @click=${this._back}>‹ ${top ? top.back : 'Settings'}</button>`
+            : html`<h1 class="title">Settings</h1>`}
+        ${this._editor ? html`
+          <div class="editor-actions">
+            ${stackedPage ? nothing : html`<button class="pv-btn pv-btn-ghost cancel" type="button" @click=${() => this._editor?.cancel()}>Cancel</button>`}
+            <button class="pv-btn pv-btn-primary save" type="button" ?disabled=${!this._editor.ready}
+              @click=${() => this._editor?.save()}>${this._editor.label}</button>
+          </div>
+        ` : html`<button class="pv-btn pv-btn-ghost done" type="button" @click=${this._done}>Done</button>`}
       </div>
       <div class="body">
         ${this._split || !current ? this._renderList(pages, current) : nothing}
@@ -436,6 +463,11 @@ export class PvSettings extends LitElement {
     if (!(await this._mayLeave())) return;
     this.dispatchEvent(new CustomEvent('pv-settings-open-target', { detail: target, bubbles: true, composed: true }));
   }
+
+  private _onEditor = (event: CustomEvent<PageEditor | null>): void => {
+    event.stopPropagation();
+    this._editor = event.detail;
+  };
 
   private _onError = (event: CustomEvent<{ message: string }>): void => {
     event.stopPropagation();

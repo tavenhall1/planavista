@@ -202,7 +202,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       parent.push({ id: 'hand_off', label: 'Hand it to someone else', tag: parentTag, hint: 'Just this time.' });
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }
-    parent.push({ id: 'edit', label: 'Edit the chore', tag: parentTag, hint: 'Opens it in Settings.' });
+    parent.push({ id: 'edit', label: 'Edit', tag: parentTag, hint: 'Opens it in Settings.' });
     parent.push({ id: 'delete', label: 'Delete chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
   }
 

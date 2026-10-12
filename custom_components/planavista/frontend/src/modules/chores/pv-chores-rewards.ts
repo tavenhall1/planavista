@@ -19,7 +19,7 @@ import { ScrollReporter } from '../../core/content-scroll';
  * a reward tile; a line at the bottom says who got what lately.
  *
  * @fires pv-reward-redeem - { reward } Redeem was tapped
- * @fires pv-reward-open - { reward } a card was tapped (its sheet), or { reward: null } for Add a reward
+ * @fires pv-reward-open - { reward } a card was tapped (its sheet), or { reward: null } for New reward
  */
 export class PvChoresRewards extends LitElement {
   /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
@@ -31,7 +31,7 @@ export class PvChoresRewards extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
-  /** Parents (or a screen that can ask for a parent's PIN) see Add a reward. */
+  /** Parents (or a screen that can ask for a parent's PIN) see New reward. */
   @property({ type: Boolean }) canEdit = false;
 
   static styles = [
@@ -235,7 +235,7 @@ export class PvChoresRewards extends LitElement {
           <div class="catalog">
             ${this.cards.map(card => this._card(card))}
             ${this.canEdit ? html`
-              <button class="card add" type="button" @click=${() => this._fire('pv-reward-open', { reward: null })}>+ Add a reward<span class="meta">parents</span></button>
+              <button class="card add" type="button" @click=${() => this._fire('pv-reward-open', { reward: null })}>+ New reward<span class="meta">Parents</span></button>
             ` : nothing}
           </div>
         `}
@@ -260,7 +260,7 @@ export class PvChoresRewards extends LitElement {
           ${asked ? html`<span class="badge act">⏳ ${card.asked.map(m => m.name).join(', ')} · Waiting for OK</span>` : nothing}
         </div>
         ${card.canRedeem
-          ? html`<button class="pv-btn pv-btn-primary action" type="button" @click=${() => this._fire('pv-reward-redeem', { reward: reward.id })}>Redeem</button>`
+          ? html`<button class="pv-btn pv-btn-secondary accent action" type="button" @click=${() => this._fire('pv-reward-redeem', { reward: reward.id })}>Redeem</button>`
           : html`<button class="pv-btn pv-btn-secondary action" type="button" disabled>${asked ? 'Requested' : 'Not enough stars yet'}</button>`}
       </div>
     `;

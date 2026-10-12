@@ -6,7 +6,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { HouseholdView, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { POP_PAGE } from '../../../core/page-host';
+import { POP_PAGE, announceEditor } from '../../../core/page-host';
 import { errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
@@ -159,6 +159,23 @@ export class PvRewardEditor extends LitElement {
     `,
   ];
 
+  /** The editor's Cancel and Save, held in the Settings header (milestone 8). */
+  private _announced = '';
+
+  protected updated(): void {
+    const isNew = this._rewardId === null;
+    const editor = {
+      label: isNew ? 'Add' : 'Save',
+      ready: !(this._saving || (!isNew && !rewardDirty(this._record))),
+      save: () => void this._save(),
+      cancel: () => this._cancel(),
+    };
+    const said = `${editor.label}|${editor.ready}`;
+    if (said === this._announced) return;
+    this._announced = said;
+    announceEditor(this, editor);
+  }
+
   render() {
     if (this._rewardId !== null && this._chores?.board() && !this._reward) {
       return html`<p class="gone">This reward was removed on another screen.</p>`;
@@ -170,11 +187,6 @@ export class PvRewardEditor extends LitElement {
     return html`
       <div class="top">
         <span class="big" aria-hidden="true">${d.icon || pictureFor(d.name || 'reward', '🎁')}</span>
-        <div class="actions">
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${this._cancel}>Cancel</button>
-          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._saving || (!isNew && !rewardDirty(this._record))}
-            @click=${this._save}>${isNew ? 'Add' : 'Save'}</button>
-        </div>
       </div>
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
       <div class="group">

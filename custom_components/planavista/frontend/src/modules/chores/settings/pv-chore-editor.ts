@@ -7,7 +7,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { HouseholdView, Member, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { PAGE_ERROR, POP_PAGE } from '../../../core/page-host';
+import { PAGE_ERROR, POP_PAGE, announceEditor } from '../../../core/page-host';
 import { copyText } from '../../../core/clipboard';
 import { errorCode, errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
@@ -319,6 +319,23 @@ export class PvChoreEditor extends LitElement {
     `,
   ];
 
+  /** The editor's Cancel and Save, held in the Settings header (milestone 8). */
+  private _announced = '';
+
+  protected updated(): void {
+    const isNew = this._choreId === null;
+    const editor = {
+      label: isNew ? 'Add' : 'Save',
+      ready: !(this._saving || (!isNew && !isDirty(this._record))),
+      save: () => void this._save(),
+      cancel: () => this._cancel(),
+    };
+    const said = `${editor.label}|${editor.ready}`;
+    if (said === this._announced) return;
+    this._announced = said;
+    announceEditor(this, editor);
+  }
+
   render() {
     const board = this._board;
     if (!board) return html`<div class="skeleton"></div><div class="skeleton"></div>`;
@@ -335,11 +352,6 @@ export class PvChoreEditor extends LitElement {
           @click=${() => { this._pictures = !this._pictures; }}>
           <span class="big" aria-hidden="true">${d.icon || pictureFor(d.name || 'chore')}</span>Change picture
         </button>
-        <div class="actions">
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${this._cancel}>Cancel</button>
-          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._saving || (!isNew && !isDirty(this._record))}
-            @click=${this._save}>${isNew ? 'Add' : 'Save'}</button>
-        </div>
       </div>
       ${this._pictures ? this._renderPictures() : nothing}
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}

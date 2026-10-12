@@ -582,7 +582,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         <p>Add your family's chores, or import a plan you already agreed on.</p>
         ${access !== 'no' ? html`
           <div class="buttons">
-            <button class="pv-btn pv-btn-primary" type="button" @click=${() => this.moduleAction('add')}>Add chores</button>
+            <button class="pv-btn pv-btn-primary" type="button" @click=${() => this.moduleAction('add')}>New chore</button>
             <button class="pv-btn pv-btn-secondary" type="button" @click=${() => this._openSettings(IMPORT_EXPORT)}>Import a plan</button>
           </div>
         ` : nothing}
