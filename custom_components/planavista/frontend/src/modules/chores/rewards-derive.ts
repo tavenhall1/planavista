@@ -59,6 +59,17 @@ export function rewardCards(board: Board, members: Member[], asking: ReadonlyArr
   });
 }
 
+/**
+ * Asks sent from this card, less the ones the board now shows: from the
+ * moment the board has a request, it is the board's, so a parent's answer
+ * (which takes the request off the board) clears it here too (review).
+ */
+export function settleAsks<T extends { member: string; reward: string }>(asks: readonly T[], board: Pick<Board, 'requests'>): readonly T[] {
+  if (!asks.length) return asks;
+  const left = asks.filter(a => !board.requests.some(r => r.kind === 'redemption' && r.member === a.member && r.reward === a.reward));
+  return left.length === asks.length ? asks : left;
+}
+
 /** The card's button: Redeem while anyone can; otherwise why not. */
 export function redeemLabel(card: Pick<RewardCard, 'canRedeem' | 'asked'>): string {
   if (card.canRedeem) return 'Redeem';

@@ -27,7 +27,7 @@ import type { MyDayStyle } from './pv-chores-my-day';
 import type { DayView, WeekView } from './chores-types';
 import { weekHighlights, weekRows, weekShares } from './week-derive';
 import { addDays } from './options-derive';
-import { RewardDraft, balances, recentLine, rewardCards, rewardFrom } from './rewards-derive';
+import { RewardDraft, balances, recentLine, rewardCards, rewardFrom, settleAsks } from './rewards-derive';
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
@@ -256,6 +256,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     // A ring in the calendar, or a column header, opened someone's day.
     if (changed.has('openTarget') && this.openTarget?.member) this._myDayMember = this.openTarget.member;
     this._watch();
+    // An ask the board now shows is the board's: drop it here, so a parent's answer clears the card (review).
+    const board = this._asking.length ? this.service?.board() : null;
+    if (board) {
+      const left = settleAsks(this._asking, board);
+      if (left !== this._asking) this._asking = left;
+    }
     const notices = this.service?.takeNotices() ?? [];
     const last = notices[notices.length - 1];
     if (last) this._toast = { id: last.id, text: last.text, tone: 'bad', ms: 7000 };
@@ -493,12 +499,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     `;
   }
 
-  /** Asks the board doesn't show yet; once it shows them (or a parent answered), they're the board's. */
+  /** Asks the board doesn't show yet; one the board has shown is the board's from then on (settled in willUpdate). */
   private _waitingAsks(board: Board): ReadonlyArray<{ member: string; reward: string }> {
-    if (!this._asking.length) return this._asking;
-    const shown = (a: { member: string; reward: string }) =>
-      board.requests.some(r => r.kind === 'redemption' && r.member === a.member && r.reward === a.reward);
-    return this._asking.filter(a => !shown(a));
+    return settleAsks(this._asking, board);
   }
 
   /** Redeem: for whoever can afford it (asking who, when more than one can), behind their PIN if they have one. */

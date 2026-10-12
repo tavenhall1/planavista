@@ -5,6 +5,7 @@ import {
   recentLine,
   redeemLabel,
   rewardCards,
+  settleAsks,
   rewardDraft,
   rewardFrom,
   rewardProblem,
@@ -67,6 +68,21 @@ describe('asking for a reward (milestone 8)', () => {
     expect(redeemLabel(cards[0])).toBe('Redeem');
     expect(redeemLabel(cards[1])).toBe('Redeem');
     expect(redeemLabel(cards[2])).toBe('Not enough stars yet');
+  });
+});
+
+describe('an ask, once the board has it (review)', () => {
+  const ask = { member: 'casey', reward: 'weekend_game' };
+
+  it("is the board's from then on, so an answer clears it", () => {
+    expect(settleAsks([ask], B)).toEqual([]);
+    const answered = { ...B, requests: [] };
+    expect(rewardCards(answered, PEOPLE, settleAsks([ask], B))[1].asked).toEqual([]);
+  });
+
+  it("stays while the board hasn't shown it yet", () => {
+    const asks = [{ member: 'dana', reward: 'weekend_game' }];
+    expect(settleAsks(asks, B)).toBe(asks);
   });
 });
 
