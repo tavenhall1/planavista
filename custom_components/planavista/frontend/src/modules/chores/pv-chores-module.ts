@@ -11,6 +11,7 @@ import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
+import { deepActiveElement } from '../../core/focus';
 import type { SettingsTarget } from '../../core/settings-registry';
 import type { Mode } from '../../styles/theme-pairs';
 import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../../types';
@@ -62,13 +63,6 @@ type ChoresSheet =
   | { kind: 'delete_reward'; id: string; name: string }
   | { kind: 'day'; member: string; date: string; day: DayView | null; failed: boolean }
   | { kind: 'quick_add'; busy: boolean };
-
-/** The element with focus, looking inside shadow roots (the card's controls live in several). */
-function deepActiveElement(): HTMLElement | null {
-  let active: Element | null = document.activeElement;
-  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-  return active instanceof HTMLElement ? active : null;
-}
 
 /** What the last check-off toast can take back or hand to someone else. */
 interface LastCheckoff {

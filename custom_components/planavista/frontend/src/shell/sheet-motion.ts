@@ -46,6 +46,14 @@ export class SheetMotion {
     await out.finished.catch(() => undefined);
   }
 
+  /** Back to rest after a drag that didn't close it (too short, or the sheet asks first). */
+  springBack(panel: HTMLElement): void {
+    const from = panel.style.transform || 'translateY(0)';
+    panel.style.transform = '';
+    const settle = motionOf(this._host) === 'reduced' ? { duration: 120, easing: 'ease-out' } : springEasing(BOUNCY);
+    panel.animate({ transform: [from, 'translateY(0)'] }, { duration: settle.duration, easing: settle.easing });
+  }
+
   /** Let a finger drag the panel down by `zone`; `onClose` when it should close. Returns a function that stops listening. */
   attachDrag(zone: HTMLElement, panel: HTMLElement, onClose: () => void): () => void {
     let start: { y: number; t: number } | null = null;
@@ -73,9 +81,7 @@ export class SheetMotion {
         onClose();
         return;
       }
-      const settle = motionOf(this._host) === 'reduced' ? { duration: 120, easing: 'ease-out' } : springEasing(BOUNCY);
-      panel.style.transform = '';
-      panel.animate({ transform: [`translateY(${dy}px)`, 'translateY(0)'] }, { duration: settle.duration, easing: settle.easing });
+      this.springBack(panel);
     };
     zone.addEventListener('pointerdown', down);
     zone.addEventListener('pointermove', move);
