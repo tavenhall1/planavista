@@ -39,3 +39,12 @@ describe('one toolbar grammar for both Week views (milestone 8, spec 3.11)', () 
     expect(read('modules/chores/my-day-derive.ts')).not.toMatch(/\} to \$\{/);
   });
 });
+
+describe("Today and This week read alike (review)", () => {
+  it("Today uses the secondary button's type", () => {
+    const text = readFileSync(new URL('../src/modules/calendar/calendar-module.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    const rule = /\.pvc-today-btn \{([^}]*)\}/.exec(text)?.[1] ?? '';
+    expect(rule).toMatch(/font-size: 0\.9375rem/);
+    expect(rule).toMatch(/color: var\(--pv-text,/);
+  });
+});

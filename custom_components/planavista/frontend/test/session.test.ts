@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  SESSION_IDLE_MS, TOUCH_EVERY_MS, expired, noteActivity, remainingMs, sessionWords, startSession, touchEveryMs, usedAt, withLimits,
+  SESSION_IDLE_MS, TOUCH_EVERY_MS, expired, noteActivity, remainingMs, sessionWords, spokenTimeLeft, startSession, touchEveryMs, usedAt, withLimits,
 } from '../src/core/session';
 
 const UNLOCKED = { session: 'token', member_id: 'blair', parent: true };
@@ -69,5 +69,13 @@ describe('session', () => {
     expect(remainingMs(usedAt(session, 20_000), 20_000)).toBe(30_000);
     expect(usedAt(session, 280_000).lastTouch).toBe(280_000);
     expect(remainingMs(usedAt(session, 280_000), 280_000)).toBe(20_000);
+  });
+
+  it('says the time left the way a person would, in 10-second steps (review)', () => {
+    expect(spokenTimeLeft(30_000)).toBe('30 s');
+    expect(spokenTimeLeft(25_500)).toBe('30 s');
+    expect(spokenTimeLeft(110_000)).toBe('1 min 50 s');
+    expect(spokenTimeLeft(120_000)).toBe('2 min');
+    expect(spokenTimeLeft(0)).toBe('0 s');
   });
 });

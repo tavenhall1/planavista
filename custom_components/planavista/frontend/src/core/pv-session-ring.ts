@@ -1,7 +1,7 @@
 import { LitElement, html, css, svg } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
-import { SESSION_IDLE_MS, sessionWords } from './session';
+import { SESSION_IDLE_MS, sessionWords, spokenTimeLeft } from './session';
 
 /**
  * pv-session-ring: a session's countdown, a ring that empties over the
@@ -56,8 +56,7 @@ export class PvSessionRing extends LitElement {
     const radius = (this.size - stroke) / 2;
     const length = 2 * Math.PI * radius;
     // Screen readers hear the time left in 10-second steps, not every second.
-    const spoken = Math.ceil(Math.ceil(left / 1000) / 10) * 10;
-    const label = `${sessionWords(this.parent).ends} ${Math.floor(spoken / 60)} min ${spoken % 60} s`;
+    const label = `${sessionWords(this.parent).ends} ${spokenTimeLeft(left)}`;
     return html`
       <svg width=${this.size} height=${this.size} viewBox="0 0 ${this.size} ${this.size}" role="img" aria-label=${label}>
         ${svg`

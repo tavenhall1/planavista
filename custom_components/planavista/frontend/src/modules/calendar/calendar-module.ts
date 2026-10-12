@@ -353,13 +353,14 @@ export class PvCalendarModule extends LitElement {
         color: var(--pv-text);
       }
 
+      /* Today reads as chores' This week does: the secondary button's type (review). */
       .pvc-today-btn {
         padding: 6px 16px;
         border: 1px solid var(--pv-border);
         border-radius: var(--pv-radius, 12px);
         background: transparent;
-        color: var(--pv-text-secondary);
-        font-size: 0.875rem;
+        color: var(--pv-text, #1A1B1E);
+        font-size: 0.9375rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 200ms ease;

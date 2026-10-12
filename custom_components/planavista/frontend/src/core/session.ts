@@ -80,3 +80,12 @@ export function noteActivity(session: Session, now: number): { session: Session;
 export function sessionWords(parent: boolean): { mode: string; ends: string } {
   return parent ? { mode: 'parent mode', ends: 'Parent mode ends in' } : { mode: 'unlocked', ends: 'Locks in' };
 }
+
+/** The time left as a screen reader hears it, in 10-second steps: "30 s", "1 min 50 s", "2 min" (review). */
+export function spokenTimeLeft(ms: number): string {
+  const seconds = Math.ceil(Math.ceil(Math.max(0, ms) / 1000) / 10) * 10;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (!minutes) return `${rest} s`;
+  return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
+}
