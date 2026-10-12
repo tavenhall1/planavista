@@ -28,7 +28,7 @@ import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
 import { LocationSearch } from '../utils/location-search';
 import { contrastText } from '../../../core/color';
-import { formSignature, saveFailedText } from '../event-words';
+import { calendarCan, formSignature, saveFailedText } from '../event-words';
 
 const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -792,7 +792,9 @@ export class PVEventCreateDialog extends LitElement {
   render() {
     if (!this.open) return nothing;
 
-    const visibleCalendars = this.calendars.filter(c => c.visible !== false);
+    // A read-only calendar can't take a new event; the event's own calendars stay in an edit.
+    const visibleCalendars = this.calendars.filter(c =>
+      c.visible !== false && (calendarCan(c.attributes).create || this._originalCalendars.has(c.entity_id)));
     const isEdit = this.mode === 'edit';
     const heading = isEdit ? 'Edit event' : 'New event';
 

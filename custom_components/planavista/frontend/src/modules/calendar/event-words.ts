@@ -119,10 +119,18 @@ const CREATE = 1;
 const DELETE = 2;
 const UPDATE = 4;
 
-/** What PlanaVista can change on a calendar, from its entity's supported_features. Unknown means yes (older data). */
-export function calendarCan(features: unknown): { delete: boolean; edit: boolean } {
-  if (typeof features !== 'number') return { delete: true, edit: true };
+/**
+ * What PlanaVista can do on a calendar, from its entity's attributes. Home
+ * Assistant writes supported_features only when a calendar has some, so
+ * attributes without it mean read-only (holidays, school feeds, Google's
+ * read-only calendars); a row with no attributes at all is unknown, and
+ * counts as yes.
+ */
+export function calendarCan(attributes: Record<string, unknown> | undefined): { create: boolean; delete: boolean; edit: boolean } {
+  if (!attributes) return { create: true, delete: true, edit: true };
+  const features = typeof attributes.supported_features === 'number' ? attributes.supported_features : 0;
   return {
+    create: (features & CREATE) !== 0,
     delete: (features & DELETE) !== 0,
     edit: (features & UPDATE) !== 0 || ((features & CREATE) !== 0 && (features & DELETE) !== 0),
   };

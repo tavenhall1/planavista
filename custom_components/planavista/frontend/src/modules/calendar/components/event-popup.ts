@@ -207,7 +207,7 @@ export class PVEventPopup extends LitElement {
     const when = eventWhen(event, this.timeFormat, this.now);
     const status = eventStatus(event, this.now);
     const calendar = this.calendars.find(c => c.entity_id === event.calendar_entity_id);
-    const can = calendarCan(calendar?.attributes?.supported_features);
+    const can = calendarCan(calendar?.attributes);
     const changeable = !!event.uid;
     const question = deleteQuestion(event, shared.length > 1 ? shared.map(p => p.calendar_name) : []);
 

@@ -112,11 +112,19 @@ describe('deleteFailedText', () => {
 });
 
 describe('calendarCan', () => {
-  it("reads what a calendar lets PlanaVista change from its supported features", () => {
-    expect(calendarCan(7)).toEqual({ delete: true, edit: true });
-    expect(calendarCan(3)).toEqual({ delete: true, edit: true });
-    expect(calendarCan(0)).toEqual({ delete: false, edit: false });
-    expect(calendarCan(undefined)).toEqual({ delete: true, edit: true });
+  it("reads what a calendar lets PlanaVista change from its entity's features", () => {
+    expect(calendarCan({ supported_features: 7 })).toEqual({ create: true, delete: true, edit: true });
+    expect(calendarCan({ supported_features: 3 })).toEqual({ create: true, delete: true, edit: true });
+    expect(calendarCan({ supported_features: 1 })).toEqual({ create: true, delete: false, edit: false });
+  });
+
+  it('treats a calendar with attributes but no features as read-only (holidays, school feeds)', () => {
+    expect(calendarCan({ friendly_name: 'Holidays' })).toEqual({ create: false, delete: false, edit: false });
+    expect(calendarCan({ supported_features: 0 })).toEqual({ create: false, delete: false, edit: false });
+  });
+
+  it('allows everything when it knows nothing about the calendar (a row without attributes)', () => {
+    expect(calendarCan(undefined)).toEqual({ create: true, delete: true, edit: true });
   });
 });
 
