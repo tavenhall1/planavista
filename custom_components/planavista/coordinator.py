@@ -162,7 +162,8 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     # Spread the saved row first so keys the card adds (member_id,
                     # and whatever later releases add) reach the card unchanged.
                     calendar_data = {
-                        **calendar_config,
+                        # A read-failure mark is this refresh's to make, never a saved row's.
+                        **{key: value for key, value in calendar_config.items() if key != "fetch_failed"},
                         "entity_id": entity_id,
                         "display_name": display_name,
                         "color": color,
@@ -217,6 +218,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         Tries direct entity access first (returns CalendarEvent objects with uid),
         then falls back to the calendar.get_events service (which may omit uid).
+        Raises when neither can read the calendar, so the caller can mark it.
         """
         # Approach 1: Direct entity access: gives us CalendarEvent objects with uid
         try:
@@ -290,7 +292,7 @@ class PlanaVistaCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return []
         except Exception as err:
             _LOGGER.debug("Error fetching events from %s: %s", entity_id, err)
-            return []
+            raise
 
     @callback
     def async_set_calendars(self, calendars: list[dict[str, Any]]) -> None:

@@ -11,6 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.components.calendar import CalendarEvent
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
 from .conftest import CONFIGURED_CALENDARS, DEFAULT_ENTRY_DATA, FakeCalendar
@@ -88,18 +89,16 @@ async def test_a_calendar_whose_events_cant_be_read_is_marked(
     setup_calendars: dict[str, FakeCalendar],
     mock_config_entry: MockConfigEntry,
 ) -> None:
-    """The card can name a calendar whose events didn't arrive (spec 11.6); the others carry no mark."""
+    """A calendar neither route can read is marked for the card (spec 11.6), and the next good read drops it."""
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     coordinator = mock_config_entry.runtime_data
-    real_fetch = coordinator._fetch_calendar_events
 
-    async def fetch(entity_id: str, start: datetime, end: datetime) -> list[dict]:
-        if entity_id == "calendar.test_blair":
-            raise RuntimeError("token expired")
-        return await real_fetch(entity_id, start, end)
+    async def broken(*args: Any, **kwargs: Any) -> list[CalendarEvent]:
+        raise HomeAssistantError("token expired")
 
-    with patch.object(coordinator, "_fetch_calendar_events", side_effect=fetch):
+    # Both the direct read and the calendar.get_events fallback reach the entity, so both fail.
+    with patch.object(setup_calendars["calendar.test_blair"], "async_get_events", side_effect=broken):
         await coordinator.async_refresh()
         await hass.async_block_till_done()
 
@@ -107,7 +106,23 @@ async def test_a_calendar_whose_events_cant_be_read_is_marked(
     assert rows["calendar.test_blair"]["fetch_failed"] is True
     assert "fetch_failed" not in rows["calendar.test_alex"]
 
-    # The next refresh that reads it clears the mark.
     await coordinator.async_refresh()
     await hass.async_block_till_done()
     assert "fetch_failed" not in _rows(hass)["calendar.test_blair"]
+
+
+async def test_a_saved_mark_never_outlives_a_good_read(
+    hass: HomeAssistant,
+    setup_calendars: dict[str, FakeCalendar],
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """A row saved while it was marked (a save from the Calendars page) loses the mark at the next good read."""
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = mock_config_entry.runtime_data
+    coordinator.async_set_calendars([{**row, "fetch_failed": True} for row in coordinator.calendars])
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert not any("fetch_failed" in row for row in _rows(hass).values())
