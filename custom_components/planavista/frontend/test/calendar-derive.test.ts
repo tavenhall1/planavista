@@ -113,6 +113,19 @@ describe('eventForPopup (what the event popup opens with)', () => {
     expect(people(eventForPopup(a, [a, b]))).toEqual([{ ...blair, uid: 'one' }, { ...casey, uid: 'two' }]);
   });
 
+  it("a recurring event shared by one uid opens on the tapped day's copies, so Delete for everyone deletes that day (review)", () => {
+    const weekly = (calendar: string, day: string) => ({
+      ...ev(calendar, 'standup'), summary: 'Team standup',
+      start: `2026-10-${day}T09:00:00-05:00`, end: `2026-10-${day}T09:30:00-05:00`, recurrence_id: `202610${day}T090000`,
+    });
+    const all = ['06', '13', '20'].flatMap(day => [weekly('calendar.test_blair', day), weekly('calendar.test_casey', day)]);
+    const tapped = weekly('calendar.test_casey', '13');
+    const copies = people(eventForPopup(tapped, all)) as Array<{ entity_id: string; recurrence_id?: string }>;
+    expect(copies.map(c => [c.entity_id, c.recurrence_id])).toEqual([
+      ['calendar.test_blair', '20261013T090000'], ['calendar.test_casey', '20261013T090000'],
+    ]);
+  });
+
   it('leaves an event on one calendar as it is', () => {
     const a = ev('calendar.test_blair', 'alone');
     expect(eventForPopup(a, [a])).toBe(a);

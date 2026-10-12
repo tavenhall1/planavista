@@ -82,8 +82,12 @@ interface MergedParticipant {
  */
 export function eventForPopup(clicked: CalendarEvent, allEvents: CalendarEvent[]): CalendarEvent {
   if (clicked.uid) {
-    const siblings = allEvents.filter(ev => ev.uid === clicked.uid && ev.uid !== '');
-    // Recurring events share one uid across instances: one chip per calendar.
+    // A recurring event shares one uid across its instances: only the tapped instance's copies,
+    // so Delete for everyone and the editor reach that day on every calendar (review).
+    const instance = (ev: CalendarEvent) => (clicked.recurrence_id
+      ? ev.recurrence_id === clicked.recurrence_id
+      : sameEventKey(ev) === sameEventKey(clicked));
+    const siblings = allEvents.filter(ev => ev.uid === clicked.uid && ev.uid !== '' && instance(ev));
     const seen = new Set<string>();
     const unique = siblings.filter(s => {
       if (seen.has(s.calendar_entity_id)) return false;
