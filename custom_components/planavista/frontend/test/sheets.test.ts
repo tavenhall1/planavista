@@ -151,3 +151,10 @@ describe('sheets open on their title, read from the left, and end alike (review)
     expect(read('modules/calendar/components/event-create-dialog.ts')).not.toMatch(/:host\(\[layout='landscape'\]\) \.footer \.pv-btn/);
   });
 });
+
+describe("the editor says who can change an event (review)", () => {
+  it("Save names who can, when this screen may not change the event, instead of doing nothing", () => {
+    const editor = read('modules/calendar/components/event-create-dialog.ts');
+    expect(editor).toMatch(/if \(this\.gate && !this\.gate\.allowed\(\[\.\.\.touched\]\)\) \{\s*this\._showError\(this\.gate\.note\(\[\.\.\.touched\]\)\);/);
+  });
+});

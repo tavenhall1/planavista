@@ -123,3 +123,25 @@ async def test_diagnostics_list_the_last_20_refusals_without_names(
     result = await get_diagnostics_for_config_entry(hass, hass_client, chores.entry)
     assert len(result["recent_refusals"]) == 20
     assert {r["command"] for r in result["recent_refusals"]} == {"planavista/chores/complete"}
+
+
+async def test_diagnostics_list_pin_outcomes_without_the_pin(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any, hass_client: Any
+) -> None:
+    """A report like "the PIN didn't work" can be traced too (review): the outcome, never the member or the digits."""
+    assert await async_setup_component(hass, "diagnostics", {})
+    household = chores.household
+    household.shared_users.append(accounts["kitchen"].id)
+    await set_pin(hass, household, "blair", "2468")
+    kitchen = await ws_client_for(hass, hass_ws_client, accounts["kitchen"])
+    wrong = await ws_command(kitchen, {"type": "planavista/pin/unlock", "member_id": "blair", "pin": "1357"})
+    assert wrong["result"]["reason"] == "wrong_pin"
+    none = await ws_command(kitchen, {"type": "planavista/pin/unlock", "member_id": "dana", "pin": "1357"})
+    assert none["result"]["reason"] == "no_pin"
+    result = await get_diagnostics_for_config_entry(hass, hass_client, chores.entry)
+    assert [(r["command"], r["reason"]) for r in result["recent_refusals"]] == [
+        ("planavista/pin/unlock", "wrong_pin"), ("planavista/pin/unlock", "no_pin"),
+    ]
+    text = json.dumps(result["recent_refusals"])
+    for secret in ("1357", "2468", "blair", "dana", "Blair", "Dana"):
+        assert secret not in text, secret

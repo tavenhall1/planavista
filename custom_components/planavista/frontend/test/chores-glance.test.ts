@@ -78,5 +78,9 @@ describe('refusalText (spec 15.1)', () => {
     expect(refusalText(entry, 'period_closed')).toBe('Couldn\'t save "Take out the trash": the day had ended.');
     expect(refusalText(entry, 'pin_required')).toBe('Couldn\'t save "Take out the trash". The PIN timed out, so hold it again.');
     expect(refusalText(entry, 'not_open')).toBe('Couldn\'t save "Take out the trash". Try again.');
+    // An Undo says what it couldn't do; someone else's open session needs this item's own PIN (review).
+    expect(refusalText({ ...entry, op: 'undo' }, 'period_closed')).toBe('Couldn\'t uncheck "Take out the trash": the day had ended.');
+    expect(refusalText({ ...entry, op: 'undo' }, 'not_open')).toBe('Couldn\'t uncheck "Take out the trash". Try again.');
+    expect(refusalText(entry, 'other_pin_required')).toBe('Couldn\'t save "Take out the trash". It needs its owner\'s PIN or a parent\'s.');
   });
 });

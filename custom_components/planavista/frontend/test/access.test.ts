@@ -32,7 +32,9 @@ function view(kind: AccountKind, memberId: string | null = null, members = PEOPL
   };
 }
 
-const session = (memberId: string, parent: boolean): Session => ({ token: 't', memberId, parent, lastTouch: 0 });
+const session = (memberId: string, parent: boolean): Session => ({
+  token: 't', memberId, parent, lastTouch: 0, startedAt: 0, idleMs: 120_000, capAt: 600_000,
+});
 
 describe('memberAccess (spec 9.5)', () => {
   it('lets a parent\'s own login and an admin change anyone\'s items', () => {

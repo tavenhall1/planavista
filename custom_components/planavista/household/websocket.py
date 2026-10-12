@@ -46,7 +46,7 @@ from .security import (
     valid_pin,
     verify_pin,
 )
-from ..refusals import send_refusal
+from ..refusals import note_refusal, send_refusal
 from .store import DATA_HOUSEHOLD, Household
 
 # What the card shows when a change breaks a rule (spec 11.7: say what to do).
@@ -578,10 +578,12 @@ async def ws_pin_unlock(
     async with household.pin_lock(member_id):
         record = household.pins.get(member_id) if member else None
         if record is None:
+            note_refusal(hass, msg["type"], "no_pin")
             connection.send_result(msg["id"], {"ok": False, "reason": "no_pin"})
             return
         now = dt_util.utcnow()
         if (wait := pause_remaining(record, now)) > 0:
+            note_refusal(hass, msg["type"], "paused")
             connection.send_result(
                 msg["id"], {"ok": False, "reason": "paused", "retry_after": math.ceil(wait)}
             )
@@ -592,6 +594,7 @@ async def ws_pin_unlock(
             household.pins[member_id] = record
             await household.async_save()
             wait = pause_remaining(record, now)
+            note_refusal(hass, msg["type"], "paused" if wait else "wrong_pin")
             connection.send_result(
                 msg["id"],
                 {

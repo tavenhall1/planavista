@@ -192,3 +192,17 @@ async def test_two_screens_checking_one_item_at_once_credit_it_once(  # Review F
     )
     assert sorted(r["result"]["result"] for r in replies) == ["already_done", "done"]
     assert hass.states.get("sensor.casey_stars").state == "1"
+
+
+async def test_a_live_session_for_someone_else_is_not_mistaken_for_an_ended_one(
+    hass: HomeAssistant, kitchen: Any, chores: Any
+) -> None:
+    """Casey's session can't change Blair's chores, and says so with its own code, so the card keeps Casey's session (review)."""
+    session = await _unlock(kitchen, "casey", "4826")
+    refused = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": "laundry|blair|week:2026-10-12|0", "session": session})
+    assert refused["error"]["code"] == "other_pin_required"
+    assert refused["error"]["message"] == "Blair's PIN or a parent's is needed."
+    still = await ws_command(kitchen, {"type": "planavista/pin/touch", "session": session})
+    assert still["success"]
+    plain = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": TRASH})
+    assert plain["error"]["code"] == "pin_required"

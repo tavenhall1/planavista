@@ -1214,6 +1214,11 @@ export class PVEventCreateDialog extends LitElement {
     // An edit changes the calendars it leaves as well as the ones it joins (D1).
     if (this._gating) return;
     const touched = this.mode === 'edit' ? new Set([...this._originalCalendars, ...this._selectedCalendars]) : this._selectedCalendars;
+    // Never silent: when no PIN on this screen could allow it, say who can (review).
+    if (this.gate && !this.gate.allowed([...touched])) {
+      this._showError(this.gate.note([...touched]));
+      return;
+    }
     this._gating = true;
     const allowed = this.gate ? await this.gate.ask([...touched], this._title) : true;
     this._gating = false;

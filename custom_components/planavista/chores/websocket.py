@@ -69,12 +69,15 @@ def _member_by(
 ) -> str | None:
     """Who a member-level change to `target`'s items is attributed to, or None after refusing."""
     account = account_for(hass, household, connection.user)
-    by = member_level(account, session_for(household, connection, msg), target, target in household.pins)
+    session = session_for(household, connection, msg)
+    by = member_level(account, session, target, target in household.pins)
     if by is not None:
         return by
     if account.screen_rules:
         member = household.member(target) or {}
-        send_refusal(connection, msg, "pin_required", f"{member.get('name', target)}'s PIN or a parent's is needed.")
+        # A live session that is someone else's gets its own code, so the card doesn't take it for an ended one.
+        code = "other_pin_required" if session is not None else "pin_required"
+        send_refusal(connection, msg, code, f"{member.get('name', target)}'s PIN or a parent's is needed.")
     else:
         refuse(connection, msg, account)
     return None
