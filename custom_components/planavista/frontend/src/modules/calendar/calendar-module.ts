@@ -25,6 +25,7 @@ import { parentAccess } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
 import { calendarSkeleton, skeletonStyles } from './components/calendar-skeleton';
+import { navLabels } from './view-words';
 
 import './components/view-day';
 import './components/view-week';
@@ -148,7 +149,7 @@ export class PvCalendarModule extends LitElement {
         cursor: pointer;
         transition: all 200ms ease;
         font-family: inherit;
-        min-height: 40px;
+        min-height: 48px;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -286,7 +287,8 @@ export class PvCalendarModule extends LitElement {
         transition: all 200ms ease;
         white-space: nowrap;
         -webkit-tap-highlight-color: transparent;
-        min-height: 40px;
+        min-height: 48px;
+        --mdc-icon-size: 20px;
       }
 
       .pvc-new-btn:hover {
@@ -310,8 +312,8 @@ export class PvCalendarModule extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -339,7 +341,7 @@ export class PvCalendarModule extends LitElement {
         cursor: pointer;
         transition: all 200ms ease;
         font-family: inherit;
-        min-height: 38px;
+        min-height: 48px;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -370,8 +372,8 @@ export class PvCalendarModule extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         border: none;
         border-radius: 50%;
         background: transparent;
@@ -448,7 +450,8 @@ export class PvCalendarModule extends LitElement {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 4px 10px 4px 4px;
+        min-height: 48px;
+        padding: 4px 12px 4px 8px;
         border-radius: 9999px;
         border: 1.5px solid var(--chip-color, var(--pv-border));
         background: transparent;
@@ -755,12 +758,16 @@ export class PvCalendarModule extends LitElement {
 
   private _renderToolbar(calendars: CalendarConfig[]) {
     const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
+    const arrows = navLabels(this._pv.store.currentView);
 
     return html`
       <div class="pvc-toolbar">
         <div class="pvc-filter-wrap">
           <button
             class="pvc-filter-btn ${hiddenCount > 0 ? 'has-hidden' : ''}"
+            type="button"
+            aria-expanded=${this._filterOpen ? 'true' : 'false'}
+            aria-label=${hiddenCount > 0 ? `Calendars, ${calendars.length - hiddenCount} of ${calendars.length} shown` : 'Calendars'}
             @click=${this._toggleFilterDropdown}
           >
             <ha-icon icon="mdi:filter-variant" style="--mdc-icon-size: 20px"></ha-icon>
@@ -780,7 +787,11 @@ export class PvCalendarModule extends LitElement {
                   <div
                     class="pvc-filter-item ${isActive ? 'active' : ''}"
                     style="--item-color: ${cal.color}; --item-ink: ${contrastText(cal.color)}"
+                    role="checkbox"
+                    tabindex="0"
+                    aria-checked=${isActive ? 'true' : 'false'}
                     @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
+                    @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._pv.store.toggleCalendar(cal.entity_id); } }}
                   >
                     <div class="pvc-filter-check">
                       ${isActive ? html`<span class="pvc-filter-check-icon">✓</span>` : nothing}
@@ -809,6 +820,8 @@ export class PvCalendarModule extends LitElement {
             return html`
               <button
                 class="pvc-cal-chip ${isActive ? 'active' : ''}"
+                type="button"
+                aria-pressed=${isActive ? 'true' : 'false'}
                 style="--chip-color: ${cal.color}; --chip-ink: ${contrastText(cal.color)}"
                 @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
               >
@@ -825,18 +838,21 @@ export class PvCalendarModule extends LitElement {
         </div>
 
         <div class="pvc-controls">
-          <button class="pvc-new-btn" @click=${() => this._pv.store.openCreateDialog()}>
-            + New
+          <button class="pvc-new-btn" type="button" @click=${() => this._pv.store.openCreateDialog()}>
+            <ha-icon icon="mdi:plus"></ha-icon>
+            New event
           </button>
 
           <div class="pvc-nav">
-            <button class="pvc-nav-btn" @click=${() => this._pv.store.navigateDate('prev')}>
+            <button class="pvc-nav-btn" type="button" aria-label=${arrows.prev} title=${arrows.prev}
+              @click=${() => this._pv.store.navigateDate('prev')}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="pvc-today-btn" @click=${() => this._pv.store.navigateDate('today')}>
+            <button class="pvc-today-btn" type="button" @click=${() => this._pv.store.navigateDate('today')}>
               Today
             </button>
-            <button class="pvc-nav-btn" @click=${() => this._pv.store.navigateDate('next')}>
+            <button class="pvc-nav-btn" type="button" aria-label=${arrows.next} title=${arrows.next}
+              @click=${() => this._pv.store.navigateDate('next')}>
               <ha-icon icon="mdi:chevron-right"></ha-icon>
             </button>
           </div>

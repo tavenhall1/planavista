@@ -8,6 +8,8 @@ import { contrastText } from '../../../core/color';
 import { formatTime } from '../../../utils/date-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { baseStyles } from '../../../styles/shared';
+import { statusStyles } from '../../../styles/status';
+import type { StatusBadge } from '../../../core/status-map';
 
 export class PVEventChip extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -17,9 +19,12 @@ export class PVEventChip extends LitElement {
   @property({ type: Boolean }) compact = false;
   @property({ type: Boolean }) showStripes = true;
   @property({ type: Number }) tick = 0;
+  /** A status from the status map (Now, In 10 min), when the view shows one (spec 11.4). */
+  @property({ attribute: false }) badge: StatusBadge | null = null;
 
   static styles = [
     baseStyles,
+    statusStyles,
     css`
       :host { display: block; }
 
@@ -71,11 +76,24 @@ export class PVEventChip extends LitElement {
       }
 
       .chip-time {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
         font-size: 0.75rem;
         font-weight: 500;
+        font-variant-numeric: tabular-nums;
         color: var(--chip-text);
-        opacity: 0.8;
         margin-top: 2px;
+      }
+
+      .chip-time .time-text {
+        opacity: 0.8;
+      }
+
+      .chip-time .badge {
+        padding: 1px 6px;
+        font-size: 0.75rem;
       }
 
       .chip-avatars {
@@ -225,7 +243,8 @@ export class PVEventChip extends LitElement {
           <div class="${titleClass}">${event.summary}</div>
           ${!this.compact ? html`
             <div class="chip-time">
-              ${isAllDay ? 'All day' : `${formatTime(event.start, this.timeFormat)} – ${formatTime(event.end, this.timeFormat)}`}
+              <span class="time-text">${isAllDay ? 'All day' : `${formatTime(event.start, this.timeFormat)} – ${formatTime(event.end, this.timeFormat)}`}</span>
+              ${this.badge ? html`<span class="badge ${this.badge.tone}">${this.badge.words}</span>` : nothing}
             </div>
           ` : nothing}
         </div>

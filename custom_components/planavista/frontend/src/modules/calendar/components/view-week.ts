@@ -13,6 +13,7 @@ import {
   deduplicateSharedEvents,
   SharedEvent,
 } from '../utils/event-utils';
+import { newEventLabel } from '../view-words';
 import { weatherIcon } from '../../../utils/weather-icons';
 import { DayForecast, ForecastEntry, buildForecastMap } from '../../../utils/weather-subscription';
 
@@ -47,9 +48,12 @@ export class PVViewWeek extends LitElement {
         overflow: auto;
       }
 
+      /* Headings and numbers in the rounded face (spec 11.2). */
       .week-label {
-        font-size: 1rem;
-        font-weight: 600;
+        font-family: var(--pv-font-heading, inherit);
+        font-size: 1.125rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
         padding: 0.75rem 1rem 0.5rem;
         flex-shrink: 0;
@@ -88,19 +92,16 @@ export class PVViewWeek extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.625rem 0.75rem 0.375rem;
+        min-height: 48px;
+        padding: 0 0 0 0.75rem;
         border-bottom: 1px solid var(--pv-border-subtle);
       }
 
-      .day-card-header-left {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
       .day-name {
+        font-family: var(--pv-font-heading, inherit);
         font-size: 0.9375rem;
-        font-weight: 600;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
       }
 
@@ -108,27 +109,34 @@ export class PVViewWeek extends LitElement {
         color: var(--pv-accent-ink, var(--pv-accent));
       }
 
-      .day-meta {
-        font-size: 0.6875rem;
-        color: var(--pv-text-muted);
+      .day-card-tools {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 2px;
       }
 
-      .add-event-link {
-        font-size: 0.6875rem;
+      /* New event on that day: a 48 px target (spec 11.8). */
+      .add-btn {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
         color: var(--pv-accent-ink, var(--pv-accent));
         cursor: pointer;
-        font-weight: 500;
-        background: none;
-        border: none;
-        padding: 0;
-        font-family: inherit;
+        --mdc-icon-size: 22px;
       }
 
-      .add-event-link:hover {
-        text-decoration: underline;
+      .add-btn:hover {
+        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
+      }
+
+      .add-btn:focus-visible {
+        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
+        outline-offset: -4px;
       }
 
       .day-weather {
@@ -166,8 +174,7 @@ export class PVViewWeek extends LitElement {
         justify-content: center;
         padding: 0.75rem;
         color: var(--pv-text-muted);
-        font-size: 0.75rem;
-        font-style: italic;
+        font-size: 0.875rem;
       }
 
       /* ═══════════ RESPONSIVE ═══════════ */
@@ -195,8 +202,6 @@ export class PVViewWeek extends LitElement {
       @media (min-width: 1440px) {
         .week-label { font-size: 1.5rem; }
         .day-name { font-size: 1.375rem; }
-        .day-meta { font-size: 0.9375rem; }
-        .add-event-link { font-size: 0.9375rem; }
         .day-weather svg { width: 36px; height: 36px; }
         .day-weather-temp { font-size: 0.9375rem; }
         .day-card { min-height: 180px; }
@@ -260,24 +265,23 @@ export class PVViewWeek extends LitElement {
 
     const forecast = forecasts.get(dateKey);
     const dayName = `${WEEKDAY_SHORT[day.getDay()]} ${day.getDate()}`;
-    const eventCount = dayEvents.length;
 
     return html`
       <div class="day-card ${today ? 'day-card--today' : ''}">
         <div class="day-card-header">
-          <div class="day-card-header-left">
-            <div class="day-name">${dayName}</div>
-            <div class="day-meta">
-              <span>${eventCount} event${eventCount !== 1 ? 's' : ''}</span>
-              <button class="add-event-link" @click=${() => this._addEvent(day)}>+ Add</button>
-            </div>
+          <div class="day-name">${dayName}</div>
+          <div class="day-card-tools">
+            ${forecast ? html`
+              <div class="day-weather">
+                ${weatherIcon(forecast.condition as any)}
+                <span class="day-weather-temp">${Math.round(forecast.tempHigh)}°/${Math.round(forecast.tempLow)}°</span>
+              </div>
+            ` : nothing}
+            <button class="add-btn" type="button" aria-label=${newEventLabel(day, new Date())} title="New event"
+              @click=${() => this._addEvent(day)}>
+              <ha-icon icon="mdi:plus"></ha-icon>
+            </button>
           </div>
-          ${forecast ? html`
-            <div class="day-weather">
-              ${weatherIcon(forecast.condition as any)}
-              <span class="day-weather-temp">${Math.round(forecast.tempHigh)}°/${Math.round(forecast.tempLow)}°</span>
-            </div>
-          ` : nothing}
         </div>
         ${dayEvents.length > 0 ? html`
           <div class="day-card-events">
@@ -294,7 +298,7 @@ export class PVViewWeek extends LitElement {
             `)}
           </div>
         ` : html`
-          <div class="day-card-empty">No events</div>
+          <div class="day-card-empty">Nothing planned</div>
         `}
       </div>
     `;

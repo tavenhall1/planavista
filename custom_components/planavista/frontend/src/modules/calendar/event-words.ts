@@ -56,20 +56,25 @@ export function eventWhen(event: CalendarEvent, timeFormat: '12h' | '24h', now: 
  * and Day N of M through a multi-day all-day event.
  */
 export function eventStatus(event: CalendarEvent, now: Date): StatusBadge | null {
+  if (isAllDayEvent(event)) return dayOfStatus(event, now);
   const start = parseEventDate(event.start);
-  if (isAllDayEvent(event)) {
-    const last = lastAllDay(event);
-    const days = Math.round((last.getTime() - start.getTime()) / 86_400_000) + 1;
-    if (days < 2) return null;
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const day = Math.round((today.getTime() - new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()) / 86_400_000) + 1;
-    return day >= 1 && day <= days ? { words: `Day ${day} of ${days}`, tone: 'neutral' } : null;
-  }
   const end = parseEventDate(event.end);
   if (now >= start && now < end) return { words: 'Now', tone: 'neutral' };
   const minutes = (start.getTime() - now.getTime()) / 60_000;
   if (minutes > 0 && minutes <= SOON_MINUTES) return { words: `In ${Math.ceil(minutes)} min`, tone: 'time' };
   return null;
+}
+
+/** Day N of M through a multi-day all-day event, counted on `day` (an Agenda card counts its own day). */
+export function dayOfStatus(event: CalendarEvent, day: Date): StatusBadge | null {
+  if (!isAllDayEvent(event)) return null;
+  const start = parseEventDate(event.start);
+  const last = lastAllDay(event);
+  const days = Math.round((last.getTime() - start.getTime()) / 86_400_000) + 1;
+  if (days < 2) return null;
+  const on = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const n = Math.round((on.getTime() - new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()) / 86_400_000) + 1;
+  return n >= 1 && n <= days ? { words: `Day ${n} of ${days}`, tone: 'neutral' } : null;
 }
 
 /** "Alex", "Alex and Blair", "Alex, Blair, and Casey". */

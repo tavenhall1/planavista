@@ -64,26 +64,26 @@ export class PvCalendarOptionsPage extends LitElement {
   private _renderPreferences() {
     return html`
       <div class="page-content">
-        <!-- Time Format -->
+        <!-- Time format -->
         <div class="field-group">
-          <label class="pv-label">Time Format</label>
+          <label class="pv-label">Time format</label>
           <div class="pill-group" role="group" aria-label="Time format">
             <button
               class="pill-btn ${this._draft.time_format === '12h' ? 'pill-btn--active' : ''}"
               type="button"
               @click=${() => { this._apply({ time_format: '12h' }); }}
-            >12h</button>
+            >12-hour</button>
             <button
               class="pill-btn ${this._draft.time_format === '24h' ? 'pill-btn--active' : ''}"
               type="button"
               @click=${() => { this._apply({ time_format: '24h' }); }}
-            >24h</button>
+            >24-hour</button>
           </div>
         </div>
 
-        <!-- First Day of Week -->
+        <!-- First day of the week -->
         <div class="field-group">
-          <label class="pv-label">First Day of Week</label>
+          <label class="pv-label">First day of the week</label>
           <div class="pill-group" role="group" aria-label="First day of week">
             <button
               class="pill-btn ${this._draft.first_day === 'sunday' ? 'pill-btn--active' : ''}"
@@ -98,25 +98,25 @@ export class PvCalendarOptionsPage extends LitElement {
           </div>
         </div>
 
-        <!-- Weather Entity -->
+        <!-- Weather -->
         <div class="field-group">
-          <label class="pv-label" for="weather-select">Weather Entity</label>
+          <label class="pv-label" for="weather-select">Weather</label>
           <select
             id="weather-select"
             class="pv-input pv-select"
             .value=${this._draft.weather_entity}
             @change=${(e: Event) => { this._apply({ weather_entity: (e.target as HTMLSelectElement).value }); }}
           >
-            <option value="">(None)</option>
+            <option value="">None</option>
             ${this._weatherEntities.map(e => html`
               <option value="${e}" ?selected=${this._draft.weather_entity === e}>${this._entityLabel(e)}</option>
             `)}
           </select>
         </div>
 
-        <!-- Default View -->
+        <!-- Default view -->
         <div class="field-group">
-          <label class="pv-label">Default View</label>
+          <label class="pv-label">Default view</label>
           <div class="view-grid" role="group" aria-label="Default calendar view">
             ${([
               { key: 'day', label: 'Day', icon: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-7c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z' },

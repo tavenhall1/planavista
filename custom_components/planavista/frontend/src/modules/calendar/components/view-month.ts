@@ -50,9 +50,12 @@ export class PVViewMonth extends LitElement {
         height: 100%;
       }
 
+      /* Headings and numbers in the rounded face (spec 11.2). */
       .month-name {
+        font-family: var(--pv-font-heading, inherit);
         font-size: 1.125rem;
-        font-weight: 700;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
         padding: 0.5rem 0.75rem;
         text-align: center;
@@ -111,8 +114,10 @@ export class PVViewMonth extends LitElement {
       }
 
       .day-number {
+        font-family: var(--pv-font-heading, inherit);
         font-size: 0.8125rem;
-        font-weight: 400;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
         color: var(--pv-text);
         margin-bottom: 0.125rem;
         padding: 0.125rem 0.25rem;
@@ -131,7 +136,7 @@ export class PVViewMonth extends LitElement {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
+        font-weight: 800;
       }
 
       .day-events {
@@ -140,13 +145,14 @@ export class PVViewMonth extends LitElement {
         gap: 1px;
       }
 
+      /* Inside the cell, which is the day's whole target (spec 11.8). */
       .more-events {
         line-height: 1.2;
-        font-size: 0.625rem;
+        font-size: 0.75rem;
         color: var(--pv-text-secondary);
         padding: 0 0.375rem;
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 600;
       }
 
       .more-events:hover {

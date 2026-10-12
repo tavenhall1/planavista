@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CalendarEvent } from '../src/types';
 import {
-  calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, longDate, namesList, saveFailedText,
+  calendarCan, dayOfStatus, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, longDate, namesList, saveFailedText,
 } from '../src/modules/calendar/event-words';
 
 const NOW = new Date(2026, 9, 12, 8, 50); // Mon Oct 12, 8:50 AM
@@ -61,6 +61,14 @@ describe('eventStatus', () => {
     expect(eventStatus(trip, NOW)).toEqual({ words: 'Day 2 of 3', tone: 'neutral' });
     expect(eventStatus(trip, new Date(2026, 9, 14, 9))).toBeNull();
     expect(eventStatus(event('2026-10-12', '2026-10-13'), NOW)).toBeNull();
+  });
+});
+
+describe('dayOfStatus', () => {
+  it("counts a multi-day event on the day a card shows, not on today", () => {
+    const trip = event('2026-10-11', '2026-10-14', 'Weekend trip');
+    expect(dayOfStatus(trip, new Date(2026, 9, 13))).toEqual({ words: 'Day 3 of 3', tone: 'neutral' });
+    expect(dayOfStatus(event('2026-10-13T12:00:00-05:00', '2026-10-13T13:00:00-05:00'), new Date(2026, 9, 13, 12, 30))).toBeNull();
   });
 });
 

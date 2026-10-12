@@ -111,6 +111,21 @@ export class PVViewDay extends LitElement {
         padding: 0 0.5rem;
       }
 
+      /* Names and the date in the rounded face (spec 11.2). */
+      .person-name,
+      .date-banner {
+        font-family: var(--pv-font-heading, inherit);
+        font-weight: 700;
+      }
+
+      .next-day-footer {
+        width: 100%;
+        min-height: 48px;
+        border: none;
+        font-family: var(--pv-font-heading, inherit);
+        font-weight: 700;
+      }
+
       .all-day-chip:focus-visible,
       .positioned-event:focus-visible {
         outline: 2px solid var(--pv-accent-ink, #5B5BD6);
@@ -683,7 +698,7 @@ export class PVViewDay extends LitElement {
       <div class="day-container" style="--pv-hour-px: ${this._hourPx}px">
         ${allDayEvents.length > 0 ? html`
           <div class="all-day-section">
-            <div class="all-day-gutter">All Day</div>
+            <div class="all-day-gutter">All day</div>
             <div class="all-day-events">
               ${allDayEvents.map(e => html`
                 <div
@@ -822,10 +837,10 @@ export class PVViewDay extends LitElement {
       day: 'numeric',
     });
     return html`
-      <div class="next-day-footer" @click=${this._goToNextDay}>
+      <button class="next-day-footer" type="button" aria-label="Go to ${label}" @click=${this._goToNextDay}>
         ${label}
         <ha-icon icon="mdi:arrow-down"></ha-icon>
-      </div>
+      </button>
     `;
   }
 
