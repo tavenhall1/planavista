@@ -50,6 +50,7 @@ import './pv-notice-sheet';
 import './settings/pv-settings';
 import './setup/pv-setup';
 import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/content-scroll';
+import { PLACE_STORAGE, Place, placeKey, readPlace, usablePlace, writePlace } from '../core/place';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
@@ -86,6 +87,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _views: Record<string, string> = {};
   /** The module the switcher picked; null for the card's first. */
   @state() private _moduleId: string | null = null;
+  /** Where this card was, if it was on screen within the hour (spec 3.7); applied once data and the household are in. */
+  private _remembered: Place | null = null;
+  private _placeKey = '';
+  private _placeApplied = false;
+  private _placeTimer: number | undefined;
   /** Portrait with the content scrolled down: the header shows one line (spec 12.2). */
   @state() private _compactHeader = false;
   /** The header's two heights, for how much its step to one line gives the content. */
@@ -379,9 +385,32 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   setConfig(config: PlanaVistaCardConfig) {
     this._config = { entity: DEFAULT_ENTITY, ...config };
-    // The card's own view and module options apply whenever its config changes.
+    // The card's own view and module options apply whenever its config changes,
+    // unless this card was on screen within the hour: then it comes back where it was.
     this._views = {};
     this._moduleId = null;
+    this._placeKey = placeKey(window.location.pathname, config as unknown as Record<string, unknown>);
+    this._remembered = readPlace(this._storedPlaces(), this._placeKey, Date.now());
+    this._placeApplied = false;
+  }
+
+  private _storedPlaces(): string | null {
+    try {
+      return window.localStorage.getItem(PLACE_STORAGE);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Remember where this card is now (on every change, each minute on screen, and when it leaves). */
+  private _savePlace(): void {
+    const mod = this._activeModule();
+    if (!this._placeApplied || !mod || !this._placeKey) return;
+    try {
+      window.localStorage.setItem(PLACE_STORAGE, writePlace(this._storedPlaces(), this._placeKey, { module: mod.id, views: this._views }, Date.now()));
+    } catch {
+      // Private windows and blocked storage: the card opens on its start, as before.
+    }
   }
 
   /** The module on screen: the one the switcher picked, else the card's first. */
@@ -393,6 +422,16 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
     // The view a card opens on is chosen once, when the data first arrives (as in 1.1.0).
+    // Coming back where it was (spec 3.7): once, when the data and the household are in, so a
+    // module that needs the household (Chores) can be found.
+    if (!this._placeApplied && this._data() && this._household.view) {
+      this._placeApplied = true;
+      const place = usablePlace(this._remembered, this._modules().shown);
+      if (place) {
+        this._moduleId = place.module;
+        this._views = { ...this._views, ...place.views };
+      }
+    }
     const mod = this._activeModule();
     const data = this._data();
     if (mod && data && !(mod.id in this._views)) {
@@ -423,10 +462,21 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     super.connectedCallback();
     // The heading face is declared on the page; shadow roots ignore @font-face (spec 11.2).
     ensurePageStyles();
+    // "Within an hour" counts from when the card was last on screen, not from its last change.
+    this._placeTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') this._savePlace();
+    }, 60_000);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.clearInterval(this._placeTimer);
+    this._savePlace();
   }
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    if (changedProps.has('_moduleId') || changedProps.has('_views')) this._savePlace();
     this._guardSettings();
     this._guardSetup();
   }
