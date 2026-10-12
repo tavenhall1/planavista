@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { choiceStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../../core/pv-time-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
@@ -82,10 +83,9 @@ export class PvRulesPage extends LitElement {
       <div class="group">
         <label class="row">
           <span class="row-text">A chore day starts at</span>
-          <select class="pv-input pv-select" .value=${settings.day_starts}
-            @change=${(e: Event) => this._save({ day_starts: (e.target as HTMLSelectElement).value })}>
-            ${dayStartChoices(timeFormat).map(c => html`<option value=${c.value} ?selected=${settings.day_starts === c.value}>${c.label}</option>`)}
-          </select>
+          <pv-time-field .value=${settings.day_starts} .format=${timeFormat === '24h' ? '24h' : '12h'}
+            .slots=${dayStartChoices(timeFormat).map(c => c.value)}
+            @change=${(e: Event) => this._save({ day_starts: (e.target as HTMLSelectElement).value })}></pv-time-field>
         </label>
         <div class="row">
           <span class="row-text">Weeks start on</span>

@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
+import '../../core/pv-time-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { buttonStyles, formStyles } from '../../styles/shared';
@@ -498,12 +499,12 @@ export class PvAppearanceEditor extends LitElement {
           ${rule === 'schedule' && chosen === 'schedule' ? html`
             <div class="times">
               <label>Light from
-                <input class="pv-input" type="time" .value=${lightFrom}
-                  @change=${(e: Event) => this._time('light_from', e)}>
+                <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${lightFrom}
+                  @change=${(e: Event) => this._time('light_from', e)}></pv-time-field>
               </label>
               <label>Dark from
-                <input class="pv-input" type="time" .value=${darkFrom}
-                  @change=${(e: Event) => this._time('dark_from', e)}>
+                <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${darkFrom}
+                  @change=${(e: Event) => this._time('dark_from', e)}></pv-time-field>
               </label>
             </div>
           ` : nothing}

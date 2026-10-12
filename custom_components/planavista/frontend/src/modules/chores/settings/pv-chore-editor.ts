@@ -1,6 +1,8 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { personChipStyles, segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../../core/pv-time-field';
+import '../../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
@@ -553,15 +555,15 @@ export class PvChoreEditor extends LitElement {
         ${d.once_when !== 'any' ? html`
           <label class="row">
             <span class="row-text">Date</span>
-            <input class="pv-input" type="date" min=${board.today} .value=${d.date}
-              @change=${(e: Event) => this._change({ date: (e.target as HTMLInputElement).value })} />
+            <pv-date-field  min=${board.today} .value=${d.date}
+              @change=${(e: Event) => this._change({ date: (e.target as HTMLInputElement).value })}></pv-date-field>
           </label>
         ` : nothing}
         ${d.once_when === 'by' ? html`
           <label class="row">
             <span class="row-text">By<span class="row-sub">Leave it empty for the end of the day.</span></span>
-            <input class="pv-input" type="time" .value=${d.by_time ?? ''}
-              @change=${(e: Event) => this._change({ by_time: (e.target as HTMLInputElement).value || null })} />
+            <pv-time-field  clearable .format=${this.data?.display?.time_format === '24h' ? '24h' : '12h'} .value=${d.by_time ?? ''}
+              @change=${(e: Event) => this._change({ by_time: (e.target as HTMLInputElement).value || null })}></pv-time-field>
           </label>
         ` : nothing}
         <div class="row">

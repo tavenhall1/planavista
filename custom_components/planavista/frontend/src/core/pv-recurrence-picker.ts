@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { segmentedStyles } from '../styles/controls';
 import { property } from 'lit/decorators.js';
+import './pv-date-field';
 import { defineElement } from '../utils/define';
 import { Freq, RecurrenceValue, WEEKDAYS, Weekday, ordinal, recurrenceSummary, weekdayOf } from './recurrence';
 
@@ -183,8 +184,8 @@ export class PvRecurrencePicker extends LitElement {
         ` : nothing}
         <div class="row">
           <label class="label" for="start">Starts</label>
-          <input id="start" type="date" .value=${v.start}
-            @change=${(e: Event) => this._start((e.target as HTMLInputElement).value)} />
+          <pv-date-field id="start"  .value=${v.start}
+            @change=${(e: Event) => this._start((e.target as HTMLInputElement).value)}></pv-date-field>
         </div>
         <div class="row">
           <span class="label">Ends</span>
@@ -211,8 +212,8 @@ export class PvRecurrencePicker extends LitElement {
         ${v.ends === 'until' ? html`
           <div class="row">
             <label class="label" for="until">End date</label>
-            <input id="until" type="date" .value=${v.until} min=${v.start}
-              @change=${(e: Event) => this._set({ until: (e.target as HTMLInputElement).value || v.until })} />
+            <pv-date-field id="until"  .value=${v.until} min=${v.start}
+              @change=${(e: Event) => this._set({ until: (e.target as HTMLInputElement).value || v.until })}></pv-date-field>
           </div>
         ` : nothing}
       </div>

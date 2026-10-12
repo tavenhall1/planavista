@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { tagStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../core/pv-date-field';
 import { defineElement } from '../../utils/define';
 import { buttonStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
@@ -319,8 +320,8 @@ export class PvChoreOptions extends LitElement {
           <button class="chip" type="button" @click=${() => this._choose(option.id, chip.day)}>${chip.label}</button>
         `)}
         ${option.pick ? html`
-          <input type="date" aria-label="Pick a date" min=${option.pick.min} max=${option.pick.max ?? nothing}
-            @change=${(e: Event) => { const value = (e.target as HTMLInputElement).value; if (value) this._choose(option.id, value); }} />
+          <pv-date-field  aria-label="Pick a date" min=${option.pick.min} max=${option.pick.max ?? nothing}
+            @change=${(e: Event) => { const value = (e.target as HTMLInputElement).value; if (value) this._choose(option.id, value); }}></pv-date-field>
         ` : nothing}
       </div>
     `;

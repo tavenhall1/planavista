@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { personChipStyles, segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { buttonStyles, formStyles } from '../../styles/shared';
@@ -270,8 +271,8 @@ export class PvChoresQuickAdd extends LitElement {
               ${byChips(this.today).map(chip => html`
                 <button class="chip" type="button" aria-pressed=${d.by === chip.day ? 'true' : 'false'} @click=${() => this._set({ by: chip.day })}>${chip.label}</button>
               `)}
-              <input type="date" aria-label="Pick a date" min=${this.today} .value=${d.by && !byChips(this.today).some(c => c.day === d.by) ? d.by : ''}
-                @change=${(e: Event) => this._set({ by: (e.target as HTMLInputElement).value || null })} />
+              <pv-date-field  aria-label="Pick a date" min=${this.today} .value=${d.by && !byChips(this.today).some(c => c.day === d.by) ? d.by : ''}
+                @change=${(e: Event) => this._set({ by: (e.target as HTMLInputElement).value || null })}></pv-date-field>
             </div>
           ` : nothing}
           ${d.when === 'repeats' ? html`

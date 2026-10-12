@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import '../../../core/pv-time-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
@@ -77,10 +78,9 @@ export class PvRemindersPage extends LitElement {
         ${evening ? html`
           <label class="row">
             <span class="row-text">At</span>
-            <select class="pv-input pv-select" .value=${evening}
-              @change=${(e: Event) => this._saveEvening((e.target as HTMLSelectElement).value)}>
-              ${eveningChoices(evening, timeFormat).map(c => html`<option value=${c.value} ?selected=${c.value === evening}>${c.label}</option>`)}
-            </select>
+            <pv-time-field .value=${evening} .format=${timeFormat === '24h' ? '24h' : '12h'}
+              .slots=${eveningChoices(evening, timeFormat).map(c => c.value)}
+              @change=${(e: Event) => this._saveEvening((e.target as HTMLSelectElement).value)}></pv-time-field>
           </label>
         ` : nothing}
       </div>
