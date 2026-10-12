@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   chipLabel,
+  creditedText,
   dayWords,
   dueChips,
   historyLines,
   itemOptions,
   moreTimeChips,
+  type OptionsContext,
   planChips,
   rhythmText,
-  type OptionsContext,
+  whoDidItBody,
 } from '../src/modules/chores/options-derive';
 import { MEMBERS, TODAY, activity, item } from './chores-fixtures';
 
@@ -135,5 +137,17 @@ describe('historyLines', () => {
       recent: [{ at: '2026-10-12T19:30:00-05:00', done_by: 'blair', state: 'done', occurrence: 'x' }], usual: { band: 'evening', day: null },
     }, TODAY, [blair, casey], '24h');
     expect(byBlair).toEqual(['🔥 3 days in a row', 'Last done Monday at 19:30 by Blair', 'Usually in the evening']);
+  });
+});
+
+describe('Who did it? (milestone 8)', () => {
+  it('both sheets say the same thing before anyone is picked', () => {
+    expect(whoDidItBody('Cat care')).toBe('They get the credit for Cat care.');
+  });
+
+  it('after the pick, says the stars only when that person earns them', () => {
+    expect(creditedText({ name: 'Dana', stars: true }, 1)).toBe('Dana gets the credit and the stars.');
+    expect(creditedText({ name: 'Blair', stars: false }, 1)).toBe('Blair gets the credit.');
+    expect(creditedText({ name: 'Dana', stars: true }, 0)).toBe('Dana gets the credit.');
   });
 });

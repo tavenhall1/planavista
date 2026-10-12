@@ -46,6 +46,7 @@ from .security import (
     valid_pin,
     verify_pin,
 )
+from ..refusals import send_refusal
 from .store import DATA_HOUSEHOLD, Household
 
 # What the card shows when a change breaks a rule (spec 11.7: say what to do).
@@ -151,7 +152,7 @@ def household_for(
 ) -> Household | None:
     household = hass.data.get(DATA_HOUSEHOLD)
     if household is None:
-        connection.send_error(msg["id"], "not_loaded", "PlanaVista is not set up yet.")
+        send_refusal(connection, msg, "not_loaded", "PlanaVista is not set up yet.")
     return household
 
 
@@ -160,11 +161,10 @@ def refuse(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], account: Account
 ) -> None:
     if account.screen_rules:
-        connection.send_error(
-            msg["id"], "parent_mode_required", "A parent's PIN is needed on this screen."
+        send_refusal(connection, msg, "parent_mode_required", "A parent's PIN is needed on this screen."
         )
     else:
-        connection.send_error(msg["id"], "not_allowed", "Only a parent can do this.")
+        send_refusal(connection, msg, "not_allowed", "Only a parent can do this.")
 
 
 @callback
@@ -185,8 +185,7 @@ def parent_for(
         refuse(connection, msg, account)
         return None
     if needs_file and not household.available:
-        connection.send_error(
-            msg["id"], "unavailable", "Update PlanaVista to change people and PINs."
+        send_refusal(connection, msg, "unavailable", "Update PlanaVista to change people and PINs."
         )
         return None
     return household, by
@@ -196,8 +195,7 @@ def parent_for(
 def _member_error(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], err: MemberError
 ) -> None:
-    connection.send_error(
-        msg["id"], err.code, ERROR_MESSAGES.get(err.code, "That change can't be saved.")
+    send_refusal(connection, msg, err.code, ERROR_MESSAGES.get(err.code, "That change can't be saved.")
     )
 
 
@@ -313,19 +311,18 @@ async def ws_member_prefs(
     if household is None:
         return
     if not household.available:
-        connection.send_error(msg["id"], "unavailable", "Update PlanaVista to change people and PINs.")
+        send_refusal(connection, msg, "unavailable", "Update PlanaVista to change people and PINs.")
         return
     member_id = msg["member_id"]
     member = household.member(member_id)
     if member is None:
-        connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
+        send_refusal(connection, msg, "unknown_member", ERROR_MESSAGES["unknown_member"])
         return
     account = account_for(hass, household, connection.user)
     session = session_for(household, connection, msg)
     if member_level(account, session, member_id, member_id in household.pins) is None:
         if account.screen_rules:
-            connection.send_error(
-                msg["id"], "pin_required", f"{member.get('name', member_id)}'s PIN or a parent's is needed."
+            send_refusal(connection, msg, "pin_required", f"{member.get('name', member_id)}'s PIN or a parent's is needed."
             )
         else:
             refuse(connection, msg, account)
@@ -438,8 +435,7 @@ async def ws_shared_screen(
     users = [user_id for user_id in household.shared_users if user_id != connection.user.id]
     if msg["shared"]:
         if not parents_with_pins(household.members, household.pins):
-            connection.send_error(
-                msg["id"], "needs_parent_pin", ERROR_MESSAGES["needs_parent_pin"]
+            send_refusal(connection, msg, "needs_parent_pin", ERROR_MESSAGES["needs_parent_pin"]
             )
             return
         users.append(connection.user.id)
@@ -542,7 +538,7 @@ def _pin_manager(
     if household is None:
         return None
     if household.member(msg["member_id"]) is None:
-        connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
+        send_refusal(connection, msg, "unknown_member", ERROR_MESSAGES["unknown_member"])
         return None
     account = account_for(hass, household, connection.user)
     session = session_for(household, connection, msg)
@@ -550,8 +546,7 @@ def _pin_manager(
         refuse(connection, msg, account)
         return None
     if not household.available:
-        connection.send_error(
-            msg["id"], "unavailable", "Update PlanaVista to change people and PINs."
+        send_refusal(connection, msg, "unavailable", "Update PlanaVista to change people and PINs."
         )
         return None
     return household, msg.get("session") if session else None
@@ -643,10 +638,10 @@ async def ws_pin_set(
         return
     household, token = context
     if not valid_pin(msg["pin"]):
-        connection.send_error(msg["id"], "invalid_pin", INVALID_PIN)
+        send_refusal(connection, msg, "invalid_pin", INVALID_PIN)
         return
     if easy_pin(msg["pin"]):
-        connection.send_error(msg["id"], "easy_pin", EASY_PIN)
+        send_refusal(connection, msg, "easy_pin", EASY_PIN)
         return
     household.pins[msg["member_id"]] = await hass.async_add_executor_job(hash_pin, msg["pin"])
     household.sessions.end_member(msg["member_id"], keep=token)
@@ -742,7 +737,7 @@ def ws_pin_touch(
     now = _monotonic()
     session = household.sessions.get(msg["session"], connection, now, touch=True)
     if session is None:
-        connection.send_error(msg["id"], "session_ended", "The PIN session ended.")
+        send_refusal(connection, msg, "session_ended", "The PIN session ended.")
         return
     connection.send_result(msg["id"], {"expires_in": math.ceil(household.sessions.expires_in(session, now))})
 

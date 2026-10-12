@@ -254,3 +254,13 @@ export function historyLines(history: ChoreHistory, today: string, members: Memb
   else if (band) lines.push(`Usually ${BAND_WORDS[band]}`);
   return lines;
 }
+
+/** "Who did it?" before anyone is picked, the same on the options sheet and after a check-off (milestone 8). */
+export function whoDidItBody(name: string): string {
+  return `They get the credit for ${name}.`;
+}
+
+/** After the pick: the stars only when the person picked earns them and the chore gives some. */
+export function creditedText(doer: { name: string; stars: boolean }, stars: number): string {
+  return doer.stars && stars > 0 ? `${doer.name} gets the credit and the stars.` : `${doer.name} gets the credit.`;
+}

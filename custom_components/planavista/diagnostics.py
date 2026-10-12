@@ -1,4 +1,4 @@
-"""Download diagnostics: counts, settings, Store versions, and recent errors (spec 15.6).
+"""Download diagnostics: counts, settings, Store versions, recent errors, and recent refusals (spec 15.6).
 
 Member names are replaced ("Member 1"), and PIN data and Home Assistant user
 ids are left out entirely.
@@ -16,6 +16,7 @@ from .const import CONF_CALENDARS, CONF_DISPLAY
 from .coordinator import PlanaVistaConfigEntry
 from .household.members import ordered
 from .household.store import DATA_HOUSEHOLD
+from .refusals import recent_refusals
 
 TO_REDACT = {"weather_entity"}
 
@@ -78,4 +79,6 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PlanaVi
             },
             "recent_errors": list(chores.errors),
         }
+    # What was refused lately (milestone 8): time, command, and reason only.
+    result["recent_refusals"] = recent_refusals(hass)
     return result

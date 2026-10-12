@@ -73,7 +73,8 @@ describe('sheets and editors (milestone 8, spec 3.10)', () => {
     expect(toast).toMatch(/var\(--pv-toast-bg,/);
     expect(toast).not.toMatch(/background: #1F2023/);
     const module = read('modules/chores/pv-chores-module.ts');
-    expect(module).toMatch(/: 'Done\.'/);
-    expect(module).toMatch(/`Done by \$\{name\}\.`/);
+    expect(module).toMatch(/\?\? 'Done\.'/);
+    // Someone else's check-off says who got the credit (and the stars only when they earn them): creditedText, tested with its words.
+    expect(module).toMatch(/creditedText\(/);
   });
 });

@@ -57,7 +57,7 @@ describe('bandAt (the engine\'s bands, spec 8.4)', () => {
 });
 
 describe('columnFor (spec 13.1)', () => {
-  it('puts Now first, then later bands, This week, Done today, and past bands as credit', () => {
+  it('puts Now first, then later bands, This week, Done today (every check-off today, milestone 8), and past bands as credit', () => {
     const casey_items = [
       item('cat_care|casey|day:2026-10-13|0', { band: 'morning', status: 'done', completion: { id: 'c', done_by: 'casey', by: 'casey', at: '2026-10-13T07:30:00-05:00', source: 'tablet', state: 'done', review: null, stars: 1 } }),
       item('take_out_the_trash|casey|week:2026-10-12|0', { band: 'evening', window: 'week', due_day: '2026-10-18' }),
@@ -71,6 +71,7 @@ describe('columnFor (spec 13.1)', () => {
       'head:Now · afternoon', 'now:fix_it',
       'head:Later · evening', 'later:take_out_the_trash', 'later:cat_care',
       'head:This week', 'week:clean_the_bathroom', 'week:yard_work',
+      'head:Done today', 'done:cat_care',
       'credit:Morning · 1 done',
     ]);
     expect(col.line).toBe('1 of 3 today · ★ 23 · 🔥 5 days');

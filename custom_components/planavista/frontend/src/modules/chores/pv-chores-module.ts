@@ -31,7 +31,8 @@ import { RewardDraft, balances, recentLine, rewardCards, rewardFrom } from './re
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
-import { dayWords, historyLines, itemOptions } from './options-derive';
+import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
+import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
 import { InboxRow, answeredText, inboxGroups } from './inbox-derive';
 import type { ReviewDetail } from './pv-chores-inbox';
@@ -118,7 +119,10 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _overlayOpen = false;
   /** What had focus when a sheet opened; it gets focus back when the sheet closes (spec 11.8). */
   private _opener: HTMLElement | null = null;
-  private _last: LastCheckoff | null = null;
+  /** Each check-off toast's own check-off, so its Undo always knows what to undo (milestone 8). */
+  private readonly _recent = new RecentCheckoffs<LastCheckoff>();
+  /** Rewards asked for that the board doesn't show yet: Redeem waits at once. */
+  @state() private _asking: ReadonlyArray<{ member: string; reward: string }> = [];
   private _clock: ReturnType<typeof setInterval> | undefined;
 
   static styles = [
@@ -481,7 +485,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _renderRewards(board: Board) {
     const members = inOrder(this.household?.members ?? []);
     return html`
-      <pv-chores-rewards .balances=${balances(board, members)} .cards=${rewardCards(board, members)}
+      <pv-chores-rewards .balances=${balances(board, members)} .cards=${rewardCards(board, members, this._waitingAsks(board))}
         .recent=${recentLine(board, members)} .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout}
         ?canEdit=${parentAccess(this.household, this.session) !== 'no'}
         @pv-reward-redeem=${(e: CustomEvent<{ reward: string }>) => this._redeem(e.detail.reward)}
@@ -489,23 +493,35 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     `;
   }
 
+  /** Asks the board doesn't show yet; once it shows them (or a parent answered), they're the board's. */
+  private _waitingAsks(board: Board): ReadonlyArray<{ member: string; reward: string }> {
+    if (!this._asking.length) return this._asking;
+    const shown = (a: { member: string; reward: string }) =>
+      board.requests.some(r => r.kind === 'redemption' && r.member === a.member && r.reward === a.reward);
+    return this._asking.filter(a => !shown(a));
+  }
+
   /** Redeem: for whoever can afford it (asking who, when more than one can), behind their PIN if they have one. */
   private _redeem(rewardId: string): void {
     const board = this.service?.board();
     if (!board) return;
-    const card = rewardCards(board, inOrder(this.household?.members ?? [])).find(c => c.reward.id === rewardId);
+    const card = rewardCards(board, inOrder(this.household?.members ?? []), this._waitingAsks(board)).find(c => c.reward.id === rewardId);
     if (!card) return;
     const ready = card.people.filter(p => p.afford && !p.asked).map(p => p.member);
     const go = async (member: Member) => {
       const api = this.service?.api;
       if (!api || !(await this.asMember(member.id, `Who's getting ${card.reward.name}?`))) return;
+      const ask = { member: member.id, reward: rewardId };
+      this._asking = [...this._asking, ask];
       try {
         const out = await api.redeem(member.id, rewardId);
+        if (out.result === 'given') this._asking = this._asking.filter(a => a !== ask);
         this.showToast({
           id: `redeem-${Date.now()}`,
           text: out.result === 'given' ? `${card.reward.name} is ${member.name}'s!` : `Asked for ${card.reward.name}. A parent will answer.`,
         });
       } catch (err) {
+        this._asking = this._asking.filter(a => a !== ask);
         this.showToast({ id: `redeem-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
       }
     };
@@ -634,11 +650,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     haptic('tick');
     if (board.settings.sound) chime();
     const id = `done-${row.key}-${Date.now()}`;
-    this._last = { row, member, toast: id };
-    const name = doneBy && doneBy !== member ? this._member(doneBy)?.name : null;
+    this._recent.remember(id, { row, member, toast: id });
+    const credited = doneBy && doneBy !== member && doer ? creditedText({ name: doer.name, stars: !!doer.stars }, row.item.stars) : null;
     this.showToast({
       id,
-      text: waits ? `${row.name}: waiting for OK.` : name ? `Done by ${name}.` : 'Done.',
+      text: waits ? `${row.name}: waiting for OK.` : credited ?? 'Done.',
       actions: [{ id: 'undo', label: 'Undo' }, ...(doneBy ? [] : [{ id: 'someone', label: 'Someone else did it?' }])],
       ms: 6000,
     });
@@ -773,7 +789,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         const people = inOrder(this.household?.members ?? []).filter(m => m.id !== owner.id);
         this._sheet = {
           kind: 'people', heading: 'Who did it?', people,
-          body: `They get the credit for ${name}.`,
+          body: whoDidItBody(name),
           pick: async member => {
             if (!member || !(await this.asMember(owner.id, `Who's checking off ${name}?`))) return;
             const fresh = this.service?.board();
@@ -843,7 +859,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._sheet = {
       kind: 'people',
       heading: 'Who did it?',
-      body: `They get the credit${people.some(p => p.stars) ? ' and the stars' : ''} for ${last.row.name}.`,
+      body: whoDidItBody(last.row.name),
       people,
       pick: member => {
         const board = this.service?.board();
@@ -931,13 +947,19 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   protected onToastAction(toast: Toast, action: string): void {
-    const last = this._last;
-    if (!last || last.toast !== toast.id || !this.service) return;
+    if (!this.service) return;
     if (action === 'undo') {
+      // Undo always answers in words; a refusal comes back as its own toast, on this card (milestone 8).
+      const last = this._recent.take(toast.id);
+      if (!last) {
+        this.showToast({ id: `undo-${Date.now()}`, text: 'Hold the check to uncheck it.' });
+        return;
+      }
       this.service.enqueue({ op: 'undo', occurrence: last.row.key, member: last.member, name: last.row.name });
-      this._last = null;
+      this.showToast({ id: `undo-${last.row.key}-${Date.now()}`, text: `${last.row.name} is open again.` });
     } else if (action === 'someone') {
-      this._someoneElse(last);
+      const last = this._recent.peek(toast.id);
+      if (last) this._someoneElse(last);
     }
   }
 

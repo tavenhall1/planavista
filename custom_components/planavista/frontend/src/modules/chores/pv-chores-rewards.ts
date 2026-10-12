@@ -8,6 +8,7 @@ import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
 import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
+import { redeemLabel } from './rewards-derive';
 import type { Balance, RewardCard } from './rewards-derive';
 import { pictureOf } from './pv-chore-tile';
 import { ScrollReporter } from '../../core/content-scroll';
@@ -261,7 +262,7 @@ export class PvChoresRewards extends LitElement {
         </div>
         ${card.canRedeem
           ? html`<button class="pv-btn pv-btn-secondary accent action" type="button" @click=${() => this._fire('pv-reward-redeem', { reward: reward.id })}>Redeem</button>`
-          : html`<button class="pv-btn pv-btn-secondary action" type="button" disabled>${asked ? 'Requested' : 'Not enough stars yet'}</button>`}
+          : html`<button class="pv-btn pv-btn-secondary action" type="button" disabled>${redeemLabel(card)}</button>`}
       </div>
     `;
   }

@@ -150,7 +150,7 @@ export function groupKey(item: ItemView): string | null {
   return null;
 }
 
-/** One person's column (spec 13.1): bands with Now highlighted, This week, Done today, and past bands as credit. */
+/** One person's column (spec 13.1): bands with Now highlighted, This week, Done today (every check-off today), and past bands as credit. */
 export function columnFor(member: Member, entry: BoardMember, board: Board, ctx: DeriveContext): ColumnModel {
   const current = bandAt(ctx.now, board.settings?.day_starts);
   const earnsStars = !!member.stars;
@@ -256,9 +256,11 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     entries.push({ kind: 'head', key: 'head:week', text: 'This week', right: left === 1 ? 'Last day' : `${left} days left`, tone: 'plain' });
     for (const row of week) entries.push({ kind: 'row', key: row.key, row, zone: 'week' });
   }
-  if (done.length) {
+  // Every check-off today, a finished part of the day's too, so a mistaken one can be unchecked with the same hold (milestone 8).
+  const allDone = [...earlier, ...done].sort((a, b) => (a.item.completion?.at ?? '').localeCompare(b.item.completion?.at ?? ''));
+  if (allDone.length) {
     entries.push({ kind: 'head', key: 'head:done', text: 'Done today', tone: 'plain' });
-    for (const row of done) entries.push({ kind: 'row', key: row.key, row, zone: 'done' });
+    for (const row of allDone) entries.push({ kind: 'row', key: row.key, row, zone: 'done' });
   }
   entries.push(...credits);
 
@@ -283,7 +285,7 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     away: entry.away ? { note: entry.away.note ?? null } : null,
     pictures: member.age_group === 'young_child',
     entries,
-    doneToday: [...earlier, ...done].sort((a, b) => (a.item.completion?.at ?? '').localeCompare(b.item.completion?.at ?? '')),
+    doneToday: allDone,
     left,
     empty: items.length === 0,
   };

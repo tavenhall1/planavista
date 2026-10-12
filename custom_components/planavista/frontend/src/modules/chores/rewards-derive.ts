@@ -34,12 +34,17 @@ export function eligible(reward: Reward, members: Member[]): Member[] {
   return reward.who.length ? earners.filter(m => reward.who.includes(m.id)) : earners;
 }
 
-/** The catalog (spec 13.6): each card shows who can afford it, goals, and redemptions waiting. */
-export function rewardCards(board: Board, members: Member[]): RewardCard[] {
+/**
+ * The catalog (spec 13.6): each card shows who can afford it, goals, and
+ * redemptions waiting. `asking` holds requests sent but not yet on the
+ * board, so Redeem waits at once (milestone 8).
+ */
+export function rewardCards(board: Board, members: Member[], asking: ReadonlyArray<{ member: string; reward: string }> = []): RewardCard[] {
   return board.rewards.map(reward => {
-    const asked = new Set(
-      board.requests.filter(r => r.kind === 'redemption' && r.reward === reward.id).map(r => r.member),
-    );
+    const asked = new Set([
+      ...board.requests.filter(r => r.kind === 'redemption' && r.reward === reward.id).map(r => r.member),
+      ...asking.filter(a => a.reward === reward.id).map(a => a.member),
+    ]);
     const people = eligible(reward, members).map(member => {
       const stars = board.members[member.id]?.stars ?? 0;
       return { member, afford: stars >= reward.cost, more: Math.max(0, reward.cost - stars), asked: asked.has(member.id) };
@@ -52,6 +57,12 @@ export function rewardCards(board: Board, members: Member[]): RewardCard[] {
       canRedeem: people.some(p => p.afford && !p.asked),
     };
   });
+}
+
+/** The card's button: Redeem while anyone can; otherwise why not. */
+export function redeemLabel(card: Pick<RewardCard, 'canRedeem' | 'asked'>): string {
+  if (card.canRedeem) return 'Redeem';
+  return card.asked.length ? 'Waiting for OK' : 'Not enough stars yet';
 }
 
 /** "Recently: Casey redeemed Pick the weekend game on Sunday, approved by Blair" (spec 13.6). */
