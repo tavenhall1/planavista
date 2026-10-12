@@ -26,6 +26,12 @@ export class PvRing extends LitElement {
   @property({ type: String }) label = '';
   /** Change it to a new number to celebrate once. */
   @property({ type: Number }) celebrate = 0;
+  /**
+   * A finger drives it (hold to complete): each value is drawn as given, since
+   * easing to a target that moves every frame leaves the ring far behind the
+   * finger (spec 11.5: it tracks the finger).
+   */
+  @property({ type: Boolean, reflect: true }) tracking = false;
 
   static styles = css`
     :host {
@@ -54,6 +60,10 @@ export class PvRing extends LitElement {
 
     .fill {
       transition: stroke-dashoffset var(--pv-ring-ms, 700ms) var(--pv-ring-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+    }
+
+    :host([tracking]) .fill {
+      transition: none;
     }
 
     .inside {
