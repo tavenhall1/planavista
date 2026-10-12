@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -60,6 +61,7 @@ export class PvPersonStars extends LitElement {
   }
 
   static styles = [
+    segmentedStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -108,7 +110,7 @@ export class PvPersonStars extends LitElement {
       <h2 class="section-label">Give or take</h2>
       <div class="group">
         <div class="row">
-          <div class="segmented" role="group" aria-label="Give or take">
+          <div class="pv-seg stretch" role="group" aria-label="Give or take">
             <button type="button" aria-pressed=${this._give ? 'true' : 'false'} @click=${() => { this._give = true; }}>Give</button>
             <button type="button" aria-pressed=${!this._give ? 'true' : 'false'} @click=${() => { this._give = false; }}>Take</button>
           </div>

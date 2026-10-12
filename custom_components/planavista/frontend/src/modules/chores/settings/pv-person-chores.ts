@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -33,6 +34,7 @@ export class PvPersonChores extends LitElement {
   @state() private _adding: AwayRange | null = null;
 
   static styles = [
+    segmentedStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -95,7 +97,7 @@ export class PvPersonChores extends LitElement {
           <div class="row">
             <div class="stack">
               <span>Needs an OK for</span>
-              <div class="segmented" role="group" aria-label="Needs an OK for">
+              <div class="pv-seg stretch" role="group" aria-label="Needs an OK for">
                 ${NEEDS_OK.map(([id, label]) => html`
                   <button type="button" aria-pressed=${d.needs_ok_for === id ? 'true' : 'false'}
                     @click=${() => this._change({ needs_ok_for: id })}>${label}</button>
@@ -107,7 +109,7 @@ export class PvPersonChores extends LitElement {
         <div class="row">
           <div class="stack">
             <span>My day</span>
-            <div class="segmented" role="group" aria-label="My day">
+            <div class="pv-seg stretch" role="group" aria-label="My day">
               ${MY_DAY.map(([id, label]) => html`
                 <button type="button" aria-pressed=${d.my_day === id ? 'true' : 'false'}
                   @click=${() => this._change({ my_day: id })}>${label}</button>

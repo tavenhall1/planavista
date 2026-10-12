@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -76,6 +77,7 @@ export class PvAppearanceEditor extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    segmentedStyles,
     buttonStyles,
     formStyles,
     settingsPageStyles,
@@ -401,31 +403,8 @@ export class PvAppearanceEditor extends LitElement {
         color: var(--pv-text-secondary, #5F6670);
       }
 
-      /* Motion */
-      .seg {
-        display: inline-flex;
-        flex-wrap: wrap;
-        padding: 3px;
-        border-radius: 12px;
-        background: var(--pv-seg, #ECECE8);
-      }
 
-      .seg-btn {
-        min-height: 48px;
-        padding: 0 16px;
-        border: none;
-        border-radius: 9px;
-        background: transparent;
-        font-weight: 650;
-        color: var(--pv-text-secondary, #5F6670);
-        cursor: pointer;
-      }
 
-      .seg-btn[aria-checked='true'] {
-        background: var(--pv-seg-on, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-      }
     `,
   ];
 
@@ -559,10 +538,10 @@ export class PvAppearanceEditor extends LitElement {
 
   private _renderMotion(chosen: MotionSetting) {
     return html`
-      <div class="seg" role="radiogroup" aria-labelledby="motion-heading"
+      <div class="pv-seg" role="radiogroup" aria-labelledby="motion-heading"
         @keydown=${(e: KeyboardEvent) => this._arrows(e, MOTIONS, chosen, value => this._page.set({ motion: value }, e))}>
         ${MOTIONS.map(motion => html`
-          <button class="seg-btn" type="button" role="radio" data-value=${motion}
+          <button type="button" role="radio" data-value=${motion}
             aria-checked=${motion === chosen ? 'true' : 'false'}
             tabindex=${motion === chosen ? '0' : '-1'}
             @click=${(e: Event) => this._page.set({ motion }, e)}>${MOTION_LABELS[motion]}</button>

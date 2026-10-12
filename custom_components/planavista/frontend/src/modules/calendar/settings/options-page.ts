@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -67,14 +68,14 @@ export class PvCalendarOptionsPage extends LitElement {
         <!-- Time format -->
         <div class="field-group">
           <label class="pv-label">Time format</label>
-          <div class="pill-group" role="group" aria-label="Time format">
+          <div class="pv-seg" role="group" aria-label="Time format">
             <button
-              class="pill-btn ${this._draft.time_format === '12h' ? 'pill-btn--active' : ''}"
+              aria-pressed=${this._draft.time_format === '12h' ? 'true' : 'false'}
               type="button"
               @click=${() => { this._apply({ time_format: '12h' }); }}
             >12-hour</button>
             <button
-              class="pill-btn ${this._draft.time_format === '24h' ? 'pill-btn--active' : ''}"
+              aria-pressed=${this._draft.time_format === '24h' ? 'true' : 'false'}
               type="button"
               @click=${() => { this._apply({ time_format: '24h' }); }}
             >24-hour</button>
@@ -84,14 +85,14 @@ export class PvCalendarOptionsPage extends LitElement {
         <!-- First day of the week -->
         <div class="field-group">
           <label class="pv-label">First day of the week</label>
-          <div class="pill-group" role="group" aria-label="First day of week">
+          <div class="pv-seg" role="group" aria-label="First day of week">
             <button
-              class="pill-btn ${this._draft.first_day === 'sunday' ? 'pill-btn--active' : ''}"
+              aria-pressed=${this._draft.first_day === 'sunday' ? 'true' : 'false'}
               type="button"
               @click=${() => { this._apply({ first_day: 'sunday' }); }}
             >Sunday</button>
             <button
-              class="pill-btn ${this._draft.first_day === 'monday' ? 'pill-btn--active' : ''}"
+              aria-pressed=${this._draft.first_day === 'monday' ? 'true' : 'false'}
               type="button"
               @click=${() => { this._apply({ first_day: 'monday' }); }}
             >Monday</button>
@@ -117,24 +118,15 @@ export class PvCalendarOptionsPage extends LitElement {
         <!-- Default view -->
         <div class="field-group">
           <label class="pv-label">Default view</label>
-          <div class="view-grid" role="group" aria-label="Default calendar view">
+          <div class="pv-seg stretch" role="group" aria-label="Default calendar view">
             ${([
-              { key: 'day', label: 'Day', icon: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-7c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z' },
-              { key: 'week', label: 'Week', icon: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM7 12h2v6H7zm4 0h2v6h-2zm4 0h2v6h-2z' },
-              { key: 'month', label: 'Month', icon: 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z' },
-              { key: 'agenda', label: 'Agenda', icon: 'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z' },
-            ] as Array<{ key: string; label: string; icon: string }>).map(v => html`
-              <button
-                class="view-card ${this._draft.default_view === v.key ? 'view-card--active' : ''}"
-                type="button"
-                aria-pressed="${this._draft.default_view === v.key}"
-                @click=${() => { this._apply({ default_view: v.key as DisplayConfig['default_view'] }); }}
-              >
-                <svg class="view-icon" viewBox="0 0 24 24" width="24" height="24">
-                  <path d="${v.icon}" />
-                </svg>
-                <span class="view-label">${v.label}</span>
-              </button>
+              { key: 'day', label: 'Day' },
+              { key: 'week', label: 'Week' },
+              { key: 'month', label: 'Month' },
+              { key: 'agenda', label: 'Agenda' },
+            ] as Array<{ key: string; label: string }>).map(v => html`
+              <button type="button" aria-pressed=${this._draft.default_view === v.key ? 'true' : 'false'}
+                @click=${() => { this._apply({ default_view: v.key as DisplayConfig['default_view'] }); }}>${v.label}</button>
             `)}
           </div>
         </div>
@@ -178,6 +170,7 @@ export class PvCalendarOptionsPage extends LitElement {
   }
 
   static styles = [
+    segmentedStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -212,63 +205,8 @@ export class PvCalendarOptionsPage extends LitElement {
         color: var(--pv-text, #1A1B1E);
         font-weight: 600;
       }
-/* ── View grid (default view selection) ────────────────── */
-.view-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-      }
-@media (max-width: 400px) {
-.view-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-}
-.view-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.375rem;
-        padding: 0.875rem 0.5rem;
-        border: 1.5px solid var(--pv-border-subtle, #E5E7EB);
-        border-radius: var(--pv-radius, 12px);
-        background: transparent;
-        cursor: pointer;
-        font-family: inherit;
-        transition: all var(--pv-transition, 200ms ease);
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }
-.view-card:hover {
-        border-color: var(--pv-accent, #6366F1);
-        background: color-mix(in srgb, var(--pv-accent, #6366F1) 5%, transparent);
-      }
-.view-card--active {
-        border-color: var(--pv-accent, #6366F1);
-        background: color-mix(in srgb, var(--pv-accent, #6366F1) 10%, transparent);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--pv-accent, #6366F1) 20%, transparent);
-      }
-.view-icon {
-        fill: var(--pv-text-secondary, #6B7280);
-        transition: fill var(--pv-transition, 200ms ease);
-      }
-.view-card--active .view-icon,
-      .view-card:hover .view-icon {
-        fill: var(--pv-accent, #6366F1);
-      }
-.view-label {
-        font-size: 0.8125rem;
-        font-weight: 500;
-        color: var(--pv-text-secondary, #6B7280);
-        transition: color var(--pv-transition, 200ms ease);
-      }
-.view-card--active .view-label,
-      .view-card:hover .view-label {
-        color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
-      }
 @media (max-width: 479px) {
 .field-group { margin-bottom: 1rem; }
-.view-grid { grid-template-columns: repeat(2, 1fr); }
 }
     `,
   ];

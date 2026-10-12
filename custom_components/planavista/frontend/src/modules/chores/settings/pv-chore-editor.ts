@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -118,6 +119,7 @@ export class PvChoreEditor extends LitElement {
   }
 
   static styles = [
+    segmentedStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -348,7 +350,7 @@ export class PvChoreEditor extends LitElement {
             @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })} />
         </label>
       </div>
-      <div class="segmented" role="group" aria-label="Schedule" style="margin-top: 14px">
+      <div class="pv-seg stretch" role="group" aria-label="Schedule" style="margin-top: 14px">
         ${(['plan', 'once', 'repeats'] as Schedule[]).map(schedule => html`
           <button type="button" aria-pressed=${d.schedule === schedule ? 'true' : 'false'}
             @click=${() => this._change({ schedule })}>${schedule === 'plan' ? 'Plan' : schedule === 'once' ? 'Once' : 'Repeats'}</button>
@@ -412,7 +414,7 @@ export class PvChoreEditor extends LitElement {
         </div>
         ${shared ? html`
           <div class="row">
-            <div class="segmented" role="group" aria-label="How the time is shared">
+            <div class="pv-seg stretch" role="group" aria-label="How the time is shared">
               <button type="button" aria-pressed=${d.split === 'shared' ? 'true' : 'false'}
                 @click=${() => this._change({ split: 'shared', shares: evenShares(d.assignees, d.minutes) })}>Split the time</button>
               <button type="button" aria-pressed=${d.split === 'each' ? 'true' : 'false'}
@@ -466,7 +468,7 @@ export class PvChoreEditor extends LitElement {
           ${this._stepper(d.minutes, minutes => this._setMinutes(minutes), 'time')}
         </div>
         <div class="row">
-          <div class="segmented" role="group" aria-label="Each day or each week">
+          <div class="pv-seg stretch" role="group" aria-label="Each day or each week">
             <button type="button" aria-pressed=${d.per === 'day' ? 'true' : 'false'} @click=${() => this._change({ per: 'day' })}>Each day</button>
             <button type="button" aria-pressed=${d.per === 'week' ? 'true' : 'false'} @click=${() => this._change({ per: 'week' })}>Each week</button>
           </div>
@@ -549,7 +551,7 @@ export class PvChoreEditor extends LitElement {
       <h2 class="section-label">When</h2>
       <div class="group">
         <div class="row">
-          <div class="segmented" role="group" aria-label="When">
+          <div class="pv-seg stretch" role="group" aria-label="When">
             ${(['on', 'by', 'any'] as const).map(when => html`
               <button type="button" aria-pressed=${d.once_when === when ? 'true' : 'false'} @click=${() => this._change({ once_when: when })}>
                 ${when === 'on' ? 'On a day' : when === 'by' ? 'By a date' : 'Any time'}
@@ -590,7 +592,7 @@ export class PvChoreEditor extends LitElement {
         @pv-recurrence-change=${(e: CustomEvent) => this._change({ recurrence: e.detail })}></pv-recurrence-picker>
       ${freq !== 'DAILY' ? html`
         <h2 class="section-label">Each time</h2>
-        <div class="segmented" role="group" aria-label="Each time">
+        <div class="pv-seg stretch" role="group" aria-label="Each time">
           <button type="button" aria-pressed=${d.window === 'day' ? 'true' : 'false'} @click=${() => this._change({ window: 'day' })}>On the day</button>
           <button type="button" aria-pressed=${d.window === 'period' ? 'true' : 'false'} @click=${() => this._change({ window: 'period' })}>
             ${freq === 'MONTHLY' ? 'Any time that month' : 'Any time that week'}
@@ -631,7 +633,7 @@ export class PvChoreEditor extends LitElement {
           okText(d, members) || undefined)}
         <div class="row">
           <span class="row-text">Stars<span class="row-sub">${d.stars === null ? `★ ${automatic} each, from the time` : `★ ${d.stars} each`}</span></span>
-          <div class="segmented" role="group" aria-label="Stars" style="flex: 0 1 260px">
+          <div class="pv-seg stretch" role="group" aria-label="Stars" style="flex: 0 1 260px">
             <button type="button" aria-pressed=${d.stars === null ? 'true' : 'false'} @click=${() => this._change({ stars: null })}>Automatic</button>
             <button type="button" aria-pressed=${d.stars !== null ? 'true' : 'false'}
               @click=${() => this._change({ stars: d.stars ?? automatic })}>Set</button>

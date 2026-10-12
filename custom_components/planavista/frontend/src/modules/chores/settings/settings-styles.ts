@@ -183,35 +183,12 @@ export const choresSettingsStyles = css`
     font-weight: 600;
   }
 
-  .segmented {
-    display: flex;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--pv-text, #1A1B1E) 6%, transparent);
-  }
 
-  .row > .segmented {
+  .row > .pv-seg {
     flex: 1;
   }
 
-  .segmented button {
-    flex: 1;
-    min-height: 44px;
-    padding: 0 12px;
-    border: none;
-    border-radius: 9px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
 
-  .segmented button[aria-pressed='true'] {
-    background: var(--pv-card-bg, #FFFFFF);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-    font-weight: 600;
-  }
 
   .stepper {
     display: inline-flex;

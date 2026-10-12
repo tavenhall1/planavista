@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { keyed } from 'lit/directives/keyed.js';
@@ -62,6 +63,7 @@ export class PvChoresMyDay extends LitElement {
   @property({ attribute: false }) minute = 0;
 
   static styles = [
+    segmentedStyles,
     choresStyles,
     css`
       :host {
@@ -155,31 +157,8 @@ export class PvChoresMyDay extends LitElement {
         font-size: 0.9375rem;
       }
 
-      .seg {
-        display: inline-flex;
-        padding: 3px;
-        border-radius: 10px;
-        background: var(--pv-seg, #ECECE8);
-      }
 
-      .seg button {
-        min-height: 40px;
-        padding: 0 12px;
-        border: none;
-        border-radius: 8px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.875rem;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .seg button[aria-pressed='true'] {
-        background: var(--pv-seg-on, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-      }
 
       .goal {
         margin-top: 12px;
@@ -458,7 +437,7 @@ export class PvChoresMyDay extends LitElement {
               <div class="name">${member.name}</div>
               <div class="line">${column.line}</div>
             </div>
-            <div class="seg" role="group" aria-label="My day style">
+            <div class="pv-seg" role="group" aria-label="My day style">
               ${STYLES.map(s => html`
                 <button type="button" aria-pressed=${s.id === style ? 'true' : 'false'}
                   @click=${() => this._fire('pv-my-day-style', { member: member.id, style: s.id })}>${s.label}</button>

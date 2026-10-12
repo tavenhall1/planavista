@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -49,6 +50,7 @@ export class PvChoresQuickAdd extends LitElement {
   private _closing = false;
 
   static styles = [
+    segmentedStyles,
     buttonStyles,
     sheetStyles,
     css`
@@ -163,31 +165,8 @@ export class PvChoresQuickAdd extends LitElement {
         border-radius: 50%;
       }
 
-      .seg {
-        display: inline-flex;
-        padding: 3px;
-        border-radius: 10px;
-        background: var(--pv-seg, #ECECE8);
-        margin-bottom: 10px;
-      }
 
-      .seg button {
-        min-height: 40px;
-        padding: 0 14px;
-        border: none;
-        border-radius: 8px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .seg button[aria-pressed='true'] {
-        background: var(--pv-seg-on, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-      }
 
       .chips {
         display: flex;
@@ -361,7 +340,7 @@ export class PvChoresQuickAdd extends LitElement {
         </section>
         <section>
           <span class="title">When</span>
-          <div class="seg" role="group" aria-label="When">
+          <div class="pv-seg stretch" role="group" aria-label="When">
             ${when.map(w => html`<button type="button" aria-pressed=${d.when === w.id ? 'true' : 'false'} @click=${() => this._set({ when: w.id })}>${w.label}</button>`)}
           </div>
           ${d.when === 'by' ? html`

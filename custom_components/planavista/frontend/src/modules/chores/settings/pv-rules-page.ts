@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'lit';
+import { choiceStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -31,6 +32,7 @@ export class PvRulesPage extends LitElement {
   @state() private _pending: Partial<ChoresSettings> = {};
 
   static styles = [
+    choiceStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -40,19 +42,7 @@ export class PvRulesPage extends LitElement {
         max-width: 640px;
       }
 
-      .radio {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        cursor: pointer;
-      }
 
-      .radio input {
-        width: 20px;
-        height: 20px;
-        margin-top: 2px;
-        accent-color: var(--pv-accent, #6366F1);
-      }
 
       .row .pv-select {
         max-width: 160px;
@@ -73,15 +63,16 @@ export class PvRulesPage extends LitElement {
     const firstDay = this.data?.display?.first_day === 'sunday' ? 'Sunday' : 'Monday';
     return html`
       <h2 class="section-label">If a chore is missed</h2>
-      <div class="group" role="radiogroup" aria-label="If a chore is missed">
+      <div class="pv-choices" role="radiogroup" aria-label="If a chore is missed">
         ${POLICIES.map(policy => html`
-          <label class="row radio">
+          <label class="pv-choice">
             <input type="radio" name="missed" .checked=${settings.missed === policy.id}
               @change=${() => this._save({ missed: policy.id })} />
-            <span class="row-text">
-              <span class="row-title">${policy.label}</span>
-              <span class="row-sub">${policy.description}</span>
+            <span class="choice-text">
+              <span class="choice-title">${policy.label}</span>
+              <span class="choice-sub">${policy.description}</span>
             </span>
+            <span class="choice-check" aria-hidden="true">✓</span>
           </label>
         `)}
       </div>

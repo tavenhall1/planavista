@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { choiceStyles, segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -115,6 +116,8 @@ export class PvSettingsPerson extends LitElement {
   }
 
   static styles = [
+    segmentedStyles,
+    choiceStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -234,30 +237,9 @@ export class PvSettingsPerson extends LitElement {
         max-width: 240px;
       }
 
-      .radios {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
 
-      .radio {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-height: 48px;
-        cursor: pointer;
-      }
 
-      .radio input {
-        width: 20px;
-        height: 20px;
-        accent-color: var(--pv-accent, #6366F1);
-      }
 
-      .radio .age-hint {
-        color: var(--pv-text-secondary, #6B7280);
-        font-size: 0.875rem;
-      }
 
       .toggle-row {
         display: flex;
@@ -385,7 +367,7 @@ export class PvSettingsPerson extends LitElement {
     return html`
       <fieldset class="field">
         <legend>Picture</legend>
-        <div class="segmented" role="group" aria-label="Picture">
+        <div class="pv-seg stretch" role="group" aria-label="Picture">
           <button type="button" aria-pressed=${kind === 'initial' ? 'true' : 'false'}
             @click=${() => choose({ initial: true })}>Initial</button>
           <button type="button" aria-pressed=${kind === 'emoji' ? 'true' : 'false'}
@@ -417,15 +399,15 @@ export class PvSettingsPerson extends LitElement {
     return html`
       <fieldset class="field">
         <legend>Age group</legend>
-        <div class="radios">
+        <div class="pv-choices">
           ${AGE_GROUP_CHOICES.map(choice => {
             const hint = this._choresOn ? AGE_GROUP_CHORES_HINTS[choice.id] : choice.hint;
             return html`
-              <label class="radio">
+              <label class="pv-choice">
                 <input type="radio" name="age-group" .checked=${this._draft.age_group === choice.id}
                   @change=${() => this._changeDraft(withAgeGroup(this._draft, choice.id))} />
-                <span>${choice.label}</span>
-                ${hint ? html`<span class="age-hint">${hint}</span>` : nothing}
+                <span class="choice-text"><span class="choice-title">${choice.label}</span>${hint ? html`<span class="choice-sub">${hint}</span>` : nothing}</span>
+                <span class="choice-check" aria-hidden="true">✓</span>
               </label>
             `;
           })}

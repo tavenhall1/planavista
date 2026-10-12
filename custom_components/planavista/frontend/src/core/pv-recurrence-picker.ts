@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../styles/controls';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { Freq, RecurrenceValue, WEEKDAYS, Weekday, ordinal, recurrenceSummary, weekdayOf } from './recurrence';
@@ -22,7 +23,9 @@ const UNITS: Record<Freq, [string, string]> = { DAILY: ['day', 'days'], WEEKLY: 
 export class PvRecurrencePicker extends LitElement {
   @property({ attribute: false }) value!: RecurrenceValue;
 
-  static styles = css`
+  static styles = [
+    segmentedStyles,
+    css`
     :host {
       display: block;
     }
@@ -53,31 +56,11 @@ export class PvRecurrencePicker extends LitElement {
       min-width: 80px;
     }
 
-    .segmented {
-      display: flex;
+    .row > .pv-seg {
       flex: 1 1 100%;
-      gap: 4px;
-      padding: 4px;
-      border-radius: 12px;
-      background: color-mix(in srgb, var(--pv-text, #1A1B1E) 6%, transparent);
     }
 
-    .segmented button {
-      flex: 1;
-      min-height: 44px;
-      border: none;
-      border-radius: 9px;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-    }
 
-    .segmented button[aria-pressed='true'] {
-      background: var(--pv-card-bg, #FFFFFF);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-      font-weight: 600;
-    }
 
     .stepper {
       display: inline-flex;
@@ -146,7 +129,8 @@ export class PvRecurrencePicker extends LitElement {
       font-size: 0.8125rem;
       color: var(--pv-text-secondary, #6B7280);
     }
-  `;
+  `,
+  ];
 
   render() {
     const v = this.value;
@@ -155,7 +139,7 @@ export class PvRecurrencePicker extends LitElement {
     return html`
       <div class="group">
         <div class="row">
-          <div class="segmented" role="group" aria-label="Repeats">
+          <div class="pv-seg stretch" role="group" aria-label="Repeats">
             ${(['DAILY', 'WEEKLY', 'MONTHLY'] as Freq[]).map(freq => html`
               <button type="button" aria-pressed=${v.freq === freq ? 'true' : 'false'} @click=${() => this._freq(freq)}>
                 ${freq === 'DAILY' ? 'Every day' : freq === 'WEEKLY' ? 'Every week' : 'Every month'}
@@ -204,7 +188,7 @@ export class PvRecurrencePicker extends LitElement {
         </div>
         <div class="row">
           <span class="label">Ends</span>
-          <div class="segmented" role="group" aria-label="Ends">
+          <div class="pv-seg stretch" role="group" aria-label="Ends">
             ${(['never', 'count', 'until'] as const).map(ends => html`
               <button type="button" aria-pressed=${v.ends === ends ? 'true' : 'false'} @click=${() => this._set({ ends })}>
                 ${ends === 'never' ? 'Never' : ends === 'count' ? 'After a number of times' : 'On a date'}

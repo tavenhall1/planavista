@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -65,6 +66,7 @@ export class PvSettingsCustomize extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    segmentedStyles,
     buttonStyles,
     formStyles,
     settingsPageStyles,
@@ -209,7 +211,7 @@ export class PvSettingsCustomize extends LitElement {
         border: 1px solid var(--pv-border, #E7E7E3);
       }
 
-      .editor .pill-group {
+      .editor .pv-seg {
         margin-bottom: 12px;
       }
 
@@ -228,9 +230,6 @@ export class PvSettingsCustomize extends LitElement {
         color: var(--pv-text-secondary, #5F6670);
       }
 
-      .pill-btn {
-        min-height: 48px;
-      }
 
       .border-custom {
         display: flex;
@@ -359,12 +358,12 @@ export class PvSettingsCustomize extends LitElement {
     const hex = own && own.startsWith('#') ? own : '';
     return html`
       <div class="editor" aria-label=${`${ROWS.find(r => r.key === key)?.label} for ${VERSION_LABELS[mode]}`} role="group">
-        <div class="pill-group">
-          <button class="pill-btn ${own === undefined ? 'pill-btn--active' : ''}" type="button"
+        <div class="pv-seg">
+          <button type="button"
             aria-pressed=${own === undefined ? 'true' : 'false'}
             @click=${(e: Event) => this._setColor(mode, key, undefined, e)}>${unset}</button>
           ${key === 'header' ? HEADER_CHOICES.map(choice => html`
-            <button class="pill-btn ${own === choice.key ? 'pill-btn--active' : ''}" type="button"
+            <button type="button"
               aria-pressed=${own === choice.key ? 'true' : 'false'}
               @click=${(e: Event) => this._setColor(mode, key, choice.key, e)}>${choice.label}</button>
           `) : nothing}
@@ -391,9 +390,9 @@ export class PvSettingsCustomize extends LitElement {
           return html`
             <div role="group" aria-label=${group.label}>
               <span class="shape-label">${group.label}</span>
-              <div class="pill-group">
+              <div class="pv-seg">
                 ${group.options.map(([value, label]) => html`
-                  <button class="pill-btn ${chosen === value ? 'pill-btn--active' : ''}" type="button"
+                  <button type="button"
                     aria-pressed=${chosen === value ? 'true' : 'false'}
                     @click=${(e: Event) => this._setShape({ [group.key]: value } as Partial<ThemeShape>, e)}>${label}</button>
                 `)}
@@ -403,14 +402,14 @@ export class PvSettingsCustomize extends LitElement {
         })}
         <div role="group" aria-label="Avatar border">
           <span class="shape-label">Avatar border</span>
-          <div class="pill-group">
-            <button class="pill-btn ${border === 'primary' ? 'pill-btn--active' : ''}" type="button"
+          <div class="pv-seg">
+            <button type="button"
               aria-pressed=${border === 'primary' ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: 'primary' }, e)}>Their color</button>
-            <button class="pill-btn ${border === 'white' || border === 'light' ? 'pill-btn--active' : ''}" type="button"
+            <button type="button"
               aria-pressed=${border === 'white' || border === 'light' ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: 'white' }, e)}>White</button>
-            <button class="pill-btn ${custom ? 'pill-btn--active' : ''}" type="button"
+            <button type="button"
               aria-pressed=${custom ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: custom ? border : CUSTOM_BORDER }, e)}>Custom</button>
           </div>
