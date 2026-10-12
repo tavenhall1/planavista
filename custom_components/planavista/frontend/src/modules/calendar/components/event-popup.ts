@@ -80,21 +80,7 @@ export class PVEventPopup extends LitElement {
         outline: none;
       }
 
-      .who {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 6px 0 0;
-        color: var(--pv-text-secondary, #5F6670);
-        font-weight: 600;
-      }
 
-      .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
 
       .people {
         display: flex;
@@ -201,6 +187,10 @@ export class PVEventPopup extends LitElement {
     const event = this.event;
     if (!event) return nothing;
     const shared = participantsOf(event);
+    // Everyone it is for, as chips, the same way in every view (even for one person).
+    const people = shared.length
+      ? shared
+      : [{ entity_id: event.calendar_entity_id, calendar_name: event.calendar_name, calendar_color: event.calendar_color }];
     const when = eventWhen(event, this.timeFormat, this.now);
     const status = eventStatus(event, this.now);
     const calendar = this.calendars.find(c => c.entity_id === event.calendar_entity_id);
@@ -215,18 +205,14 @@ export class PVEventPopup extends LitElement {
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="event-title" @keydown=${this._sheet.onKeydown}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>
-        ${shared.length > 1 ? html`
-          <div class="people">
-            ${shared.map(p => html`
-              <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
-                ${p.calendar_name}
-                ${p.entity_id === this._organizerEntityId ? html`<span class="tag">Organizer</span>` : nothing}
-              </span>
-            `)}
-          </div>
-        ` : html`
-          <div class="who"><span class="dot" style="background: ${event.calendar_color}"></span>${event.calendar_name}</div>
-        `}
+        <div class="people">
+          ${people.map(p => html`
+            <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
+              ${p.calendar_name}
+              ${people.length > 1 && p.entity_id === this._organizerEntityId ? html`<span class="tag">Organizer</span>` : nothing}
+            </span>
+          `)}
+        </div>
         ${status ? html`<div class="status"><span class="badge ${status.tone}">${status.words}</span></div>` : nothing}
 
         <div class="rows">

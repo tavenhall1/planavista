@@ -5,7 +5,7 @@ import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../../../styles/shared';
-import { formatTime } from '../../../utils/date-utils';
+import { formatTime, parseEventDate } from '../../../utils/date-utils';
 import {
   isAllDayEvent,
   isEventPast,
@@ -18,8 +18,16 @@ import {
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { contrastText } from '../../../core/color';
 import { stripStart } from '../../../core/people-strip';
+import { groupSameEvents, sameEventKey } from '../calendar-derive';
 import type { Layout } from '../../../core/layout';
 import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
+
+/** Enough of a person to draw their face on an event. */
+interface FaceOf {
+  calendar_name: string;
+  calendar_color: string;
+  person_entity: string;
+}
 
 /** Today's chore progress for one person (spec 13.9: rings in the Day view). */
 export type ProgressOf = (memberId: string) => { done: number; pending: number; due: number } | null;
@@ -149,7 +157,11 @@ export class PVViewDay extends LitElement {
       }
 
       .all-day-pill {
-        display: block;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        box-sizing: border-box;
         min-width: 0;
         padding: 6px 14px;
         border-radius: 9999px;
@@ -161,6 +173,26 @@ export class PVViewDay extends LitElement {
         text-overflow: ellipsis;
         white-space: nowrap;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+      }
+
+      .all-day-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .all-day-pill .event-participants {
+        margin-top: 0;
+        flex-shrink: 0;
+      }
+
+      /* On the pill, a ring in the pill's ink keeps the face of the person whose color it is visible. */
+      .all-day-pill .event-participant-initial,
+      .all-day-pill .event-participant-avatar {
+        width: 20px;
+        height: 20px;
+        border-color: currentColor;
+        font-size: 0.5625rem;
       }
 
       .all-day-chip.past .all-day-pill { opacity: 0.45; }
@@ -339,6 +371,8 @@ export class PVViewDay extends LitElement {
         position: absolute;
         left: 3px;
         right: 3px;
+        /* Its width is the lane's less the gaps, padding and accent included, so it never runs into the next lane. */
+        box-sizing: border-box;
         padding: 6px 10px;
         border-radius: var(--pv-radius-sm, 4px);
         border-left: 3px solid var(--event-color);
@@ -378,6 +412,39 @@ export class PVViewDay extends LitElement {
       .event-participants {
         display: flex;
         margin-top: 2px;
+      }
+
+      /* As on Week's chips: everyone's faces at the top right, so a short event keeps them in view. */
+      .positioned-event .event-participants {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        margin: 0;
+      }
+
+      .positioned-event.brief {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+      }
+
+      .positioned-event.brief .event-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .positioned-event.brief .event-time {
+        margin-top: 0;
+        flex-shrink: 0;
+      }
+
+      .positioned-event.shared .event-title,
+      .positioned-event.shared .event-time {
+        padding-right: 40px;
       }
 
       .event-participant-avatar {
@@ -688,6 +755,34 @@ export class PVViewDay extends LitElement {
     });
   }
 
+  /** Who an event is for, as one copy's calendar names them. */
+  private _participant(event: CalendarEvent, calendars: CalendarConfig[]): FaceOf {
+    const cal = calendars.find(c => c.entity_id === event.calendar_entity_id);
+    return {
+      calendar_name: event.calendar_name || cal?.display_name || '',
+      calendar_color: event.calendar_color || cal?.color || '',
+      person_entity: cal?.person_entity || '',
+    };
+  }
+
+  /** The faces of everyone an event is for: their photo, or their initial on their color. */
+  private _faces(people: readonly FaceOf[]) {
+    return html`
+      <div class="event-participants">
+        ${people.map(p => {
+          const avatar = p.person_entity ? getPersonAvatar(this.hass, p.person_entity) : null;
+          const name = p.person_entity ? getPersonName(this.hass, p.person_entity) : p.calendar_name;
+          return avatar
+            ? html`<img class="event-participant-avatar" src="${avatar}" alt="${name}"
+                style="--participant-color: ${p.calendar_color}" />`
+            : html`<div class="event-participant-initial"
+                style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}"
+              >${name[0]?.toUpperCase() || '?'}</div>`;
+        })}
+      </div>
+    `;
+  }
+
   render() {
     const visible = filterVisibleEvents(this.events, this.hiddenCalendars);
     const dateStart = new Date(this.currentDate);
@@ -743,15 +838,23 @@ export class PVViewDay extends LitElement {
           <div class="all-day-section ${allDayEvents.some(e => keyOf(e) === chosenKey) ? '' : 'none-chosen'}">
             <div class="all-day-gutter">All day</div>
             <div class="all-day-events">
-              ${allDayEvents.map(e => html`
-                <div
-                  class="all-day-chip${isEventPast(e) ? ' past' : ''}${keyOf(e) !== chosenKey ? ' other' : ''}"
-                  role="button"
-                  tabindex="0"
-                  @click=${() => this._onEventClick(e)}
-                  @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, e)}
-                ><span class="all-day-pill" style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}">${e.summary}</span></div>
-              `)}
+              ${groupSameEvents(allDayEvents).map(copies => {
+                // One pill per event, with everyone's faces when it is on several calendars (spec 3.3).
+                const e = copies.find(c => keyOf(c) === chosenKey) ?? copies[0];
+                const mine = copies.some(c => keyOf(c) === chosenKey);
+                return html`
+                  <div
+                    class="all-day-chip${isEventPast(e) ? ' past' : ''}${mine ? '' : ' other'}"
+                    role="button"
+                    tabindex="0"
+                    @click=${() => this._onEventClick(e)}
+                    @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, e)}
+                  ><span class="all-day-pill" style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}">
+                    <span class="all-day-name">${e.summary}</span>
+                    ${copies.length > 1 ? this._faces(copies.map(c => this._participant(c, visibleCalendars))) : nothing}
+                  </span></div>
+                `;
+              })}
             </div>
           </div>
         ` : nothing}
@@ -946,12 +1049,14 @@ export class PVViewDay extends LitElement {
             : '3px';
 
           // Check if this is a shared event with multiple participants
-          const sharedInfo = event.uid ? this.sharedEventMap.get(event.uid) : undefined;
+          const sharedInfo = this.sharedEventMap.get(sameEventKey(event));
           const isShared = sharedInfo && sharedInfo.length > 1;
+          // Under 45 minutes, the title and time share one line so the chip fits its slot.
+          const brief = parseEventDate(event.end).getTime() - parseEventDate(event.start).getTime() < 45 * 60_000;
 
           return html`
             <div
-              class="positioned-event${isEventPast(event) ? ' past' : ''}"
+              class="positioned-event${isEventPast(event) ? ' past' : ''}${isShared ? ' shared' : ''}${brief ? ' brief' : ''}"
               style="
                 top: ${pos.top}%;
                 height: ${pos.height}%;
@@ -968,23 +1073,7 @@ export class PVViewDay extends LitElement {
             >
               <div class="event-title">${event.summary}</div>
               <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
-              ${isShared ? html`
-                <div class="event-participants">
-                  ${sharedInfo!.map(p => {
-                    const avatar = p.person_entity ? getPersonAvatar(this.hass, p.person_entity) : null;
-                    const name = p.person_entity
-                      ? getPersonName(this.hass, p.person_entity)
-                      : p.calendar_name;
-                    return avatar
-                      ? html`<img class="event-participant-avatar"
-                          src="${avatar}" alt="${name}"
-                          style="--participant-color: ${p.calendar_color}" />`
-                      : html`<div class="event-participant-initial"
-                          style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}"
-                        >${name[0]?.toUpperCase() || '?'}</div>`;
-                  })}
-                </div>
-              ` : nothing}
+              ${isShared ? this._faces(sharedInfo!) : nothing}
             </div>
           `;
         })}

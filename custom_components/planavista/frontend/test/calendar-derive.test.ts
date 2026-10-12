@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  calendarWatchedEntities, deriveCalendarData, eventForPopup, initialView, ownersOf, selectCalendars,
+  calendarWatchedEntities, deriveCalendarData, eventForPopup, groupSameEvents, initialView, ownersOf, sameEventKey, selectCalendars,
 } from '../src/modules/calendar/calendar-derive';
 import type { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../src/types';
 
@@ -41,14 +41,25 @@ describe('deriveCalendarData', () => {
     expect(deriveCalendarData(d, card(), new Set(['calendar.test_blair'])).visibleEvents.map(e => e.uid)).toEqual(['a']);
   });
 
-  it('groups shared events by uid, once per calendar, and skips events without a uid', () => {
+  it("groups the copies of one event (same title and times), once per calendar, whatever their ids (milestone 8)", () => {
     const d = data([cal('calendar.test_alex', 'person.alex'), cal('calendar.test_blair')], [
-      ev('calendar.test_alex', 'dinner'), ev('calendar.test_blair', 'dinner'), ev('calendar.test_alex', 'dinner'), ev('calendar.test_alex'),
+      ev('calendar.test_alex', 'dinner'), ev('calendar.test_blair', 'its-own'), ev('calendar.test_alex', 'dinner'), ev('calendar.test_alex'),
+      { ...ev('calendar.test_blair', 'later'), start: '2026-10-14T18:00:00-05:00', end: '2026-10-14T19:00:00-05:00' },
     ]);
     const map = deriveCalendarData(d, card(), new Set()).sharedEventMap;
-    expect([...map.keys()]).toEqual(['dinner']);
-    expect(map.get('dinner')!.map(p => [p.entity_id, p.person_entity])).toEqual([
+    const key = sameEventKey(ev('calendar.test_alex'));
+    expect(map.get(key)!.map(p => [p.entity_id, p.person_entity])).toEqual([
       ['calendar.test_alex', 'person.alex'], ['calendar.test_blair', ''],
+    ]);
+    expect(map.get(sameEventKey({ ...ev('calendar.test_blair'), start: '2026-10-14T18:00:00-05:00', end: '2026-10-14T19:00:00-05:00' }))!.length).toBe(1);
+  });
+
+  it("puts the copies of one event together, in order, for Day's all-day row", () => {
+    const trip = (calendar: string) => ({ ...ev(calendar), summary: 'Weekend trip' });
+    const groups = groupSameEvents([trip('calendar.test_alex'), ev('calendar.test_alex'), trip('calendar.test_blair')]);
+    expect(groups.map(g => g.map(e => `${e.summary} ${e.calendar_entity_id}`))).toEqual([
+      ['Weekend trip calendar.test_alex', 'Weekend trip calendar.test_blair'],
+      ['Dinner calendar.test_alex'],
     ]);
   });
 });
@@ -94,6 +105,12 @@ describe('eventForPopup (what the event popup opens with)', () => {
     } as CalendarEvent;
     // Each person's copy keeps its own uid, so a delete for everyone reaches every copy.
     expect(people(eventForPopup(merged, [merged, ev('calendar.test_casey', 'two')]))).toEqual([{ ...blair, uid: 'one' }, { ...casey, uid: 'two' }]);
+  });
+
+  it("finds the other copies of an event by its title and times, as Week merges them, so Day's lanes open the same details (milestone 8)", () => {
+    const a = ev('calendar.test_blair', 'one');
+    const b = ev('calendar.test_casey', 'two');
+    expect(people(eventForPopup(a, [a, b]))).toEqual([{ ...blair, uid: 'one' }, { ...casey, uid: 'two' }]);
   });
 
   it('leaves an event on one calendar as it is', () => {
