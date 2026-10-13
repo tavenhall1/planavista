@@ -5581,6 +5581,9 @@ function e(e,t,s,i){var a,n=arguments.length,o=n<3?t:null===i?i=Object.getOwnPro
     .waiting {
       font-size: 0.8125rem;
       font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+      text-wrap: balance;
       color: var(--pv-accent-tint-ink, #3B3BB0);
     }
 
