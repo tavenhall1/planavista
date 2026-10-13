@@ -11,6 +11,12 @@ describe('round 2 polish', () => {
     expect(column).toMatch(/model\.parts\.map\(\(part, i\) => html`\$\{i \? ' ' : ''\}<span class=\$\{part\.kind\}>\$\{i \? '· ' : ''\}\$\{part\.text\}<\/span>`\)/);
   });
 
+  it("a chore deleted on another screen while its options are open is named in the toast", () => {
+    const module = read('modules/chores/pv-chores-module.ts');
+    expect(module).toMatch(/this\._optionNames\.set\(sheet, found\.model\.title\);/);
+    expect(module).toMatch(/text: `\$\{this\._optionNames\.get\(sheet\) \?\? this\._choreName\(sheet\.key\)\} changed on another screen\.`/);
+  });
+
   it("a long name in a people strip ends in an ellipsis instead of pushing the others off", () => {
     const controls = read('styles/controls.ts');
     expect(controls).toMatch(/\.pv-person \{[^}]*max-width: 88px;/);

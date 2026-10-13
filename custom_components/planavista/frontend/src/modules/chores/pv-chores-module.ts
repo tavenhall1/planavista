@@ -756,6 +756,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   /** An option this screen chose is running: its own toast says what happened. */
   private _acting = false;
 
+  /** Each options sheet's title as last shown, so a chore deleted on another screen is still named (round 2). */
+  private readonly _optionNames = new WeakMap<object, string>();
+
   private _choreName(key: string): string {
     const id = key.split('|')[0];
     return this.service?.board()?.chores.find(chore => chore.id === id)?.name ?? 'That chore';
@@ -1080,10 +1083,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         queueMicrotask(() => {
           if (this._sheet !== sheet) return;
           this._sheet = null;
-          if (!this._acting) this.showToast({ id: `moved-${sheet.key}`, text: `${this._choreName(sheet.key)} changed on another screen.` });
+          if (!this._acting) this.showToast({ id: `moved-${sheet.key}`, text: `${this._optionNames.get(sheet) ?? this._choreName(sheet.key)} changed on another screen.` });
         });
         return nothing;
       }
+      this._optionNames.set(sheet, found.model.title);
       return html`
         <pv-chore-options .layout=${this.layout} .model=${found.model} color=${memberColor(found.owner, this.mode)}
           .history=${sheet.history} ?busy=${sheet.busy}
