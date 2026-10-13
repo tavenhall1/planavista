@@ -31,11 +31,12 @@ export const sheetStyles = css`
     box-sizing: border-box;
     width: 100%;
     max-height: 92vh;
+    max-height: 92dvh;
     overflow: auto;
     background: var(--pv-card-bg, #FFFFFF);
     color: var(--pv-text, #1A1B1E);
     border-radius: 20px 20px 0 0;
-    padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    padding: 20px 20px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
   }
 

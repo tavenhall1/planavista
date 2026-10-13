@@ -51,3 +51,21 @@ describe("the card's PIN sheet gives focus back to the control that asked", () =
     expect(gate).toMatch(/this\._sheetOpener = deepActiveElement\(this\.renderRoot as ShadowRoot\);/);
   });
 });
+
+// Round 1: on an iPhone held sideways (956 by 440) the keypad's last row
+// (Cancel, 0, delete) fell below the sheet's 92vh, so a PIN with a 0 couldn't
+// be typed without finding out the panel scrolls.
+describe('the keypad fits a short screen', () => {
+  it('shrinks its keys when the screen is short, still past a 44 px target', () => {
+    const pin = read('shell/pv-pin-sheet.ts');
+    const short = pin.slice(pin.indexOf('@media (max-height: 560px) {'));
+    expect(short).toMatch(/\.keypad \{\s*grid-template-columns: repeat\(3, 52px\);/);
+    expect(short).toMatch(/\.key \{\s*width: 52px;\s*height: 52px;/);
+  });
+
+  it("sheets measure against the screen as shown and pad by Home Assistant's inset, as the bar does", () => {
+    const sheet = read('styles/sheet.ts');
+    expect(sheet).toMatch(/max-height: 92vh;\s*max-height: 92dvh;/);
+    expect(sheet).toMatch(/padding: 20px 20px calc\(20px \+ var\(--safe-area-inset-bottom, env\(safe-area-inset-bottom, 0px\)\)\);/);
+  });
+});
