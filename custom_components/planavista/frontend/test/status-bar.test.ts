@@ -82,10 +82,10 @@ describe('the keypad fits a short screen', () => {
 describe("the header's chips never run into the date or off the card", () => {
   const header = read('shell/pv-glance-header.ts');
 
-  it('a narrow landscape header moves its chips to their own line', () => {
+  it('a narrow landscape header moves its chips to their own line, unless the card is short (round 2)', () => {
     expect(header).toMatch(/<div class="left">\$\{this\._weather\(32, 'condition'\)\}<div class="inline">\$\{this\._chips\(primary\)\}<\/div><\/div>/);
     expect(header).toMatch(/<div class="below">\$\{this\._chips\(primary\)\}<\/div>/);
-    expect(header).toMatch(/@container \(max-width: 760px\) \{\s*:host\(\[shape='landscape'\]\) \.inline \{\s*display: none;\s*\}\s*:host\(\[shape='landscape'\]\) \.below \{\s*display: block;/);
+    expect(header).toMatch(/@container \(max-width: 760px\) \{\s*:host\(\[shape='landscape'\]\) \.inline \{\s*display: none;\s*\}\s*:host\(\[shape='landscape'\]:not\(\[short\]\)\) \.below \{\s*display: block;/);
   });
 
   it('a chip too long for its line ends in an ellipsis', () => {

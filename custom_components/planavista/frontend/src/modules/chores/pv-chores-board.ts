@@ -26,6 +26,8 @@ import type { PvChoresColumn } from './pv-chores-column';
 
 const GAP = 12;
 const NARROW_PX = 300;
+/** The narrowest a board column is drawn before the board wraps into rows (spec 12.3). */
+const MIN_COLUMN = 240;
 
 /**
  * pv-chores-board: everyone's today at once (spec 13.1, 12.3). People sit in
@@ -52,6 +54,7 @@ export class PvChoresBoard extends LitElement {
   @property({ attribute: false }) minute = 0;
 
   @state() private _width = 0;
+  @state() private _height = 0;
   @state() private _phoneIndex = 0;
   /** Someone tapped the strip or swiped: the board stays on their pick. */
   private _phonePicked = false;
@@ -93,8 +96,19 @@ export class PvChoresBoard extends LitElement {
         gap: ${GAP}px;
       }
 
-      pv-chores-column {
+      pv-chores-column,
+      .filler {
         flex: 1 1 0;
+      }
+
+      /* One row too wide for the board: the columns keep a readable width and scroll sideways (round 2). */
+      .row.scroll {
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+      }
+
+      .row.scroll pv-chores-column {
+        flex: 0 0 ${MIN_COLUMN - 20}px;
       }
 
 
@@ -127,7 +141,9 @@ export class PvChoresBoard extends LitElement {
     super.connectedCallback();
     this._observer = new ResizeObserver(entries => {
       const width = Math.round(entries[0]?.contentRect.width ?? 0);
+      const height = Math.round(entries[0]?.contentRect.height ?? 0);
       if (Math.abs(width - this._width) >= 1) this._width = width;
+      if (Math.abs(height - this._height) >= 1) this._height = height;
     });
     this._observer.observe(this);
   }
@@ -209,9 +225,10 @@ export class PvChoresBoard extends LitElement {
     `;
     if (this.layout === 'phone') return html`${banners}${this._phone(columns)}`;
     const width = Math.max(0, this._width - GAP * 2);
-    const rows = boardRows(columns.length, width || 1200, GAP);
+    const rows = boardRows(columns.length, width || 1200, GAP, MIN_COLUMN, this._height || Infinity);
     const perRow = Math.max(...rows, 1);
-    const narrow = width > 0 && (width - GAP * (perRow - 1)) / perRow < NARROW_PX;
+    const scroll = width > 0 && (width - GAP * (perRow - 1)) / perRow < MIN_COLUMN - 20;
+    const narrow = !scroll && width > 0 && (width - GAP * (perRow - 1)) / perRow < NARROW_PX;
     let index = 0;
     return html`
       ${banners}
@@ -219,7 +236,9 @@ export class PvChoresBoard extends LitElement {
         ${rows.map(count => {
           const slice = columns.slice(index, index + count);
           index += count;
-          return html`<div class="row">${repeat(slice, c => c.member.id, c => this._column(c, narrow))}</div>`;
+          // A short last row keeps every column the width of the others (round 2).
+          return html`<div class="row ${scroll ? 'scroll' : ''}">${repeat(slice, c => c.member.id, c => this._column(c, narrow))}${
+            Array.from({ length: perRow - count }, () => html`<div class="filler" aria-hidden="true"></div>`)}</div>`;
         })}
       </div>
     `;

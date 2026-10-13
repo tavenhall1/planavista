@@ -1,5 +1,5 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { Box, Layout, LayoutTracker } from '../core/layout';
+import { Box, Layout, LayoutTracker, isShort } from '../core/layout';
 
 type Host = ReactiveControllerHost & HTMLElement;
 
@@ -12,6 +12,8 @@ const TEXT_FIELDS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
  */
 export class LayoutController implements ReactiveController {
   layout: Layout = 'landscape';
+  /** Under 500 px tall: the header and bar keep to one line each. */
+  short = false;
   private readonly _tracker = new LayoutTracker();
   private _observer?: ResizeObserver;
 
@@ -41,6 +43,11 @@ export class LayoutController implements ReactiveController {
   private _measure(box: Box): void {
     if (box.width === 0 && box.height === 0) return; // not laid out yet
     const next = this._tracker.measure(box);
+    const short = isShort(box);
+    if (short !== this.short) {
+      this.short = short;
+      this._host.requestUpdate();
+    }
     if (next !== this.layout || this._host.getAttribute('layout') !== next) {
       this.layout = next;
       this._host.setAttribute('layout', next);

@@ -29,6 +29,8 @@ export interface BarModule {
  */
 export class PvNavBar extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** A short card (under 500 px tall): the buttons take their short labels, as on a phone (round 2). */
+  @property({ type: Boolean, reflect: true }) short = false;
   /** Segments, the pop-up button, or (when even that won't fit) the views on a row of their own. */
   @state() private _shape: BarShape = 'row';
   @state() private _menuOpen = false;
@@ -471,7 +473,7 @@ export class PvNavBar extends LitElement {
         ${this.actions.length ? html`
           <div class="actions">
             ${this.actions.map(action => {
-              const text = this.layout === 'phone' && action.short !== undefined ? action.short : action.label;
+              const text = (this.layout === 'phone' || this.short) && action.short !== undefined ? action.short : action.label;
               return html`
                 <button type="button" class="action ${action.tone === 'act' ? 'act' : ''}" aria-label=${action.label}
                   @click=${() => this._fire('pv-module-action', { id: action.id })}>

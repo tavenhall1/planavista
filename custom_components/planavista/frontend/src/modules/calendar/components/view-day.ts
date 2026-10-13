@@ -642,11 +642,16 @@ export class PVViewDay extends LitElement {
         .person-name { font-size: 0.8125rem; }
       }
 
-      /* short height: compact avatars */
+      /* short height: compact avatars, and the hours keep the room (round 2: 39 px of hours on a 384 px card) */
       @media (max-height: 500px) {
         .person-avatar, .person-initial { width: 32px; height: 32px; font-size: 0.875rem; }
         .person-header { padding: 0.375rem 0.25rem; gap: 3px; }
         .person-name { font-size: 0.75rem; }
+        .day-people .person-avatar,
+        .day-people .person-initial { width: 24px; height: 24px; margin: 2px; font-size: 0.6875rem; }
+        .day-container { position: relative; }
+        .day-empty { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none; background: color-mix(in srgb, var(--pv-card-bg, #FFFFFF) 90%, transparent); }
+        .day-empty-add { pointer-events: auto; }
       }
 
       /* tall height: larger avatars */
