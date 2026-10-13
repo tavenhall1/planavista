@@ -12,7 +12,7 @@ from .runtime import DATA_CHORES, ChoresRuntime
 
 
 class ChoresDoneBinarySensor(ChoresEntity, BinarySensorEntity):
-    """On when today's ring is closed: done or waiting for OK (nothing due counts as done)."""
+    """On when today's ring is closed: done or waiting for approval (nothing due counts as done)."""
 
     _attr_icon = "mdi:check-circle-outline"
 

@@ -22,7 +22,7 @@ export interface RewardCard {
   people: Array<{ member: Member; afford: boolean; more: number; asked: boolean }>;
   /** "Casey's goal". */
   goals: Member[];
-  /** Waiting for a parent: "⏳ Casey · Waiting for OK". */
+  /** Waiting for a parent: "⏳ Casey · Waiting for approval". */
   asked: Member[];
   /** Someone who can get it can afford it and hasn't asked yet. */
   canRedeem: boolean;
@@ -89,7 +89,7 @@ export function elsewhereText(people: Member[], rewardName: string): string {
 /** The card's button: Redeem while anyone can; otherwise why not. */
 export function redeemLabel(card: Pick<RewardCard, 'canRedeem' | 'asked'>): string {
   if (card.canRedeem) return 'Redeem';
-  return card.asked.length ? 'Waiting for OK' : 'Not enough stars yet';
+  return card.asked.length ? 'Waiting for approval' : 'Not enough stars yet';
 }
 
 /** "Recently: Casey redeemed Pick the weekend game on Sunday, approved by Blair" (spec 13.6). */
@@ -102,7 +102,7 @@ export function recentLine(board: Board, members: Member[]): string | null {
   return `Recently: ${who} redeemed ${last.name} ${dayWords(last.at.slice(0, 10), board.today) === 'today' ? 'today' : `on ${dayWords(last.at.slice(0, 10), board.today)}`}${by ? `, approved by ${by}` : ''}.`;
 }
 
-/** A reward's answers so far in the reward sheet (spec 14.5: picture, name, cost, needs an OK, who). */
+/** A reward's answers so far in the reward sheet (spec 14.5: picture, name, cost, needs approval, who). */
 export interface RewardDraft {
   name: string;
   icon: string;

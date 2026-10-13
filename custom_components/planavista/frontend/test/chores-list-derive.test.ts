@@ -58,9 +58,9 @@ describe('durationText', () => {
 });
 
 describe('choreRow', () => {
-  it('tags what needs an OK, plan-only chores, and chores nobody does yet', () => {
+  it('tags what needs approval, plan-only chores, and chores nobody does yet', () => {
     const row = (id: string) => choreRow(SAMPLE.find(a => a.id === id)!, MEMBERS, SETTINGS, TODAY);
-    expect(row('make_your_bed')).toMatchObject({ picture: '🛏️', tags: ['Needs an OK'], stars: 1 });
+    expect(row('make_your_bed')).toMatchObject({ picture: '🛏️', tags: ['Needs approval'], stars: 1 });
     expect(row('homework')).toMatchObject({ tags: ['Plan only'], stars: null });
     expect(row('wash_the_car')).toMatchObject({ tags: ['No one yet'], picture: '🚗' });
     expect(row('clean_the_bathroom').people.map(m => m.id)).toEqual(['blair', 'casey']);

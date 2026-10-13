@@ -42,7 +42,7 @@ describe('itemOptions (spec 13.3)', () => {
   it('offers a member planning, requests, done by someone else, and history', () => {
     const options = itemOptions(ctx({}));
     expect(ids(options.member)).toEqual(['plan_day', 'more_time', 'skip', 'done_by', 'history']);
-    expect(options.member[1]).toMatchObject({ tag: 'Needs an OK', hint: 'Sends a request to Alex and Blair.' });
+    expect(options.member[1]).toMatchObject({ tag: 'Needs approval', hint: 'Sends a request to Alex and Blair.' });
     expect(options.member[0].hint).toBe('Shows on that day, and it\'s still due Sunday.');
     expect(options.title).toBe('Yard work');
     expect(options.meta).toBe('Casey · Every week · 1 h · ★ 4');
@@ -74,7 +74,7 @@ describe('itemOptions (spec 13.3)', () => {
     expect(options.member[0].tag).toBe('🔒 Casey\'s PIN');
   });
 
-  it('offers unchecking a done one, and review for one waiting for OK', () => {
+  it('offers unchecking a done one, and review for one waiting for approval', () => {
     expect(ids(itemOptions(ctx({ item: { ...YARD, status: 'done' } })).member)).toEqual(['undo', 'done_by', 'history']);
     const pending = itemOptions(ctx({ item: { ...YARD, status: 'pending' }, parent: 'yes' }));
     expect(ids(pending.member)).toEqual(['undo', 'history']);

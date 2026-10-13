@@ -56,7 +56,7 @@ describe('inboxGroups (spec 13.7)', () => {
 });
 
 describe('quick add (spec 13.8)', () => {
-  it('turns Needs a parent\'s OK on for young children, until a parent sets it', () => {
+  it('turns Needs a parent\'s approval on for young children, until a parent sets it', () => {
     expect(autoNeedsOk(['dana'], MEMBERS)).toBe(true);
     let draft = withWho(newDraft(), ['casey'], MEMBERS);
     expect(draft.needsOk).toBe(false);

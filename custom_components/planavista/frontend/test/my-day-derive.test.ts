@@ -52,7 +52,7 @@ describe('timelineFor (spec 13.4)', () => {
     expect(labels).toEqual(['Evening', 'Tidy toys']);
   });
 
-  it('puts a check-off waiting for OK at the time it was done, with that time once (milestone 8)', () => {
+  it('puts a check-off waiting for approval at the time it was done, with that time once (milestone 8)', () => {
     const waiting = { id: 'w', done_by: 'dana', by: 'dana', at: '2026-10-13T08:51:00-05:00', source: 'tablet', state: 'pending', review: null, stars: 1 } as const;
     const items = [
       item('feed_the_fish|dana|day:2026-10-13|0', { band: 'morning', status: 'pending', completion: waiting }),

@@ -44,7 +44,7 @@ describe('rewardCards', () => {
     expect(cards[0].canRedeem).toBe(true);
   });
 
-  it('shows a redemption waiting for OK, and goals', () => {
+  it('shows a redemption waiting for approval, and goals', () => {
     expect(cards[1].asked.map(m => m.id)).toEqual(['casey']);
     expect(cards[1].canRedeem).toBe(true);
     expect(cards[2].goals.map(m => m.id)).toEqual(['casey']);
@@ -62,7 +62,7 @@ describe('asking for a reward (milestone 8)', () => {
     const asking = rewardCards(B, PEOPLE, [{ member: 'dana', reward: 'weekend_game' }])[1];
     expect(asking.asked.map(m => m.id)).toEqual(['casey', 'dana']);
     expect(asking.canRedeem).toBe(false);
-    expect(redeemLabel(asking)).toBe('Waiting for OK');
+    expect(redeemLabel(asking)).toBe('Waiting for approval');
   });
 
   it('says Redeem while anyone can, and why not otherwise', () => {

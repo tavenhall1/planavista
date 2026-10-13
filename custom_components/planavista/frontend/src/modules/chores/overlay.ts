@@ -24,9 +24,9 @@ export function statsOf(items: ItemView[]): Stats {
 }
 
 /**
- * Whether a check-off by `doer` waits for a parent's OK (spec 8.5 step 3):
+ * Whether a check-off by `doer` waits for a parent's approval (spec 8.5 step 3):
  * never for a parent; always for a chore a child added from a to-do list;
- * otherwise by their "Needs an OK for" setting and the chore's mark.
+ * otherwise by their "Needs approval for" setting and the chore's mark.
  */
 export function needsOk(doer: Pick<Member, 'parent' | 'needs_ok_for'> | undefined, activity: Activity | undefined): boolean {
   if (!doer || doer.parent) return false;

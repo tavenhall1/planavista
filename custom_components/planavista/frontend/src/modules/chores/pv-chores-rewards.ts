@@ -17,7 +17,7 @@ import { ScrollReporter } from '../../core/content-scroll';
 /**
  * pv-chores-rewards: what stars are for (spec 13.6). Balances and goals on
  * top; the catalog below, each card saying who can afford it, with Redeem
- * (it waits for a parent unless the reward needs no OK). Parents get an Add
+ * (it waits for a parent unless the reward needs no approval). Parents get an Add
  * a reward tile; a line at the bottom says who got what lately.
  *
  * @fires pv-reward-redeem - { reward } Redeem was tapped
@@ -259,7 +259,7 @@ export class PvChoresRewards extends LitElement {
         </button>
         <div class="tags">
           ${card.people.map(p => html`<span class="pv-tag muted ${p.afford ? 'ok' : ''}">${p.member.name}${p.afford ? ' ✓' : `: ${p.more} more`}</span>`)}
-          ${asked ? html`<span class="badge act">⏳ ${card.asked.map(m => m.name).join(', ')} · Waiting for OK</span>` : nothing}
+          ${asked ? html`<span class="badge act">⏳ ${card.asked.map(m => m.name).join(', ')} · Waiting for approval</span>` : nothing}
         </div>
         ${card.canRedeem
           ? html`<button class="pv-btn pv-btn-secondary accent action" type="button" @click=${() => this._fire('pv-reward-redeem', { reward: reward.id })}>Redeem</button>`

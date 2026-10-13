@@ -20,7 +20,7 @@ import { PressGuard } from '../../core/press-guard';
 /**
  * pv-chores-reward-sheet: one reward (spec 13.6, 14.5). Anyone sees who can
  * get it and can save up for it (their goal); a parent edits its picture,
- * name, cost, whether it needs an OK, and who can get it, or deletes it.
+ * name, cost, whether it needs approval, and who can get it, or deletes it.
  * With no reward, it opens as Add a reward.
  *
  * @fires pv-reward-goal - { member, reward | null } "Save up for this" switched
@@ -218,13 +218,13 @@ export class PvChoresRewardSheet extends LitElement {
     return html`
       <div class="icon" aria-hidden="true">${pictureOf(reward.icon)}</div>
       <h2 class="heading" id="reward-title" tabindex="-1">${reward.name}</h2>
-      <div class="cost">★ ${reward.cost}${reward.needs_ok ? ' · needs a parent\'s OK' : ''}</div>
+      <div class="cost">★ ${reward.cost}${reward.needs_ok ? ' · needs a parent\'s approval' : ''}</div>
       ${card.people.map(p => html`
         <div class="person">
           <pv-member-avatar .member=${{ ...p.member, color: this.colorOf(p.member) }} .hass=${this.hass} size="36"></pv-member-avatar>
           <div class="words">
             <div>${p.member.name}</div>
-            <div class="meta">${p.asked ? 'Waiting for OK' : p.afford ? 'Has enough stars' : `${p.more} more to go`}</div>
+            <div class="meta">${p.asked ? 'Waiting for approval' : p.afford ? 'Has enough stars' : `${p.more} more to go`}</div>
           </div>
           <button class="toggle" type="button" aria-pressed=${p.member.goal === reward.id ? 'true' : 'false'}
             @click=${() => this._fire('pv-reward-goal', { member: p.member.id, reward: p.member.goal === reward.id ? null : reward.id })}>
@@ -261,8 +261,8 @@ export class PvChoresRewardSheet extends LitElement {
       <input id="reward-cost" type="number" min="1" max="10000" inputmode="numeric" .value=${String(d.cost)}
         @input=${(e: Event) => this._set({ cost: Math.round(Number((e.target as HTMLInputElement).value)) })} />
       <div class="row">
-        <span>Needs a parent's OK</span>
-        <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
+        <span>Needs a parent's approval</span>
+        <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's approval"
           @click=${() => this._set({ needsOk: !d.needsOk })}></button>
       </div>
       <span class="title">Who can get it (nobody picked means everyone who earns stars)</span>

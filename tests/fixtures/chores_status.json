@@ -3,8 +3,8 @@
   "today": "2026-10-13",
   "cases": [
     {"name": "to do today", "view": {"status": "open", "section": "today", "window": "day"}, "todo": null, "card": null},
-    {"name": "waiting for OK", "view": {"status": "pending", "section": "today", "window": "day"}, "todo": "Waiting for a parent's OK", "card": {"words": "Waiting for OK", "tone": "act", "glyph": "⏳"}},
-    {"name": "waiting for OK beats From", "view": {"status": "pending", "section": "week", "window": "week", "from": "2026-10-12"}, "todo": "Waiting for a parent's OK", "card": {"words": "Waiting for OK", "tone": "act", "glyph": "⏳"}},
+    {"name": "waiting for approval", "view": {"status": "pending", "section": "today", "window": "day"}, "todo": "Waiting for a parent's approval", "card": {"words": "Waiting for approval", "tone": "act", "glyph": "⏳"}},
+    {"name": "waiting for approval beats From", "view": {"status": "pending", "section": "week", "window": "week", "from": "2026-10-12"}, "todo": "Waiting for a parent's approval", "card": {"words": "Waiting for approval", "tone": "act", "glyph": "⏳"}},
     {"name": "sent back with a note", "view": {"status": "sent_back", "section": "week", "window": "week", "note": "edges"}, "todo": "Sent back: edges", "card": {"words": "Sent back: edges", "tone": "bad", "glyph": "↩"}},
     {"name": "sent back without a note", "view": {"status": "sent_back", "section": "today", "window": "day", "note": null}, "todo": "Sent back", "card": {"words": "Sent back", "tone": "bad", "glyph": "↩"}},
     {"name": "sent back beats overdue", "view": {"status": "sent_back", "section": "overdue", "window": "day", "note": "do it again", "overdue_since": "2026-10-12"}, "todo": "Sent back: do it again", "card": {"words": "Sent back: do it again", "tone": "bad", "glyph": "↩"}},

@@ -202,12 +202,12 @@ export class PvChoresListPage extends LitElement {
     `;
   }
 
-  /** Filtered to one person: why their chores need an OK, and for a young child, how they see them. */
+  /** Filtered to one person: why their chores need approval, and for a young child, how they see them. */
   private _renderFor(member: Member, rows: ChoreRow[]) {
     const tiles = rows.filter(row => !row.tags.includes('Plan only') && !row.tags.includes('No one yet'));
     return html`
       ${member.needs_ok_for === 'all' && !member.parent
-        ? html`<p class="hint">Every chore of ${member.name}'s needs an OK${member.age_group === 'young_child' ? `, because ${member.name} is a young child` : ''}.</p>`
+        ? html`<p class="hint">Every chore of ${member.name}'s needs approval${member.age_group === 'young_child' ? `, because ${member.name} is a young child` : ''}.</p>`
         : nothing}
       ${member.age_group === 'young_child' && tiles.length ? html`
         <h2 class="section-label">How ${member.name} sees them</h2>

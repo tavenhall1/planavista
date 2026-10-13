@@ -144,7 +144,7 @@ export function choreRow(
   const tags: string[] = [];
   if (planOnly(activity)) tags.push('Plan only');
   else if (!activity.assignees?.length) tags.push('No one yet');
-  if (!planOnly(activity) && (activity.needs_ok || activity.needs_ok_always)) tags.push('Needs an OK');
+  if (!planOnly(activity) && (activity.needs_ok || activity.needs_ok_always)) tags.push('Needs approval');
   return {
     id: activity.id,
     name: activity.name,

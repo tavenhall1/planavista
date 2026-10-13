@@ -159,7 +159,7 @@ complete_chore:
         text:
     approve:
       name: Approve
-      description: Skip the parent's OK. Only automations and admins can use this.
+      description: Skip the parent's approval. Only automations and admins can use this.
       default: false
       selector:
         boolean:
@@ -204,7 +204,7 @@ get_chores:
 
 redeem_reward:
   name: Redeem reward
-  description: Spend a member's stars on a reward. It waits for a parent's OK unless the reward needs none.
+  description: Spend a member's stars on a reward. It waits for a parent's approval unless the reward needs none.
   fields:
     member:
       name: Member
@@ -221,7 +221,7 @@ redeem_reward:
 
 approve_chore:
   name: Approve chore
-  description: Approve a check-off that is waiting for OK, so it counts and earns its stars.
+  description: Approve a check-off that is waiting for approval, so it counts and earns its stars.
   fields:
     request:
       name: Request
@@ -241,7 +241,7 @@ approve_chore:
 
 send_back_chore:
   name: Send back chore
-  description: Send a check-off that is waiting for OK back to the member, with a note.
+  description: Send a check-off that is waiting for approval back to the member, with a note.
   fields:
     request:
       name: Request
@@ -340,7 +340,7 @@ add_chore:
           max: 1440
           unit_of_measurement: min
     needs_ok:
-      name: Needs a parent's OK
+      name: Needs a parent's approval
       description: Check-offs wait for a parent before they count.
       selector:
         boolean:

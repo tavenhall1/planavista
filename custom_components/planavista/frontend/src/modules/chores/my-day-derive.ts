@@ -70,7 +70,7 @@ export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry
   const current = bandAt(now, ctx.dayStarts);
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
   const bandOf = (row: RowModel): Band => row.item.band ?? current;
-  // A check-off waiting for OK happened already: it sits at its time, like a done one (milestone 8).
+  // A check-off waiting for approval happened already: it sits at its time, like a done one (milestone 8).
   const checkedOff = (row: RowModel) => row.state === 'pending' && !!row.item.completion;
   // Overdue ones and ones left from an earlier band are due now.
   const dueNow = rows

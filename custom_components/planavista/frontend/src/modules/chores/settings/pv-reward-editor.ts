@@ -25,7 +25,7 @@ const PICTURES = ['🎬', '🎮', '📺', '🍦', '🍕', '🌙', '💵', '🍽�
 
 /**
  * pv-reward-editor: one reward (spec 14.5): picture, name, cost in stars,
- * needs an OK, and who can get it. Cancel and Save, like the other editors.
+ * needs approval, and who can get it. Cancel and Save, like the other editors.
  */
 export class PvRewardEditor extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -218,11 +218,11 @@ export class PvRewardEditor extends LitElement {
         </div>
         <div class="row toggle-row">
           <span class="row-text">
-            <span>Needs a parent's OK</span>
+            <span>Needs a parent's approval</span>
             <span class="row-sub">${d.needs_ok ? 'Redeeming waits for a parent, and the stars are taken then.' : 'Redeeming takes the stars at once.'}</span>
           </span>
           <div class="pv-toggle ${d.needs_ok ? 'active' : ''}" role="switch" tabindex="0" aria-checked=${d.needs_ok ? 'true' : 'false'}
-            aria-label="Needs a parent's OK" @click=${() => this._change({ needs_ok: !d.needs_ok })}
+            aria-label="Needs a parent's approval" @click=${() => this._change({ needs_ok: !d.needs_ok })}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._change({ needs_ok: !d.needs_ok }); } }}></div>
         </div>
       </div>

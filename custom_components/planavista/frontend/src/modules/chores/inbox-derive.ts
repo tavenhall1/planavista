@@ -4,7 +4,7 @@ import type { ChoreRequest } from './chores-types';
 import { clockTime } from './calendar-ties';
 import { dayWords } from './options-derive';
 
-/** One request in the Waiting for OK inbox (spec 13.7). */
+/** One request in the To approve inbox (spec 13.7). */
 export interface InboxRow {
   id: string;
   kind: ChoreRequest['kind'];

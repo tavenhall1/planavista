@@ -60,7 +60,7 @@ describe('every sheet takes its layer', () => {
 });
 
 // Round 1 of the adversarial review: the 1.6.2 layers put the docked Waiting
-// for OK panel (a sheet) over Settings, which kept z-index 50; the card's
+// for approval panel (a sheet) over Settings, which kept z-index 50; the card's
 // toast (z-index 40) hid under every sheet, Undo out of reach; and that toast
 // covered the phone bar's views menu (z-index 5).
 describe('one order for everything that opens over the card', () => {

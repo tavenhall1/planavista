@@ -46,7 +46,7 @@ export function namesText(members: Member[]): string {
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
-/** Which parents' phones get Waiting for OK requests (spec 14.5, 10.5). */
+/** Which parents' phones get Approval requests (spec 14.5, 10.5). */
 export function requestRows(members: Member[]): { rows: ReminderRow[]; noPhone: Member[] } {
   const parents = members.filter(m => m.parent);
   return {

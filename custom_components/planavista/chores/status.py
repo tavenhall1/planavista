@@ -29,7 +29,7 @@ def describe(view: Mapping[str, Any], today: date) -> str | None:
     """The to-do item's description: what the status map would say about it."""
     status = view.get("status")
     if status == "pending":
-        return "Waiting for a parent's OK"
+        return "Waiting for a parent's approval"
     if status == "sent_back":
         return f"Sent back: {view['note']}" if view.get("note") else "Sent back"
     if status == "done":
@@ -49,5 +49,5 @@ OPEN = ("open", "sent_back")
 
 
 def left_today(view: dict[str, Any]) -> list[dict[str, Any]]:
-    """Items still due today: in today's ring and not done or waiting for OK."""
+    """Items still due today: in today's ring and not done or waiting for approval."""
     return [i for i in view["items"] if i["counted"] and i["status"] in OPEN]

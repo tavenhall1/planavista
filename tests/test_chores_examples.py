@@ -19,7 +19,7 @@ def test_1_frigate() -> None:
 
 
 def test_2_approval() -> None:
-    """Dana holds Feed the fish, so it waits for OK; Alex taps Looks good on their phone."""
+    """Dana holds Feed the fish, so it waits for approval; Alex taps Looks good on their phone."""
     engine = sample_engine(at(10, 13, 9))
     fish = "feed_the_fish|dana|day:2026-10-13|0"
     assert engine.complete(at(10, 13, 15, 58), key=fish, by="dana", source="tablet").result == "pending"

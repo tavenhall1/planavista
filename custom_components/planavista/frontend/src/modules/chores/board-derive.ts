@@ -237,7 +237,7 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
       const waiting = rows.length - open;
       const said = [
         open ? `${open} left` : '',
-        waiting ? `${waiting} waiting for OK` : '',
+        waiting ? `${waiting} waiting for approval` : '',
         bandDone[band] ? `${bandDone[band]} done` : '',
       ].filter(Boolean);
       entries.push({ kind: 'head', key: `head:${band}`, tone: 'past', text: `${BAND_NAMES[band]} · ${said.join(', ')}` });

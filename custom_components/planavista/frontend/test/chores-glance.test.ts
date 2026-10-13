@@ -22,7 +22,7 @@ const today = board({
 });
 
 describe('choresGlance (spec 12.2)', () => {
-  it('counts the household\'s chores, Waiting for OK as done', () => {
+  it('counts the household\'s chores, Waiting for approval as done', () => {
     expect(choresGlance(today)).toEqual([{
       id: 'chores', text: '2 of 4 chores done today', progress: 0.5, primary: true, open: { module: 'chores', view: 'board' },
     }]);
@@ -46,8 +46,8 @@ describe('choresBarActions', () => {
   const waiting = { ...today, requests: [{ id: 'r1', kind: 'completion' as const, member: 'dana', name: 'Feed the fish', at: '' }] };
   const parentMode: Session = { token: 't', memberId: 'blair', parent: true, lastTouch: 0 };
 
-  it('shows Waiting for OK and New chore on a shared screen', () => {
-    expect(choresBarActions(waiting, view('shared'), null).map(a => a.label)).toEqual(['1 waiting for OK', 'New chore']);
+  it('shows To approve and New chore on a shared screen', () => {
+    expect(choresBarActions(waiting, view('shared'), null).map(a => a.label)).toEqual(['1 to approve', 'New chore']);
   });
 
   it('keeps New chore in the bar in parent mode; the strip holds who, the countdown, and Lock (milestone 8, D2)', () => {
@@ -59,7 +59,7 @@ describe('choresBarActions', () => {
     expect(choresBarActions(waiting, view('member', 'casey'), null)).toEqual([]);
   });
 
-  it('leaves out Waiting for OK when nothing waits', () => {
+  it('leaves out Waiting for approval when nothing waits', () => {
     expect(choresBarActions(today, view('parent', 'alex'), null).map(a => a.id)).toEqual(['add']);
   });
 });

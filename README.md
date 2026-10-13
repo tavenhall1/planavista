@@ -20,7 +20,7 @@
 ## Features
 
 - **4 Calendar Views**: Day (per-person columns), Week, Month, and Agenda
-- **Chores**: One board for the whole family, with a ring for each person's day, stars, rewards, and a parent's OK when you want one
+- **Chores**: One board for the whole family, with a ring for each person's day, stars, rewards, and a parent's approval when you want one
 - **Start from Your Plan**: Import a Household Hours plan, pick from common chores, or start empty
 - **Deep Google Calendar Integration**: Attendee invitations, in-place PATCH edits, real organizer detection via API
 - **Shared Event Awareness**: Multi-participant detection, organizer badges, stripe gradients, participant avatars
@@ -136,7 +136,7 @@ PlanaVista keeps a list of the people in your household. Anyone whose calendar i
 
 Chores sit next to the calendar. The board shows everyone's today at once: a column for each person, their chores in the morning, afternoon, and evening, and a ring that closes when everything due today is done. Kids hold a chore's circle to finish it and earn stars. Let go early and nothing happens.
 
-**Setting up.** First-run setup asks "Do you want chores too?" Start from your household plan (a Household Hours file), pick from a short list of common chores, or start empty. Already using PlanaVista for the calendar? Settings has a Chores row that asks the same few questions. Afterwards, Settings, Chores lists every chore; tap one to change who does it, when, about how long, and whether it needs a parent's OK. On the board, a parent can also tap a chore and choose Edit.
+**Setting up.** First-run setup asks "Do you want chores too?" Start from your household plan (a Household Hours file), pick from a short list of common chores, or start empty. Already using PlanaVista for the calendar? Settings has a Chores row that asks the same few questions. Afterwards, Settings, Chores lists every chore; tap one to change who does it, when, about how long, and whether it needs a parent's approval. On the board, a parent can also tap a chore and choose Edit.
 
 **Three kinds of chores.**
 
@@ -146,13 +146,13 @@ Chores sit next to the calendar. The board shows everyone's today at once: a col
 
 **Views.** Board; Week, with each person's days and anything missed; My day, one person's day as a timeline, a list, or big pictures for young children; and Rewards, with stars saved up and what they can buy.
 
-**Waiting for OK.** A chore or a reward can wait for a parent's OK. Parents answer under Waiting for OK on the screen, or from their phones. Settings, Rules decides what happens to check-offs nobody answers by the end of the day, what a missed chore does, when the chore day starts (3:00 AM), and how many minutes earn a star.
+**Waiting for approval.** A chore or a reward can wait for a parent's approval. Parents answer under To approve on the screen, or from their phones. Settings, Rules decides what happens to check-offs nobody answers by the end of the day, what a missed chore does, when the chore day starts (3:00 AM), and how many minutes earn a star.
 
-**Phones.** On a person's page in Settings, pick their phones (from the Home Assistant Companion app). Parents' phones get Waiting for OK requests with buttons to answer them. Under Reminders, anyone with a phone can get a reminder at the evening check (7:00 PM unless you change it), only when they have chores left; the board shows the evening check at the same time. If Home Assistant no longer has a phone, Settings lists it under Needs a look.
+**Phones.** On a person's page in Settings, pick their phones (from the Home Assistant Companion app). Parents' phones get Approval requests with buttons to answer them. Under Reminders, anyone with a phone can get a reminder at the evening check (7:00 PM unless you change it), only when they have chores left; the board shows the evening check at the same time. If Home Assistant no longer has a phone, Settings lists it under Needs a look.
 
 **Import and export.** Settings, Import and export brings in a Household Hours plan (choose the file or paste its text), saves a PlanaVista file, and restores one. A review shows where everything goes before anything is saved. Importing again updates what's there instead of adding copies, and nothing is deleted. A PlanaVista file holds people, chores, rewards, and rules, but no PINs, stars, or history; Home Assistant backups keep those. Its format is described in [docs/schemas/planavista.household.v1.json](docs/schemas/planavista.household.v1.json).
 
-**Voice.** Each person's chores are also a Home Assistant to-do list (for example, Casey Chores), so Assist and other voice assistants can read them, add to them, and check them off. A chore added to a to-do list by voice, or by someone who isn't a parent, waits for a parent's OK each time it's checked off.
+**Voice.** Each person's chores are also a Home Assistant to-do list (for example, Casey Chores), so Assist and other voice assistants can read them, add to them, and check them off. A chore added to a to-do list by voice, or by someone who isn't a parent, waits for a parent's approval each time it's checked off.
 
 ---
 

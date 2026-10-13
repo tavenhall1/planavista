@@ -204,7 +204,7 @@ async def test_undo_with_an_occurrence_undoes_only_that_members_check_off(
 async def test_an_action_may_credit_someone_else_only_as_they_could(
     hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser]
 ) -> None:
-    """Round 1: crediting a parent skips the OK, so it takes parent level; a sibling with a PIN takes their PIN."""
+    """Round 1: crediting a parent skips the approval, so it takes parent level; a sibling with a PIN takes their PIN."""
     chores.household.shared_users.append(accounts["kitchen"].id)
     await set_pin(hass, chores.household, "casey", "4826")
     for doer in ("person.blair", "casey"):

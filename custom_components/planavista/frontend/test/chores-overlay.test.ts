@@ -25,7 +25,7 @@ describe('withQueued (spec 11.6)', () => {
     expect(today.members.casey.items[0].status).toBe('open');
   });
 
-  it('shows Waiting for OK when the check-off needs one, and who did it', () => {
+  it('shows Waiting for approval when the check-off needs one, and who did it', () => {
     const shown = withQueued(today, [queued(TRASH, 'complete', { shows: 'pending', doneBy: 'blair' })]);
     expect(shown.members.casey.items[0]).toMatchObject({ status: 'pending', completion: { done_by: 'blair' } });
     expect(shown.members.casey.today.pending).toBe(1);
@@ -44,7 +44,7 @@ describe('withQueued (spec 11.6)', () => {
 });
 
 describe('statsOf', () => {
-  it('counts what is due today, with Waiting for OK apart and excused or away left out', () => {
+  it('counts what is due today, with Waiting for approval apart and excused or away left out', () => {
     const stats = statsOf([
       item('a|x|day:1|0', { status: 'done', credit_minutes: 30 }),
       item('b|x|day:1|0', { status: 'pending', credit_minutes: 10 }),

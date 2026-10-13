@@ -25,7 +25,7 @@ export interface ReviewDetail {
 }
 
 /**
- * pv-chores-inbox: Waiting for OK (spec 13.7), grouped into Chores to check
+ * pv-chores-inbox: To approve (spec 13.7), grouped into Chores to check
  * (with Approve all), Requests, and Rewards. A panel beside the board in
  * landscape, so a parent can see the board while approving; a sheet in
  * portrait and on phones. Every answer is its own, attributed review.
@@ -266,13 +266,13 @@ export class PvChoresInbox extends LitElement {
         @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <div class="top">
-          <h2 id="inbox-title" tabindex="-1">Waiting for OK${g.count ? ` · ${g.count}` : ''}</h2>
+          <h2 id="inbox-title" tabindex="-1">To approve${g.count ? ` · ${g.count}` : ''}</h2>
         </div>
         ${g.count === 0 ? html`
           <div class="state">
             <div class="art" aria-hidden="true">✅</div>
             <h2>Nothing is waiting</h2>
-            <p>Check-offs that need a parent's OK, requests, and rewards land here.</p>
+            <p>Check-offs that need a parent's approval, requests, and rewards land here.</p>
           </div>
         ` : nothing}
         ${g.chores.length ? html`

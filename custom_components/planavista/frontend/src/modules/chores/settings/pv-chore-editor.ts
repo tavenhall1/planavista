@@ -622,7 +622,7 @@ export class PvChoreEditor extends LitElement {
           ? this._toggle(d.on_board, 'Show on the board', () => this._change({ on_board: !d.on_board }),
             d.on_board ? undefined : 'Plan only: part of the household plan, but not checked off.')
           : nothing}
-        ${this._toggle(ok, "Needs a parent's OK", () => this._change(ok ? { needs_ok: false, needs_ok_always: false } : { needs_ok: true }),
+        ${this._toggle(ok, "Needs a parent's approval", () => this._change(ok ? { needs_ok: false, needs_ok_always: false } : { needs_ok: true }),
           okText(d, members) || undefined)}
         <div class="row">
           <span class="row-text">Stars<span class="row-sub">${d.stars === null ? `★ ${automatic} each, from the time` : `★ ${d.stars} each`}</span></span>

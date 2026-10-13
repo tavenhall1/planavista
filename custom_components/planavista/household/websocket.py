@@ -62,7 +62,7 @@ ERROR_MESSAGES = {
     "invalid_picture": "Pick an initial, an emoji, or their photo.",
     "invalid_age_group": "Pick an age group.",
     "invalid_my_day": "Pick a My day style.",
-    "invalid_needs_ok_for": "Pick when they need an OK.",
+    "invalid_needs_ok_for": "Pick when they need approval.",
     "invalid_stars": "Stars are on or off.",
     "invalid_parent": "Parent is on or off.",
     "too_many": "A household can have up to 20 people.",

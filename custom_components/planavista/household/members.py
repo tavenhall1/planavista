@@ -219,7 +219,7 @@ def _checked_phones(phones: object) -> list[str]:
 
 
 def _checked_notify(notify: object) -> dict[str, bool]:
-    """What someone's phones get: Waiting for OK requests (parents) and reminders."""
+    """What someone's phones get: Approval requests (parents) and reminders."""
     if notify is None:
         return dict(NOTIFY_DEFAULTS)
     if not isinstance(notify, Mapping):
