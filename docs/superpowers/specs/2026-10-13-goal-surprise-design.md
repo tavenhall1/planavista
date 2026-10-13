@@ -1,4 +1,4 @@
-# Goal surprise (milestone 10, release 1.7.0)
+# Goal surprise (milestone 10, release 0.10.0)
 
 ## 1. Why
 
@@ -40,7 +40,7 @@ After every change to chores data (any action, the day's boundary, a reward edit
 
 ### 3.3 The excited wait
 
-Every 4 seconds (offset per member so two presents don't move in step): a wiggle of about 7 degrees each way and a 6 px hop on the bouncy spring, about 700 ms, with three sparkles twinkling around the bow. Only transform and opacity animate. It stops while the page is hidden or the screen has an open sheet, and starts again after. Reduced motion: a slow glow (opacity) instead.
+Every 4 seconds (offset per member so two presents don't move in step): a wiggle of about 7 degrees each way and a 6 px hop on the bouncy spring, about 700 ms, with three sparkles twinkling around the bow. Only transform and opacity animate. It stops while the page is hidden (an open sheet's backdrop covers it anyway), and starts again after. Reduced motion: a slow glow (opacity) instead.
 
 ### 3.4 Who opens it
 
