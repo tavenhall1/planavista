@@ -11,6 +11,7 @@ import { SheetMotion } from '../../shell/sheet-motion';
 import { choresStyles } from './chores-styles';
 import type { DayView, ItemView, PastItem } from './chores-types';
 import { chorePicture } from './picture-words';
+import { backdropTap } from '../../core/backdrop';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -35,6 +36,8 @@ function isPast(item: ItemView | PastItem): item is PastItem {
  * @fires pv-sheet-close - Done, Escape, a tap outside, or a drag down
  */
 export class PvChoresDaySheet extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => void this.close());
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) member!: Member;
   @property({ type: String }) date = '';
@@ -141,7 +144,7 @@ export class PvChoresDaySheet extends LitElement {
           ? summary.closed ? `Ring closed: ${summary.done + summary.pending} of ${summary.due} done.` : `${summary.done + summary.pending} of ${summary.due} done.`
           : this.day.kind === 'future' ? 'Still to come.' : '';
     return html`
-      <div class="backdrop" @click=${() => void this.close()}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="day-title" @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="day-title" tabindex="-1">${this.member?.name} · ${longDay(this.date)}</h2>

@@ -37,6 +37,7 @@ import { pickerStyles } from '../../../styles/pickers';
 import { contrastText } from '../../../core/color';
 import { calendarCan, formSignature, saveFailedText } from '../event-words';
 import type { EventGate } from '../event-gate';
+import { backdropTap } from '../../../core/backdrop';
 
 
 const DISCARD_ACTIONS: NoticeAction[] = [
@@ -54,6 +55,8 @@ const DISCARD_ACTIONS: NoticeAction[] = [
  * @fires pv-sheet-close - once it has left (Cancel, a dismiss or discard, or `leaving`)
  */
 export class PVEventCreateDialog extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => this._sheet.dismiss());
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) calendars: CalendarConfig[] = [];
   /** Who may change events here (D1): Save asks for a PIN first when this screen needs one. */
@@ -620,7 +623,7 @@ export class PVEventCreateDialog extends LitElement {
     const heading = isEdit ? 'Edit event' : 'New event';
 
     return html`
-      <div class="backdrop" @click=${() => this._sheet.dismiss()}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="editor-title" @keydown=${this._sheet.onKeydown}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="editor-title">${heading}</h2>

@@ -16,6 +16,7 @@ import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
 import { calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen } from '../event-words';
 import { EventGate, calendarsOf } from '../event-gate';
+import { backdropTap } from '../../../core/backdrop';
 
 interface Participant {
   entity_id: string;
@@ -39,6 +40,8 @@ function participantsOf(event: CalendarEvent): Participant[] {
  * @fires pv-sheet-close - once it has left (Done, Escape, outside, a drag, or `leaving`)
  */
 export class PVEventPopup extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => this._sheet.dismiss());
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) event: CalendarEvent | null = null;
   /** Who may change it here (D1); without one, anyone may. */
@@ -197,7 +200,7 @@ export class PVEventPopup extends LitElement {
     const question = deleteQuestion(event, shared.length > 1 ? shared.map(p => p.calendar_name) : []);
 
     return html`
-      <div class="backdrop" @click=${() => this._sheet.dismiss()}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="event-title" @keydown=${this._sheet.onKeydown}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>

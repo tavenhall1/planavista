@@ -14,6 +14,7 @@ import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import type { InboxGroups, InboxRow } from './inbox-derive';
 import { SEND_BACK_REASONS } from './pv-chore-options';
+import { backdropTap } from '../../core/backdrop';
 
 export interface ReviewDetail {
   row: InboxRow;
@@ -32,6 +33,8 @@ export interface ReviewDetail {
  * @fires pv-sheet-close - Done, Escape, a tap outside, or a drag down
  */
 export class PvChoresInbox extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => void this.close());
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) groups!: InboxGroups;
   @property({ attribute: false }) hass?: HomeAssistant;
@@ -254,7 +257,7 @@ export class PvChoresInbox extends LitElement {
     const g = this.groups;
     if (!g) return nothing;
     return html`
-      <div class="backdrop" @click=${() => void this.close()}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal=${this.layout === 'landscape' ? 'false' : 'true'} aria-labelledby="inbox-title"
         @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
