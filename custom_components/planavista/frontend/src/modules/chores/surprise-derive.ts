@@ -40,9 +40,10 @@ export function surpriseWords(name: string, may: boolean, shape: 'tile' | 'row')
   return { title: `A surprise for ${name}!`, hint };
 }
 
-/** The reveal's words and the reward's own button. */
-export function revealWords(name: string, reward: Reward): { title: string; reward: string; button: string } {
-  return { title: `${name}, you did it!`, reward: reward.name, button: reward.needs_ok ? '🙋 Ask for it' : '🎉 Get it' };
+/** The reveal's words and the reward's own button; while an ask waits, it says so and can't be pressed (review B3). */
+export function revealWords(name: string, reward: Reward, asked = false): { title: string; reward: string; button: string; asked: boolean } {
+  const button = asked ? '⏳ Waiting for approval' : reward.needs_ok ? '🙋 Ask for it' : '🎉 Get it';
+  return { title: `${name}, you did it!`, reward: reward.name, button, asked };
 }
 
 /**

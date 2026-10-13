@@ -1735,6 +1735,8 @@ class ChoresEngine:
             raise ChoreError("not_for_member")
         if self.balance(member) < found["cost"]:
             raise ChoreError("not_enough_stars")
+        if any(r["member"] == member and r["reward"] == reward and r["state"] == "requested" for r in self.rewards["redemptions"]):
+            raise ChoreError("already_asked")  # one ask at a time (milestone 10 review B3)
         redemption = {
             "id": self._new_id(), "member": member, "reward": reward, "cost": int(found["cost"]),
             "state": "requested", "by": by, "source": source, "at": self._stamp(now), "review": None,

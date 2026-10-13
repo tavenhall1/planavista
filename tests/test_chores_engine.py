@@ -341,6 +341,18 @@ def test_a_reward_without_an_ok_is_given_at_once() -> None:
     assert err.value.code == "not_enough_stars"
 
 
+def test_a_reward_already_asked_for_is_not_asked_for_twice() -> None:
+    """Milestone 10 review B3: the reveal's Ask for it filed a second ask while one waited."""
+    engine = sample_engine()
+    engine.award_stars(SCENE, member="casey", stars=8, reason="Great week", by="alex")
+    engine.save_reward({"name": "Pick the weekend game", "icon": "🎲", "cost": 4, "who": ["casey", "dana"]})
+    engine.redeem(SCENE, member="casey", reward="pick_the_weekend_game", by="casey", source="tablet")
+    with pytest.raises(ChoreError) as err:
+        engine.redeem(SCENE, member="casey", reward="pick_the_weekend_game", by="casey", source="tablet")
+    assert err.value.code == "already_asked"
+    assert len(engine.open_requests()) == 1
+
+
 def test_a_parent_who_redeems_for_a_child_gives_it_at_once() -> None:
     """Round 2: Alex redeemed for Dana from their own phone, was told "A parent will answer.",
     and then had to approve their own ask in the inbox."""
@@ -355,7 +367,8 @@ def test_a_parent_who_redeems_for_a_child_gives_it_at_once() -> None:
     # A child's own ask, or an account that is nobody in the household, still waits for a parent.
     engine.award_stars(SCENE, member="casey", stars=8, reason="Great week", by="alex")
     assert engine.redeem(SCENE, member="casey", reward="pick_the_weekend_game", by="casey", source="tablet").result == "requested"
-    assert engine.redeem(SCENE, member="casey", reward="pick_the_weekend_game", by="admin", source="phone").result == "requested"
+    engine.save_reward({"name": "Movie night pick", "icon": "🎬", "cost": 2})
+    assert engine.redeem(SCENE, member="casey", reward="movie_night_pick", by="admin", source="phone").result == "requested"
 
 
 def test_stars_by_hand_need_a_reason_and_never_go_below_zero() -> None:

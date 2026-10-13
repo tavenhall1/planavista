@@ -15,6 +15,8 @@ export interface RevealDetail {
   from: DOMRect | null;
   /** The household's Sound setting. */
   sound: boolean;
+  /** Its ask is already waiting for a parent. */
+  asked?: boolean;
 }
 
 /**
@@ -185,7 +187,7 @@ export class PvSurpriseReveal extends LitElement {
   render() {
     const d = this.detail;
     if (!d) return nothing;
-    const words = revealWords(d.name, d.model.reward);
+    const words = revealWords(d.name, d.model.reward, !!d.asked);
     const reduced = motionOf(this) === 'reduced';
     const pieces = reduced ? [] : confettiPieces(80, d.model.memberId.length * 7919 + d.model.reward.cost, d.color);
     return html`
@@ -200,7 +202,7 @@ export class PvSurpriseReveal extends LitElement {
           <span class="title">${words.title}</span>
           <span class="name">${words.reward}</span>
           <div class="buttons">
-            <button class="ask" type="button" @click=${() => this._choose('ask')}>${words.button}</button>
+            <button class="ask" type="button" ?disabled=${words.asked} @click=${() => this._choose('ask')}>${words.button}</button>
             <button class="later" type="button" @click=${() => this._choose('later')}>Later</button>
           </div>
         </div>

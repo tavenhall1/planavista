@@ -589,7 +589,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   /** Asks the card to show the reveal over everything; its button asks for the reward. */
   private _reveal(detail: Omit<RevealDetail, 'sound'>): HTMLElement {
     const reveal = document.createElement('pv-surprise-reveal');
-    reveal.detail = { ...detail, sound: !!this.service?.board()?.settings.sound };
+    const board = this.service?.board();
+    const { memberId, reward } = detail.model;
+    // An ask already waiting (or on its way) shows as waiting, not a second Ask for it (review B3).
+    const asked = !!board?.requests.some(r => r.kind === 'redemption' && r.member === memberId && r.reward === reward.id)
+      || this._asking.some(a => a.member === memberId && a.reward === reward.id);
+    reveal.detail = { ...detail, sound: !!board?.settings.sound, asked };
     reveal.addEventListener('pv-reveal-choice', event => {
       if ((event as CustomEvent<{ choice: string }>).detail.choice !== 'ask') return;
       const member = this.household?.members.find(m => m.id === detail.model.memberId);

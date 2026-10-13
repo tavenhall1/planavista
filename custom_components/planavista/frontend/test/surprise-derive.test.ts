@@ -62,8 +62,10 @@ describe('its words', () => {
   });
 
   it("the reveal names them and the reward's own button", () => {
-    expect(revealWords('Dana', ICE_CREAM)).toEqual({ title: 'Dana, you did it!', reward: 'Ice cream trip', button: '🙋 Ask for it' });
+    expect(revealWords('Dana', ICE_CREAM)).toEqual({ title: 'Dana, you did it!', reward: 'Ice cream trip', button: '🙋 Ask for it', asked: false });
     expect(revealWords('Dana', STICKER).button).toBe('🎉 Get it');
+    // Review B3: Watch it again offered Ask for it while that ask waited, and filed it twice.
+    expect(revealWords('Dana', ICE_CREAM, true)).toEqual({ title: 'Dana, you did it!', reward: 'Ice cream trip', button: '⏳ Waiting for approval', asked: true });
   });
 });
 
