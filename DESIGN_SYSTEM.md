@@ -186,21 +186,21 @@ It uses the browser's View Transitions on the page itself. Home Assistant draws 
 
 ### 5.4 Themes come in pairs
 
-- **PlanaVista** (1.1.0's Clean Light and Deep Dark as one theme), **Minimal**, and **Vibrant**, each with a light and a dark version. Each theme's picture shows both halves.
+- **PlanaVista** (the first Clean Light and Deep Dark as one theme), **Minimal**, and **Vibrant**, each with a light and a dark version. Each theme's picture shows both halves.
 - **Customize** has a Light and a Dark color for the accent, the background, the header, and the now line. A dark color starts as **Matched**: derived from the light one in OKLCH, so it follows it. Setting it by hand overrides that; choosing Matched again goes back.
-- **The contrast guard** flags a chosen color that would be hard to read, with a one-tap fix that brightens or darkens it just enough: 3:1 for lines and controls (the accent, the now line), 4.5:1 for text (on the background, on a solid header). The 1.1.0 header gradients were drawn for their white text and aren't judged.
+- **The contrast guard** flags a chosen color that would be hard to read, with a one-tap fix that brightens or darkens it just enough: 3:1 for lines and controls (the accent, the now line), 4.5:1 for text (on the background, on a solid header). The first header gradients were drawn for their white text and aren't judged.
 - **Shape** is shared by both versions: corners (Sharp, Rounded, Pill), shadows (None, Subtle, Bold), events (Stripes, Solid), avatar border (Their color, White, Custom). Left unset, corners and shadows are the theme's own. "Reset to its original colors" restores a theme's colors and keeps the shape.
 
-### 5.5 Upgrading from 1.1.0
+### 5.5 Upgrading from the first themes
 
-| 1.1.0 | Becomes |
+| First themes | Becomes |
 |---|---|
 | Clean Light (`planavista`) | PlanaVista, Light |
 | Deep Dark (`dark`) | PlanaVista, Dark |
 | Minimal (`minimal`) | Minimal, Light |
 | Vibrant (`modern`) | Vibrant, Light |
 
-Customizations move to the version they were made for. The 1.1.0 keys (`theme`, `theme_overrides`) are rewritten beside the new ones on every save, so going back to 1.1.0 still draws a sensible card.
+Customizations move to the version they were made for. The first keys (`theme`, `theme_overrides`) are rewritten beside the new ones on every save, so going back to a version from before still draws a sensible card.
 
 ---
 
@@ -378,7 +378,7 @@ hide_weather: true
 hide_header: false
 ```
 
-- `planavista-card` is the card's name from 1.2.0 on, and what the card picker writes from 1.3.0. Cards added before as `planavista-calendar-card` keep working.
+- `planavista-card` is the card's name, and what the card picker writes. Cards added before as `planavista-calendar-card` keep working.
 - `theme`: `light` or `dark` fixes the card to PlanaVista Light or Dark; a theme name (`planavista`, `minimal`, `vibrant`) picks the theme and follows the household's Light, Dark, or Automatic.
 - `hide_header` hides the clock and weather header; the bar stays.
 - Anything not set in YAML follows the household's settings.
@@ -387,40 +387,40 @@ hide_header: false
 
 ## 12. Design changelog
 
-### 2026-10-13: Changed: sheets and done tiles (1.6.2)
+### 2026-10-13: Changed: sheets and done tiles
 
 - Sheets stack in the order they open, so a parent's PIN asked for from a chore's options covers them.
 - A done picture tile's ring is closed in the person's color, as their own ring is when the day is done, with the check over it; holding it to uncheck drains it.
 
-### 2026-10-13: Changed: edges (1.6.1)
+### 2026-10-13: Changed: edges
 
 - A panel view's card has square corners and no shadow, so with kiosk mode's top bar hidden no page shows at the screen's corners.
 
-### 2026-10-13: Changed: kiosk mode (1.6.0)
+### 2026-10-13: Changed: kiosk mode
 
 - Kiosk mode on shared screens: Home Assistant's sidebar and top bar hidden, or all of it but the tabs (Settings, PINs and parent mode, Shared screens). With the top bar hidden the card runs up under the status bar, as its bar runs under the home indicator.
 - The strip's Exit kiosk mode and Back to kiosk mode: a secondary button before Lock, in the card's strip and Settings' alike, its edge mixed from the person's color so it shows on the strip's tint. Once the strip is gone, a quiet info banner offers Back to kiosk mode.
 - The card's own toast sits above the bar, as the module toasts do (a zero-height anchor after the module area).
 - The card runs under the home indicator in every layout: in landscape, where the bar is at the top, it pads its own bottom by the inset, so a dark card never shows Home Assistant's light page below it.
 
-### 2026-10-13: Changed: sheets and holds (1.5.4)
+### 2026-10-13: Changed: sheets and holds
 
 - A sheet's backdrop closes it only on a tap that began on the backdrop, so the finger that finished a hold and opened the sheet doesn't close it as it lifts (`core/backdrop.ts`).
 
-### 2026-10-12: Changed: iPad (1.5.3)
+### 2026-10-12: Changed: iPad
 
 - The page's root is as tall as the screen as shown too, so an iPad's Safari can't push the page past the card.
 
-### 2026-10-12: Changed: My day's Timeline (1.5.2)
+### 2026-10-12: Changed: My day's Timeline
 
 - This week under the Timeline keeps the timeline's left edge, and the Timeline's bands (Evening) are section heads like every other.
 
-### 2026-10-12: Changed: phones (1.5.1)
+### 2026-10-12: Changed: phones
 
 - One scroll area on phones: the card fits under the status bar and above the home indicator, measured against the screen as shown, and a panel view is only as tall as that screen, so the page never scrolls too.
 - A phone's bar is one row: the views fold into a pop-up button with a menu.
 
-### 2026-10-12: Changed: one product (1.5.0)
+### 2026-10-12: Changed: one product
 
 - One control for each kind of choice (section 11.9), and one button family with a disabled look and one red for deleting.
 - One color per person in both modules; a calendar that belongs to someone draws its person's color.
@@ -430,7 +430,7 @@ hide_header: false
 - One event in every view; all-day events with Starts and Ends.
 - Settings pages share one column.
 
-### 2026-10-11: Changed: the calendar takes on the rest (1.4.0)
+### 2026-10-11: Changed: the calendar takes on the rest
 
 - Event details, New event, and Edit event are sheets like the chores sheets, with focus traps, Escape, focus returned, and a question before typing is thrown away.
 - Rounded headings and tabular numbers throughout the calendar; the status map's calendar rows (Now, In 10 min, Day 2 of 3).
@@ -440,7 +440,7 @@ hide_header: false
 - The calendar's sizes follow the card's width, and every control is a 48 px target.
 - The portrait header shrinks to one line while the content scrolls.
 
-### 2026-10-10: Changed: the new look (1.2.0)
+### 2026-10-10: Changed: the new look
 
 - The header and the bar: one row in landscape; a lock-screen clock and a bottom bar in portrait and on phones; the card lays itself out by its own size.
 - Day and night: Light, Dark, and Automatic (sun, schedule, or Home Assistant), with night falling from the top, day rising from the bottom, and a reveal from the finger; themes in pairs with Customize, Matched dark colors, and the contrast guard; `select.planavista_appearance`.
