@@ -24,6 +24,15 @@ export interface PushPageDetail {
   props?: Record<string, unknown>;
 }
 
+/**
+ * A pushed page's heading: a person's page follows its member's name as it is
+ * now (round 2: after Load the new version the heading kept the old name).
+ */
+export function pushedTitle(page: PushPageDetail, members: ReadonlyArray<{ id: string; name: string }>): string {
+  const id = page.tag === 'pv-settings-person' ? page.props?.memberId : null;
+  return (typeof id === 'string' && members.find(m => m.id === id)?.name) || page.title;
+}
+
 /** A page asks to go back (a person page after Save, Cancel, or Remove). */
 export const POP_PAGE = 'pv-pop-page';
 
