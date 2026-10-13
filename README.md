@@ -146,6 +146,8 @@ Chores sit next to the calendar. The board shows everyone's today at once: a col
 
 **Views.** Board; Week, with each person's days and anything missed; My day, one person's day as a timeline, a list, or big pictures for young children; and Rewards, with stars saved up and what they can buy.
 
+**Goals and surprises.** Each person can save up for one reward, their goal. When their stars reach it, however they got there (a parent's OK from a phone, the end of the day, bonus stars), a wrapped present waits on their column, their My day, and their goal in Rewards, wiggling now and then until they open it. They hold it like a chore, and it opens across the whole screen with their reward. It opens on a shared screen or their own login, never on a parent's phone, so a parent checking in from work can't open it for them; parents with phones get a note that a surprise is waiting. Watch it again in Rewards plays it once more.
+
 **Waiting for approval.** A chore or a reward can wait for a parent's approval. Parents answer under To approve on the screen, or from their phones. Settings, Rules decides what happens to check-offs nobody answers by the end of the day, what a missed chore does, when the chore day starts (3:00 AM), and how many minutes earn a star.
 
 **Phones.** On a person's page in Settings, pick their phones (from the Home Assistant Companion app). Parents' phones get Approval requests with buttons to answer them. Under Reminders, anyone with a phone can get a reminder at the evening check (7:00 PM unless you change it), only when they have chores left; the board shows the evening check at the same time. If Home Assistant no longer has a phone, Settings lists it under Needs a look.
@@ -210,7 +212,7 @@ Each person gets a device in Home Assistant:
 | `sensor.<name>_stars` | Stars to spend |
 | `sensor.<name>_streak` | Days in a row with every chore done |
 | `binary_sensor.<name>_chores_done` | On once everything due today is done |
-| `event.<name>_chores` | Completed, approved, sent back, undone, missed, or redeemed |
+| `event.<name>_chores` | Completed, approved, sent back, undone, missed, redeemed, or goal reached |
 
 The Household device adds `sensor.household_chores_left` and `sensor.household_approvals_waiting`, next to `select.planavista_appearance`.
 
