@@ -194,3 +194,9 @@ describe("the card's own toast sits above the bar, as the chores toasts do (revi
     expect(card).toMatch(/\.toast-anchor \{\s*order: 3;\s*position: relative;\s*height: 0;/);
   });
 });
+
+describe("the strip's kiosk button has an edge on the strip's tint (review)", () => {
+  it("mixes its border from the person's color, as the strip's own line is", () => {
+    expect(read('shell/pv-parent-strip.ts')).toMatch(/\.kiosk \{\s*border-color: color-mix\(in srgb, var\(--strip-color\) 55%, var\(--pv-border, #E7E7E3\)\);/);
+  });
+});

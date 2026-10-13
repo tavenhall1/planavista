@@ -50,6 +50,11 @@ export class PvParentStrip extends LitElement {
         color: var(--pv-text, #1A1B1E);
       }
 
+      /* A secondary button on the strip's tint needs the person's color in its edge (review). */
+      .kiosk {
+        border-color: color-mix(in srgb, var(--strip-color) 55%, var(--pv-border, #E7E7E3));
+      }
+
       .who {
         flex: 1;
         min-width: 0;
