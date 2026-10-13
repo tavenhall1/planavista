@@ -139,6 +139,11 @@ function startOf(ctx: SetupContext): string | null {
   return (ctx.household?.setup.start as string | null | undefined) ?? null;
 }
 
+/** Chores were running as setup began: setup run again leaves them as they are (round 1). */
+function choresWereOn(ctx: SetupContext): boolean {
+  return (ctx.modulesAtStart as { chores?: { enabled?: boolean } } | undefined)?.chores?.enabled === true;
+}
+
 /** The chores setup steps (spec 14.7): restore, the chores choice, common chores or a plan, and the shared screen. */
 export const choresSetupSteps: SetupStep[] = [
   {
@@ -160,7 +165,7 @@ export const choresSetupSteps: SetupStep[] = [
     lead: "Chores sit next to the calendar. Kids hold a chore's circle to finish it and earn stars.",
     primary: 'Continue',
     secondary: 'Not now, just the calendar',
-    applies: ctx => !!ctx.household?.available && startOf(ctx) !== 'restore',
+    applies: ctx => !!ctx.household?.available && startOf(ctx) !== 'restore' && !choresWereOn(ctx),
   },
   {
     id: 'chores-common',
@@ -171,7 +176,7 @@ export const choresSetupSteps: SetupStep[] = [
     lead: 'Each comes with a person, how often, and about how long. Tap a picked chore to change those.',
     skip: true,
     wide: true,
-    applies: ctx => startOf(ctx) === 'common',
+    applies: ctx => startOf(ctx) === 'common' && !choresWereOn(ctx),
   },
   {
     id: 'chores-plan',
@@ -181,7 +186,7 @@ export const choresSetupSteps: SetupStep[] = [
     heading: 'Start from your household plan',
     lead: 'Choose the plan file, or paste its text. You see where everything goes before anything is saved.',
     wide: true,
-    applies: ctx => startOf(ctx) === 'plan',
+    applies: ctx => startOf(ctx) === 'plan' && !choresWereOn(ctx),
   },
   {
     id: 'shared-screen',

@@ -58,6 +58,8 @@ export class PvSetup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
+  /** The modules as this setup began (kept for the run). */
+  private _modulesAtStart: HouseholdView['modules'] | undefined = undefined;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Edits the card keeps while steps come and go (the appearance changes, spec 14.7). */
@@ -98,6 +100,7 @@ export class PvSetup extends LitElement {
   };
 
   protected willUpdate(): void {
+    if (this._modulesAtStart === undefined && this.household) this._modulesAtStart = this.household.modules;
     if (!this._started && this.data) {
       // A short setup asks its first question afresh, whatever setup chose before.
       if (this.only) this._patch = { setup: { start: null } };
@@ -245,7 +248,10 @@ export class PvSetup extends LitElement {
 
   /** The household as steps see it: with what earlier steps just changed. */
   private _context(): SetupContext {
-    return { household: withPatch(this.household, this._patch), data: this.data, services: this.services };
+    return {
+      household: withPatch(this.household, this._patch), data: this.data, services: this.services,
+      modulesAtStart: this._modulesAtStart,
+    };
   }
 
   private _steps(): SetupStep[] {
