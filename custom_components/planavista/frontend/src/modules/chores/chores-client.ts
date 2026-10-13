@@ -95,6 +95,11 @@ export class ChoresApi extends WsApi {
     return this.call('planavista/rewards/redeem', { member, reward });
   }
 
+  /** Open a member's goal surprise: a shared screen or their own login (milestone 10). */
+  openSurprise(member: string): Promise<{ result: string }> {
+    return this.call('planavista/chores/surprise/open', { member });
+  }
+
   awardStars(member: string, stars: number, reason: string): Promise<{ balance: number }> {
     return this.call('planavista/stars/award', { member, stars, reason });
   }
