@@ -51,6 +51,7 @@ import './settings/pv-settings';
 import './setup/pv-setup';
 import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/content-scroll';
 import { PLACE_STORAGE, Place, placeKey, readPlace, usablePlace, writePlace } from '../core/place';
+import { SCREEN_AS_SHOWN, composedAncestor, fitView } from '../core/panel-fit';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
@@ -67,6 +68,10 @@ const DEFAULT_ENTITY = 'sensor.planavista_config';
  */
 export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) public hass!: HomeAssistant;
+  /** Home Assistant sets this when the card is a panel view's one card. */
+  @property({ attribute: false }) isPanel = false;
+  /** Puts Home Assistant's view back as it was (core/panel-fit). */
+  private _unfitView?: () => void;
   @state() private _config?: PlanaVistaCardConfig;
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
@@ -479,19 +484,32 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._placeTimer = window.setInterval(() => {
       if (document.visibilityState === 'visible') this._savePlace();
     }, 60_000);
+    void this.updateComplete.then(() => this._fitView());
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.clearInterval(this._placeTimer);
     this._savePlace();
+    this._unfitView?.();
+    this._unfitView = undefined;
   }
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    if (changedProps.has('isPanel')) this._fitView();
     if (changedProps.has('_moduleId') || changedProps.has('_views')) this._savePlace();
     this._guardSettings();
     this._guardSetup();
+  }
+
+  /** As a panel view's one card, Home Assistant's view is only as tall as the screen as shown, so the page never scrolls (core/panel-fit). */
+  private _fitView(): void {
+    this._unfitView?.();
+    this._unfitView = undefined;
+    if (!this.isPanel || !this.isConnected) return;
+    const container = composedAncestor<HTMLElement>(this, 'HUI-VIEW-CONTAINER');
+    if (container) this._unfitView = fitView(container, typeof CSS !== 'undefined' && CSS.supports('min-height', SCREEN_AS_SHOWN));
   }
 
   private _onOnboardingComplete(event?: CustomEvent<{ module?: string }>) {
