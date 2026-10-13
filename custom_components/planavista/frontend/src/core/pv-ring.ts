@@ -116,6 +116,11 @@ export class PvRing extends LitElement {
     this._setEasing();
   }
 
+  protected willUpdate(changed: PropertyValues): void {
+    // Motion changed in Settings since the first draw: the next fill follows it (round 1).
+    if (changed.has('progress')) this._setEasing();
+  }
+
   protected updated(changed: PropertyValues): void {
     if (changed.has('celebrate') && this.celebrate && changed.get('celebrate') !== undefined) this._play();
   }

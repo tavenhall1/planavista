@@ -26,3 +26,10 @@ describe('round 1 polish', () => {
     expect(card).toMatch(/\.pvc-setup-pending \{\s*flex: 1 1 auto;\s*display: flex;/);
   });
 });
+
+describe('rings follow the Motion setting at once', () => {
+  it('work out their easing again whenever their progress changes, not only on first draw', () => {
+    const ring = read('core/pv-ring.ts');
+    expect(ring).toMatch(/protected willUpdate\(changed: PropertyValues\): void \{\s*\/\/[^\n]*\n\s*if \(changed\.has\('progress'\)\) this\._setEasing\(\);/);
+  });
+});
