@@ -61,7 +61,7 @@ describe("a step out of kiosk mode lasts by parent mode's own rules (D4)", () =>
 describe("the style kiosk mode adds to Home Assistant's dashboard header (3.2)", () => {
   it('hides the whole header for Hidden, makes no room for it, and lets the card run under the status bar', () => {
     expect(KIOSK_SHEETS.hidden).toMatch(/\.header \{ display: none !important; \}/);
-    expect(KIOSK_SHEETS.hidden).toMatch(/:host \{ --header-height: 0px; --pv-under-status-bar: var\(--safe-area-inset-top, 0px\); \}/);
+    expect(KIOSK_SHEETS.hidden).toMatch(/:host \{ --header-height: 0px; --pv-under-status-bar: var\(--safe-area-inset-top, 0px\); --pv-kiosk-inset-left: var\(--safe-area-inset-left, 0px\); \}/);
   });
 
   it('names the part each look hides, so the controller adds it only where that part is', () => {

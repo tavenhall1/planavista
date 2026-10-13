@@ -25,11 +25,16 @@ export function kioskLook(view: HouseholdView | null): KioskLook {
  * and the header simply shows: kiosk mode fails open.
  */
 export const KIOSK_SHEETS: Record<Exclude<KioskLook, 'off'>, string> = {
+  // Kiosk mode hides the sidebar, but Home Assistant pads its view's left only when narrow:
+  // the card keeps its content clear of the left inset itself (round 1).
   hidden: [
     '.header { display: none !important; }',
-    ':host { --header-height: 0px; --pv-under-status-bar: var(--safe-area-inset-top, 0px); }',
+    ':host { --header-height: 0px; --pv-under-status-bar: var(--safe-area-inset-top, 0px); --pv-kiosk-inset-left: var(--safe-area-inset-left, 0px); }',
   ].join('\n'),
-  tabs: '.action-items { display: none !important; }',
+  tabs: [
+    '.action-items { display: none !important; }',
+    ':host { --pv-kiosk-inset-left: var(--safe-area-inset-left, 0px); }',
+  ].join('\n'),
 };
 
 /**

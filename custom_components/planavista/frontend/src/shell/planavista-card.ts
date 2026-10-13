@@ -254,6 +254,25 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       :host([panel]) ha-card {
         border-radius: 0;
         box-shadow: none;
+        padding-left: var(--pv-inset-left);
+        padding-right: var(--pv-inset-right);
+        box-sizing: border-box;
+      }
+
+      /* Its color runs to the side edges, its content inside the safe area (round 1): Home Assistant
+         pads its view by the side insets, the left only when narrow, and kiosk mode hides the sidebar. */
+      :host([panel]) {
+        margin-left: calc(-1 * var(--view-container-inset-left, 0px));
+        margin-right: calc(-1 * var(--view-container-inset-right, 0px));
+        --pv-inset-left: max(var(--view-container-inset-left, 0px), var(--pv-kiosk-inset-left, 0px));
+        --pv-inset-right: var(--view-container-inset-right, 0px);
+      }
+
+      :host([panel]) pv-glance-header {
+        margin-left: calc(-1 * var(--pv-inset-left));
+        margin-right: calc(-1 * var(--pv-inset-right));
+        padding-left: var(--pv-inset-left);
+        padding-right: var(--pv-inset-right);
       }
 
       /* One header, module, and bar in every layout; only their order changes,

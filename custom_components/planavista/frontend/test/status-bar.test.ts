@@ -98,3 +98,36 @@ describe("a brief shared event keeps its time clear of the faces", () => {
     expect(day).toMatch(/\.positioned-event\.brief \.event-time \{\s*margin-top: 0;\s*flex-shrink: 1;\s*min-width: 0;\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/);
   });
 });
+
+// Round 1 (and the owner's sideways iPhone): Home Assistant pads its view by the right inset (and the
+// left only when narrow), so a page band showed on the right, and with kiosk mode hiding the sidebar
+// the card's content ran under the camera cutout on the left. Apple's way: backgrounds to both edges,
+// content inside the safe area.
+describe("a panel card's color runs to the side edges, its content inside the safe area", () => {
+  const card = read('shell/planavista-card.ts');
+
+  it('takes back the room Home Assistant leaves at the sides, and knows the insets it must keep clear', () => {
+    const host = block(card, '      :host([panel])');
+    expect(host).toMatch(/margin-left: calc\(-1 \* var\(--view-container-inset-left, 0px\)\);/);
+    expect(host).toMatch(/margin-right: calc\(-1 \* var\(--view-container-inset-right, 0px\)\);/);
+    // Home Assistant pads the left only when narrow; kiosk mode hides the sidebar without it.
+    expect(host).toMatch(/--pv-inset-left: max\(var\(--view-container-inset-left, 0px\), var\(--pv-kiosk-inset-left, 0px\)\);/);
+    expect(host).toMatch(/--pv-inset-right: var\(--view-container-inset-right, 0px\);/);
+  });
+
+  it('keeps its content clear of the insets, the header bleeding into them', () => {
+    const haCard = block(card, '      :host([panel]) ha-card');
+    expect(haCard).toMatch(/padding-left: var\(--pv-inset-left\);/);
+    expect(haCard).toMatch(/padding-right: var\(--pv-inset-right\);/);
+    const header = block(card, '      :host([panel]) pv-glance-header');
+    expect(header).toMatch(/margin-left: calc\(-1 \* var\(--pv-inset-left\)\);/);
+    expect(header).toMatch(/padding-left: var\(--pv-inset-left\);/);
+    expect(header).toMatch(/margin-right: calc\(-1 \* var\(--pv-inset-right\)\);/);
+    expect(header).toMatch(/padding-right: var\(--pv-inset-right\);/);
+  });
+
+  it('kiosk mode, which hides the sidebar, says the left inset is the card\'s to keep clear', () => {
+    const kiosk = read('core/kiosk.ts');
+    expect(kiosk.match(/--pv-kiosk-inset-left: var\(--safe-area-inset-left, 0px\)/g)).toHaveLength(2);
+  });
+});
