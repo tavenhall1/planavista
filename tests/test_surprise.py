@@ -239,7 +239,8 @@ async def test_with_no_shared_screens_any_login_opens_it(hass, chores, accounts,
     assert opened["result"] == {"result": "opened"}
 
 
-async def test_parents_hear_once_that_a_goal_was_reached(hass, chores) -> None:
+async def _alex_hears(hass, chores) -> list:
+    """Alex's phone, the one that gets the household's requests; returns its calls."""
     from pytest_homeassistant_custom_component.common import async_mock_service
 
     alex = async_mock_service(hass, "notify", "mobile_app_alex_phone")
@@ -249,17 +250,40 @@ async def test_parents_hear_once_that_a_goal_was_reached(hass, chores) -> None:
         for m in household.members
     ]
     await household.async_save()
+    return alex
+
+
+def _goal_notes(calls: list) -> list[dict]:
+    return [c.data for c in calls if c.data.get("title") == "Dana reached a goal"]
+
+
+async def test_parents_hear_once_that_a_goal_was_reached(hass, chores) -> None:
+    alex = await _alex_hears(hass, chores)
     chores.notifier.async_start()
     await _goal(hass, chores)
     await _bonus(hass, chores)
     await _bonus(hass, chores, 1)  # still in reach: no second notification
-    goal = [c.data for c in alex if c.data.get("title") == "Dana reached a goal"]
-    assert goal == [{
+    assert _goal_notes(alex) == [{
         "title": "Dana reached a goal",
         "message": "🍦 Ice cream trip. There's a surprise waiting on Dana's screen.",
         "data": {"tag": "planavista-goal-dana", "group": "planavista"},
     }]
 
+
+async def test_parents_hear_of_a_goal_reached_while_home_assistant_was_down(hass, chores, freezer) -> None:
+    """Review A1: the 3 AM approval caught up after an outage wrapped the surprise, but the
+    notifier started listening only after the catch-up, so no parent heard of it."""
+    alex = await _alex_hears(hass, chores)
+    await _goal(hass, chores, cost=1)
+    await chores.async_run(lambda e, now: e.complete(now, key=FISH, by="dana", source="tablet"))
+    await hass.async_block_till_done()
+    assert "dana" not in chores.engine.rewards["surprises"]  # waiting for approval earns nothing yet
+    chores.async_stop()
+    freezer.move_to("2026-10-14T08:00:00-05:00")  # Home Assistant was down across 3 AM
+    await chores.async_start()
+    await hass.async_block_till_done()
+    assert chores.engine.rewards["surprises"]["dana"]["opened"] is None
+    assert [n["title"] for n in _goal_notes(alex)] == ["Dana reached a goal"]
 
 async def test_diagnostics_count_the_surprises(hass, chores, mock_config_entry) -> None:
     from custom_components.planavista.diagnostics import async_get_config_entry_diagnostics

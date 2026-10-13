@@ -305,13 +305,15 @@ class ChoresRuntime:
         self._unsubs.append(self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_FINAL_WRITE, self._on_final_write))
         self._unsubs.append(async_track_time_interval(self.hass, self._on_refresh, REFRESH_INTERVAL))
         self._unsubs.append(async_dispatcher_connect(self.hass, SIGNAL_CONFIG_APPLIED, self._on_config_applied))
+        # Listening first: a surprise the sync or the catch-up wraps (a goal reached while Home
+        # Assistant was down) reaches the parents, as it would have at the boundary itself.
+        self.notifier.async_start()
         await self.async_sync_members()
         if self.available:
             if self._sync_first_day():
                 self._schedule_log_save()
             await self.async_apply(self.engine.catch_up(self.now()))
         self._schedule_boundary()
-        self.notifier.async_start()
 
     @callback
     def async_stop(self) -> None:
