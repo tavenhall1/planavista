@@ -37,8 +37,8 @@ describe('composedAncestor (across shadow roots, up to Home Assistant)', () => {
 // 108 px on an iPhone 17 Pro Max) under a card that fit.
 describe('fitView (the view is as tall as the screen as shown)', () => {
   it('sets the minimum height to the screen as shown, and puts back what was there', () => {
-    const container = { style: { minHeight: '' } };
-    const restore = fitView(container, true);
+    const container = { style: { minHeight: '', height: '' } };
+    const restore = fitView(container, 'minHeight', true);
     expect(container.style.minHeight).toBe(SCREEN_AS_SHOWN);
     expect(SCREEN_AS_SHOWN).toBe('100dvh');
     restore();
@@ -46,14 +46,25 @@ describe('fitView (the view is as tall as the screen as shown)', () => {
   });
 
   it("leaves a browser without dvh as it is, and never undoes someone else's change", () => {
-    const old = { style: { minHeight: '' } };
-    fitView(old, false)();
+    const old = { style: { minHeight: '', height: '' } };
+    fitView(old, 'minHeight', false)();
     expect(old.style.minHeight).toBe('');
-    const container = { style: { minHeight: '' } };
-    const restore = fitView(container, true);
+    const container = { style: { minHeight: '', height: '' } };
+    const restore = fitView(container, 'minHeight', true);
     container.style.minHeight = '50vh';
     restore();
     expect(container.style.minHeight).toBe('50vh');
+  });
+
+  // Home Assistant's page also sets html { height: 100vh }. iPad Safari never hides
+  // its toolbars, so the page scrolled by about 79 px and left a strip under the card.
+  it("fits the page's root too: its height, not its minimum", () => {
+    const html = { style: { minHeight: '', height: '' } };
+    const restore = fitView(html, 'height', true);
+    expect(html.style.height).toBe(SCREEN_AS_SHOWN);
+    expect(html.style.minHeight).toBe('');
+    restore();
+    expect(html.style.height).toBe('');
   });
 });
 
@@ -64,6 +75,8 @@ describe("the card fits Home Assistant's view only as a panel's one card", () =>
     expect(card).toMatch(/@property\(\{ attribute: false \}\) isPanel = false;/);
     expect(card).toMatch(/if \(!this\.isPanel \|\| !this\.isConnected\) return;/);
     expect(card).toMatch(/composedAncestor<HTMLElement>\(this, 'HUI-VIEW-CONTAINER'\)/);
+    expect(card).toMatch(/fitView\(container, 'minHeight', supported\)/);
+    expect(card).toMatch(/fitView\(document\.documentElement, 'height', supported\)/);
   });
 
   it('puts the view back when it leaves', () => {
