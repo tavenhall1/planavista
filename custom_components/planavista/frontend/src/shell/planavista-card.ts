@@ -77,6 +77,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) public hass!: HomeAssistant;
   /** Home Assistant sets this when the card is a panel view's one card; shown on the host as `panel`. */
   @property({ type: Boolean, reflect: true, attribute: 'panel' }) isPanel = false;
+  /** 'grid' in a sections view, where the card fills its cell (shown on the host as `grid`; round 2). */
+  @property({ attribute: false }) layout?: string;
   /** Puts Home Assistant's view back as it was (core/panel-fit). */
   private _unfitView?: () => void;
   /** Stops hearing kiosk mode's changes (milestone 9). */
@@ -251,6 +253,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
       /* A panel view's one card meets the edges of the screen, as Home Assistant's
          own cards do there: the screen's corners are the only rounded ones. */
+      /* A sections view gives the card a cell of its own size: fill it, and nothing more (round 2). */
+      :host([grid]) {
+        height: 100%;
+        margin: 0;
+      }
+
       :host([panel]) ha-card {
         border-radius: 0;
         box-shadow: none;
@@ -510,6 +518,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
+    if (changed.has('layout')) this.toggleAttribute('grid', this.layout === 'grid');
     const opened = changed as Map<string, unknown>;
     if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
       this._overlayLayer = nextSheetLayer();
@@ -1065,6 +1074,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   getCardSize(): number {
     return 10;
+  }
+
+  /** A sections view's starting size: the full width and about 630 px, never under about 370 px. */
+  getGridOptions() {
+    return { columns: 'full', rows: 10, min_rows: 6, min_columns: 6 };
   }
 }
 
