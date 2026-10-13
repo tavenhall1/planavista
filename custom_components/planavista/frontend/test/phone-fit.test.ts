@@ -19,19 +19,21 @@ const block = (source: string, selector: string): string => {
 describe('the card fits the screen on a phone (one scroll area)', () => {
   const card = read('shell/planavista-card.ts');
 
-  it('fills only the space Home Assistant leaves: the visible screen less its header and the status bar', () => {
+  it('fills only the space Home Assistant leaves above it, and runs under the home indicator in every layout', () => {
     const host = block(card, ':host');
     // (+ the status bar, which only kiosk mode's Hidden top bar sets: milestone 9.)
-    expect(host).toMatch(/height: calc\(100dvh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) - var\(--safe-area-inset-bottom, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);/);
-    // Browsers without dvh keep the vh rule, with the insets.
-    expect(host).toMatch(/height: calc\(100vh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) - var\(--safe-area-inset-bottom, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);\s*height: calc\(100dvh/);
+    expect(host).toMatch(/height: calc\(100dvh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);/);
+    // Browsers without dvh keep the vh rule.
+    expect(host).toMatch(/height: calc\(100vh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);\s*height: calc\(100dvh/);
+    expect(host).toMatch(/margin-bottom: calc\(-1 \* var\(--safe-area-inset-bottom, 0px\)\);/);
     expect(host).not.toMatch(/height: calc\(100vh - var\(--header-height, 56px\)\);/);
   });
 
-  it('runs its bottom bar under the home indicator in portrait and on phones, as iOS bars do', () => {
-    const bottom = block(card, ":host(:not([layout='landscape']))");
-    expect(bottom).toMatch(/height: calc\(100dvh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);/);
-    expect(bottom).toMatch(/margin-bottom: calc\(-1 \* var\(--safe-area-inset-bottom, 0px\)\);/);
+  it('keeps landscape content clear of the home indicator, with the card behind it (review: a light band showed under a dark card)', () => {
+    expect(card).not.toMatch(/:host\(:not\(\[layout='landscape'\]\)\) \{/);
+    const landscape = block(card, ":host([layout='landscape']) ha-card");
+    expect(landscape).toMatch(/padding-bottom: var\(--safe-area-inset-bottom, 0px\);/);
+    expect(landscape).toMatch(/box-sizing: border-box;/);
   });
 
   it('pads the bar by the same inset Home Assistant uses, so the two never disagree', () => {

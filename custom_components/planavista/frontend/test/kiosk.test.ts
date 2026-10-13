@@ -134,7 +134,6 @@ describe('Settings: Shared screens, Kiosk mode and Top bar (D2, D6)', () => {
 describe('the card runs under the status bar when the top bar is hidden (3.3)', () => {
   const card = read('shell/planavista-card.ts');
   it('adds the status bar back to its height, moves up under it, and pads its header by it', () => {
-    expect(card).toMatch(/height: calc\(100dvh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) - var\(--safe-area-inset-bottom, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);/);
     expect(card).toMatch(/height: calc\(100dvh - var\(--header-height, 56px\) - var\(--safe-area-inset-top, 0px\) \+ var\(--pv-under-status-bar, 0px\)\);/);
     expect(card).toMatch(/margin-top: calc\(-1 \* var\(--pv-under-status-bar, 0px\)\);/);
     expect(card).toMatch(/pv-glance-header \{\s*order: 1;\s*flex-shrink: 0;\s*padding-top: var\(--pv-under-status-bar, 0px\);/);

@@ -210,24 +210,25 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       /* Only the space Home Assistant leaves, so the page itself never scrolls:
          on an iPhone its header grows by the status bar and its view pads the
          home indicator, and Safari's 100vh is the screen with its toolbars
-         hidden (dvh is the screen as shown). */
+         hidden (dvh is the screen as shown). The card runs under the home
+         indicator, as iOS's own bars do: the bottom bar pads itself by the
+         inset, and in landscape the card pads its own bottom. */
       :host {
         display: block;
-        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px) + var(--pv-under-status-bar, 0px));
-        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px) + var(--pv-under-status-bar, 0px));
+        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
+        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
         /* Kiosk mode with the top bar hidden: the card runs up under the status bar (milestone 9). */
         margin-top: calc(-1 * var(--pv-under-status-bar, 0px));
+        margin-bottom: calc(-1 * var(--safe-area-inset-bottom, 0px));
         overflow: hidden;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
       }
 
-      /* With the bar at the bottom, the card runs under the home indicator,
-         as iOS's own bars do; the bar pads itself by the same inset. */
-      :host(:not([layout='landscape'])) {
-        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
-        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
-        margin-bottom: calc(-1 * var(--safe-area-inset-bottom, 0px));
+      /* In landscape the bar is at the top: content stays clear of the home indicator, the card's color behind it (review). */
+      :host([layout='landscape']) ha-card {
+        padding-bottom: var(--safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
       }
 
       ha-card {
