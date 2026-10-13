@@ -349,6 +349,8 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 - **Opening:** the same hold as a chore (550 ms, a 12 px move cancels, Space or Enter), and the hold is the reveal's first act: the present shakes harder and faster and rises as the ring fills, and a finished hold flows into the reveal from where the present was. Letting go early springs it back. On a login that may not open it (a parent's or a sibling's own), it reads "Waiting for Dana to open it" and can't be held.
 - **The reveal:** a full-screen layer above everything, Home Assistant's bars included (the card shows it outside `ha-card`). The present flies to the middle, shakes twice, the lid pops (bouncy) in a burst of confetti in the person's color and gold stars, the reward's picture rises out of the box, "Dana, you did it!" and the reward's name fade up, then the reward's button (🙋 Ask for it, or 🎉 Get it when it needs no approval) and Later, about 4 seconds in all. A tap skips to the end, but only a press that began on the layer, since the hold's lifting finger lands there. Reduced motion: the present fades to the reward with a glow. The chime plays only with Sound on.
 
+- **The reveal's buttons are the celebration's own** (the one exception to 11.9's single button family): 56 px gold and frosted pills in a heavier weight, drawn on the reveal's dark layer in every theme and mode, so the moment reads as a celebration rather than a sheet. They keep 48 px targets, a visible focus ring, and the family's words. The gold is `--pv-present-gold`, a token of every theme.
+
 ### 11.9 Controls: one for each kind of choice
 
 The shared styles live in `styles/controls.ts`; each site keeps its own buttons, inputs, and handlers.

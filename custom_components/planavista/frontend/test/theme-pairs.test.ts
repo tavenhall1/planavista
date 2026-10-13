@@ -7,6 +7,15 @@ const look = (changes: Partial<Look>): Look => ({ ...PLAIN, ...changes });
 const PAIRS: ThemePair[] = ['planavista', 'minimal', 'vibrant'];
 const MODES: Mode[] = ['light', 'dark'];
 
+// Milestone 10 review B12: the present's gold was read in three places and defined by no theme.
+describe("the present's gold", () => {
+  it('is a token of every theme, light and dark', () => {
+    for (const pair of PAIRS) for (const mode of MODES) {
+      expect(themeTokens(look({ pair }), mode)['--pv-present-gold'], `${pair} ${mode}`).toBe('#F5B800');
+    }
+  });
+});
+
 /** The 20 colors the swatch picker offers, which households choose accents and backgrounds from. */
 const PRESETS = [
   '#001219', '#005F73', '#0A9396', '#94D2BD', '#E9D8A6', '#EE9B00', '#CA6702', '#BB3E03', '#AE2012', '#9B2226',
