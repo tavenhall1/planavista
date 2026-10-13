@@ -75,12 +75,17 @@ export class PvNavBar extends LitElement {
     }
 
     /* A phone's bar is one row: tighter gaps and switcher segments leave room for a module's buttons. */
+    /* Phones: one row at 440 px with the waiting count, the views' button as wide as "Rewards" (round 1). */
     :host([layout='phone']) nav {
-      gap: 8px;
+      gap: 6px;
     }
 
     :host([layout='phone']) .modules > button {
-      padding: 0 11px;
+      padding: 0 10px;
+    }
+
+    :host([layout='phone']) .picker > span {
+      padding: 0 6px 0 10px;
     }
 
     button {

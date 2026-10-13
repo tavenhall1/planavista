@@ -42,8 +42,9 @@ describe("the bar's pop-up button for views", () => {
   });
 
   it("tightens a phone's bar so Chores' buttons fit on its one row (measured at 390 px)", () => {
-    expect(bar).toMatch(/:host\(\[layout='phone'\]\) nav \{\s*gap: 8px;/);
-    expect(bar).toMatch(/:host\(\[layout='phone'\]\) \.modules > button \{\s*padding: 0 11px;/);
+    expect(bar).toMatch(/:host\(\[layout='phone'\]\) nav \{\s*gap: 6px;/);
+    expect(bar).toMatch(/:host\(\[layout='phone'\]\) \.modules > button \{\s*padding: 0 10px;/);
+    expect(bar).toMatch(/:host\(\[layout='phone'\]\) \.picker > span \{\s*padding: 0 6px 0 10px;/);
   });
 
   it('keeps the segments it measures out of reach while they are hidden', () => {
