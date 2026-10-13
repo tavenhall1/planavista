@@ -72,7 +72,7 @@ describe("the card fits Home Assistant's view only as a panel's one card", () =>
   const card = read('shell/planavista-card.ts');
 
   it('listens for isPanel, which Home Assistant sets, and fits the view while it is connected', () => {
-    expect(card).toMatch(/@property\(\{ attribute: false \}\) isPanel = false;/);
+    expect(card).toMatch(/@property\(\{ type: Boolean, reflect: true, attribute: 'panel' \}\) isPanel = false;/);
     expect(card).toMatch(/if \(!this\.isPanel \|\| !this\.isConnected\) return;/);
     expect(card).toMatch(/composedAncestor<HTMLElement>\(this, 'HUI-VIEW-CONTAINER'\)/);
     expect(card).toMatch(/fitView\(container, 'minHeight', supported\)/);
