@@ -296,12 +296,12 @@ export class PVEventPopup extends LitElement {
   /** A PIN first when this screen needs one (D1), then the question. */
   private _askDelete = async (): Promise<void> => {
     const event = this.event;
-    if (!event || !(await this._mayChange(event))) return;
+    if (!event || !(await this._mayChange(event, 'delete'))) return;
     if (this.isConnected && this.event) this._asking = true;
   };
 
-  private _mayChange(event: CalendarEvent): Promise<boolean> {
-    return this.gate ? this.gate.ask(calendarsOf(event), event.summary ?? '') : Promise.resolve(true);
+  private _mayChange(event: CalendarEvent, mode: 'change' | 'delete' = 'change'): Promise<boolean> {
+    return this.gate ? this.gate.ask(calendarsOf(event), event.summary ?? '', mode) : Promise.resolve(true);
   }
 
   private async _delete(everyone: boolean) {

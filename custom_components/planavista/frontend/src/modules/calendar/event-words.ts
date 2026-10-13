@@ -177,9 +177,9 @@ export function lockedEventNote(ownerNames: readonly string[]): string {
 }
 
 /** The PIN sheet's question, and the line that says why it is asking. */
-export function changeReason(summary: string, mode: 'change' | 'add' = 'change'): { heading: string; reason: string } {
+export function changeReason(summary: string, mode: 'change' | 'add' | 'delete' = 'change'): { heading: string; reason: string } {
   const name = summary.trim() || 'this event';
-  return mode === 'add'
-    ? { heading: `Who's adding ${name}?`, reason: `To add ${name}` }
-    : { heading: `Who's changing ${name}?`, reason: `To change ${name}` };
+  if (mode === 'add') return { heading: `Who's adding ${name}?`, reason: `To add ${name}` };
+  if (mode === 'delete') return { heading: `Who's deleting ${name}?`, reason: `To delete ${name}` };
+  return { heading: `Who's changing ${name}?`, reason: `To change ${name}` };
 }
