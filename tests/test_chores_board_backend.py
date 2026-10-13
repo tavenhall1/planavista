@@ -107,6 +107,29 @@ def test_excusing_a_missed_check_off_mends_its_day_and_the_streak() -> None:
     assert err.value.code == "not_missed"
 
 
+
+@pytest.mark.parametrize("begins", ["created", "assigned_since"])
+def test_excusing_a_day_from_before_the_chore_began_still_mends_it(begins: str) -> None:
+    """Round 1 (adversarial review): history older than a chore's start (its created time, an assignee
+    added later, chores turned off and on) can't be worked out again, so the excuse left "0 of 1"."""
+    engine = sample_engine(at(10, 11, 7))
+    engine.complete(at(10, 11, 7), chore="cat_care", member="casey", by="casey", source="tablet")
+    engine.complete(at(10, 11, 19), chore="cat_care", member="casey", by="casey", source="tablet")
+    engine.catch_up(at(10, 12, 7))
+    engine.complete(at(10, 12, 7), chore="cat_care", member="casey", by="casey", source="tablet")
+    engine.catch_up(SCENE)
+    cat = next(a for a in engine.plan["activities"] if a["id"] == "cat_care")
+    if begins == "created":
+        cat["created"] = dict(cat["created"], at="2026-10-13T08:00:00-05:00")
+    else:
+        cat["assigned_since"] = {"casey": "2026-10-13T08:00:00-05:00"}
+    assert engine._past_occurrence(CAT_MONDAY_EVENING) is None  # the history this test is about
+    engine.excuse_missed(SCENE, key=CAT_MONDAY_EVENING, by="blair", note="Sick day")
+    monday = next(s for s in engine.log["summaries"] if s.get("member") == "casey" and s.get("period") == "day:2026-10-12")
+    assert (monday["due"], monday["done"], monday["closed"]) == (1, 1, True)
+    assert engine.streak("casey", SCENE) == 2
+
+
 YARD = "yard_work|casey|week:2026-10-12|0"
 
 
