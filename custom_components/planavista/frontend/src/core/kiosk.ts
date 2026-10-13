@@ -48,6 +48,18 @@ export function kioskStripAction(
   return session.parent && session.adminParent ? 'exit' : null;
 }
 
+/**
+ * Who may change kiosk mode in Settings (review, the owner's rule): a parent
+ * who is an admin, in parent mode, or an admin's own login; a shared screen
+ * signed in as an admin still needs an admin parent. The backend checks too.
+ */
+export function mayChangeKiosk(
+  account: { is_admin: boolean; shared: boolean },
+  session: { parent: boolean; adminParent?: boolean } | null,
+): boolean {
+  return !!(session?.parent && session.adminParent) || (account.is_admin && !account.shared);
+}
+
 /** A step out of kiosk mode, by parent mode's own clock (D4). */
 export interface StepOut {
   /** The last touch anywhere on the page (ms). */

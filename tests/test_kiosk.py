@@ -12,6 +12,7 @@ from custom_components.planavista.household.kiosk import (
     KIOSK_TOP_BARS,
     default_kiosk,
     exit_refusal,
+    may_change_kiosk,
     normalize_kiosk,
 )
 
@@ -51,6 +52,20 @@ def test_only_an_admin_parent_steps_out_on_a_shared_screen_in_kiosk_mode(
         exit_refusal(enabled=enabled, shared=shared, parent_session=parent_session, parent_is_admin=parent_is_admin)
         == refusal
     )
+
+
+@pytest.mark.parametrize(
+    ("shared", "account_admin", "session_parent_admin", "allowed"),
+    [
+        (False, True, False, True),  # an admin's own login
+        (True, False, True, True),  # the tablet, with an admin parent's PIN
+        (True, True, False, False),  # a shared admin login still needs an admin parent's PIN
+        (True, False, False, False),  # the tablet, with a parent who isn't an admin
+        (False, False, False, False),  # a parent's own login that isn't an admin
+    ],
+)
+def test_who_may_change_kiosk_mode(shared: bool, account_admin: bool, session_parent_admin: bool, allowed: bool) -> None:
+    assert may_change_kiosk(shared=shared, account_admin=account_admin, session_parent_admin=session_parent_admin) is allowed
 
 
 async def _view(client: Any) -> dict[str, Any]:
@@ -233,3 +248,34 @@ async def test_diagnostics_show_the_kiosk_setting_and_its_refusals(
     result = await get_diagnostics_for_config_entry(hass, hass_client, mock_config_entry)
     assert result["household"]["kiosk"] == {"enabled": True, "top_bar": "hidden"}
     assert ("planavista/kiosk/exit", "not_admin") in [(r["command"], r["reason"]) for r in result["recent_refusals"]]
+
+
+async def test_a_parent_who_isnt_an_admin_cant_change_kiosk_mode(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, kitchen: Any
+) -> None:
+    """The owner's rule: a parent without admin can't exit kiosk mode, so can't turn it off either (review)."""
+    blair = (await _unlock(kitchen, "blair", PIN))["session"]
+    for change in ({"kiosk_enabled": False}, {"kiosk_top_bar": "tabs"}):
+        refused = await ws_command(kitchen, {"type": "planavista/household/settings/save", "session": blair, **change})
+        assert refused["error"]["code"] == "not_admin", change
+    assert household.data["security"]["kiosk"] == {"enabled": True, "top_bar": "hidden"}
+    # Her other settings still save.
+    allowed = await ws_command(kitchen, {"type": "planavista/household/settings/save", "session": blair, "shuffle_keypad": True})
+    assert allowed["success"]
+    # A parent's own login that isn't an admin.
+    alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
+    refused = await ws_command(alex, {"type": "planavista/household/settings/save", "kiosk_enabled": False})
+    assert refused["error"]["code"] == "not_admin"
+
+
+async def test_an_admin_or_a_parent_who_is_one_changes_kiosk_mode(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, kitchen: Any
+) -> None:
+    _blair_is(hass, accounts["admin"])
+    blair = (await _unlock(kitchen, "blair", PIN))["session"]
+    reply = await ws_command(kitchen, {"type": "planavista/household/settings/save", "session": blair, "kiosk_top_bar": "tabs"})
+    assert reply["success"], reply
+    admin = await hass_ws_client(hass)
+    reply = await ws_command(admin, {"type": "planavista/household/settings/save", "kiosk_enabled": False})
+    assert reply["success"], reply
+    assert household.data["security"]["kiosk"] == {"enabled": False, "top_bar": "tabs"}

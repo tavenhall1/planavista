@@ -5,6 +5,7 @@ import {
   KIOSK_SHEETS,
   kioskLook,
   kioskStripAction,
+  mayChangeKiosk,
   startStepOut,
   stepOutEndsAt,
   stepOutOver,
@@ -111,7 +112,7 @@ describe('Settings: Shared screens, Kiosk mode and Top bar (D2, D6)', () => {
   const pins = read('shell/settings/pins-page.ts');
   it('shows the switch only once a shared screen exists, and the top bar choice only while it is on', () => {
     expect(pins).toMatch(/\$\{sharedScreens \? html`\s*<section>\s*<h2>Shared screens<\/h2>/);
-    expect(pins).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk\)/);
+    expect(pins).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, !mayChange\)/);
     expect(pins).toMatch(/\$\{kiosk\.enabled \? this\._choices\('Top bar', 'top-bar-label', TOP_BAR_CHOICES, kiosk\.top_bar,/);
     expect(pins).toMatch(/value => this\.api\.saveSecurity\(\{ kiosk_top_bar: value \}\)/);
   });
@@ -147,5 +148,23 @@ describe("Settings' strip has the same kiosk button as the card's (like for like
     const card = read('shell/planavista-card.ts');
     expect(card).toMatch(/\.kioskAction=\$\{this\._kioskAction\(\)\}/);
     expect(card).toMatch(/@pv-kiosk=\$\{this\._onKiosk\}\s*\n\s*@pv-lock=\$\{this\._onSettingsLock\}/);
+  });
+});
+
+describe("who may change kiosk mode in Settings (review: the owner's rule)", () => {
+  it("is an admin's own login, or a parent who is an admin; not a shared admin login without one", () => {
+    expect(mayChangeKiosk({ is_admin: true, shared: false }, null)).toBe(true);
+    expect(mayChangeKiosk({ is_admin: false, shared: true }, { parent: true, adminParent: true })).toBe(true);
+    expect(mayChangeKiosk({ is_admin: true, shared: true }, null)).toBe(false);
+    expect(mayChangeKiosk({ is_admin: false, shared: true }, { parent: true, adminParent: false })).toBe(false);
+    expect(mayChangeKiosk({ is_admin: false, shared: false }, null)).toBe(false);
+  });
+
+  it('locks the switch and the top bar for anyone else, and says who can', () => {
+    const pins = read('shell/settings/pins-page.ts');
+    expect(pins).toMatch(/const mayChange = mayChangeKiosk\(account, this\.session\);/);
+    expect(pins).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, !mayChange\)/);
+    expect(pins).toMatch(/Only a Home Assistant admin, or a parent who is one, can change kiosk mode\./);
+    expect(read('shell/settings/pv-settings.ts')).toMatch(/\.session=\$\{this\.session\}\n\s*mode="settings"/);
   });
 });

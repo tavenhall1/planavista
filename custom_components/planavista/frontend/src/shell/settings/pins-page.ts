@@ -9,6 +9,8 @@ import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import { saveErrorMessage } from '../../core/page-host';
 import type { PlanaVistaData } from '../../types';
+import type { Session } from '../../core/session';
+import { mayChangeKiosk } from '../../core/kiosk';
 import '../../core/pv-member-avatar';
 import './pin-actions';
 
@@ -43,6 +45,8 @@ export class PvSettingsPins extends LitElement {
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String }) layout: Layout = 'landscape';
   @property({ type: String }) mode: 'settings' | 'setup' = 'settings';
+  /** The card's PIN session: whether its parent may change kiosk mode (milestone 9). */
+  @property({ attribute: false }) session: Session | null = null;
 
   @state() private _message = '';
   @state() private _busy = false;
@@ -148,6 +152,7 @@ export class PvSettingsPins extends LitElement {
     const account = household.account;
     const sharedScreens = household.security.shared_screens > 0;
     const kiosk = household.security.kiosk ?? { enabled: false, top_bar: 'hidden' as const };
+    const mayChange = mayChangeKiosk(account, this.session);
     return html`
       <section>
         <h2>This screen</h2>
@@ -166,15 +171,16 @@ export class PvSettingsPins extends LitElement {
       ${sharedScreens ? html`
         <section>
           <h2>Shared screens</h2>
-          ${this._switch('Kiosk mode', 'kiosk-label', kiosk.enabled, this._toggleKiosk)}
+          ${this._switch('Kiosk mode', 'kiosk-label', kiosk.enabled, this._toggleKiosk, !mayChange)}
           <p class="hint">
             On shared family screens, PlanaVista hides Home Assistant's menus so the screen stays on
             PlanaVista. A parent who is a Home Assistant admin can exit it in parent mode, and it comes
             back when parent mode ends. It tidies the screen, but it isn't a lock: for that, use
             Guided Access on an iPad or a kiosk browser on Android.
           </p>
+          ${mayChange ? nothing : html`<p class="hint">Only a Home Assistant admin, or a parent who is one, can change kiosk mode.</p>`}
           ${kiosk.enabled ? this._choices('Top bar', 'top-bar-label', TOP_BAR_CHOICES, kiosk.top_bar,
-            value => this.api.saveSecurity({ kiosk_top_bar: value })) : nothing}
+            value => this.api.saveSecurity({ kiosk_top_bar: value }), !mayChange) : nothing}
           ${kiosk.enabled ? html`
             <p class="hint">Hidden: PlanaVista fills the screen. Tabs only: the dashboard's tabs stay, for other screens the family uses.</p>
           ` : nothing}
@@ -221,7 +227,8 @@ export class PvSettingsPins extends LitElement {
     `;
   }
 
-  private _switch(label: string, id: string, on: boolean, toggle: () => void) {
+  private _switch(label: string, id: string, on: boolean, toggle: () => void, locked = false) {
+    const press = locked ? () => undefined : toggle;
     return html`
       <div class="toggle-row">
         <span class="label" id=${id}>${label}</span>
@@ -231,12 +238,12 @@ export class PvSettingsPins extends LitElement {
           tabindex="0"
           aria-checked=${on ? 'true' : 'false'}
           aria-labelledby=${id}
-          aria-disabled=${this._busy ? 'true' : 'false'}
-          @click=${toggle}
+          aria-disabled=${this._busy || locked ? 'true' : 'false'}
+          @click=${press}
           @keydown=${(e: KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              toggle();
+              press();
             }
           }}
         ></div>
@@ -251,6 +258,7 @@ export class PvSettingsPins extends LitElement {
     choices: readonly { value: V; label: string; spoken: string }[],
     chosen: V,
     save: (value: V) => Promise<void>,
+    locked = false,
   ) {
     const choose = (value: V, group?: HTMLElement): void => {
       if (value !== chosen) void this._run(() => save(value));
@@ -271,7 +279,7 @@ export class PvSettingsPins extends LitElement {
             <button type="button" role="radio" data-value=${choice.value} aria-label=${choice.spoken}
               aria-checked=${choice.value === chosen ? 'true' : 'false'}
               tabindex=${choice.value === chosen ? '0' : '-1'}
-              ?disabled=${this._busy}
+              ?disabled=${this._busy || locked}
               @click=${() => choose(choice.value)}>${choice.label}</button>
           `)}
         </div>

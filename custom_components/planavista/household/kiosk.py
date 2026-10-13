@@ -28,6 +28,16 @@ def normalize_kiosk(value: object) -> dict[str, Any]:
     return kiosk
 
 
+def may_change_kiosk(*, shared: bool, account_admin: bool, session_parent_admin: bool) -> bool:
+    """Who may turn kiosk mode on or off, or pick its top bar (review, the owner's rule).
+
+    A parent without admin can't exit kiosk mode, so can't turn it off either:
+    a parent who is an admin, in parent mode anywhere, or an admin's own
+    login. A shared screen signed in as an admin still needs an admin parent.
+    """
+    return session_parent_admin or (account_admin and not shared)
+
+
 def exit_refusal(*, enabled: bool, shared: bool, parent_session: bool, parent_is_admin: bool) -> str | None:
     """Why stepping out of kiosk mode is refused, or None when it may go ahead (spec D3)."""
     if not enabled:

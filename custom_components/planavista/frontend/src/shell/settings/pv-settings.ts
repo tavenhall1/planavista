@@ -418,6 +418,7 @@ export class PvSettings extends LitElement {
             .household=${this.household}
             .api=${this.api}
             .layout=${this.layout}
+            .session=${this.session}
             mode="settings"
             .pageProps=${top?.props ?? {}}
             .drafts=${this.drafts}

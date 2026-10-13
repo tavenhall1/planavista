@@ -33,7 +33,7 @@ from .members import (
     set_prefs,
     update_member,
 )
-from .kiosk import KIOSK_TOP_BARS, exit_refusal
+from .kiosk import KIOSK_TOP_BARS, exit_refusal, may_change_kiosk
 from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
     PARENT_MODE_CHOICES,
@@ -493,6 +493,17 @@ async def ws_settings_save(
     if context is None:
         return
     household, _by = context
+    if "kiosk_enabled" in msg or "kiosk_top_bar" in msg:
+        account = account_for(hass, household, connection.user)
+        session = session_for(household, connection, msg)
+        member = household.member(session.member_id) if session and session.parent else None
+        if not may_change_kiosk(
+            shared=account.shared,
+            account_admin=account.is_admin,
+            session_parent_admin=await parent_is_admin(hass, member),
+        ):
+            send_refusal(connection, msg, "not_admin", KIOSK_CHANGE_REFUSAL)
+            return
     for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
         if key in msg:
             household.data["security"][key] = msg[key]
@@ -807,6 +818,8 @@ HOUSEHOLD_COMMANDS = (
     ws_pin_touch,
 )
 
+
+KIOSK_CHANGE_REFUSAL = "Only a Home Assistant admin, or a parent who is one, can change kiosk mode."
 
 KIOSK_REFUSALS = {
     "pin_required": "Enter a parent's PIN to exit kiosk mode.",
