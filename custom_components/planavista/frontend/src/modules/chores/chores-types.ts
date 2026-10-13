@@ -77,6 +77,8 @@ export interface BoardMember {
   week_stars: number;
   chore_minutes: number;
   away: AwaySpan | null;
+  /** Their goal surprise (milestone 10); missing from older backends. */
+  surprise?: { reward: string; opened: boolean } | null;
 }
 
 export type RequestKind = 'completion' | 'more_time' | 'skip' | 'redemption';
