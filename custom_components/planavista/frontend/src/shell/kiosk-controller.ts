@@ -31,6 +31,9 @@ export interface KioskEnv {
   navigate(path: string): void;
 }
 
+/** Home Assistant 2026.10's dashboard tabs; absent when a dashboard has one view. */
+const TABS = 'ha-tab-group';
+
 export class KioskController {
   private _view: HouseholdView | null = null;
   private _stepOut: StepOut | null = null;
@@ -103,13 +106,15 @@ export class KioskController {
     const look = this.look;
     const wanted = look !== 'off' && !this._stepOut;
     const found = wanted ? this._env.root() : null;
-    const root = found && look !== 'off' && this._env.has(found, KIOSK_PARTS[look]) ? found : null;
+    // Tabs only on a dashboard without tabs (one view) would leave a bare title bar: hide it all (round 1).
+    const shown = look === 'tabs' && found && !this._env.has(found, TABS) && this._env.has(found, KIOSK_PARTS.hidden) ? 'hidden' : look;
+    const root = found && shown !== 'off' && this._env.has(found, KIOSK_PARTS[shown]) ? found : null;
     if (this._applied && (!wanted || this._applied.root !== root)) {
       this._applied.handle.remove();
       this._applied = null;
     }
-    if (wanted && root) {
-      const css = KIOSK_SHEETS[look];
+    if (wanted && root && shown !== 'off') {
+      const css = KIOSK_SHEETS[shown];
       if (!this._applied) this._applied = { root, handle: this._env.addSheet(root, css), css };
       else if (this._applied.css !== css) {
         this._applied.handle.set(css);

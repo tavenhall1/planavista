@@ -17,7 +17,7 @@ const view = (shared: boolean, enabled: boolean, top_bar: 'hidden' | 'tabs' = 'h
 function fakeEnv() {
   const sheets = new Map<object, string>();
   const env = {
-    current: { name: 'dashboard', parts: ['.header', '.action-items'] } as { parts?: string[] } | null,
+    current: { name: 'dashboard', parts: ['.header', '.action-items', 'ha-tab-group'] } as { parts?: string[] } | null,
     sheets,
     haKioskOn: false,
     switched: [] as boolean[],
@@ -94,7 +94,8 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     expect(env.haKioskOn).toBe(true);
     kiosk.setView(view(true, true, 'tabs'));
     expect(env.sheets.size).toBe(1);
-    env.current = { parts: ['.header'] };
+    // Tabs showing but the buttons beside them renamed: still nothing hidden.
+    env.current = { parts: ['.header', 'ha-tab-group'] };
     kiosk.sync();
     expect(env.sheets.size).toBe(0);
   });
@@ -204,5 +205,25 @@ describe('a step out that ends away from the card goes back to it', () => {
     env.at = '/config/dashboard';
     kiosk.restore();
     expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+  });
+});
+
+
+// Round 1 of the adversarial review: Tabs only on a dashboard with one view (Home Assistant shows no
+// tabs then) left a bare title bar with nothing to tap, white over a dark card.
+describe('Tabs only on a dashboard without tabs', () => {
+  it('hides the whole top bar, as Hidden does', () => {
+    const env = fakeEnv();
+    env.current = { parts: ['.header', '.action-items'] };
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true, 'tabs'));
+    expect(env.sheets.get(env.current!)).toBe(KIOSK_SHEETS.hidden);
+  });
+
+  it('keeps the tabs once there are tabs to keep', () => {
+    const env = fakeEnv();
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true, 'tabs'));
+    expect(env.sheets.get(env.current!)).toBe(KIOSK_SHEETS.tabs);
   });
 });
