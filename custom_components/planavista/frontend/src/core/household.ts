@@ -49,6 +49,8 @@ export interface HouseholdView {
     session_idle_seconds?: number;
     /** Parent mode ends after (5, 10, 15, or 30). */
     parent_mode_minutes?: number;
+    /** Kiosk mode on shared screens (milestone 9); missing from older backends. */
+    kiosk?: { enabled: boolean; top_bar: 'hidden' | 'tabs' };
   };
   modules: Record<string, unknown>;
   /** Where setup stands; `start` is how the household started (restore, plan, common, empty, calendar). */

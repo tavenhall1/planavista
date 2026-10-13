@@ -1,0 +1,59 @@
+/**
+ * Kiosk mode (milestone 9, docs/superpowers/specs/2026-10-12-kiosk-mode-design.md).
+ * On a shared family screen with the household's switch on, Home Assistant's
+ * sidebar is hidden (its own kiosk switch) and so is its dashboard header, or
+ * all of it but the tabs. A parent who is a Home Assistant admin may step
+ * out for as long as parent mode would last. These rules are pure; the
+ * page-wide controller (shell/kiosk-controller.ts) applies them.
+ */
+import type { HouseholdView } from './household';
+
+export type KioskLook = 'off' | 'hidden' | 'tabs';
+
+/** What this screen looks like: off unless it is a shared screen and the switch is on (D1, D2). */
+export function kioskLook(view: HouseholdView | null): KioskLook {
+  const kiosk = view?.security.kiosk;
+  if (!view?.account.shared || !kiosk?.enabled) return 'off';
+  return kiosk.top_bar === 'tabs' ? 'tabs' : 'hidden';
+}
+
+/**
+ * The style added to the dashboard's root (`hui-root`'s shadow root). For
+ * Hidden: no header, no room kept for it, and the card runs up under the
+ * status bar. For Tabs only: the header's buttons go, its tabs stay. If Home
+ * Assistant renames these parts, the rules match nothing and the header
+ * simply shows: kiosk mode fails open.
+ */
+export const KIOSK_SHEETS: Record<Exclude<KioskLook, 'off'>, string> = {
+  hidden: [
+    '.header { display: none !important; }',
+    ':host { --header-height: 0px; --pv-under-status-bar: var(--safe-area-inset-top, 0px); }',
+  ].join('\n'),
+  tabs: '.action-items { display: none !important; }',
+};
+
+/** A step out of kiosk mode, by parent mode's own clock (D4). */
+export interface StepOut {
+  /** The last touch anywhere on the page (ms). */
+  lastTouch: number;
+  /** Lock after no touches (ms). */
+  idleMs: number;
+  /** When parent mode would end however busy (ms since the epoch). */
+  capAt: number;
+}
+
+export function startStepOut(now: number, idleMs: number, capAt: number): StepOut {
+  return { lastTouch: now, idleMs, capAt };
+}
+
+export function stepOutTouched(out: StepOut, now: number): StepOut {
+  return { ...out, lastTouch: now };
+}
+
+export function stepOutEndsAt(out: StepOut): number {
+  return Math.min(out.lastTouch + out.idleMs, out.capAt);
+}
+
+export function stepOutOver(out: StepOut, now: number): boolean {
+  return now >= stepOutEndsAt(out);
+}

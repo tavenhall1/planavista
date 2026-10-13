@@ -22,10 +22,14 @@ export interface Session {
   idleMs: number;
   /** When the session ends however busy (ms since the epoch). */
   capAt: number;
+  /** This parent may exit kiosk mode on this screen (milestone 9). */
+  mayExitKiosk?: boolean;
 }
 
 export function startSession(
-  result: { session: string; member_id: string; parent: boolean; idle_seconds?: number; cap_in?: number },
+  result: {
+    session: string; member_id: string; parent: boolean; idle_seconds?: number; cap_in?: number; may_exit_kiosk?: boolean;
+  },
   now: number,
 ): Session {
   return {
@@ -36,6 +40,7 @@ export function startSession(
     startedAt: now,
     idleMs: result.idle_seconds ? result.idle_seconds * 1000 : SESSION_IDLE_MS,
     capAt: now + (result.cap_in ? result.cap_in * 1000 : PARENT_MODE_MS),
+    mayExitKiosk: !!result.may_exit_kiosk,
   };
 }
 
