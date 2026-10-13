@@ -259,7 +259,20 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       pv-glance-header {
         order: 1;
         flex-shrink: 0;
+      }
+
+      /* With kiosk mode's top bar hidden, whatever comes first makes room for the status bar, once (round 1). */
+      pv-parent-strip.under {
+        --pv-strip-top: var(--pv-under-status-bar, 0px);
+      }
+
+      pv-glance-header.under {
         padding-top: var(--pv-under-status-bar, 0px);
+      }
+
+      ha-card.under {
+        padding-top: var(--pv-under-status-bar, 0px);
+        box-sizing: border-box;
       }
 
       .pv-module {
@@ -333,6 +346,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         position: absolute;
         inset: 0;
         z-index: 50;
+        padding-top: var(--pv-under-status-bar, 0px);
+        box-sizing: border-box;
         background: var(--pv-card-bg, #FFFFFF);
         animation: pv-fadeIn 200ms ease forwards;
       }
@@ -725,6 +740,13 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     `;
   }
 
+  /** What comes first in the card, and so makes room for the status bar in kiosk mode (round 1). */
+  private _underStatusBar(): 'strip' | 'header' | 'card' {
+    const session = this._session.session;
+    if (session && this._household.view?.members.some(m => m.id === session.memberId)) return 'strip';
+    return this._config?.hide_header ? 'card' : 'header';
+  }
+
   /** Whose session is open (parent mode, or a child's unlocked window), with its countdown and Lock, even when the header is hidden. */
   private _renderParentStrip() {
     const session = this._session.session;
@@ -735,6 +757,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const actions: ModuleAction[] = active && session.parent ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
     return html`
       <pv-parent-strip
+        class="under"
         .member=${member}
         .hass=${this.hass}
         .endsAt=${this._session.endsAt ?? 0}
@@ -876,7 +899,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const active = this._activeModule();
 
     return html`
-      <ha-card>
+      <ha-card class=${this._underStatusBar() === 'card' ? 'under' : ''}>
         ${this._renderParentStrip()}
         ${showsKioskReturn(kiosk.steppedOut, this._session.session) ? html`
           <div class="banner info kiosk-out" role="status">
@@ -973,6 +996,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const weather = this._config?.hide_weather ? null : this._getWeatherEntity();
     return html`
       <pv-glance-header
+        class=${this._underStatusBar() === 'header' ? 'under' : ''}
         ${ref(this._headerHeights.attach)}
         layout=${this._layout.layout}
         ?compact=${this._layout.layout === 'portrait' && this._compactHeader}
