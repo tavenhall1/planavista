@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actingParent, eventAccess, eventPinChoices, mayEverReview, memberAccess, parentAccess, pinChoicesFor } from '../src/core/access';
+import { actingParent, creditAccess, eventAccess, eventPinChoices, mayEverReview, memberAccess, parentAccess, pinChoicesFor } from '../src/core/access';
 import type { AccountKind, HouseholdView, Member } from '../src/core/household';
 import type { Session } from '../src/core/session';
 
@@ -138,5 +138,21 @@ describe('eventAccess (milestone 8, D1: events follow 9.5)', () => {
   it('the calendar keeps working before the household answers, or when it is unavailable', () => {
     expect(eventAccess(null, null, ['casey'])).toBe('yes');
     expect(eventAccess({ ...view('shared'), available: false }, null, [null])).toBe('yes');
+  });
+});
+
+describe('creditAccess (round 1: saying someone else did it)', () => {
+  it('crediting a parent, whose check-offs need no OK, takes parent level', () => {
+    expect(creditAccess(view('shared'), null, PEOPLE[0])).toBe('pin');
+    expect(creditAccess(view('shared'), session('casey', false), PEOPLE[1])).toBe('pin');
+    expect(creditAccess(view('shared'), session('blair', true), PEOPLE[0])).toBe('yes');
+    expect(creditAccess(view('member', 'casey'), null, PEOPLE[0])).toBe('no');
+    expect(creditAccess(view('parent', 'alex'), null, PEOPLE[1])).toBe('yes');
+  });
+
+  it('crediting anyone else is a change to their items: their PIN when they have one', () => {
+    expect(creditAccess(view('shared'), null, PEOPLE[2])).toBe('pin');
+    expect(creditAccess(view('shared'), session('casey', false), PEOPLE[2])).toBe('yes');
+    expect(creditAccess(view('shared'), null, PEOPLE[3])).toBe('yes');
   });
 });

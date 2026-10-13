@@ -199,3 +199,18 @@ async def test_undo_with_an_occurrence_undoes_only_that_members_check_off(
         assert err.value.translation_key == "unknown_occurrence", user
     assert [c["state"] for c in chores.engine.log["completions"]] == ["done", "done"]
     assert hass.states.get("sensor.casey_stars").state == "1"
+
+
+async def test_an_action_may_credit_someone_else_only_as_they_could(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser]
+) -> None:
+    """Round 1: crediting a parent skips the OK, so it takes parent level; a sibling with a PIN takes their PIN."""
+    chores.household.shared_users.append(accounts["kitchen"].id)
+    await set_pin(hass, chores.household, "casey", "4826")
+    for doer in ("person.blair", "casey"):
+        with pytest.raises(ServiceValidationError) as err:
+            await _call(hass, "complete_chore", {"member": "dana", "chore": "feed_the_fish", "done_by": doer}, accounts["kitchen"])
+        assert err.value.translation_key == "not_allowed"
+    # Alex's own login is parent level.
+    await _call(hass, "complete_chore", {"member": "dana", "chore": "feed_the_fish", "done_by": "person.blair"}, accounts["alex"])
+    assert chores.engine.log["completions"][-1]["done_by"] == "blair"

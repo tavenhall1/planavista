@@ -9,7 +9,7 @@ import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
-import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
+import { creditAccess, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
@@ -626,6 +626,14 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return this.pinGate.ask(pinChoicesFor(this.household, memberId), heading);
   }
 
+  /** Whether this screen may say `doer` did it: a parent takes a parent's PIN, anyone else their own (round 1). */
+  private async _asDoer(doer: Member, heading: string): Promise<boolean> {
+    const access = creditAccess(this.household, this.session, doer);
+    if (access === 'yes') return true;
+    if (access === 'no' || !this.pinGate) return false;
+    return doer.parent ? this.asParent(heading) : this.pinGate.ask(pinChoicesFor(this.household, doer.id), heading);
+  }
+
   private async _complete(detail: HoldDetail): Promise<void> {
     const { row } = detail;
     const service = this.service;
@@ -795,6 +803,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
           body: whoDidItBody(name),
           pick: async member => {
             if (!member || !(await this.asMember(owner.id, `Who's checking off ${name}?`))) return;
+            if (!(await this._asDoer(member, `Who's giving ${member.name} the credit?`))) return;
             const fresh = this.service?.board();
             if (!fresh) return;
             if (item.status === 'done' || item.status === 'pending') {
@@ -864,9 +873,10 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       heading: 'Who did it?',
       body: whoDidItBody(last.row.name),
       people,
-      pick: member => {
+      pick: async member => {
+        if (!member || !(await this._asDoer(member, `Who's giving ${member.name} the credit?`))) return;
         const board = this.service?.board();
-        if (!member || !board || !this.service) return;
+        if (!board || !this.service) return;
         this.service.enqueue({ op: 'undo', occurrence: last.row.key, member: last.member, name: last.row.name });
         this._checkOff(last.row, last.member, board, member.id);
       },

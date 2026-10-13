@@ -206,3 +206,27 @@ async def test_a_live_session_for_someone_else_is_not_mistaken_for_an_ended_one(
     assert still["success"]
     plain = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": TRASH})
     assert plain["error"]["code"] == "pin_required"
+
+
+async def test_crediting_someone_else_is_theirs_to_say_too(hass: HomeAssistant, kitchen: Any, chores: Any) -> None:
+    """Round 1 (adversarial review): "Someone else did it?" on a shared screen credited a parent, so a
+    child's chore skipped its OK, or a sibling with a PIN got the stars, with no PIN at all."""
+    as_parent = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH, "done_by": "alex"})
+    assert as_parent["error"] == {"code": "parent_mode_required", "message": "A parent's PIN is needed to give Alex the credit."}
+    as_sibling = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH, "done_by": "casey"})
+    assert as_sibling["error"] == {"code": "pin_required", "message": "Casey's PIN or a parent's is needed."}
+    assert not [c for c in chores.engine.log["completions"] if c["occurrence"] == FISH]
+    # Casey's own PIN may credit Casey, and a parent's session may credit a parent.
+    casey = await _unlock(kitchen, "casey", "4826")
+    sibling = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH, "done_by": "casey", "session": casey})
+    assert sibling["success"], sibling
+    await ws_command(kitchen, {"type": "planavista/chores/undo", "occurrence": FISH, "session": casey})
+    blair = await _unlock(kitchen, "blair", "2468")
+    parent = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH, "done_by": "alex", "session": blair})
+    assert parent["result"]["result"] == "done"
+
+
+async def test_a_childs_own_session_cannot_say_a_parent_did_it(hass: HomeAssistant, kitchen: Any, chores: Any) -> None:
+    casey = await _unlock(kitchen, "casey", "4826")
+    reply = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": TRASH, "done_by": "blair", "session": casey})
+    assert reply["error"]["code"] == "parent_mode_required"
