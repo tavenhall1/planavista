@@ -9,14 +9,14 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit';
  */
 let top = 100;
 
-/**
- * Toasts sit above every sheet: they say what just happened, often about the
- * sheet below (a refusal, an Undo). Round 1 of the adversarial review: at
- * z-index 40 they hid under every sheet.
+/*
+ * Toasts take the next layer too, when each appears (pv-toast): above the
+ * sheet it is about (a refusal, an Undo), under whatever opens after it. Round
+ * 1 put them above every sheet, so a check-off's Undo stayed live over the
+ * keypad the next hold opened and over Settings (round 2).
  */
-export const TOAST_LAYER = 2_000_000_000;
 
-/** An open menu (the phone bar's views) sits above a toast that would otherwise cover it. */
+/** An open menu (the phone bar's views) sits above everything else. */
 export const MENU_LAYER = 2_000_000_100;
 
 /** The layer above every sheet opened so far. */

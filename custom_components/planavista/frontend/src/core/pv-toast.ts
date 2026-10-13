@@ -1,7 +1,7 @@
-import { LitElement, html, css, nothing, PropertyValues, unsafeCSS } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { PressGuard } from './press-guard';
-import { TOAST_LAYER } from './sheet-layer';
+import { nextSheetLayer } from './sheet-layer';
 import { defineElement } from '../utils/define';
 import { SMOOTH, motionOf, springEasing } from './motion';
 
@@ -44,7 +44,6 @@ export class PvToast extends LitElement {
       display: flex;
       justify-content: center;
       pointer-events: none;
-      z-index: ${unsafeCSS(TOAST_LAYER)};
     }
 
     .toast {
@@ -115,6 +114,8 @@ export class PvToast extends LitElement {
     const toast = this.toast;
     if (!toast) return;
     this._pressGuard.arm();
+    // Above whatever was open when it appeared, under whatever opens after (round 2).
+    this.style.zIndex = String(nextSheetLayer());
     const box = this.renderRoot.querySelector<HTMLElement>('.toast');
     if (box) {
       if (motionOf(this) === 'reduced') box.animate({ opacity: [0, 1] }, { duration: 150 });
