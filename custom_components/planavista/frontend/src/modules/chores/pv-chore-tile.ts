@@ -75,6 +75,7 @@ export class PvChoreTile extends LitElement {
       border: 2px solid transparent;
       background: var(--tint);
       color: var(--pv-text, #1A1B1E);
+      container-type: inline-size;
     }
 
     .hold {
@@ -98,6 +99,13 @@ export class PvChoreTile extends LitElement {
     :host([large]) .hold {
       min-height: 300px;
       gap: 10px;
+    }
+
+    /* A narrow tile (a phone's two across): the ring starts below the corner controls, which sat on its arc (round 2). */
+    @container (max-width: 160px) {
+      .hold {
+        padding-top: 36px;
+      }
     }
 
     .hold:focus-visible {
