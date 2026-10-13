@@ -29,6 +29,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 - **Keyboards:** while a text field in the card has focus, height-only shrinks are ignored. Kiosk browsers shrink the page when the keyboard opens, which would otherwise flip portrait to landscape mid-word.
 - **Rotating keeps your place:** the view, the person, and the time at the top of the Day view stay put. The header, the module, and the bar are the same elements in every layout; only their order changes.
 - **One scroll area:** the card takes only the space Home Assistant leaves, so the page itself never scrolls; only the content between the header and the bar does. On a phone Home Assistant runs under the status bar and the home indicator: the card measures against the screen as shown (`dvh`) less Home Assistant's header and its `--safe-area-inset-top` and `--safe-area-inset-bottom`. With the bar at the bottom, the card runs under the home indicator and the bar pads itself by the same inset, as iOS's own bars do. Home Assistant sizes its page by `100vh` (`html { height: 100vh }` and its view's `min-height: 100vh`), which in Safari is the screen with its toolbars hidden, so as a panel view's one card (`isPanel`) the card sets both to the screen as shown while it is there, and puts them back when it leaves (`core/panel-fit.ts`). iPad Safari never hides its toolbars, so there the gap stays on screen; check an iPad size (1032 by 1376, where Home Assistant shows its sidebar) too. Check a phone with those two variables set (62 px and 34 px on an iPhone 17 Pro Max), not only at its width.
+- **Edges:** as a panel view's one card the card meets the edges of the screen, square and without a shadow, as Home Assistant's own cards do there; the screen's own corners are the only rounded ones. Among other cards it keeps the household's shape.
 - **Reference sizes:** 1280 × 800 (landscape), 800 × 1280 (portrait, a typical 10-inch tablet), and 390 × 844 (phone).
 - The calendar's sizes for type, padding, and avatars measure the card too, with container queries on one frame that its sheets sit outside of, so a narrow card on a wide screen gets narrow sizes and a wall display's card gets the large ones.
 
@@ -385,6 +386,10 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-13: Changed: edges (1.6.1)
+
+- A panel view's card has square corners and no shadow, so with kiosk mode's top bar hidden no page shows at the screen's corners.
 
 ### 2026-10-13: Changed: kiosk mode (1.6.0)
 
