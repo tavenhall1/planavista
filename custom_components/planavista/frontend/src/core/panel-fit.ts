@@ -1,9 +1,11 @@
 /**
- * Home Assistant's view container is at least 100vh tall, and in Safari 100vh
- * is the screen with its toolbars hidden. With them shown, the page scrolled
- * by their height under a card that fit (about 108 px on an iPhone 17 Pro Max).
- * A panel view's one card owns the whole view, so while it is there the view
- * is only as tall as the screen as shown, and the page never scrolls.
+ * Home Assistant sizes its page by 100vh (html { height: 100vh } and the view
+ * container's min-height: 100vh), and in Safari 100vh is the screen with its
+ * toolbars hidden. With them shown, the page scrolled by their height under a
+ * card that fit: about 108 px on an iPhone 17 Pro Max, and about 79 px on an
+ * iPad, whose Safari never hides them. A panel view's one card owns the whole
+ * page, so while it is there both are only as tall as the screen as shown,
+ * and the page never scrolls.
  */
 export const SCREEN_AS_SHOWN = '100dvh';
 
@@ -25,15 +27,19 @@ export function composedAncestor<T>(start: ComposedNode, tagName: string): T | n
 }
 
 /**
- * Sets the container's minimum height to the screen as shown, where the
- * browser knows dvh, and returns what puts it back. A change someone else
+ * Sets the element's height or minimum height to the screen as shown, where
+ * the browser knows dvh, and returns what puts it back. A change someone else
  * made meanwhile is left alone.
  */
-export function fitView(container: { style: { minHeight: string } }, supported: boolean): () => void {
+export function fitView(
+  element: { style: { minHeight: string; height: string } },
+  property: 'minHeight' | 'height',
+  supported: boolean,
+): () => void {
   if (!supported) return () => {};
-  const before = container.style.minHeight;
-  container.style.minHeight = SCREEN_AS_SHOWN;
+  const before = element.style[property];
+  element.style[property] = SCREEN_AS_SHOWN;
   return () => {
-    if (container.style.minHeight === SCREEN_AS_SHOWN) container.style.minHeight = before;
+    if (element.style[property] === SCREEN_AS_SHOWN) element.style[property] = before;
   };
 }

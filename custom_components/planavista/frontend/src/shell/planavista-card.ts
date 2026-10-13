@@ -503,13 +503,19 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._guardSetup();
   }
 
-  /** As a panel view's one card, Home Assistant's view is only as tall as the screen as shown, so the page never scrolls (core/panel-fit). */
+  /**
+   * As a panel view's one card, Home Assistant's page (its root and its view)
+   * is only as tall as the screen as shown, so the page never scrolls (core/panel-fit).
+   */
   private _fitView(): void {
     this._unfitView?.();
     this._unfitView = undefined;
     if (!this.isPanel || !this.isConnected) return;
     const container = composedAncestor<HTMLElement>(this, 'HUI-VIEW-CONTAINER');
-    if (container) this._unfitView = fitView(container, typeof CSS !== 'undefined' && CSS.supports('min-height', SCREEN_AS_SHOWN));
+    if (!container) return;
+    const supported = typeof CSS !== 'undefined' && CSS.supports('height', SCREEN_AS_SHOWN);
+    const restores = [fitView(container, 'minHeight', supported), fitView(document.documentElement, 'height', supported)];
+    this._unfitView = () => restores.forEach(restore => restore());
   }
 
   private _onOnboardingComplete(event?: CustomEvent<{ module?: string }>) {
