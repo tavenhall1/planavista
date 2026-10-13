@@ -77,7 +77,7 @@ describe('what Save sends', () => {
     expect(choreChanges(daily).repeats!.window).toBe('day');
   });
 
-  it('turns off a to-do chore\'s OK for every check-off only when asked', () => {
+  it('turns off a to-do chore\'s approval for every check-off only when asked', () => {
     const record = beginChoreDraft(activity('brush_teeth', { needs_ok: true, needs_ok_always: true, minimum: { hours: 0.1, per: 'day' } }), TODAY);
     expect(choreChanges(record)).not.toHaveProperty('needs_ok_always');
     expect(choreChanges({ ...record, draft: edit(record.draft, { needs_ok: false, needs_ok_always: false }) }).needs_ok_always).toBe(false);
@@ -131,15 +131,15 @@ describe('the editor\'s lines', () => {
     expect(worthText(edit(draftOf(LEAVES, TODAY), { stars: 10 }), SETTINGS, MEMBERS)).toBe('Each time is worth about 1 h and ★ 10.');
   });
 
-  it('says who waits for an OK', () => {
+  it('says who waits for approval', () => {
     const plan = draftOf(BATHROOM, TODAY);
-    expect(okText(plan, MEMBERS)).toBe("Casey's check-offs wait for an OK. Blair is a parent, so Blair's count right away.");
+    expect(okText(plan, MEMBERS)).toBe("Casey's check-offs wait for approval. Blair is a parent, so Blair's count right away.");
     expect(okText(edit(plan, { needs_ok: false }), MEMBERS)).toBe('');
     expect(okText(edit(plan, { needs_ok: false, assignees: ['dana'] }), MEMBERS)).toBe(
-      "Dana's check-offs still wait for an OK: every chore of Dana's needs one.",
+      "Dana's check-offs still wait for approval: every chore of Dana's needs it.",
     );
     expect(okText(edit(plan, { assignees: ['alex', 'casey', 'dana'] }), MEMBERS)).toBe(
-      "Check-offs by Casey and Dana wait for an OK. Alex is a parent, so Alex's count right away.",
+      "Check-offs by Casey and Dana wait for approval. Alex is a parent, so Alex's count right away.",
     );
   });
 

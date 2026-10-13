@@ -19,7 +19,7 @@ export function pictureOf(icon: string | null | undefined): string {
  * pv-chore-tile: a young child's chore as a picture (spec 13.2). The whole
  * tile is the hold target, because small hands need a big one; a small ⋯
  * button in the corner opens the options, mostly for grown-ups. Waiting for
- * OK says so in words here too.
+ * approval says so in words here too.
  *
  * @fires pv-hold-done - HoldDetail, a hold finished on an open tile
  * @fires pv-hold-undo - HoldDetail, a hold finished on a done tile
@@ -313,7 +313,7 @@ export class PvChoreTile extends LitElement {
     return html`
       <div class="tile ${pending ? 'pending' : ''} ${done ? 'done' : ''}" style="--member:${this.color}">
         <div class="hold" role="button" tabindex=${this.locked ? -1 : 0} aria-disabled=${this.locked ? 'true' : 'false'}
-          aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for OK` : `Hold to complete ${row.name}`}
+          aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for approval` : `Hold to complete ${row.name}`}
           @pointerdown=${this._down} @pointermove=${(e: PointerEvent) => this._gesture.move(e.clientX, e.clientY)}
           @pointerup=${this._up} @pointercancel=${() => { this._hintPress = null; this._gesture.cancel(); }} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>
@@ -327,7 +327,7 @@ export class PvChoreTile extends LitElement {
         </pv-ring>
         <span class="name">${row.name}</span>
         ${pending
-          ? html`<span class="waiting">⏳ Waiting for OK</span>`
+          ? html`<span class="waiting">⏳ Waiting for approval</span>`
           : html`<span class="hint">${fill > 0 && !done ? html`Keep holding… ${this.stars > 0 ? `⭐ +${this.stars}` : ''}` : this.large && !done ? 'Hold me' : ''}</span>`}
         </div>
         <button class="more" type="button" aria-label=${`Options for ${row.name}`}

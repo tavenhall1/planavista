@@ -19,7 +19,7 @@ const NEEDS_OK: Array<[string, string]> = [['all', 'Every chore'], ['marked', 'M
 const MY_DAY: Array<[string, string]> = [['timeline', 'Timeline'], ['list', 'List'], ['pictures', 'Pictures']];
 
 /**
- * pv-person-chores: a person's chores rows (spec 14.2): Needs an OK for, My
+ * pv-person-chores: a person's chores rows (spec 14.2): Needs approval for, My
  * day, Stars (with the history and give or take), Saving up for, and Away.
  * Changes go into the person page's draft and are saved with it.
  */
@@ -93,13 +93,13 @@ export class PvPersonChores extends LitElement {
       <div class="group">
         ${d.parent ? html`
           <div class="row">
-            <span class="row-text">Needs an OK for<span class="row-sub">Never: a parent's check-offs count right away.</span></span>
+            <span class="row-text">Needs approval for<span class="row-sub">Never: a parent's check-offs count right away.</span></span>
           </div>
         ` : html`
           <div class="row">
             <div class="stack">
-              <span>Needs an OK for</span>
-              <div class="pv-seg stretch" role="group" aria-label="Needs an OK for">
+              <span>Needs approval for</span>
+              <div class="pv-seg stretch" role="group" aria-label="Needs approval for">
                 ${NEEDS_OK.map(([id, label]) => html`
                   <button type="button" aria-pressed=${d.needs_ok_for === id ? 'true' : 'false'}
                     @click=${() => this._change({ needs_ok_for: id })}>${label}</button>

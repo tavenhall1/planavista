@@ -88,7 +88,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 | Color | Job |
 |---|---|
 | A person's color | who |
-| Indigo (the accent) | something to act on: the chosen view, the main button, items waiting for an OK |
+| Indigo (the accent) | something to act on: the chosen view, the main button, items waiting for approval |
 | Amber | time pressure |
 | Red | overdue, missed, or sent back; destructive actions |
 
@@ -212,7 +212,7 @@ One map, used by every view, sensor description, and notification:
 |---|---|---|---|
 | To do | empty circle | the estimate ("15 min") | neutral |
 | Done | check in the member's color; title struck through | moves to "Done today" | member color |
-| Waiting for OK | ⏳ | "Waiting for OK" (everywhere, even on picture tiles) | indigo |
+| Waiting for approval | ⏳ | "Waiting for approval" (everywhere, even on picture tiles) | indigo |
 | Sent back | ↩ | "Sent back: {note}" | red |
 | Running out of days | dot | "2 days left" | amber |
 | Last day, overdue | dot | "Last day", "Overdue since Mon" | red |
@@ -269,7 +269,7 @@ Motion is part of the product, Apple style, in every module.
 
 ## 9. Copy
 
-- Sentence case. One name per thing ("Waiting for OK" is the only name for pending; "New event", never New, Add event, or Create event).
+- Sentence case. One name per thing ("Waiting for approval" is the only name for pending; "New event", never New, Add event, or Create event).
 - No em dashes in product copy or public docs. The CI copy check (`scripts/check_copy.py`) enforces it.
 - Destructive actions are confirmed by name, without quotes ("Remove Casey's PIN?", "Delete Team standup?", "Reset PlanaVista to its original colors?").
 - Every sub-screen has a back control naming its parent ("‹ Settings", "‹ Appearance"). A kiosk has no browser back button.
@@ -354,7 +354,7 @@ The shared styles live in `styles/controls.ts`; each site keeps its own buttons,
 | Pick a look | Picture cards that preview | Light, Dark, Automatic, and the themes |
 | Whose view this is | The people strip: round faces with names, the shown one filled with its color; it never shrinks | The phone board, Day when its lanes are hidden, My day |
 | Who something is for | Person chips: avatar chips with the person's color ring and a check | New event's Who, quick add, a chore's people, a reward's who |
-| A label on a row | A tag: one pill in sentence case (muted, OK, ask, attention) | Parent, Needs an OK, Plan only, Organizer |
+| A label on a row | A tag: one pill in sentence case (`muted`, `ok`, `ask`, `attention`) | Parent, Needs approval, Plan only, Organizer |
 | A heading over a group or a field | 0.8125rem at 750 in the secondary text color | Settings groups and pages, the person page, every form's labels, the board's bands, My day |
 | On or off | One toggle, 44 by 24 with a 48 px hit area | Every on/off setting |
 | A date or a time | The event editor's month grid and time list, shared (`pv-date-field`, `pv-time-field`) | Every date and time; no native inputs |

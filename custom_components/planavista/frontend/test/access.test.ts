@@ -142,7 +142,7 @@ describe('eventAccess (milestone 8, D1: events follow 9.5)', () => {
 });
 
 describe('creditAccess (round 1: saying someone else did it)', () => {
-  it('crediting a parent, whose check-offs need no OK, takes parent level', () => {
+  it('crediting a parent, whose check-offs need no approval, takes parent level', () => {
     expect(creditAccess(view('shared'), null, PEOPLE[0])).toBe('pin');
     expect(creditAccess(view('shared'), session('casey', false), PEOPLE[1])).toBe('pin');
     expect(creditAccess(view('shared'), session('blair', true), PEOPLE[0])).toBe('yes');

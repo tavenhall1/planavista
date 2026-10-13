@@ -100,7 +100,7 @@ class Item:
 
     @property
     def satisfied(self) -> bool:
-        """Done, waiting for OK, excused, or away: nothing more is owed today."""
+        """Done, waiting for approval, excused, or away: nothing more is owed today."""
         return self.status not in OPEN
 
 
@@ -122,7 +122,7 @@ def _at(value: str) -> datetime:
 
 
 def needs_ok(doer: Mapping[str, Any], activity: Mapping[str, Any] | None) -> bool:
-    """Whether a check-off by `doer` waits for a parent's OK (spec 8.5 step 3, 10.3)."""
+    """Whether a check-off by `doer` waits for a parent's approval (spec 8.5 step 3, 10.3)."""
     if doer.get("parent"):
         return False
     if activity and activity.get("needs_ok_always"):
@@ -483,7 +483,7 @@ class ChoresEngine:
 
     @staticmethod
     def stats(items: Iterable[Item]) -> dict[str, Any]:
-        """Due and done counts and minutes; Waiting for OK counted separately (spec 8.14)."""
+        """Due and done counts and minutes; Waiting for approval counted separately (spec 8.14)."""
         result = {"due": 0, "done": 0, "pending": 0, "minutes_due": 0.0, "minutes_done": 0.0, "minutes_pending": 0.0}
         for item in items:
             if item.status in ("away", "excused"):
@@ -1122,7 +1122,7 @@ class ChoresEngine:
 
         Name the exact occurrence with `key`, or give `chore` and `member` to
         take their oldest open one. `approve` (automations and admins only,
-        filtered by the caller) skips the parent's OK.
+        filtered by the caller) skips the parent's approval.
         """
         if key is not None:
             item = self.find_item(key, now)
@@ -1236,7 +1236,7 @@ class ChoresEngine:
         out.events.append(ChoreEvent("approved", completion["member"], self._event_data(completion, "done")))
 
     def pending_for(self, chore: str, member: str) -> dict[str, Any] | None:
-        """The member's latest check-off of a chore that is waiting for OK."""
+        """The member's latest check-off of a chore that is waiting for approval."""
         return next(
             (c for c in reversed(self.log["completions"])
              if c["chore"] == chore and c["member"] == member and c.get("state") == "pending"),
@@ -1718,7 +1718,7 @@ class ChoresEngine:
         }))
 
     def redeem(self, now: datetime, *, member: str, reward: str, by: str, source: str) -> Outcome:
-        """Spend stars on a reward (spec 8.15): it waits for an OK unless the reward needs none."""
+        """Spend stars on a reward (spec 8.15): it waits for approval unless the reward needs none."""
         found = self.reward(reward)
         if found is None:
             raise ChoreError("unknown_reward")

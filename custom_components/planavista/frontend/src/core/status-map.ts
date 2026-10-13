@@ -59,7 +59,7 @@ export function shortDay(day: string, today: string): string {
 
 /**
  * The badge beside an item's name, or null when its estimate shows instead.
- * Waiting for OK and Sent back come first; then overdue, make-up, and due
+ * Waiting for approval and Sent back come first; then overdue, make-up, and due
  * dates; a floating item turns amber when its open check-offs equal the days
  * left, and red on the last day (spec 8.4).
  */
@@ -68,7 +68,7 @@ export function itemBadge(view: StatusView, ctx: BadgeContext): StatusBadge | nu
     case 'done':
       return null;
     case 'pending':
-      return { words: 'Waiting for OK', tone: 'act', glyph: '⏳' };
+      return { words: 'Waiting for approval', tone: 'act', glyph: '⏳' };
     case 'sent_back':
       return { words: view.note ? `Sent back: ${view.note}` : 'Sent back', tone: 'bad', glyph: '↩' };
     case 'excused':
@@ -97,7 +97,7 @@ export function pastBadge(status: string, note?: string | null): StatusBadge {
     case 'done':
       return { words: 'Done', tone: 'neutral', glyph: '✓' };
     case 'pending':
-      return { words: 'Waiting for OK', tone: 'act', glyph: '⏳' };
+      return { words: 'Waiting for approval', tone: 'act', glyph: '⏳' };
     case 'missed':
       return { words: 'Missed', tone: 'bad', glyph: '×' };
     case 'carried':

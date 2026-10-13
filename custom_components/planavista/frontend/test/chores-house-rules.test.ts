@@ -65,12 +65,12 @@ describe('Rewards', () => {
   const movie = { id: 'movie_night_pick', name: 'Movie night pick', icon: '🎬', cost: 40, needs_ok: true, who: ['casey', 'dana'] };
 
   it('says a reward in a line', () => {
-    expect(rewardLine(movie, MEMBERS)).toBe('★ 40 · needs an OK · Casey, Dana');
+    expect(rewardLine(movie, MEMBERS)).toBe('★ 40 · needs approval · Casey, Dana');
     expect(rewardLine({ ...movie, needs_ok: false, who: [] }, MEMBERS)).toBe('★ 40 · Everyone who earns stars');
     expect(whoText(['dana'], MEMBERS)).toBe('Dana');
   });
 
-  it('starts a new reward at 20 stars that needs an OK', () => {
+  it('starts a new reward at 20 stars that needs approval', () => {
     const record = beginRewardDraft(null);
     expect(record.draft).toEqual({ name: '', icon: null, cost: 20, needs_ok: true, who: [] });
     expect(rewardProblem(record.draft)).toBe('Add a name.');

@@ -44,7 +44,7 @@ describe("a picture tile's ring", () => {
     expect(tileRingFill('done', true, 0.25)).toBe(0);
   });
 
-  it('stays empty while it waits for OK', () => {
+  it('stays empty while it waits for approval', () => {
     expect(tileRingFill('pending', false, 0)).toBe(0);
   });
 });

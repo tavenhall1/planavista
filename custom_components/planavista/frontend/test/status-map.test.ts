@@ -50,7 +50,7 @@ describe('badgeBelow (spec 12.3)', () => {
   it('puts a long badge, such as a sent-back note, under the name, and every badge in a narrow panel', () => {
     expect(badgeBelow({ words: 'Sent back: Missed a spot', tone: 'bad', glyph: '↩' }, false)).toBe(true);
     expect(badgeBelow({ words: 'Overdue since Mon', tone: 'bad' }, false)).toBe(true);
-    expect(badgeBelow({ words: 'Waiting for OK', tone: 'act', glyph: '⏳' }, false)).toBe(false);
+    expect(badgeBelow({ words: 'Waiting for approval', tone: 'act', glyph: '⏳' }, false)).toBe(true);
     expect(badgeBelow({ words: 'Due Fri', tone: 'neutral' }, false)).toBe(false);
     expect(badgeBelow({ words: 'Due Fri', tone: 'neutral' }, true)).toBe(true);
     expect(badgeBelow(null, false)).toBe(false);

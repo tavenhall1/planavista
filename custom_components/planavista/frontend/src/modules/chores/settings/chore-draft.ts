@@ -248,25 +248,25 @@ export function worthText(d: ChoreDraft, settings: Pick<ChoresSettings, 'minutes
   return `${each} worth about ${names(byName)}.`;
 }
 
-/** Who waits for an OK on this chore, and who doesn't (spec 14.4's hint under Needs a parent's OK). */
+/** Who waits for approval on this chore, and who doesn't (spec 14.4's hint under Needs a parent's approval). */
 export function okText(d: ChoreDraft, members: Member[]): string {
   const people = members.filter(m => d.assignees.includes(m.id));
   const marked = d.needs_ok || d.needs_ok_always;
-  if (!people.length) return marked ? 'Check-offs wait for an OK for people whose setting is marked chores.' : '';
+  if (!people.length) return marked ? 'Check-offs wait for approval for people whose setting is marked chores.' : '';
   const waits = (m: Member) => !m.parent
     && (d.needs_ok_always || m.needs_ok_for === 'all' || (m.needs_ok_for === 'marked' && d.needs_ok));
   const waiting = people.filter(waits).map(m => m.name);
   if (!marked) {
     if (!waiting.length) return '';
     return waiting.length === 1
-      ? `${waiting[0]}'s check-offs still wait for an OK: every chore of ${waiting[0]}'s needs one.`
-      : `Check-offs by ${names(waiting)} still wait for an OK: every chore of theirs needs one.`;
+      ? `${waiting[0]}'s check-offs still wait for approval: every chore of ${waiting[0]}'s needs it.`
+      : `Check-offs by ${names(waiting)} still wait for approval: every chore of theirs needs it.`;
   }
   const parents = people.filter(m => m.parent).map(m => m.name);
   const others = people.filter(m => !m.parent && !waits(m)).map(m => m.name);
   const parts: string[] = [];
-  if (waiting.length === 1) parts.push(`${waiting[0]}'s check-offs wait for an OK.`);
-  else if (waiting.length) parts.push(`Check-offs by ${names(waiting)} wait for an OK.`);
+  if (waiting.length === 1) parts.push(`${waiting[0]}'s check-offs wait for approval.`);
+  else if (waiting.length) parts.push(`Check-offs by ${names(waiting)} wait for approval.`);
   if (parents.length === 1) parts.push(`${parents[0]} is a parent, so ${parents[0]}'s count right away.`);
   else if (parents.length) parts.push(`${names(parents)} are parents, so theirs count right away.`);
   if (others.length) parts.push(`Check-offs by ${names(others)} count right away.`);

@@ -30,7 +30,7 @@ export function nextEventChip(next: { title: string; time: string; who: string |
 }
 
 /**
- * The Chores bar's buttons (spec 12.2, 13.7, 13.8): "⏳ n waiting for OK"
+ * The Chores bar's buttons (spec 12.2, 13.7, 13.8): "⏳ n to approve"
  * when something waits and this screen can ever review it, and Add chore for
  * anyone who can become a parent here. In parent mode, Add chore moves to
  * the parent-mode strip.
@@ -40,7 +40,7 @@ export function choresBarActions(board: Board | null, view: HouseholdView | null
   const actions: ModuleAction[] = [];
   const waiting = board.requests.length;
   if (waiting > 0 && mayEverReview(view)) {
-    actions.push({ id: 'inbox', label: `${waiting} waiting for OK`, short: String(waiting), glyph: '⏳', tone: 'act' });
+    actions.push({ id: 'inbox', label: `${waiting} to approve`, short: String(waiting), glyph: '⏳', tone: 'act' });
   }
   const access = parentAccess(view, session);
   if (access !== 'no') actions.push({ id: 'add', label: 'New chore', short: '', glyph: '+' });

@@ -1,4 +1,4 @@
-"""Phone notifications: Waiting for OK requests with buttons, and evening reminders (spec 10.5, 15.4, 15.5).
+"""Phone notifications: Approval requests with buttons, and evening reminders (spec 10.5, 15.4, 15.5).
 
 Requests go to each parent's phones (the Phone row on their page) through the
 legacy notify.mobile_app_* services, because notify entities can't carry
@@ -188,7 +188,7 @@ class ChoresNotifier:
             # A typed reason where the phone offers it (spec 10.5).
             send_back.update(behavior="textInput", textInputButtonTitle=decline, textInputPlaceholder="What to fix")
         data = {
-            "title": "Waiting for OK",
+            "title": "Waiting for approval",
             "message": request_text(request, names),
             "data": {
                 "tag": f"{TAG_PREFIX}{request['id']}",

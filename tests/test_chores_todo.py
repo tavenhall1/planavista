@@ -69,7 +69,7 @@ async def test_checking_an_item_completes_it_through_the_engine(hass: HomeAssist
 async def test_waiting_for_ok_shows_as_checked_with_a_note(hass: HomeAssistant, chores: Any) -> None:
     await _update(hass, "todo.dana_chores", {"item": "Feed the fish", "status": "completed"})
     fish = next(i for i in await _items(hass, "todo.dana_chores") if i["uid"] == FISH)
-    assert (fish["status"], fish["description"]) == ("completed", "Waiting for a parent's OK")
+    assert (fish["status"], fish["description"]) == ("completed", "Waiting for a parent's approval")
 
 
 async def test_own_accounts_change_only_their_own_items(

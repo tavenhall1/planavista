@@ -101,12 +101,12 @@ describe('person drafts', () => {
 describe('a new age group says what it changed (milestone 8)', () => {
   const casey = { my_day: 'list', needs_ok_for: 'marked', stars: true };
 
-  it('names the new style, OKs, and stars', () => {
+  it('names the new style, approval, and stars', () => {
     expect(ageGroupNote(casey, { my_day: 'timeline', needs_ok_for: 'marked', stars: true })).toBe('Now Timeline.');
     expect(ageGroupNote({ my_day: 'timeline', needs_ok_for: 'none', stars: false }, { my_day: 'timeline', needs_ok_for: 'marked', stars: true }))
-      .toBe('Now an OK for chores marked Needs an OK, and earns stars.');
-    expect(ageGroupNote(casey, { my_day: 'pictures', needs_ok_for: 'all', stars: true })).toBe('Now Pictures, and an OK for every chore.');
-    expect(ageGroupNote(casey, { my_day: 'timeline', needs_ok_for: 'none', stars: false })).toBe('Now Timeline, no OKs, and no stars.');
+      .toBe('Now approval for chores marked Needs approval, and earns stars.');
+    expect(ageGroupNote(casey, { my_day: 'pictures', needs_ok_for: 'all', stars: true })).toBe('Now Pictures, and approval for every chore.');
+    expect(ageGroupNote(casey, { my_day: 'timeline', needs_ok_for: 'none', stars: false })).toBe('Now Timeline, no approval, and no stars.');
   });
 
   it('says nothing when nothing changed', () => {

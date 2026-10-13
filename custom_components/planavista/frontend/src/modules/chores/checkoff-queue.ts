@@ -23,7 +23,7 @@ export interface QueuedCheckoff {
   name: string;
   /** Who did it, when someone else did. */
   doneBy?: string;
-  /** What the item shows until the answer comes: done, or waiting for OK. */
+  /** What the item shows until the answer comes: done, or waiting for approval. */
   shows?: 'done' | 'pending';
   /** When it was queued (ms since the epoch). */
   at: number;

@@ -49,7 +49,7 @@ export function withAgeGroup(draft: PersonDraft, age: AgeGroup): PersonDraft {
 
 const STYLE_WORDS: Record<string, string> = { timeline: 'Timeline', list: 'List', pictures: 'Pictures' };
 const OK_WORDS: Record<string, string> = {
-  all: 'an OK for every chore', marked: 'an OK for chores marked Needs an OK', none: 'no OKs',
+  all: 'approval for every chore', marked: 'approval for chores marked Needs approval', none: 'no approval',
 };
 
 type AgeSettings = { my_day: string; needs_ok_for: string; stars: boolean };

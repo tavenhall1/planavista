@@ -42,7 +42,7 @@ export function parentAccess(view: HouseholdView | null, session: Session | null
 
 /**
  * Whether this screen may say `doer` did someone else's chore (round 1 of the
- * adversarial review): crediting a parent, whose check-offs need no OK, takes
+ * adversarial review): crediting a parent, whose check-offs need no approval, takes
  * parent level; anyone else is a change to their own items.
  */
 export function creditAccess(view: HouseholdView | null, session: Session | null, doer: Member): Access {
@@ -91,7 +91,7 @@ export function actingParent(view: HouseholdView | null, session: Session | null
   return inOrder(view.members).find(m => m.id === id) ?? null;
 }
 
-/** Whether this account can ever review requests (it decides whether the bar shows Waiting for OK). */
+/** Whether this account can ever review requests (it decides whether the bar shows Waiting for approval). */
 export function mayEverReview(view: HouseholdView | null): boolean {
   return parentAccess(view, null) !== 'no';
 }

@@ -94,7 +94,7 @@ export class PvRulesPage extends LitElement {
       </div>
       <p class="hint">Late-night check-offs count for the day before. Weeks follow the calendar's setting in Calendar options.</p>
 
-      <h2 class="section-label">Waiting for OK</h2>
+      <h2 class="section-label">Waiting for approval</h2>
       <div class="group">
         ${this._toggle(settings.auto_approve === 'day_end', 'Approve at the end of the day',
           () => this._save({ auto_approve: settings.auto_approve === 'day_end' ? 'never' : 'day_end' }))}

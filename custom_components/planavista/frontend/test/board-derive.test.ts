@@ -146,7 +146,7 @@ describe('columnFor (spec 13.1)', () => {
     expect(col.left).toBe(2);
   });
 
-  it('closes the ring when everything due is done or waiting for OK', () => {
+  it('closes the ring when everything due is done or waiting for approval', () => {
     const items = [
       item('a|dana|day:2026-10-13|0', { status: 'done', completion: { id: 'x', done_by: 'dana', by: 'dana', at: '2026-10-13T08:00:00-05:00', source: 'tablet', state: 'done', review: null, stars: 1 } }),
       item('b|dana|day:2026-10-13|0', { status: 'pending' }),

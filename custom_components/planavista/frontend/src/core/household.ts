@@ -57,7 +57,7 @@ export interface HouseholdView {
   setup: { completed: boolean; step: string | null; start?: string | null };
 }
 
-/** What a person's phones get (spec 7.2): Waiting for OK requests (parents) and evening reminders. */
+/** What a person's phones get (spec 7.2): Approval requests (parents) and evening reminders. */
 export interface NotifyChoice {
   requests: boolean;
   reminders: boolean;
@@ -126,10 +126,10 @@ export const AGE_GROUP_CHOICES: Array<{ id: AgeGroup; label: string; hint: strin
 
 /** What each age group means once chores are on (the approved person page). */
 export const AGE_GROUP_CHORES_HINTS: Record<AgeGroup, string> = {
-  young_child: 'Pictures and big buttons. Every chore needs an OK.',
-  older_child: 'A list with pictures. Chores marked Needs an OK wait for one.',
-  teen: 'The full list and a timeline. Chores marked Needs an OK wait for one.',
-  adult: 'The full list and a timeline. No OKs needed.',
+  young_child: 'Pictures and big buttons. Every chore needs approval.',
+  older_child: 'A list with pictures. Chores marked Needs approval wait for it.',
+  teen: 'The full list and a timeline. Chores marked Needs approval wait for it.',
+  adult: 'The full list and a timeline. No approval needed.',
 };
 
 /** The role chips of setup's "Who lives here?" (spec 14.7). */

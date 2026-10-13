@@ -19,7 +19,7 @@ const MAX_PHONES = 5;
 
 /**
  * pv-person-phones: a person's phones (spec 14.2, 10.5): which phones get
- * the evening reminder, and for a parent, Waiting for OK requests with
+ * the evening reminder, and for a parent, Approval requests with
  * buttons; then Use in automations, the person's entity ids.
  */
 export class PvPersonPhones extends LitElement {
@@ -121,7 +121,7 @@ export class PvPersonPhones extends LitElement {
           ${this._toggle(d.notify.reminders, 'Evening reminders',
             evening ? `At ${clockText(evening, timeFormat)}, only if chores are left` : 'Turn on the evening check in Reminders',
             () => this._change({ notify: { ...d.notify, reminders: !d.notify.reminders } }))}
-          ${d.parent ? this._toggle(d.notify.requests, 'Waiting for OK requests', 'With Looks good and Send back buttons',
+          ${d.parent ? this._toggle(d.notify.requests, 'Approval requests', 'With Looks good and Send back buttons',
             () => this._change({ notify: { ...d.notify, requests: !d.notify.requests } })) : nothing}
         ` : nothing}
       </div>

@@ -18,7 +18,7 @@ export interface QuickAddDraft {
   every: Every;
   minutes: number;
   needsOk: boolean;
-  /** A parent switched Needs a parent's OK themselves: it stops following the people picked. */
+  /** A parent switched Needs a parent's approval themselves: it stops following the people picked. */
   needsOkSet: boolean;
   /** null: automatic (1 per the household's minutes per star). */
   stars: number | null;
@@ -31,12 +31,12 @@ export function newDraft(): QuickAddDraft {
   return { name: '', who: [], when: 'today', by: null, every: 'weekly', minutes: 15, needsOk: false, needsOkSet: false, stars: null };
 }
 
-/** Needs a parent's OK is on automatically for young children (spec 13.8). */
+/** Needs a parent's approval is on automatically for young children (spec 13.8). */
 export function autoNeedsOk(who: string[], members: Member[]): boolean {
   return who.some(id => members.find(m => m.id === id)?.age_group === 'young_child');
 }
 
-/** The draft after picking people: OK follows them until a parent sets it. */
+/** The draft after picking people: Needs approval follows them until a parent sets it. */
 export function withWho(draft: QuickAddDraft, who: string[], members: Member[]): QuickAddDraft {
   return { ...draft, who, needsOk: draft.needsOkSet ? draft.needsOk : autoNeedsOk(who, members) };
 }

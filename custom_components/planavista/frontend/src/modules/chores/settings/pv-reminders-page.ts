@@ -21,7 +21,7 @@ import '../../../core/pv-member-avatar';
 /**
  * pv-reminders-page: reminders (spec 14.5, 9.9, 10.5): the evening check on
  * the screen, phone reminders per person, and which parents' phones get
- * Waiting for OK requests. They apply as the parent taps.
+ * Approval requests. They apply as the parent taps.
  */
 export class PvRemindersPage extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
@@ -101,14 +101,14 @@ export class PvRemindersPage extends LitElement {
         <p class="hint">Phones are set on each person's page, for people linked to a Home Assistant person.</p>
       ` : nothing}
 
-      <h2 class="section-label">Waiting for OK requests</h2>
+      <h2 class="section-label">Approval requests</h2>
       ${requests.rows.length ? html`
         <div class="group">${requests.rows.map(row => this._phoneRow(row, 'Requests come with Looks good and Send back buttons', 'requests', true))}</div>
       ` : nothing}
       ${requests.noPhone.length ? html`
         <p class="hint">No phone yet for ${namesText(requests.noPhone)}. Add one on their page in People.</p>
       ` : nothing}
-      <p class="hint">Without a phone, requests wait in Waiting for OK on the screen${board.settings.auto_approve === 'day_end' ? ', and anything still waiting is approved at the end of the day' : ''}.</p>
+      <p class="hint">Without a phone, requests wait under To approve on the screen${board.settings.auto_approve === 'day_end' ? ', and anything still waiting is approved at the end of the day' : ''}.</p>
     `;
   }
 

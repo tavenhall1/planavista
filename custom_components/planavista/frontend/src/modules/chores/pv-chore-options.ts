@@ -280,7 +280,7 @@ export class PvChoreOptions extends LitElement {
             <span class="label">${option.label}</span>
             ${option.hint ? html`<span class="hint">${option.hint}</span>` : nothing}
           </span>
-          ${option.tag ? html`<span class="pv-tag ${option.tag === 'Needs an OK' ? 'ask' : 'muted'}">${option.tag}</span>` : nothing}
+          ${option.tag ? html`<span class="pv-tag ${option.tag === 'Needs approval' ? 'ask' : 'muted'}">${option.tag}</span>` : nothing}
         </button>
         ${open ? this._more(option) : nothing}
       </div>

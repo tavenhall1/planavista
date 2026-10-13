@@ -389,7 +389,7 @@ def test_the_to_do_list_puts_open_items_first_and_keeps_todays_check_offs() -> N
     ]
     today = SCENE.date()
     assert [engine.description(i, today) for i in items] == [
-        "Due Sun", "Due Sun", None, None, "This week", None, "Waiting for a parent's OK",
+        "Due Sun", "Due Sun", None, None, "This week", None, "Waiting for a parent's approval",
     ]
 
 
@@ -476,7 +476,7 @@ def test_a_chore_someone_who_isnt_a_parent_added_waits_for_a_parent() -> None:
     engine.save_activity(SCENE, {"name": "Brush teeth", "schedule": "once", "assignees": ["casey"], "needs_ok": True,
                                  "needs_ok_always": True, "once": {}}, by="casey", source="phone")
     out = engine.complete(SCENE, chore="brush_teeth", member="casey", by="casey", source="phone")
-    assert out.result == "pending"  # though Casey's own check-offs need no OK
+    assert out.result == "pending"  # though Casey's own check-offs need no approval
     engine.catch_up(at(10, 14, 9))
     assert engine.log["completions"][-1]["state"] == "pending"  # the day's end leaves it for a parent
     assert engine.balance("casey") == 0

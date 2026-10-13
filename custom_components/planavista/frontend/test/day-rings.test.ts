@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { dayRing } from '../src/modules/calendar/components/view-day';
 
 describe('dayRing (spec 13.9)', () => {
-  it('fills with today\'s chores, Waiting for OK counted as done', () => {
+  it('fills with today\'s chores, Waiting for approval counted as done', () => {
     expect(dayRing('Casey', { done: 1, pending: 1, due: 4 })).toEqual({
       fraction: 0.5, closed: false, label: 'Casey, 2 of 4 done today. Open Casey\'s day',
     });

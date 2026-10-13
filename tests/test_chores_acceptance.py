@@ -55,7 +55,7 @@ async def test_4_repeat_delivery_answers_already_done(hass: HomeAssistant, chore
 
 
 async def test_2_approval(hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser]) -> None:
-    """Dana checks Feed the fish on the family screen; it waits for OK until Alex approves."""
+    """Dana checks Feed the fish on the family screen; it waits for approval until Alex approves."""
     chores.household.shared_users.append(accounts["kitchen"].id)
     await hass.services.async_call(
         TODO_DOMAIN, "update_item", {"item": "Feed the fish", "status": "completed"},

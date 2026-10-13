@@ -210,7 +210,7 @@ async def test_a_live_session_for_someone_else_is_not_mistaken_for_an_ended_one(
 
 async def test_crediting_someone_else_is_theirs_to_say_too(hass: HomeAssistant, kitchen: Any, chores: Any) -> None:
     """Round 1 (adversarial review): "Someone else did it?" on a shared screen credited a parent, so a
-    child's chore skipped its OK, or a sibling with a PIN got the stars, with no PIN at all."""
+    child's chore skipped its approval, or a sibling with a PIN got the stars, with no PIN at all."""
     as_parent = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH, "done_by": "alex"})
     assert as_parent["error"] == {"code": "parent_mode_required", "message": "A parent's PIN is needed to give Alex the credit."}
     as_sibling = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH, "done_by": "casey"})

@@ -60,7 +60,7 @@ Every example, fixture, test, and screenshot uses this invented household. Real 
 | Casey | teen | no | Has a calendar (School, Soccer). PIN set. Stars on. |
 | Dana | young child (6) | no | No Home Assistant person, no calendar, no phone. Sees pictures. Stars on. |
 
-The sample scene is Tuesday, October 13, 2026, at 4:10 PM in America/Chicago, with weeks starting on Monday. Sample chores include Kitchen cleanup (Alex, daily), Cat care (Casey, twice daily), Make your bed, Feed the fish, Set the table, Tidy toys (Dana, daily, need an OK), Laundry (Blair, Mon and Thu), Clean the bathroom (Blair and Casey, split, needs an OK), Take out the trash (Casey, Tue and Fri evenings), Yard work (Casey, any day), Groceries (Alex, Sat), Finance and budget (Alex, any day), Change the furnace filter (Alex, monthly), Rake the leaves (Casey, Saturdays until Nov 30), Fix the gate latch (Alex, by Friday), and Clean out the garage (Casey, by Sunday, 2 sessions).
+The sample scene is Tuesday, October 13, 2026, at 4:10 PM in America/Chicago, with weeks starting on Monday. Sample chores include Kitchen cleanup (Alex, daily), Cat care (Casey, twice daily), Make your bed, Feed the fish, Set the table, Tidy toys (Dana, daily, need approval), Laundry (Blair, Mon and Thu), Clean the bathroom (Blair and Casey, split, needs approval), Take out the trash (Casey, Tue and Fri evenings), Yard work (Casey, any day), Groceries (Alex, Sat), Finance and budget (Alex, any day), Change the furnace filter (Alex, monthly), Rake the leaves (Casey, Saturdays until Nov 30), Fix the gate latch (Alex, by Friday), and Clean out the garage (Casey, by Sunday, 2 sessions).
 
 ## 5. Glossary
 
@@ -78,8 +78,8 @@ The sample scene is Tuesday, October 13, 2026, at 4:10 PM in America/Chicago, wi
 | Chore day | 3:00 AM to 3:00 AM local time (configurable). |
 | Chore week | Seven chore days starting on the calendar's first-day setting. |
 | Share | A member's part of a Plan chore: their assigned hours when the time is split, or the full minimum when each person does it all. |
-| Waiting for OK | The one name for a completion that needs a parent's review (engine state `pending`). |
-| Request | Anything a parent reviews: a completion waiting for OK, a request for more time, a request to skip, a reward redemption. |
+| Waiting for approval | The one name for a completion that needs a parent's review (engine state `pending`). |
+| Request | Anything a parent reviews: a completion waiting for approval, a request for more time, a request to skip, a reward redemption. |
 | Excuse | A parent's decision that one occurrence is not due (a sick day). Nothing is missed and streaks hold. |
 | Away | A pause for a member over a date range. Nothing is due or missed and streaks hold. |
 | Parent mode | A short session on a shared screen after a parent enters their PIN. |
@@ -218,12 +218,12 @@ modules:
 setup: {completed: true, step: null}
 ```
 
-**Age group defaults.** Each default can be changed per member. A parent never needs an OK.
+**Age group defaults.** Each default can be changed per member. A parent never needs approval.
 
 | | Young child (about 4 to 8) | Older child (about 9 to 12) | Teen | Adult |
 |---|---|---|---|---|
 | My day style | Pictures | List | Timeline | Timeline |
-| Needs an OK for | Every chore | Marked chores | Marked chores | No chores |
+| Needs approval for | Every chore | Marked chores | Marked chores | No chores |
 | Stars | On | On | On | Off |
 | Board look | Picture tiles, a few at a time, Now first, no times | Icon and text, minutes | Text, minutes, weekly hours | Same as teen |
 | Motivation | Celebration in their color, sticker strip for the week | Progress bar | Fairness view | Fairness view |
@@ -256,7 +256,7 @@ activities:                           # list order = order within a time of day
     times: 1                          # plan only; check-offs per active day, or per week when floating
     label: null                       # shown next to the name, e.g. "2 loads"
     on_board: true
-    needs_ok: true                    # a parent's OK for members whose setting is "marked"
+    needs_ok: true                    # a parent's approval for members whose setting is "marked"
     stars: null                       # null = automatic; a number overrides stars per check-off
     type: need                        # planner field, hidden in spec 1: need | want
     locked: true                      # planner field, hidden in spec 1
@@ -440,7 +440,7 @@ Every source uses one entry point: `complete(occurrence or (activity, member), d
 
 1. **Pick the occurrence.** The card always names the exact occurrence. Callers that don't (automations, voice, to-do lists) get the member's oldest open one: overdue, then today's, then this week's floating, then this week's earlier pinned items.
 2. **Nothing open?** It's a no-op. The result says `nothing_open` (or `already_done` when the named occurrence is done), and no error lands in the automation trace, so a Frigate automation that fires twice stays harmless.
-3. **Does it need a parent's OK?** Only if the doer isn't a parent and either their `needs_ok_for` is `all`, or the chore has `needs_ok` and their setting is `marked`. Then the completion is `pending` (Waiting for OK); otherwise it is `done`. Automations and admins may pass `approve: true` (for example, a washer's power sensor reporting a finished load); the flag is ignored for everyone else.
+3. **Does it need a parent's approval?** Only if the doer isn't a parent and either their `needs_ok_for` is `all`, or the chore has `needs_ok` and their setting is `marked`. Then the completion is `pending` (Waiting for approval); otherwise it is `done`. Automations and admins may pass `approve: true` (for example, a washer's power sensor reporting a finished load); the flag is ignored for everyone else.
 4. **Credit and stars go to the doer.** The assignee's occurrence counts as satisfied either way.
 
 ### 8.6 Undo and review
@@ -448,16 +448,16 @@ Every source uses one entry point: `complete(occurrence or (activity, member), d
 - **Uncheck or Undo:** the completion becomes `undone` (kept in history) and a stars reversal is appended to the ledger.
 - **Send back:** reopens the occurrence with the parent's note ("Sent back: edges").
 - **Approve:** the completion becomes `done` and its stars are granted.
-- **Auto-approve:** completions still waiting for OK approve themselves at the end of the chore day they were done in (setting: `day_end` or `never`).
+- **Auto-approve:** completions still waiting for approval approve themselves at the end of the chore day they were done in (setting: `day_end` or `never`).
 - Whether something was on time is judged by when it was completed, not when it was approved.
 
 ### 8.7 Requests
 
-Completion approvals, more-time requests, skip requests, and reward redemptions form one **request** type with one review flow. The Waiting for OK inbox, phone notifications, `sensor.household_approvals_waiting`, the one-time notification tokens, and day-end auto-approve each exist once for all four kinds.
+Completion approvals, more-time requests, skip requests, and reward redemptions form one **request** type with one review flow. The To approve inbox, phone notifications, `sensor.household_approvals_waiting`, the one-time notification tokens, and day-end auto-approve each exist once for all four kinds.
 
 | Kind | Raised by | Allow | Decline |
 |---|---|---|---|
-| Completion (Waiting for OK) | completing a chore that needs an OK | approve: done, stars granted | send back with a note |
+| Completion (Waiting for approval) | completing a chore that needs approval | approve: done, stars granted | send back with a note |
 | More time | a member, from the options sheet | the occurrence's `due` moves to the asked date | "Not this time"; nothing changes |
 | Skip this week | a member, from the options sheet | the occurrence is excused | "Not this time"; nothing changes |
 | Reward redemption | a member, from Rewards | the stars are taken (ledger entry) and the reward is marked given | "Decline"; nothing changes |
@@ -474,7 +474,7 @@ Auto-approve applies only to completions. Other requests wait for a parent.
 
 At every day boundary (3:00 AM), the engine runs these steps in order:
 
-1. Auto-approve completions waiting for OK from the day that ended.
+1. Auto-approve completions waiting for approval from the day that ended.
 2. Apply the missed policy.
 3. Write the day's summaries (and the week's, at a week boundary).
 4. Fire `missed` events.
@@ -506,7 +506,7 @@ A pinned Repeats instance follows the pinned weekly rules. Switching the policy 
 
 ### 8.13 Streaks
 
-- A member's **daily streak** counts consecutive chore days on which every item due that day was done (waiting for OK counts as done).
+- A member's **daily streak** counts consecutive chore days on which every item due that day was done (waiting for approval counts as done).
 - Away, excused, and empty days are skipped instead of breaking the streak.
 - **Weekly streaks** work the same way over chore weeks.
 - Daily chores also get **per-chore streaks** ("Cat care, 12 days").
@@ -515,21 +515,21 @@ A pinned Repeats instance follows the pinned weekly rules. Switching the policy 
 
 Computed in one place and used everywhere (board, sensors, to-do lists, header):
 
-- Per member, today and this week: due and done counts and minutes, with Waiting for OK counted separately.
+- Per member, today and this week: due and done counts and minutes, with Waiting for approval counted separately.
 - **Contribution:** minutes credited to someone as the doer. This drives the fairness view ("Shared chores this week, by time done").
 - **Household total** for the header glance ("9 of 17 chores done today").
 
 ### 8.15 Rewards
 
-- Parents keep the catalog: picture, name, cost in stars, needs an OK (default on), and who can get it.
-- Redeeming needs enough stars when requested and again when approved. With "needs an OK" off, redeeming takes the stars at once.
+- Parents keep the catalog: picture, name, cost in stars, needs approval (default on), and who can get it.
+- Redeeming needs enough stars when requested and again when approved. With "needs approval" off, redeeming takes the stars at once.
 - A member can pin one reward as their goal and see their progress.
 - Parents can add or remove stars by hand, with a reason.
 
 ### 8.16 Worked examples (acceptance tests)
 
 1. **Frigate.** On Tuesday at 7:40 PM, a zone sensor sees Casey take the trash out, and an automation calls `planavista.complete_chore` with `member: person.casey, chore: take_out_the_trash`. That satisfies today's occurrence. Casey's setting is "marked" and the trash isn't marked, so it is done, with 1 star, source `automation`.
-2. **Approval.** Dana holds Feed the fish, so it waits for OK. Alex taps Looks good on their phone, so it is done, with 1 star, reviewed by Alex, source `notification`.
+2. **Approval.** Dana holds Feed the fish, so it waits for approval. Alex taps Looks good on their phone, so it is done, with 1 star, reviewed by Alex, source `notification`.
 3. **Make it up.** Blair misses Monday's laundry. On Tuesday the board shows "Laundry · From Mon". Blair does it, and it counts as on time for the week.
 4. **Repeat delivery.** The same automation fires twice within a minute. The second call returns `already_done`, with no second credit and no error.
 5. **Outage.** Home Assistant is off from Monday 11 PM to Wednesday 9 AM. At startup the Tuesday and Wednesday 3:00 AM rollovers run in order: auto-approve, missed, summaries, events.
@@ -538,7 +538,7 @@ Computed in one place and used everywhere (board, sensors, to-do lists, header):
 
 ### 9.1 Everything is doable at the screen
 
-Approvals, reward redemptions, adding and removing chores, editing chores, members, rewards, excusing a sick day, marking someone away, and settings all live behind a parent's PIN on the shared screen. Phones are optional. With no phones set up, no notifications are sent, requests wait in the Waiting for OK inbox (a badge in the header), and day-end auto-approve still runs.
+Approvals, reward redemptions, adding and removing chores, editing chores, members, rewards, excusing a sick day, marking someone away, and settings all live behind a parent's PIN on the shared screen. Phones are optional. With no phones set up, no notifications are sent, requests wait in the To approve inbox (a button in the bar), and day-end auto-approve still runs.
 
 ### 9.2 PINs identify people
 
@@ -635,9 +635,9 @@ At the evening check time (default 7:00 PM), the board shows a gentle banner suc
 - Each item is one occurrence, with the occurrence key as its uid.
 - Order: today's items first, then this week's floating items, then make-up and overdue items.
 - Today's completed items stay checked until rollover.
-- A completion waiting for OK shows as completed, with the description "Waiting for a parent's OK".
+- A completion waiting for approval shows as completed, with the description "Waiting for a parent's approval".
 - Supported: update (check and uncheck, through the engine), create (adds a Once chore), delete (Once chores only; Plan chores can't be deleted from a to-do list), and due dates.
-- Creating an item uses its due date if one is set and a 15-minute estimate. If someone who isn't a parent adds it, it needs an OK, so its stars wait for a parent. That way a child can't add "Brush teeth" twenty times for stars.
+- Creating an item uses its due date if one is set and a 15-minute estimate. If someone who isn't a parent adds it, it needs approval, so its stars wait for a parent. That way a child can't add "Brush teeth" twenty times for stars.
 
 ### 10.4 Actions
 
@@ -734,7 +734,7 @@ These rules apply to every module. Chores is built on them first, and the calend
 
 - **Every color has one job:**
   - member color = who
-  - indigo = something to act on (the active tab, the Waiting for OK button, items waiting for OK)
+  - indigo = something to act on (the active tab, the To approve button, items waiting for approval)
   - amber = time pressure
   - red = overdue, missed, or sent back
 - **Color is never alone.** Every state also has words or a glyph ("Due Sat", "From Mon", "Sent back: edges"), so the board still reads in grayscale.
@@ -751,7 +751,7 @@ One map, used by every view, sensor description, and notification:
 |---|---|---|---|
 | To do | empty circle | the estimate ("15 min") | neutral |
 | Done | check in the member's color; title struck through | moves to "Done today" | member color |
-| Waiting for OK | ⏳ | "Waiting for OK" (everywhere, even on picture tiles) | indigo |
+| Waiting for approval | ⏳ | "Waiting for approval" (everywhere, even on picture tiles) | indigo |
 | Sent back | ↩ | "Sent back: {note}" | red |
 | Running out of days | dot | "2 days left" | amber |
 | Last day, overdue | dot | "Last day", "Overdue since Mon" | red |
@@ -784,7 +784,7 @@ Motion is part of the product, Apple style, and inherited by the calendar.
 
 ### 11.7 Copy
 
-- Sentence case. One name per thing ("Waiting for OK" is the only name for pending).
+- Sentence case. One name per thing ("Waiting for approval" is the only name for pending).
 - No em dashes in product copy or public docs. A CI check enforces it (milestone 1).
 - Destructive actions are confirmed by name ("Delete Rake the leaves?").
 - Every sub-screen has a back control naming its parent ("‹ Settings"). A kiosk has no browser back button.
@@ -817,8 +817,8 @@ The shell runs one ResizeObserver on the card and sets a `layout` attribute that
 
 ### 12.2 Header and navigation
 
-- **Landscape:** one bar across the top: weather, the glance chip, the date and time, the module switcher (Calendar, Chores), the module's views (Chores: Board, Week, My day, Rewards), "⏳ 2 waiting for OK", and the gear.
-- **Portrait:** glance at the top, touch at the bottom. A lock-screen style header shows a big clock, the date, the weather (with high and low), and glance chips ("9 of 17 chores done today", "Next: Dentist at 4:45 · Alex"). The switcher, views, Waiting for OK, and the gear sit in a bar along the bottom edge, where hands already are. With many people the big header shrinks to one line as you scroll, like large titles on an iPhone.
+- **Landscape:** one bar across the top: weather, the glance chip, the date and time, the module switcher (Calendar, Chores), the module's views (Chores: Board, Week, My day, Rewards), "⏳ 2 to approve", and the gear.
+- **Portrait:** glance at the top, touch at the bottom. A lock-screen style header shows a big clock, the date, the weather (with high and low), and glance chips ("9 of 17 chores done today", "Next: Dentist at 4:45 · Alex"). The switcher, views, Waiting for approval, and the gear sit in a bar along the bottom edge, where hands already are. With many people the big header shrinks to one line as you scroll, like large titles on an iPhone.
 - **Phone:** a compact header, the bar at the bottom, and one person at a time with a swipe between people.
 - The glance chip shows household progress on every module when Chores is on, and tapping it opens Chores. Calendar-only households never see it.
 - Switching modules never moves the controls. The calendar gets the same header and bar; its Day view in portrait shows about 14 hours instead of 8.
@@ -829,7 +829,7 @@ The shell runs one ResizeObserver on the card and sets a `layout` attribute that
 - **Week:** days across, people down, in both orientations and in the calendar. Weekly chores are a column in landscape and a section underneath in portrait.
 - **My day:** portrait shows the whole afternoon and evening at once. Picture tiles go 2 across in portrait (4 across in landscape). Landscape keeps a side panel (ring, stars, goal, This week); portrait stacks the same pieces.
 - **Rewards:** three across in portrait.
-- **Sheets:** in portrait and on phones, sheets rise from the bottom, only as tall as their content, with drag to dismiss; the PIN keypad sits in the lower half. In landscape, sheets are centered cards, and Waiting for OK opens as a panel beside the board. The Undo toast sits just above the bottom bar. No screen gets a portrait-only version: the same sheets take two shapes.
+- **Sheets:** in portrait and on phones, sheets rise from the bottom, only as tall as their content, with drag to dismiss; the PIN keypad sits in the lower half. In landscape, sheets are centered cards, and Waiting for approval opens as a panel beside the board. The Undo toast sits just above the bottom bar. No screen gets a portrait-only version: the same sheets take two shapes.
 
 ### 12.4 Day and night
 
@@ -848,7 +848,7 @@ The shell runs one ResizeObserver on the card and sets a `layout` attribute that
 - **Asleep screens just switch.** A page that is hidden at sunset wakes up already dark, and loading the page after sunset starts dark with no replay.
 - Shadow DOM can't style the transition's pseudo-elements, so the card adds a tiny page-level stylesheet and sets a unique `view-transition-name` only while its own transition runs.
 
-**Dark is designed, not inverted.** Surfaces get lighter as they come forward instead of relying on shadows. Member colors keep their hue and brighten a little, and the letters on them turn dark. Tints, badges, and Waiting for OK all have dark versions.
+**Dark is designed, not inverted.** Surfaces get lighter as they come forward instead of relying on shadows. Member colors keep their hue and brighten a little, and the letters on them turn dark. Tints, badges, and Waiting for approval all have dark versions.
 
 **Themes come in pairs.**
 
@@ -912,7 +912,7 @@ One person's day in the style they choose, saved on the member, so Casey gets Ti
 
 - **Timeline:** calendar events are blocks at their real times; chores sit in their bands in plan order; a red line marks now. Free gaps say what fits ("Free until 5:30 · fits now: Take out the trash · Yard work"). That suggestion is presentation only, computed in the card from today's events and open items. The goal bar and This week are at the bottom, and the day ends at bedtime.
 - **List:** a plain checklist (Today, This week, done items with their times) and the fairness strip: everyone's share of shared chores this week, by time done.
-- **Pictures:** one huge Now tile (the whole tile is the hold target, "Keep holding… ⭐ +1"), then a Now to Next strip where calendar events become picture steps ("🏊 Swim at 6:00", then "🍽️ Set the table"), done tiles, Waiting for OK tiles, and a sticker chart toward the goal.
+- **Pictures:** one huge Now tile (the whole tile is the hold target, "Keep holding… ⭐ +1"), then a Now to Next strip where calendar events become picture steps ("🏊 Swim at 6:00", then "🍽️ Set the table"), done tiles, Waiting for approval tiles, and a sticker chart toward the goal.
 
 ### 13.5 Week
 
@@ -924,11 +924,11 @@ One person's day in the style they choose, saved on the member, so Casey gets Ti
 ### 13.6 Rewards
 
 - Balances and goals on top ("★ 23 · Goal: 🎬 Movie night pick · 17 more").
-- The catalog: each card shows who can afford it ("Casey ✓ · Dana: 3 more") with **Redeem**, or "Not enough stars yet". Pending redemptions say "⏳ Casey · Waiting for OK". Goals are tagged on their cards.
+- The catalog: each card shows who can afford it ("Casey ✓ · Dana: 3 more") with **Redeem**, or "Not enough stars yet". Pending redemptions say "⏳ Casey · Waiting for approval". Goals are tagged on their cards.
 - Parents see an **Add a reward** tile.
 - A history line records who approved what ("Casey redeemed 30 minutes of extra screen time on Sunday, approved by Blair").
 
-### 13.7 Waiting for OK inbox
+### 13.7 To approve inbox
 
 - Opened from the header badge. A panel beside the board in landscape; a sheet in portrait.
 - Grouped into **Chores to check** (with **Approve all (n)**), **Requests**, and **Rewards**:
@@ -944,7 +944,7 @@ A short sheet in parent mode (**+ Add chore**) for one-offs. The full chore edit
 
 - What needs doing? (name), Who (pictures), When (Today, By a date: Tomorrow, Saturday, Sunday, Pick a date; or Repeats)
 - About how long? (5 min, 15 min, 30 min, 1 h, 2 h, Other)
-- Needs a parent's OK (on automatically for young children)
+- Needs a parent's approval (on automatically for young children)
 - "Earns ★ 4 (1 per 15 minutes) · Change"
 - Cancel and Add
 
@@ -972,8 +972,8 @@ When both modules are on:
 ### 14.2 People
 
 - The list is in board order ("This is the order on the board. Drag ≡ to change it."). Rows summarize each person: "Parent · PIN on · Alex's calendar", "Young child · sees pictures · no calendar". **+** adds someone.
-- **A person's page:** name; color (no two people share one); picture (an initial on their color, an emoji, or their Home Assistant person's photo); age group (with what it sets); Parent; Needs an OK for (every chore, marked chores, no chores); My day style; Stars (the balance, opening history and give or take); Saving up for; Away; PIN; sleep and bedtimes; Home Assistant links (person, calendars, phones, phone reminders); Use in automations (the person's entity IDs); Remove.
-- **Parent is separate from age.** A parent never needs an OK, needs a PIN on a shared screen, and gets a Phone row that sends Waiting for OK requests with buttons.
+- **A person's page:** name; color (no two people share one); picture (an initial on their color, an emoji, or their Home Assistant person's photo); age group (with what it sets); Parent; Needs approval for (every chore, marked chores, no chores); My day style; Stars (the balance, opening history and give or take); Saving up for; Away; PIN; sleep and bedtimes; Home Assistant links (person, calendars, phones, phone reminders); Use in automations (the person's entity IDs); Remove.
+- **Parent is separate from age.** A parent never needs approval, needs a PIN on a shared screen, and gets a Phone row that sends Approval requests with buttons.
 - **Nobody needs Home Assistant to be a person here.** Dana has no account, no calendar, and no phone, and gets the same page without those rows filled in.
 - Adding someone opens the same page, empty, with Cancel and Add.
 - Removing someone is confirmed by name. Their chores become unassigned and wait in the list; past weeks still show what they did.
@@ -982,7 +982,7 @@ When both modules are on:
 
 - Header: "19 chores · 16 on the board" and **+ New chore**; a search field; person filter chips (Everyone, Alex, Blair, Casey, Dana).
 - Grouped by rhythm: **Every day**, **Every week**, **On a schedule** (Repeats), **One time** (Once), and **Not on the board** (tagged "Plan only").
-- Each row: the chore's picture, name, a rhythm line ("2 h a week, split · any day", "Monthly · any time that month", "By Sunday · 2 sessions"), tags ("Needs an OK"), stars, and who does it. "Show 3 finished" reveals finished chores.
+- Each row: the chore's picture, name, a rhythm line ("2 h a week, split · any day", "Monthly · any time that month", "By Sunday · 2 sessions"), tags ("Needs approval"), stars, and who does it. "Show 3 finished" reveals finished chores.
 - In landscape the list uses two columns, placing whole groups in a grid (Every day beside Every week, then On a schedule beside One time), so no group is split across columns.
 - Filtering by a young child adds a preview of how they see their chores (picture tiles).
 
@@ -994,18 +994,18 @@ When both modules are on:
 - **Once:** On a day, By a date, or Any time; the date; an optional time; sessions; the estimate in all.
 - **Repeats:** every day, week, or month; every N; days (weekly); starts; ends never, after N times, or on a date (showing how many times, "7 times"); each time on the day or any time that week or month; the estimate each time. This uses a shared `pv-recurrence-picker`, which the calendar can later reuse for its own recurrence editing, and it produces exactly the backend's RRULE subset.
 - **Worth line:** "About 1 h and ★ 4 each check-off", from the same formula the engine uses.
-- **On the board:** show on the board (Plan only), needs a parent's OK, stars (automatic or a number), category, and picture.
+- **On the board:** show on the board (Plan only), needs a parent's approval, stars (automatic or a number), category, and picture.
 - **Use in automations:** the chore's ID and a ready-to-copy `planavista.complete_chore` example.
 - **Delete** is confirmed by name. The chore leaves the board at once; past weeks still show what was done, and stars stay earned.
 - Planning fields from an imported plan (need or want, locked minimums, agreed) are kept as they are and come back with the family-meeting planner. The editor shows only what changes the board.
 
 ### 14.5 Other Settings pages
 
-- **Rewards:** a list like Chores. Each reward opens a short sheet: picture, name, cost in stars, needs an OK, and who can get it.
+- **Rewards:** a list like Chores. Each reward opens a short sheet: picture, name, cost in stars, needs approval, and who can get it.
 - **Rules:**
   - Missed chores: "Make it up within the week" (default: "Missed on its day? It moves to This week, and only counts as missed if the week ends first."), "Strict days" ("A chore not done on its day is missed."), or "Carry it over until done" ("Nothing is missed. It stays on the board, marked overdue, until it's done or excused.").
   - Day starts at (3:00 AM). Approve automatically at the end of the day. Stars per minutes (1 per 15). Sound.
-- **Reminders:** the evening check on the screen (7:00 PM: "Casey has 2 chores left"), phone reminders per person ("At 7:00 PM, only if chores are left"), and which parents' phones get Waiting for OK requests.
+- **Reminders:** the evening check on the screen (7:00 PM: "Casey has 2 chores left"), phone reminders per person ("At 7:00 PM, only if chores are left"), and which parents' phones get Approval requests.
 - **PINs and parent mode:** "Is this a shared family screen?" for the signed-in account; each person's PIN (set, change, remove; parents need one on a shared screen); "Shuffle the keypad" ("The numbers move each time, so smudges and glances don't give a PIN away."); the lockout rule; the non-admin account advice.
 - **Calendars:** today's calendar list, plus **Belongs to** for each calendar. A calendar linked to a Home Assistant person joins that person automatically. **Calendar options:** today's display options.
 - **Appearance:** section 12.4, plus Motion (Follow the device, Full, Reduced).
@@ -1139,7 +1139,7 @@ Problems that need a person appear under **Needs a look** at the top of Settings
 | 2 | Household members, PINs, shell Settings | The household package and Store; members created from person-linked calendars; calendars keep `member_id`; PINs, lockout, sessions, shared-screen accounts, the PIN sheet, the parent-mode header; shell Settings (split view and stack; People and the person page without chores rows; PINs and parent mode; Calendars with Belongs to; Calendar options; About); the setup framework (Welcome, Who lives here, Calendars, Look, Done); the parent-mode counterpart of `save_config` | A 1.1.0 calendar-only install upgrades with nothing changed except Settings' new home; the permission rules pass for every account kind | |
 | 3 | The new look | Size classes, portrait and phone layouts, the bottom bar; Appearance (modes, transitions, theme pairs, Customize, the contrast guard, migration, `select.planavista_appearance`, Motion); the `contrastText()` fix; motion helpers (springs, the hold gesture, sheets); the bundled heading face; `DESIGN_SYSTEM.md` rewritten (motion, type, color jobs, status map, states, copy, layout, dark mode); the calendar gets the header, bar, portrait layouts, and day and night | Every calendar view works in portrait, landscape, and phone sizes, light and dark, on the dev Home Assistant | **1.2.0** |
 | 4 | Chores engine and HA surface | The chores package (model, engine, recurrence, Stores); actions; the WebSocket API; to-do, sensor, binary sensor, and event entities; Assist through the to-do lists; diagnostics | The section 8.16 acceptance tests pass on the dev Home Assistant through actions and to-do lists | |
-| 5 | The chores board | Board; two-zone items and hold to complete; the options sheet; My day (Timeline, List, Pictures); Week; Rewards; the Waiting for OK inbox; quick add; calendar ties; the check-off queue; loading, empty, and error states | The sample household's day runs entirely from the tablet on the dev Home Assistant, in portrait and landscape | |
+| 5 | The chores board | Board; two-zone items and hold to complete; the options sheet; My day (Timeline, List, Pictures); Week; Rewards; the To approve inbox; quick add; calendar ties; the check-off queue; loading, empty, and error states | The sample household's day runs entirely from the tablet on the dev Home Assistant, in portrait and landscape | |
 | 6 | Chores settings and setup | The Chores list and chore editor (with `pv-recurrence-picker`); Rewards; Rules; Reminders; the person page's chores rows; import, export, and restore; the chores setup steps (the chores choice, common chores, the shared screen and parents' PINs); the evening check; phone notifications with buttons; phone reminders | A new household can set up chores from nothing, or from a plan file, on the tablet alone | **1.3.0** (chores) |
 | 7 | The calendar takes on the rest | Rounded headings, the status map, designed loading, empty, and error states, the copy rules; event dialogs become sheets (with focus traps and Escape); springs for view changes | The calendar and Chores read as one product | **1.4.0** |
 
@@ -1148,7 +1148,7 @@ The roadmap's photo frame module moves to after chores.
 ## 18. Future updates
 
 - **Family-meeting planner** (spec 2): Agree, Load, and Schedule on top of the chore editor, porting the planner's math, plus parent-only editing of locked minimums. It uses the hidden fields stored now (need or want, locked, agreed).
-- **Photo proof:** for chores that need an OK, the child snaps a photo on the tablet and it appears in the parent's approval notification.
+- **Photo proof:** for chores that need approval, the child snaps a photo on the tablet and it appears in the parent's approval notification.
 - **Help and trades:** "Can someone take my trash tonight?" A sibling accepts, and the chore and its credit move to them.
 - **Up for grabs:** optional bonus chores anyone can claim for stars.
 - **Taking turns:** a fourth way to assign a chore (Casey one week, Dana the next).

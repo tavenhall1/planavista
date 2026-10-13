@@ -103,7 +103,7 @@ class HouseholdChoresLeftSensor(ChoresEntity, SensorEntity):
 
 
 class ApprovalsWaitingSensor(ChoresEntity, SensorEntity):
-    """Open requests: check-offs waiting for OK, more time, skips, and rewards."""
+    """Open requests: check-offs waiting for approval, more time, skips, and rewards."""
 
     _attr_icon = "mdi:account-clock-outline"
 

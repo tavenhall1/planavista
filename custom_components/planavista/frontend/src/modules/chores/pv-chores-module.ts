@@ -187,7 +187,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._watching = service ? { service, stop: service.watch() } : null;
   }
 
-  /** The bar's and the parent-mode strip's buttons: Waiting for OK and Add chore. */
+  /** The bar's and the parent-mode strip's buttons: Waiting for approval and Add chore. */
   moduleAction(id: string): void {
     if (id === 'inbox') void this._openInbox();
     if (id === 'add') void this._openQuickAdd();
@@ -670,7 +670,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const credited = doneBy && doneBy !== member && doer ? creditedText({ name: doer.name, stars: !!doer.stars }, row.item.stars) : null;
     this.showToast({
       id,
-      text: waits ? `${row.name}: waiting for OK.` : credited ?? 'Done.',
+      text: waits ? `${row.name}: waiting for approval.` : credited ?? 'Done.',
       actions: [{ id: 'undo', label: 'Undo' }, ...(doneBy ? [] : [{ id: 'someone', label: 'Someone else did it?' }])],
       ms: 6000,
     });
@@ -702,7 +702,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       : row.state === 'done'
         ? 'Hold the check to uncheck it.'
         : row.state === 'pending'
-          ? 'This is waiting for a parent\'s OK.'
+          ? 'This is waiting for a parent\'s approval.'
           : 'Hold the circle to finish a chore. Let go early and nothing happens.';
     this.showToast({ id: `hint-${Date.now()}`, text, ms: 3500 });
   }

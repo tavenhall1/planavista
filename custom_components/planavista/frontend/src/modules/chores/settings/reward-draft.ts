@@ -54,10 +54,10 @@ export function whoText(who: string[], members: Member[]): string {
   return members.filter(m => who.includes(m.id)).map(m => m.name).join(', ');
 }
 
-/** A Rewards row's line (spec 14.5): "★ 40 · needs an OK · Casey, Dana". */
+/** A Rewards row's line (spec 14.5): "★ 40 · needs approval · Casey, Dana". */
 export function rewardLine(reward: Reward, members: Member[]): string {
   const parts = [`★ ${reward.cost}`];
-  if (reward.needs_ok) parts.push('needs an OK');
+  if (reward.needs_ok) parts.push('needs approval');
   parts.push(whoText(reward.who, members));
   return parts.join(' · ');
 }

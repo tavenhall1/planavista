@@ -37,7 +37,7 @@ export interface GlanceChip {
   open?: OpenTarget;
 }
 
-/** A button a module adds to the bar or the parent-mode strip, such as "⏳ 2 waiting for OK". */
+/** A button a module adds to the bar or the parent-mode strip, such as "⏳ 2 to approve". */
 export interface ModuleAction {
   id: string;
   label: string;

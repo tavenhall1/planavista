@@ -33,7 +33,7 @@ MESSAGES: dict[str, str] = {
     "request_closed": "That request closed when the chore's time ran out.",
     "unknown_reward": "That reward isn't in the catalog.",
     "invalid_on_board": "Show on the board is on or off.",
-    "invalid_needs_ok": "Needs a parent's OK is on or off.",
+    "invalid_needs_ok": "Needs a parent's approval is on or off.",
     "invalid_stars": "Stars are a whole number from 0 to 100.",
     "invalid_label": "Use a label of 30 letters or fewer.",
     "invalid_minimum": "Add the time per day or per week.",
@@ -132,7 +132,7 @@ def member_by(household: Household, account: Account, member_id: str) -> str:
 
 def credit_by(household: Household, account: Account, doer: str) -> None:
     """Crediting `doer` with someone else's chore is theirs to say too (round 1): a parent, whose
-    check-offs need no OK, takes parent level; anyone else is a member-level change to them."""
+    check-offs need no approval, takes parent level; anyone else is a member-level change to them."""
     member = household.member(doer) or {}
     if member.get("parent"):
         parent_by(account)

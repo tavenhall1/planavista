@@ -23,7 +23,7 @@ export interface OptionModel {
   id: OptionId;
   label: string;
   hint?: string;
-  /** Says what unlocks it ("🔒 Parent", "🔒 Casey's PIN"), or that it asks the parents ("Needs OK"). */
+  /** Says what unlocks it ("🔒 Parent", "🔒 Casey's PIN"), or that it asks the parents ("Needs approval"). */
   tag?: string;
   chips?: DayChip[];
   /** A date picker for anything the chips don't offer. */
@@ -175,11 +175,11 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
     }
     if (!ownerIsParent && due && !item.request) {
       member.push({
-        id: 'more_time', label: 'Ask for more time', tag: 'Needs an OK', chips: moreTimeChips(item, today),
+        id: 'more_time', label: 'Ask for more time', tag: 'Needs approval', chips: moreTimeChips(item, today),
         pick: { min: addDays(due, 1), max: addDays(today, 60) },
         hint: parents.length ? `Sends a request to ${names(parents)}.` : 'Sends a request to the parents.',
       });
-      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs an OK', hint: 'Sick, away, rained out…' });
+      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs approval', hint: 'Sick, away, rained out…' });
     }
     member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
   }

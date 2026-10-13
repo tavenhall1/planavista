@@ -67,7 +67,7 @@ async def test_a_request_goes_to_every_parents_phone_with_buttons(hass: HomeAssi
     request_id = await _dana_feeds_the_fish(hass, chores)
     assert len(alex) == len(blair) == 1
     data = alex[0].data
-    assert (data["title"], data["message"]) == ("Waiting for OK", "Dana finished Feed the fish (1 star).")
+    assert (data["title"], data["message"]) == ("Waiting for approval", "Dana finished Feed the fish (1 star).")
     assert data["data"]["tag"] == f"planavista-{request_id}"
     allow, decline = data["data"]["actions"]
     assert allow["title"] == "Looks good" and allow["action"].startswith(f"PLANAVISTA_ALLOW_{request_id}_")

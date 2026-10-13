@@ -141,7 +141,7 @@ class ChoresTodoList(ChoresEntity, TodoListEntity):
         """Adding an item makes a Once chore for this member (spec 10.3).
 
         It takes the item's due date and a 15-minute estimate. Added by someone
-        who isn't a parent, it needs an OK, so its stars wait for a parent.
+        who isn't a parent, it needs approval, so its stars wait for a parent.
         """
         account, source = await self._caller()
         by = self._member_by(account)

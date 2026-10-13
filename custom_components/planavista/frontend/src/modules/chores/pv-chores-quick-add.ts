@@ -30,7 +30,7 @@ import {
 /**
  * pv-chores-quick-add: a short sheet for one-offs (spec 13.8): what needs
  * doing, who, when (today, by a date, or repeating), about how long,
- * whether it needs a parent's OK (on for young children), and what it earns.
+ * whether it needs a parent's approval (on for young children), and what it earns.
  * The chore editor in Settings handles everything else.
  *
  * @fires pv-quick-add - { draft } on Add, once the draft makes sense
@@ -286,10 +286,10 @@ export class PvChoresQuickAdd extends LitElement {
         <section>
           <div class="switch-row">
             <div>
-              <div>Needs a parent's OK</div>
+              <div>Needs a parent's approval</div>
               <div class="caption">On for young children automatically</div>
             </div>
-            <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
+            <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's approval"
               @click=${() => this._set({ needsOk: !d.needsOk, needsOkSet: true })}></button>
           </div>
         </section>

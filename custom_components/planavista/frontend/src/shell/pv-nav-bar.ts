@@ -25,7 +25,7 @@ export interface BarModule {
  * @fires pv-module-select - { id } of the module tapped
  * @fires pv-view-select - { id } of the view tapped
  * @fires pv-open-settings - the gear
- * @fires pv-module-action - { id } of one of the module's buttons (⏳ 2 waiting for OK, + Add chore)
+ * @fires pv-module-action - { id } of one of the module's buttons (⏳ 2 to approve, + Add chore)
  */
 export class PvNavBar extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';

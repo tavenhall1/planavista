@@ -90,7 +90,7 @@ def _may_credit(
 ) -> bool:
     """Whether this screen may say `doer` did someone else's chore, or False after refusing (spec 9.5).
 
-    Crediting someone is theirs to say too: a parent, whose check-offs need no OK,
+    Crediting someone is theirs to say too: a parent, whose check-offs need no approval,
     takes parent level; anyone else takes their own PIN when they have one.
     """
     member = household.member(doer)
@@ -483,7 +483,7 @@ async def ws_reward_delete(hass: HomeAssistant, connection: websocket_api.Active
 })
 @websocket_api.async_response
 async def ws_reward_redeem(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """A member spends stars on a reward (it waits for a parent unless it needs no OK)."""
+    """A member spends stars on a reward (it waits for a parent unless it needs no approval)."""
     runtime = _runtime(hass, connection, msg)
     if runtime is None:
         return
