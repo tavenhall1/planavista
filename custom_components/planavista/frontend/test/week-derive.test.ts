@@ -36,6 +36,14 @@ describe('weekCell (spec 13.5)', () => {
     expect(weekCell(day('2026-10-14', 'future', { away: true }))).toMatchObject({ label: 'Away', away: true });
     expect(weekCell(day('2026-10-12', 'past', { due: null, done: null, pending: null, closed: null }))).toMatchObject({ empty: true, label: '' });
   });
+
+  // Round 2: a day whose only chore was excused read "Nothing due" (its sheet said Excused),
+  // and a day to come with nothing on it had no words at all.
+  it('says a day was excused, and a day to come has nothing due', () => {
+    expect(weekCell(day('2026-10-08', 'past', { due: 0, done: 0, closed: false, excused: 1 }))).toMatchObject({ label: 'Excused', tone: 'muted' });
+    expect(weekCell(day('2026-10-08', 'past', { due: 0, done: 0, closed: false }))).toMatchObject({ label: 'Nothing due' });
+    expect(weekCell(day('2026-10-14', 'future', { due: 0, done: 0, closed: false }))).toMatchObject({ label: 'Nothing due', empty: true });
+  });
 });
 
 describe('weeklyLine', () => {

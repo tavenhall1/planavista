@@ -105,6 +105,10 @@ def test_excusing_a_missed_check_off_mends_its_day_and_the_streak() -> None:
     with pytest.raises(ChoreError) as err:
         engine.excuse_missed(SCENE, key=CAT_MONDAY_EVENING, by="blair")
     assert err.value.code == "not_missed"
+    # Round 2: the Week view says how many were excused, so its cell can say so.
+    week = engine.week_view(SCENE)["members"]["casey"]["days"]
+    assert (week[0]["date"], week[0]["excused"]) == ("2026-10-12", 1)
+    assert week[1]["excused"] == 0
 
 
 
