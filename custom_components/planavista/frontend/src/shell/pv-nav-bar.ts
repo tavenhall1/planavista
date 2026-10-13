@@ -59,7 +59,7 @@ export class PvNavBar extends LitElement {
     }
 
     :host(:not([layout='landscape'])) nav {
-      padding: 0 12px env(safe-area-inset-bottom, 0px);
+      padding: 0 12px var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     }
 
     button {
