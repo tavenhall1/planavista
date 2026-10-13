@@ -58,3 +58,11 @@ describe("the Day view keeps its hours on a short screen", () => {
     expect(block(module, '@media (max-height: 500px) {')).toMatch(/\.pvc-toolbar \{ padding: 6px 12px; \}/);
   });
 });
+
+describe('the Day view lays chips out at the height it draws them (round 2)', () => {
+  it('passes the shortest chip, in time at its hour height, to the lanes', () => {
+    const day = read('modules/calendar/components/view-day.ts');
+    expect(day).toMatch(/const positioned = detectOverlaps\(events, \(MIN_CHIP_PX \/ this\._hourPx\) \* 3_600_000\);/);
+    expect(read('modules/calendar/layout-rules.ts')).toMatch(/export const MIN_CHIP_PX = 34;/);
+  });
+});

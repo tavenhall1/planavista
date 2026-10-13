@@ -2,6 +2,9 @@ import type { Layout } from '../../core/layout';
 
 /** The Day view's hour height in landscape and on phones, as in 1.1.0. */
 export const HOUR_PX = 80;
+
+/** The tallest of the Day view's minimum chip heights (view-day.ts: 26, 30, or 34 px by width). */
+export const MIN_CHIP_PX = 34;
 const PORTRAIT_HOURS = 14;
 const MIN_HOUR_PX = 48;
 

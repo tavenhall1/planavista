@@ -21,7 +21,7 @@ import { contrastText } from '../../../core/color';
 import { stripStart } from '../../../core/people-strip';
 import { groupSameEvents, sameEventKey } from '../calendar-derive';
 import type { Layout } from '../../../core/layout';
-import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
+import { HOUR_PX, MIN_CHIP_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
 
 /** Enough of a person to draw their face on an event. */
 interface FaceOf {
@@ -1044,7 +1044,8 @@ export class PVViewDay extends LitElement {
   }
 
   private _renderColumn(personKey: string, events: CalendarEvent[], chosen: boolean) {
-    const positioned = detectOverlaps(events);
+    // Lanes by the height each chip is drawn: a brief chip is taller than its slot (round 2).
+    const positioned = detectOverlaps(events, (MIN_CHIP_PX / this._hourPx) * 3_600_000);
 
     return html`
       <div class="person-column ${chosen ? 'chosen' : ''}">
