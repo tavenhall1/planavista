@@ -58,6 +58,14 @@ export interface ImportChoices {
 
 export const RESTORE_FORMAT = 'planavista.household/v1';
 
+/** The most text an import reads (chores/websocket.py MAX_FILE_LENGTH). */
+export const MAX_FILE_LENGTH = 2_000_000;
+
+/** What to say about a file too big to read, before it is sent; null when it fits (round 2). */
+export function fileTooBig(text: string): string | null {
+  return text.length > MAX_FILE_LENGTH ? 'This file is too big to read. PlanaVista files are 2 MB at most.' : null;
+}
+
 /** What the Import bar says stays (spec 14.6): nothing is deleted, and what a plan, a restore, or a fill-in changes. */
 export function importNote(preview: Pick<ImportPreview, 'file' | 'fills_in'>): string {
   if (preview.fills_in) {

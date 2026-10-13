@@ -13,6 +13,7 @@ import type { PlanaVistaData } from '../../../types';
 import type { ImportProblem } from '../chores-client';
 import type { ChoresService } from '../chores-service';
 import { choresSettingsStyles } from './settings-styles';
+import { fileTooBig } from './import-derive';
 import '../../../shell/pv-notice-sheet';
 
 type Mode = 'import' | 'restore';
@@ -248,8 +249,13 @@ export class PvImportExportPage extends LitElement {
   private async _read(text: string, name: string, mode: Mode): Promise<void> {
     const chores = this._chores;
     if (!chores) return;
-    this._reading = true;
     this._problem = null;
+    const tooBig = fileTooBig(text);
+    if (tooBig) {
+      this._problem = { name, mode, problem: { code: 'too_big', message: tooBig, problems: [] } };
+      return;
+    }
+    this._reading = true;
     try {
       const result = await chores.api.importPreview(text);
       if (result.problem) {
