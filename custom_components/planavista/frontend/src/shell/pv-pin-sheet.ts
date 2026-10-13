@@ -24,6 +24,7 @@ import type { Layout } from '../core/layout';
 import { saveErrorMessage } from '../core/page-host';
 import '../core/pv-member-avatar';
 import { SheetMotion, motionOf } from './sheet-motion';
+import { backdropTap } from '../core/backdrop';
 
 type Step = 'pick' | 'enter' | 'choose' | 'confirm';
 
@@ -46,6 +47,8 @@ function formatWait(ms: number): string {
  * @fires pv-sheet-close - Cancel, Escape, a tap outside, or a drag down
  */
 export class PvPinSheet extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => this._cancel());
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
@@ -280,7 +283,7 @@ export class PvPinSheet extends LitElement {
 
   render() {
     return html`
-      <div class="backdrop" @click=${this._cancel}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="pin-heading">
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         ${this._step === 'pick' ? this._renderPicker() : this._renderPad()}

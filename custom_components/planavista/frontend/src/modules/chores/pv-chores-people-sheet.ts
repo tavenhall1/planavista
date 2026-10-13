@@ -9,6 +9,7 @@ import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
+import { backdropTap } from '../../core/backdrop';
 
 /**
  * pv-chores-people-sheet: pick a person ("Who did it?", "Who's getting it?").
@@ -17,6 +18,8 @@ import '../../core/pv-member-avatar';
  * @fires pv-person-pick - { member } of the person tapped, or null for Cancel; it fires once the sheet has left
  */
 export class PvChoresPeopleSheet extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => this._pick(null));
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ type: String }) heading = '';
   @property({ type: String }) body = '';
@@ -81,7 +84,7 @@ export class PvChoresPeopleSheet extends LitElement {
 
   render() {
     return html`
-      <div class="backdrop" @click=${() => this._pick(null)}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="people-heading" @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="people-heading" tabindex="-1">${this.heading}</h2>

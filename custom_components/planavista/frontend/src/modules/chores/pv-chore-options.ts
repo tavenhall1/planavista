@@ -10,6 +10,7 @@ import type { Layout } from '../../core/layout';
 import { SheetMotion } from '../../shell/sheet-motion';
 import { choresStyles } from './chores-styles';
 import type { OptionId, OptionModel, OptionsModel } from './options-derive';
+import { backdropTap } from '../../core/backdrop';
 
 const ICONS: Record<OptionId, string> = {
   plan_day: '📅', more_time: '⏰', skip: '🛌', done_by: '🙋', history: '📜', undo: '↩️',
@@ -35,6 +36,8 @@ export interface OptionChoice {
  * @fires pv-sheet-close - the sheet left (Done, Escape, a tap outside, or a drag down)
  */
 export class PvChoreOptions extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => void this.close());
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) model!: OptionsModel;
   @property({ type: String }) color = '#5B5BD6';
@@ -236,7 +239,7 @@ export class PvChoreOptions extends LitElement {
     const model = this.model;
     if (!model) return nothing;
     return html`
-      <div class="backdrop" @click=${() => void this.close()}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="options-title" @keydown=${this._key}
         aria-busy=${this.busy ? 'true' : 'false'}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>

@@ -6,6 +6,7 @@ import { sheetStyles } from '../styles/sheet';
 import { trapTab } from '../core/focus';
 import type { Layout } from '../core/layout';
 import { SheetMotion } from './sheet-motion';
+import { backdropTap } from '../core/backdrop';
 
 export interface NoticeAction {
   id: string;
@@ -20,6 +21,8 @@ export interface NoticeAction {
  * @fires pv-sheet-action - { id } of the button; 'cancel' for Escape, a tap outside, or a drag down. It fires once the sheet has left.
  */
 export class PvNoticeSheet extends LitElement {
+  /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
+  private readonly _backdrop = backdropTap(() => this._choose('cancel'));
   @property({ type: String }) heading = '';
   @property({ type: String }) body = '';
   @property({ attribute: false }) actions: NoticeAction[] = [];
@@ -66,7 +69,7 @@ export class PvNoticeSheet extends LitElement {
 
   render() {
     return html`
-      <div class="backdrop" @click=${() => this._choose('cancel')}></div>
+      <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="notice-heading" @keydown=${this._onKey}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="notice-heading" tabindex="-1">${this.heading}</h2>
