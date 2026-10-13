@@ -152,6 +152,9 @@ export class PvChoreTile extends LitElement {
     .waiting {
       font-size: 0.8125rem;
       font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+      text-wrap: balance;
       color: var(--pv-accent-tint-ink, #3B3BB0);
     }
 
