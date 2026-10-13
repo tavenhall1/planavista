@@ -427,7 +427,7 @@ export class PvChoresMyDay extends LitElement {
           </div>
           ${this.surprise && !this.surprise.opened ? html`
             <pv-surprise-present class="surprise" .model=${this.surprise} name=${member.name} color=${this.colorOf(member)}
-              ?may=${this.mayOpen} large></pv-surprise-present>
+              ?may=${this.mayOpen} large ?young=${member.age_group === 'young_child'} .order=${member.order}></pv-surprise-present>
           ` : nothing}
           ${this.goal && this.layout !== 'landscape' ? this._goal(this.goal) : nothing}
           ${style === 'timeline' ? this._timeline() : style === 'list' ? this._list() : this._pictures()}

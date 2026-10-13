@@ -231,7 +231,7 @@ export class PvChoresRewards extends LitElement {
                   ` : html`No goal yet`}
                   ${b.surprise && !b.surprise.opened ? html`
                     <pv-surprise-present class="surprise" .model=${b.surprise} name=${b.member.name} color=${this.colorOf(b.member)}
-                      ?may=${this.mayOpen(b.member.id)} shape="row"></pv-surprise-present>
+                      ?may=${this.mayOpen(b.member.id)} shape="row" ?young=${b.member.age_group === 'young_child'} .order=${b.member.order}></pv-surprise-present>
                   ` : nothing}
                   ${b.surprise?.opened ? html`
                     <button class="again pv-btn pv-btn-secondary accent" type="button"

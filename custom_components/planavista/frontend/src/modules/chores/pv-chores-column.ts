@@ -320,7 +320,7 @@ export class PvChoresColumn extends LitElement {
     if (!surprise || surprise.opened) return nothing;
     return html`
       <pv-surprise-present class="surprise" .model=${surprise} name=${model.member.name} color=${this.color}
-        ?may=${this.mayOpen} shape=${shape}></pv-surprise-present>
+        ?may=${this.mayOpen} shape=${shape} ?young=${model.member.age_group === 'young_child'} .order=${model.member.order}></pv-surprise-present>
     `;
   }
 

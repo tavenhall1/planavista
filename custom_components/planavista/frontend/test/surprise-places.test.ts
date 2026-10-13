@@ -21,7 +21,7 @@ describe('the goal surprise waits where the child looks (milestone 10)', () => {
 
   it('at the top of My day, large', () => {
     const myDay = read('modules/chores/pv-chores-my-day.ts');
-    expect(myDay).toMatch(/this\.surprise && !this\.surprise\.opened \? html`\n\s+<pv-surprise-present class="surprise"[^`]*large>/);
+    expect(myDay).toMatch(/this\.surprise && !this\.surprise\.opened \? html`\n\s+<pv-surprise-present class="surprise"[^`]* large[ >]/);
   });
 
   it('by the goal in Rewards, and Watch it again once it is opened', () => {

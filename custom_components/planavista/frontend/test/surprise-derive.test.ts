@@ -55,10 +55,11 @@ describe('who may open it', () => {
 });
 
 describe('its words', () => {
-  it('says whose it is and how to open it', () => {
-    expect(surpriseWords('Dana', true, 'tile')).toEqual({ title: 'A surprise for Dana!', hint: 'Hold me' });
-    expect(surpriseWords('Casey', true, 'row')).toEqual({ title: 'A surprise for Casey!', hint: 'Hold to open' });
-    expect(surpriseWords('Dana', false, 'tile')).toEqual({ title: 'A surprise for Dana!', hint: 'Waiting for Dana to open it' });
+  // Review B9: the same teen read "Hold to open" on the board and "Hold me" on My day.
+  it('says whose it is and how to open it, the same words on every screen', () => {
+    expect(surpriseWords('Dana', true, true)).toEqual({ title: 'A surprise for Dana!', hint: 'Hold me' });
+    expect(surpriseWords('Casey', true, false)).toEqual({ title: 'A surprise for Casey!', hint: 'Hold to open' });
+    expect(surpriseWords('Dana', false, true)).toEqual({ title: 'A surprise for Dana!', hint: 'Waiting for Dana to open it' });
   });
 
   it("the reveal names them and the reward's own button", () => {
@@ -113,13 +114,9 @@ describe('the reveal', () => {
 });
 
 describe('waiting', () => {
-  it('wiggles every few seconds, offset per person so two presents move apart', () => {
+  // Review B6: Casey's and Dana's presents wiggled 220 ms apart inside a 700 ms wiggle.
+  it('wiggles every few seconds, each person a fifth of the cycle from the next', () => {
     expect(IDLE_MS).toBe(4000);
-    expect(idleOffset('dana')).toBe(idleOffset('dana'));
-    expect(idleOffset('dana')).not.toBe(idleOffset('casey'));
-    for (const id of ['dana', 'casey', 'alex', 'blair']) {
-      expect(idleOffset(id)).toBeGreaterThanOrEqual(0);
-      expect(idleOffset(id)).toBeLessThan(IDLE_MS);
-    }
+    expect([0, 1, 2, 3, 4, 5].map(idleOffset)).toEqual([0, 800, 1600, 2400, 3200, 0]);
   });
 });

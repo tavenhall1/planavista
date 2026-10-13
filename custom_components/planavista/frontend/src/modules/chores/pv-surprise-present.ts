@@ -33,6 +33,10 @@ export class PvSurprisePresent extends LitElement {
   @property({ type: Boolean }) may = false;
   @property({ type: String, reflect: true }) shape: 'tile' | 'row' = 'tile';
   @property({ type: Boolean, reflect: true }) large = false;
+  /** A young child's present says Hold me, anyone else's Hold to open (review B9). */
+  @property({ type: Boolean }) young = false;
+  /** Their place in the household, which sets when the present wiggles (review B6). */
+  @property({ type: Number }) order = 0;
 
   @state() private _fill = 0;
   @state() private _tracking = true;
@@ -196,7 +200,7 @@ export class PvSurprisePresent extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this._scheduleIdle(this.model ? idleOffset(this.model.memberId) : 0);
+    this._scheduleIdle(idleOffset(this.order));
   }
 
   disconnectedCallback(): void {
@@ -207,7 +211,7 @@ export class PvSurprisePresent extends LitElement {
 
   render() {
     if (!this.model) return nothing;
-    const words = surpriseWords(this.name, this.may, this.shape);
+    const words = surpriseWords(this.name, this.may, this.young);
     const ring = this.large ? 150 : this.shape === 'row' ? 48 : 84;
     return html`
       <div class="surprise ${this._away ? 'away' : ''}" style="--member:${this.color}">

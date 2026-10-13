@@ -35,8 +35,9 @@ export function mayOpenSurprise(view: HouseholdView | null, memberId: string): b
 }
 
 /** "A surprise for Dana!" and how to open it, or who it waits for. */
-export function surpriseWords(name: string, may: boolean, shape: 'tile' | 'row'): { title: string; hint: string } {
-  const hint = may ? (shape === 'tile' ? 'Hold me' : 'Hold to open') : `Waiting for ${name} to open it`;
+export function surpriseWords(name: string, may: boolean, young: boolean): { title: string; hint: string } {
+  // By who it is for, not the screen's shape, so one person reads one hint everywhere (review B9).
+  const hint = may ? (young ? 'Hold me' : 'Hold to open') : `Waiting for ${name} to open it`;
   return { title: `A surprise for ${name}!`, hint };
 }
 
@@ -77,11 +78,13 @@ export const REVEAL = {
 /** How often a waiting present wiggles. */
 export const IDLE_MS = 4000;
 
-/** Where in the wiggle's cycle a member's present starts, so two presents don't move in step. */
-export function idleOffset(memberId: string): number {
-  let hash = 0;
-  for (const ch of memberId) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return hash % IDLE_MS;
+/**
+ * Where in the wiggle's cycle a member's present starts, by their place in the
+ * household: five places a fifth of the cycle apart, so two presents never
+ * move in step (review B6: a hash of the names put two 220 ms apart).
+ */
+export function idleOffset(order: number): number {
+  return (Math.abs(Math.trunc(order)) % 5) * (IDLE_MS / 5);
 }
 
 export interface ConfettiPiece {
