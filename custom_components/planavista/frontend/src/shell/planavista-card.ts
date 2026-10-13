@@ -305,6 +305,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 /* Setup-pending placeholder shown in card editor preview */
 
       .pvc-setup-pending {
+        flex: 1 1 auto;
         display: flex;
         flex-direction: column;
         align-items: center;

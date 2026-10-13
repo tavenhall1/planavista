@@ -43,6 +43,8 @@ export class PvImportReview extends LitElement {
     css`
       :host {
         display: block;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
 
       .file {
