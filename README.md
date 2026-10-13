@@ -107,7 +107,7 @@ time_format: 12h            # 12h | 24h
 first_day: sunday           # sunday | monday
 ```
 
-- `planavista-card` is the card's name for new dashboards and works from 1.2.0 on. Cards added before as `planavista-calendar-card` keep working.
+- `planavista-card` is the card's name for new dashboards. Cards added as `planavista-calendar-card` keep working.
 - `modules` and `module` choose what a card shows and where it starts. A chores tablet can open on the board with `module: chores`. Chores shows once the household turns it on.
 - `theme` with a theme's name picks the theme and still follows the household's Light, Dark, or Automatic. `light` or `dark` fixes the card to PlanaVista's light or dark version.
 - `hide_header` hides the clock and weather header. The bar with the views and Settings stays.
@@ -176,7 +176,7 @@ Night falls from the top of the screen and day rises from the bottom. A change n
 
 **Motion** follows the device, or is set to Full or Reduced. Reduced swaps movement for quick fades, which helps on kiosk tablets that hide the system setting.
 
-Coming from 1.1.0: Clean Light and Deep Dark become PlanaVista's light and dark versions, Minimal and Vibrant keep their look in light, and customizations move to the version they were made for.
+Coming from the first themes: Clean Light and Deep Dark become PlanaVista's light and dark versions, Minimal and Vibrant keep their look in light, and customizations move to the version they were made for.
 
 ---
 
