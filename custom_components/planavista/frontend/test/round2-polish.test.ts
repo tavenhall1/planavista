@@ -17,6 +17,15 @@ describe('round 2 polish', () => {
     expect(module).toMatch(/text: `\$\{this\._optionNames\.get\(sheet\) \?\? this\._choreName\(sheet\.key\)\} changed on another screen\.`/);
   });
 
+  // A tap on the board just after Done went to the leaving sheet's faded backdrop (240 ms).
+  it('a sheet on its way out takes no taps, and one that opens again does', () => {
+    const motion = read('shell/sheet-motion.ts');
+    const close = motion.slice(motion.indexOf('async close('));
+    expect(close.slice(0, close.indexOf('\n  }\n'))).toMatch(/this\._host\.style\.pointerEvents = 'none';/);
+    const open = motion.slice(motion.indexOf('  open('));
+    expect(open.slice(0, open.indexOf('\n  }\n'))).toMatch(/this\._host\.style\.pointerEvents = '';/);
+  });
+
   it("a long name in a people strip ends in an ellipsis instead of pushing the others off", () => {
     const controls = read('styles/controls.ts');
     expect(controls).toMatch(/\.pv-person \{[^}]*max-width: 88px;/);
