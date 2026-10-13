@@ -76,6 +76,9 @@ export class PvChoresMyDay extends LitElement {
         min-height: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
+        /* The Timeline's time column: its rows, bands, and This week line up after it. */
+        --tl-time: 56px;
+        --tl-gap: 8px;
       }
 
 
@@ -169,10 +172,15 @@ export class PvChoresMyDay extends LitElement {
 
       .tl-row {
         display: grid;
-        grid-template-columns: 56px minmax(0, 1fr);
-        gap: 8px;
+        grid-template-columns: var(--tl-time) minmax(0, 1fr);
+        gap: var(--tl-gap);
         align-items: center;
         min-height: 48px;
+      }
+
+      /* This week under the timeline keeps the timeline's left edge. */
+      .tl-week {
+        margin-left: calc(var(--tl-time) + var(--tl-gap));
       }
 
       .tl-time {
@@ -182,11 +190,9 @@ export class PvChoresMyDay extends LitElement {
         font-variant-numeric: tabular-nums;
       }
 
+      /* A band is a section head (one heading look), over the timeline's column. */
       .tl-band {
-        margin: 14px 0 4px 64px;
-        font-size: 0.8125rem;
-        font-weight: 750;
-        color: var(--pv-text-muted, #8E949C);
+        margin-left: calc(var(--tl-time) + var(--tl-gap) + 4px);
       }
 
       .event {
@@ -447,7 +453,7 @@ export class PvChoresMyDay extends LitElement {
   private _entry(entry: TimelineEntry) {
     switch (entry.kind) {
       case 'band':
-        return html`<div class="tl-band">${entry.label}</div>`;
+        return html`<div class="section-head tl-band">${entry.label}</div>`;
       case 'event':
         return html`
           <div class="tl-row"><span class="tl-time">${entry.time}</span>
@@ -479,8 +485,10 @@ export class PvChoresMyDay extends LitElement {
     const week = this.column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
     if (week.length === 0) return nothing;
     return html`
-      <div class="section-head"><span>This week</span><span class="right">${this.board.week.days_left} days left</span></div>
-      ${repeat(week, row => row.key, row => this._row(row, 'week'))}
+      <div class="tl-week">
+        <div class="section-head"><span>This week</span><span class="right">${this.board.week.days_left} days left</span></div>
+        ${repeat(week, row => row.key, row => this._row(row, 'week'))}
+      </div>
     `;
   }
 
