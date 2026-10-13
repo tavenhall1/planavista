@@ -9,6 +9,16 @@ export interface Box {
 export const PHONE_MAX_WIDTH = 600;
 
 /**
+ * A card this short, this wide, and wider than tall by this much takes the
+ * landscape arrangement even under PHONE_MAX_WIDTH: an iPhone held sideways
+ * with Home Assistant's sidebar docked (576 by 384) had no room left for the
+ * Day view's hours under a phone's tall header and bottom bar (round 1).
+ */
+export const SHORT_MAX_HEIGHT = 500;
+export const SHORT_MIN_WIDTH = 480;
+const SHORT_MIN_RATIO = 1.2;
+
+/**
  * Whether the bar's groups (the module switcher, the views, the buttons, the
  * gear), at their natural widths and `gap` apart, fit in `available` pixels on
  * one row (spec 12.2); when they don't, the views get a row of their own.
@@ -35,7 +45,7 @@ const SQUARE_LOW = 0.95;
 const SQUARE_HIGH = 1.05;
 
 /**
- * Phone below 600 px wide; otherwise portrait or landscape by shape. A
+ * Phone below 600 px wide (unless it is wide and short); otherwise portrait or landscape by shape. A
  * nearly square card (aspect 0.95 to 1.05) keeps its previous portrait or
  * landscape, landscape at first, so split screens don't flip. While a text
  * field has focus, a height-only change below the card's box from before
@@ -56,7 +66,8 @@ export function classifyLayout(
   ) {
     return previous;
   }
-  if (box.width < PHONE_MAX_WIDTH) return 'phone';
+  const wideAndShort = box.height < SHORT_MAX_HEIGHT && box.width >= SHORT_MIN_WIDTH && box.width > box.height * SHORT_MIN_RATIO;
+  if (box.width < PHONE_MAX_WIDTH && !wideAndShort) return 'phone';
   const ratio = box.height > 0 ? box.width / box.height : Number.POSITIVE_INFINITY;
   if (ratio >= SQUARE_LOW && ratio <= SQUARE_HIGH) {
     return previous === 'portrait' || previous === 'landscape' ? previous : 'landscape';
