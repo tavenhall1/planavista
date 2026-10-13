@@ -13,7 +13,7 @@ Kiosk mode tidies the screen. It is not a lock: a browser still has an address b
 ## 2. Decisions
 
 - **D1. Where:** only on shared family screens (accounts marked shared in Settings, PINs and parent mode). A parent's own phone or laptop, and every admin's login, keep Home Assistant's menus.
-- **D2. The setting:** one switch for the household, **Kiosk mode**, in Settings, PINs and parent mode, under This screen, shown once a shared screen exists. Beside it, **Top bar: Hidden / Tabs only**.
+- **D2. The setting:** one switch for the household, **Kiosk mode**, in Settings, PINs and parent mode, in its own **Shared screens** section (it applies to every shared screen, not only this one), shown once a shared screen exists. Beside it, **Top bar: Hidden / Tabs only**.
   - **Hidden:** Home Assistant's header is gone and PlanaVista fills the screen. On a phone or tablet its header runs under the status bar, as its bar runs under the home indicator.
   - **Tabs only:** the header keeps the dashboard's tabs (its views: PlanaVista and Chores today, and any the household adds, such as Lights or Cameras); its menu button and the buttons on its right are hidden.
   - In both, the sidebar is gone (Home Assistant's own kiosk switch).
@@ -50,7 +50,8 @@ PlanaVista's script is loaded on every Home Assistant page, so kiosk mode is app
 
 - Hidden: the card's height already reads `--header-height` (now 0 under `hui-root`), so it fills the screen. With `--pv-under-status-bar` set, the card adds it back to its height, runs up under the status bar (`margin-top: calc(-1 * var(--pv-under-status-bar, 0px))`), and the glance header pads its top by it.
 - The parent strip shows **Exit kiosk mode** when the unlock said `may_exit_kiosk` and kiosk mode is on here and no step-out is running; **Back to kiosk mode** while one is. Exit calls `planavista/kiosk/exit` with the session, then `kiosk.lift(...)` with the household's Lock after no touches and the session's cap. Lock ends the session and calls `kiosk.restore()`. A refusal says why in a toast (refusalText, the M8 pattern).
-- Settings, PINs and parent mode: under This screen, the **Kiosk mode** switch with its line, and **Top bar** as a segmented control (Hidden, Tabs only) shown while it is on. Shown only when a shared screen exists, since that's where it applies.
+- Settings, PINs and parent mode: a **Shared screens** section with the **Kiosk mode** switch and its line, and **Top bar** as a segmented control (Hidden, Tabs only) shown while it is on. Shown only when a shared screen exists, since that's where it applies.
+- Settings draws its own copy of the strip; it carries the same kiosk button as the card's (found in the prototype's walkthrough: Settings' strip had only Lock).
 
 ## 4. Testing
 
