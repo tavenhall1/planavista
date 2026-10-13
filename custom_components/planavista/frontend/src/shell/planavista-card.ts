@@ -382,6 +382,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         animation: pv-fadeIn 200ms ease forwards;
       }
 
+      /* Settings' own strip in parent mode makes the room, in its tint (round 2: a white band sat above it). */
+      .pvc-settings-overlay.strip {
+        padding-top: 0;
+        --pv-strip-top: var(--pv-under-status-bar, 0px);
+      }
+
       @keyframes pv-fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -952,7 +958,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${active ? this._renderModule(active, data, display) : nothing}
         ${active ? this._renderBar(active) : nothing}
         ${this._settingsOpen ? html`
-          <div class="pvc-settings-overlay" style=${`z-index:${this._overlayLayer}`}>
+          <div class="pvc-settings-overlay ${this._underStatusBar() === 'strip' ? 'strip' : ''}" style=${`z-index:${this._overlayLayer}`}>
             <pv-settings
               .hass=${this.hass}
               .data=${data}

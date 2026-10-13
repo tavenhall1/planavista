@@ -40,6 +40,14 @@ describe('whatever comes first in the card makes room for the status bar, once',
     expect(block(card, '      .pvc-settings-overlay')).toMatch(/padding-top: var\(--pv-under-status-bar, 0px\);/);
   });
 
+  // Round 2: in parent mode Settings drew a white band above its strip, where the card runs the strip's tint up.
+  it("in parent mode Settings' strip makes the room, in its own tint", () => {
+    expect(card).toMatch(/<div class="pvc-settings-overlay \$\{this\._underStatusBar\(\) === 'strip' \? 'strip' : ''\}"/);
+    const strip = block(card, '      .pvc-settings-overlay.strip');
+    expect(strip).toMatch(/padding-top: 0;/);
+    expect(strip).toMatch(/--pv-strip-top: var\(--pv-under-status-bar, 0px\);/);
+  });
+
   // Round 2: first-run setup (and Run setup again) on a kiosk screen drew Back and the
   // progress dots under the status bar, and parent mode ran with no strip to see or Lock.
   it('first-run setup, which has no header, makes room itself unless the strip does, and shows the strip', () => {

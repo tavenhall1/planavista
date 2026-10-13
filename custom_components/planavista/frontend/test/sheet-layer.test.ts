@@ -69,7 +69,7 @@ describe('one order for everything that opens over the card', () => {
   it("Settings and the card's setup take the next layer when they open, so they cover what a module had open", () => {
     const card = read('shell/planavista-card.ts');
     expect(card).toMatch(/this\._overlayLayer = nextSheetLayer\(\);/);
-    expect(card.match(/<div class="pvc-settings-overlay" style=\$\{`z-index:\$\{this\._overlayLayer\}`\}>/g)).toHaveLength(2);
+    expect(card.match(/<div class="pvc-settings-overlay[^"]*" style=\$\{`z-index:\$\{this\._overlayLayer\}`\}>/g)).toHaveLength(2);
   });
 
   // Round 2: above every sheet, a check-off's toast stayed live over the PIN keypad the
