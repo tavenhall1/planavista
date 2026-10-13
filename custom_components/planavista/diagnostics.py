@@ -53,6 +53,10 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PlanaVi
                 for m in members
             ],
             "shared_screens": len(household.shared_users),
+            "kiosk": {
+                "enabled": household.data["security"]["kiosk"]["enabled"],
+                "top_bar": household.data["security"]["kiosk"]["top_bar"],
+            },
             "modules": household.data["modules"],
             "setup": household.data["setup"],
         }

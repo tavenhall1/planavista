@@ -15,7 +15,7 @@ from custom_components.planavista.household.kiosk import (
     normalize_kiosk,
 )
 
-from .conftest import ws_client_for, ws_command
+from .conftest import set_pin, ws_client_for, ws_command
 
 
 def test_the_setting_starts_off_with_the_top_bar_hidden() -> None:
@@ -93,3 +93,108 @@ async def test_a_member_cant_change_kiosk_mode(
     refused = await ws_command(client, {"type": "planavista/household/settings/save", "kiosk_enabled": True})
     assert not refused["success"]
     assert household.data["security"]["kiosk"]["enabled"] is False
+
+
+PIN = "482613"
+CASEY_PIN = "731946"
+
+
+@pytest.fixture
+async def kitchen(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any
+) -> Any:
+    """The wall tablet in kiosk mode; Blair (a parent) and Casey (a teen) have PINs."""
+    household.shared_users.append(accounts["kitchen"].id)
+    household.data["security"]["kiosk"] = {"enabled": True, "top_bar": "hidden"}
+    await set_pin(hass, household, "blair", PIN)
+    await set_pin(hass, household, "casey", CASEY_PIN)
+    return await ws_client_for(hass, hass_ws_client, accounts["kitchen"])
+
+
+def _blair_is(hass: HomeAssistant, user: MockUser | None) -> None:
+    """Link Blair's person to a login (an admin's, in these tests), or to none."""
+    attributes: dict[str, Any] = {"friendly_name": "Blair"}
+    if user is not None:
+        attributes["user_id"] = user.id
+    hass.states.async_set("person.blair", "home", attributes)
+
+
+async def _unlock(client: Any, member_id: str, pin: str) -> dict[str, Any]:
+    reply = await ws_command(client, {"type": "planavista/pin/unlock", "member_id": member_id, "pin": pin})
+    return reply["result"]
+
+
+async def _exit(client: Any, session: str | None) -> dict[str, Any]:
+    fields: dict[str, Any] = {"type": "planavista/kiosk/exit"}
+    if session is not None:
+        fields["session"] = session
+    return await ws_command(client, fields)
+
+
+async def test_unlock_says_whether_this_parent_may_exit_kiosk_mode(
+    hass: HomeAssistant, accounts: dict[str, MockUser], household: Any, kitchen: Any
+) -> None:
+    # Blair's person has no login, so she isn't an admin.
+    assert (await _unlock(kitchen, "blair", PIN))["may_exit_kiosk"] is False
+    _blair_is(hass, accounts["admin"])
+    assert (await _unlock(kitchen, "blair", PIN))["may_exit_kiosk"] is True
+    # A teen's PIN never may; nor anyone's while kiosk mode is off.
+    assert (await _unlock(kitchen, "casey", CASEY_PIN))["may_exit_kiosk"] is False
+    household.data["security"]["kiosk"]["enabled"] = False
+    assert (await _unlock(kitchen, "blair", PIN))["may_exit_kiosk"] is False
+
+
+async def test_a_parent_who_is_an_admin_exits_kiosk_mode_with_a_live_session(
+    hass: HomeAssistant, accounts: dict[str, MockUser], household: Any, kitchen: Any
+) -> None:
+    _blair_is(hass, accounts["admin"])
+    session = (await _unlock(kitchen, "blair", PIN))["session"]
+    reply = await _exit(kitchen, session)
+    assert reply["success"], reply
+    assert reply["result"] == {}
+
+
+async def test_exiting_is_refused_with_a_reason_the_card_can_say(
+    hass: HomeAssistant,
+    hass_ws_client: Any,
+    hass_client: Any,
+    accounts: dict[str, MockUser],
+    household: Any,
+    kitchen: Any,
+) -> None:
+    # No PIN yet.
+    assert (await _exit(kitchen, None))["error"]["code"] == "pin_required"
+    # A parent who isn't an admin.
+    blair = (await _unlock(kitchen, "blair", PIN))["session"]
+    assert (await _exit(kitchen, blair))["error"]["code"] == "not_admin"
+    # A teen's session.
+    casey = (await _unlock(kitchen, "casey", CASEY_PIN))["session"]
+    assert (await _exit(kitchen, casey))["error"]["code"] == "parent_mode_required"
+    # A session made on another connection doesn't count here.
+    _blair_is(hass, accounts["admin"])
+    blair = (await _unlock(kitchen, "blair", PIN))["session"]
+    other = await ws_client_for(hass, hass_ws_client, accounts["kitchen"])
+    assert (await _exit(other, blair))["error"]["code"] == "pin_required"
+    # Kiosk mode off.
+    household.data["security"]["kiosk"]["enabled"] = False
+    assert (await _exit(kitchen, blair))["error"]["code"] == "kiosk_off"
+    # An account that isn't a shared screen (the admin's own login, with Blair's PIN there).
+    household.data["security"]["kiosk"]["enabled"] = True
+    admin = await hass_ws_client(hass)
+    session = (await _unlock(admin, "blair", PIN))["session"]
+    assert (await _exit(admin, session))["error"]["code"] == "not_shared"
+
+
+async def test_diagnostics_show_the_kiosk_setting_and_its_refusals(
+    hass: HomeAssistant, hass_client: Any, accounts: dict[str, MockUser], household: Any, kitchen: Any,
+    mock_config_entry: Any,
+) -> None:
+    from homeassistant.setup import async_setup_component
+    from pytest_homeassistant_custom_component.components.diagnostics import get_diagnostics_for_config_entry
+
+    assert await async_setup_component(hass, "diagnostics", {})
+    session = (await _unlock(kitchen, "blair", PIN))["session"]
+    await _exit(kitchen, session)
+    result = await get_diagnostics_for_config_entry(hass, hass_client, mock_config_entry)
+    assert result["household"]["kiosk"] == {"enabled": True, "top_bar": "hidden"}
+    assert ("planavista/kiosk/exit", "not_admin") in [(r["command"], r["reason"]) for r in result["recent_refusals"]]
