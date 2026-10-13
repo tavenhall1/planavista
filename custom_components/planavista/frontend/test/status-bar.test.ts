@@ -70,6 +70,15 @@ describe('the keypad fits a short screen', () => {
     expect(short).toMatch(/\.key \{\s*width: 52px;\s*height: 52px;/);
   });
 
+  // Round 2: on an iPhone held sideways the sheet's back link and reason line came after
+  // round 1's smaller keys, and the last row was 23 px under the sheet's edge again.
+  it('on a short landscape screen puts the keypad beside the heading and dots', () => {
+    const pin = read('shell/pv-pin-sheet.ts');
+    expect(pin).toMatch(/<div class="pad">\n\s+<div class="intro">/);
+    const short = pin.slice(pin.indexOf('@media (max-height: 460px) {'));
+    expect(short.slice(0, short.indexOf('\n      }\n'))).toMatch(/:host\(\[layout='landscape'\]\) \.pad \{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/);
+  });
+
   it("sheets measure against the screen as shown and pad by Home Assistant's inset, as the bar does", () => {
     const sheet = read('styles/sheet.ts');
     expect(sheet).toMatch(/max-height: 92vh;\s*max-height: 92dvh;/);
