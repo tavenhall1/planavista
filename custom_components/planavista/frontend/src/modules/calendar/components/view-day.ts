@@ -839,7 +839,7 @@ export class PVViewDay extends LitElement {
               const face = this._face(key, visibleCalendars);
               return html`
                 <button type="button" class="pv-person" role="tab" aria-selected=${key === chosenKey ? 'true' : 'false'}
-                  style="--member:${face.color}" @click=${() => { this._dayPick = key; }}>${face.picture}${face.name}</button>
+                  style="--member:${face.color}" @click=${() => { this._dayPick = key; }}>${face.picture}<span class="pv-person-name">${face.name}</span></button>
               `;
             })}
           </div>

@@ -265,7 +265,7 @@ export class PvChoresBoard extends LitElement {
             <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${memberColor(col.member, this.mode)}>
               <pv-member-avatar .member=${{ ...col.member, color: memberColor(col.member, this.mode) }} .hass=${this.hass} size="28"></pv-member-avatar>
             </pv-ring>
-            ${col.member.name}
+            <span class="pv-person-name">${col.member.name}</span>
           </button>
         `)}
       </div>

@@ -281,7 +281,7 @@ export class PvChoresColumn extends LitElement {
         </pv-ring>
         <span class="who">
           <span class="name">${member.name}</span>
-          <span class="line">${model.parts.map((part, i) => html`${i ? ' · ' : ''}<span class=${part.kind}>${part.text}</span>`)}</span>
+          <span class="line">${model.parts.map((part, i) => html`${i ? ' ' : ''}<span class=${part.kind}>${i ? '· ' : ''}${part.text}</span>`)}</span>
         </span>
       </button>
       ${model.next ? html`<div class="next">${this._next(model.next)}</div>` : nothing}
