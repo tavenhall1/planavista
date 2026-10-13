@@ -73,8 +73,8 @@ const DEFAULT_ENTITY = 'sensor.planavista_config';
  */
 export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) public hass!: HomeAssistant;
-  /** Home Assistant sets this when the card is a panel view's one card. */
-  @property({ attribute: false }) isPanel = false;
+  /** Home Assistant sets this when the card is a panel view's one card; shown on the host as `panel`. */
+  @property({ type: Boolean, reflect: true, attribute: 'panel' }) isPanel = false;
   /** Puts Home Assistant's view back as it was (core/panel-fit). */
   private _unfitView?: () => void;
   /** Stops hearing kiosk mode's changes (milestone 9). */
@@ -242,6 +242,13 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         box-shadow: var(--pv-shadow);
         /* Header type scales with the card, not the window (spec 12.1). */
         container-type: inline-size;
+      }
+
+      /* A panel view's one card meets the edges of the screen, as Home Assistant's
+         own cards do there: the screen's corners are the only rounded ones. */
+      :host([panel]) ha-card {
+        border-radius: 0;
+        box-shadow: none;
       }
 
       /* One header, module, and bar in every layout; only their order changes,
