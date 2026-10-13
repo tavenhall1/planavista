@@ -48,7 +48,7 @@ def test_bonus_stars_that_reach_the_goal_wrap_a_surprise_once() -> None:
 def test_a_parents_ok_that_pays_the_last_star_wraps_it() -> None:
     engine = _engine(cost=1)
     engine.complete(SCENE, key=FISH, by="dana", source="tablet")
-    assert _types(engine.settle_surprises(SCENE)) == []  # waiting for OK earns nothing yet
+    assert _types(engine.settle_surprises(SCENE)) == []  # waiting for approval earns nothing yet
     [request] = engine.open_requests()
     engine.review(SCENE + timedelta(hours=2), request_id=request["id"], allow=True, by="alex", source="notification")
     out = engine.settle_surprises(SCENE + timedelta(hours=2))

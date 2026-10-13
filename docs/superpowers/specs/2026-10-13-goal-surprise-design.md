@@ -9,13 +9,13 @@ So the celebration waits for the child: a wrapped surprise sits on their screen 
 ## 2. Decisions (agreed with the owner, 2026-10-13)
 
 - **D1. A waiting surprise.** Reaching a goal wraps a surprise. It waits on the child's screen until they open it, for days if it has to. Celebrating at the check-off that would reach the goal was rejected: it celebrates stars a parent might still send back (spec 11.5: celebrations are earned).
-- **D2. From any source.** A parent's OK, the day-end approval, bonus stars, a lowered price, or picking a goal already in reach all wrap it.
+- **D2. From any source.** A parent's approval, the day-end approval, bonus stars, a lowered price, or picking a goal already in reach all wrap it.
 - **D3. Kept in Home Assistant.** Every screen shows the same surprise, and it opens once. If the stars drop back under the price, the goal changes, or the reward goes away before it is opened, it quietly goes away.
 - **D4. Where it waits.** First in the child's column on the Board, then the top of their My day, and their goal card in Rewards.
 - **D5. Excited while it waits.** About every 4 seconds it wiggles and hops, with a few sparkles around the bow, then rests. It pauses while the page is hidden.
 - **D6. Opened by a hold, on the child's screen.** The same hold as a chore tile (spec 11.5), to build anticipation and stop accidental taps. It opens on a shared screen or the child's own login. On anyone else's login (a parent's phone) it shows "Waiting for Dana to open it" and can't be held. A household with no shared screens lets any login open it, or nobody could.
 - **D7. The hold is part of the reveal.** As the hold fills, the present shakes harder and starts to rise; a finished hold flows straight into the full-screen opening without a cut. Letting go early settles it back.
-- **D8. A full-screen reveal.** The present grows to the middle, shakes, the lid pops, confetti in the child's color and gold stars burst across the screen, and the reward's picture rises out with "Dana, you did it!" and the reward's name. Then the reward's button (Ask for it, or Get it when it needs no OK) and Later. A tap skips to the end.
+- **D8. A full-screen reveal.** The present grows to the middle, shakes, the lid pops, confetti in the child's color and gold stars burst across the screen, and the reward's picture rises out with "Dana, you did it!" and the reward's name. Then the reward's button (Ask for it, or Get it when it needs no approval) and Later. A tap skips to the end.
 - **D9. Afterwards.** The goal card shows "Enough stars!", its button, and Watch it again (a sibling may have opened it first).
 - **D10. Gentler settings.** Reduced motion: a soft glow and a fade to the reward's picture, no confetti or flight. Sound only when the household turned it on. A richer haptic where the device allows.
 - **D11. Parents hear about it.** When a surprise is wrapped, parents with phones get a notification ("Dana reached a goal: 🍦 Ice cream trip"), and the member's chores event entity reports `goal_reached` for automations.
@@ -57,13 +57,13 @@ Every 4 seconds (offset per member so two presents don't move in step): a wiggle
   3. 1000 ms: the lid pops up and spins away (bouncy); confetti in the child's color and gold stars burst from the box across the screen (about 80 pieces, 1.8 s, falling with a little drift).
   4. 1200 ms: the reward's picture rises out of the box and grows (bouncy, 600 ms).
   5. 1600 ms: "Dana, you did it!" and the reward's name fade up.
-  6. 2200 ms: the buttons appear: the reward's own button (Ask for it, or Get it when the reward needs no OK; it asks for a PIN where 9.5 says so) and Later.
+  6. 2200 ms: the buttons appear: the reward's own button (Ask for it, or Get it when the reward needs no approval; it asks for a PIN where 9.5 says so) and Later.
 - A tap anywhere before the end jumps to the end. The finger that finished the hold is not a tap: the layer only counts a press that began on it (`backdropTap`'s rule, from 1.5.4).
 - The card asks the backend to open it when the hold finishes and plays at once; a refusal ends the reveal with the reason in a toast.
 
 ### 3.6 Afterwards
 
-- Later closes the reveal. The reward's button works as the Rewards card's does today (a request waiting for OK, or given at once).
+- Later closes the reveal. The reward's button works as the Rewards card's does today (a request waiting for approval, or given at once).
 - Watch it again on the goal card replays the reveal from the card (no backend change), on any login.
 
 ### 3.7 Reduced motion, sound, haptics
