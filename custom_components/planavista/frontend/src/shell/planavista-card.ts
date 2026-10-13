@@ -720,6 +720,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       this._sheet = { kind: 'pin', purpose: 'continue', heading: "Enter a parent's PIN to keep changing settings" };
       return;
     }
+    // Say why it closed, and that an editor's changes wait on the card (round 2: it vanished without a word).
+    const kept = [...this._drafts.keys()].some(key => key !== 'appearance');
+    this._toast = {
+      id: `settings-lapsed-${Date.now()}`,
+      text: kept ? 'Parent mode ended, so Settings closed. Your changes are kept for when you come back.' : 'Parent mode ended, so Settings closed.',
+    };
     this._onSettingsClose();
   }
 

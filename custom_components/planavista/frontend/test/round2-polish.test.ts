@@ -26,6 +26,16 @@ describe('round 2 polish', () => {
     expect(open.slice(0, open.indexOf('\n  }\n'))).toMatch(/this\._host\.style\.pointerEvents = '';/);
   });
 
+  // Settings vanished without a word when parent mode lapsed with an editor's changes unsaved.
+  it('Settings says why it closed when parent mode ends, and that changes are kept', () => {
+    const card = read('shell/planavista-card.ts');
+    const guard = card.slice(card.indexOf('private _guardSettings() {'));
+    const body = guard.slice(0, guard.indexOf('\n  }\n'));
+    expect(body).toMatch(/const kept = \[\.\.\.this\._drafts\.keys\(\)\]\.some\(key => key !== 'appearance'\);/);
+    expect(body).toMatch(/'Parent mode ended, so Settings closed\. Your changes are kept for when you come back\.'/);
+    expect(body.indexOf('this._toast = {')).toBeLessThan(body.lastIndexOf('this._onSettingsClose();'));
+  });
+
   it("a long name in a people strip ends in an ellipsis instead of pushing the others off", () => {
     const controls = read('styles/controls.ts');
     expect(controls).toMatch(/\.pv-person \{[^}]*max-width: 88px;/);
