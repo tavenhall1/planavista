@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
 import { BOUNCY, GENTLE, motionOf, springEasing } from '../../core/motion';
+import { deepActiveElement, trapTab } from '../../core/focus';
 import { chime, haptic } from './effects';
 import { pictureOf } from './pv-chore-tile';
 import { presentArt } from './surprise-art';
@@ -68,6 +69,11 @@ export class PvSurpriseReveal extends LitElement {
       -webkit-tap-highlight-color: transparent;
       -webkit-user-select: none;
       user-select: none;
+    }
+
+    /* It takes focus as it opens (for the keys); the whole screen needs no ring. */
+    .layer:focus {
+      outline: none;
     }
 
     .gift, .reward {
@@ -200,7 +206,7 @@ export class PvSurpriseReveal extends LitElement {
     const reduced = motionOf(this) === 'reduced';
     const pieces = reduced ? [] : confettiPieces(80, d.model.memberId.length * 7919 + d.model.reward.cost, d.color);
     return html`
-      <div class="layer ${this._ready ? 'ready' : ''}" style="--member:${d.color}" role="dialog" aria-modal="true"
+      <div class="layer ${this._ready ? 'ready' : ''}" tabindex="-1" style="--member:${d.color}" role="dialog" aria-modal="true"
         aria-label=${words.title} @pointerdown=${this._down} @click=${this._click} @keydown=${this._key}>
         ${pieces.map(p => html`<span class="piece ${p.star ? 'star' : ''}" data-dx=${p.dx} data-dy=${p.dy} data-spin=${p.spin}
           data-delay=${p.delay} style="width:${p.size}px;height:${p.star ? p.size : Math.round(p.size * 0.6)}px;margin:${-p.size / 2}px 0 0 ${-p.size / 2}px;background:${p.color};font-size:${p.size + 6}px"
@@ -219,7 +225,17 @@ export class PvSurpriseReveal extends LitElement {
     `;
   }
 
+  /** What had focus when the reveal opened (Watch it again), to give it back (review B8). */
+  private _opener: HTMLElement | null = null;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._opener = deepActiveElement();
+  }
+
   protected firstUpdated(): void {
+    // Focus at once, so Escape and Space work before the buttons come (review B7).
+    this._q<HTMLElement>('.layer')?.focus({ preventScroll: true });
     if (motionOf(this) === 'reduced') this._playGently();
     else this._play();
   }
@@ -228,6 +244,8 @@ export class PvSurpriseReveal extends LitElement {
     super.disconnectedCallback();
     this._timers.forEach(t => window.clearTimeout(t));
     this._animations.forEach(a => a.cancel());
+    if (this._opener?.isConnected) this._opener.focus({ preventScroll: true });
+    this._opener = null;
   }
 
   private _q<T extends Element>(selector: string): T | null {
@@ -357,6 +375,9 @@ export class PvSurpriseReveal extends LitElement {
     } else if (!this._ready && (event.key === ' ' || event.key === 'Enter')) {
       event.preventDefault();
       this._skip();
+    } else if (event.key === 'Tab') {
+      if (this._ready) trapTab(this.renderRoot as ShadowRoot, event);
+      else event.preventDefault();
     }
   };
 

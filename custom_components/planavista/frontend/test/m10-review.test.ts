@@ -28,6 +28,17 @@ describe('the goal surprise against the controls beside it', () => {
     expect(reveal).toMatch(/@media \(max-height: 500px\) \{\n\s+:host \{\n\s+--s: min\(40vw, 32vh\);\n\s+--y: 36%;/);
   });
 
+  // Review B7, B8: after Enter, focus fell to the page (Escape and Space did nothing until the buttons came),
+  // Tab left the reveal, and closing it gave focus back to nothing.
+  it('the reveal takes focus at once, keeps Tab inside, and gives focus back to what opened it', () => {
+    const reveal = read('modules/chores/pv-surprise-reveal.ts');
+    expect(reveal).toMatch(/<div class="layer \$\{this\._ready \? 'ready' : ''\}" tabindex="-1"/);
+    expect(reveal).toMatch(/this\._opener = deepActiveElement\(\);/);
+    expect(reveal).toMatch(/this\._q<HTMLElement>\('\.layer'\)\?\.focus\(\{ preventScroll: true \}\);/);
+    expect(reveal).toMatch(/else if \(event\.key === 'Tab'\) \{\n\s+if \(this\._ready\) trapTab\(this\.renderRoot as ShadowRoot, event\);\n\s+else event\.preventDefault\(\);/);
+    expect(reveal).toMatch(/if \(this\._opener\?\.isConnected\) this\._opener\.focus\(\{ preventScroll: true \}\);/);
+  });
+
   it("the present's tint is worked out where the person's color is set, so it shows in Rewards too", () => {
     const present = read('modules/chores/pv-surprise-present.ts');
     expect(block(present, '    :host')).not.toMatch(/--tint/);
