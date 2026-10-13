@@ -386,6 +386,10 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-10-13: Changed: sheets and holds (1.5.4)
+
+- A sheet's backdrop closes it only on a tap that began on the backdrop, so the finger that finished a hold and opened the sheet doesn't close it as it lifts (`core/backdrop.ts`).
+
 ### 2026-10-12: Changed: iPad (1.5.3)
 
 - The page's root is as tall as the screen as shown too, so an iPad's Safari can't push the page past the card.
