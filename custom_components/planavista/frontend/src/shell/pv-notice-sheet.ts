@@ -7,6 +7,7 @@ import { trapTab } from '../core/focus';
 import type { Layout } from '../core/layout';
 import { SheetMotion } from './sheet-motion';
 import { backdropTap } from '../core/backdrop';
+import { SheetLayer } from '../core/sheet-layer';
 
 export interface NoticeAction {
   id: string;
@@ -23,6 +24,7 @@ export interface NoticeAction {
 export class PvNoticeSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._choose('cancel'));
+  private readonly _layer = new SheetLayer(this);
   @property({ type: String }) heading = '';
   @property({ type: String }) body = '';
   @property({ attribute: false }) actions: NoticeAction[] = [];

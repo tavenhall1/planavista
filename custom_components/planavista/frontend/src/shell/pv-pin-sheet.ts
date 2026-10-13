@@ -25,6 +25,7 @@ import { saveErrorMessage } from '../core/page-host';
 import '../core/pv-member-avatar';
 import { SheetMotion, motionOf } from './sheet-motion';
 import { backdropTap } from '../core/backdrop';
+import { SheetLayer } from '../core/sheet-layer';
 
 type Step = 'pick' | 'enter' | 'choose' | 'confirm';
 
@@ -49,6 +50,7 @@ function formatWait(ms: number): string {
 export class PvPinSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._cancel());
+  private readonly _layer = new SheetLayer(this);
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';

@@ -10,6 +10,7 @@ import type { Member } from '../../core/household';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import { backdropTap } from '../../core/backdrop';
+import { SheetLayer } from '../../core/sheet-layer';
 
 /**
  * pv-chores-people-sheet: pick a person ("Who did it?", "Who's getting it?").
@@ -20,6 +21,7 @@ import { backdropTap } from '../../core/backdrop';
 export class PvChoresPeopleSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._pick(null));
+  private readonly _layer = new SheetLayer(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ type: String }) heading = '';
   @property({ type: String }) body = '';
