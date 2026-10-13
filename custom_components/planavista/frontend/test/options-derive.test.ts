@@ -49,6 +49,11 @@ describe('itemOptions (spec 13.3)', () => {
     expect(options.added).toBe('Added by Blair on Sunday');
   });
 
+  it("leaves out Done by someone else when this screen can't credit anyone (round 2)", () => {
+    expect(ids(itemOptions(ctx({ credit: false })).member)).toEqual(['plan_day', 'more_time', 'skip', 'history']);
+    expect(ids(itemOptions(ctx({ credit: true })).member)).toContain('done_by');
+  });
+
   it('names a person who added a chore, never an account kind (milestone 8)', () => {
     const byAdmin = activity('yard_work', { minimum: { hours: 1, per: 'week' }, created: { by: 'admin', source: 'tablet', at: '2026-10-10T19:00:00-05:00' } });
     expect(itemOptions(ctx({ activity: byAdmin })).added).toBe('Added on Saturday');
