@@ -37,6 +37,7 @@ from .access import MESSAGES, message, source_of
 from .engine import ChoresEngine, Item, Outcome
 from .importer import FORMAT_HOUSEHOLD, ImportProblem, export_household, plan_import, preview, read_file
 from .model import ChoreError
+from .occurrences import parse_key
 from .runtime import DATA_CHORES, STATE_NEEDS_A_LOOK, STATE_NEWER, STATE_OFF, ChoresRuntime, ChoresUnavailable
 
 STATE_MESSAGES = {
@@ -138,9 +139,17 @@ def _item(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], runtime: ChoresRuntime
 ) -> Item | None:
     """Today's occurrence named by the command, or None after saying it can't change now."""
-    item = runtime.engine.find_item(msg["occurrence"], runtime.now())
+    engine, now = runtime.engine, runtime.now()
+    item = engine.find_item(msg["occurrence"], now)
     if item is None:
-        send_refusal(connection, msg, "period_closed", "The day had ended.")
+        later = engine.planned_later(msg["occurrence"], now)
+        if later is not None:
+            parsed = parse_key(msg["occurrence"])
+            activity = engine.activity(parsed[0]) if parsed else None
+            name = activity["name"] if activity else "That chore"
+            send_refusal(connection, msg, "planned_later", f"{name} is planned for {later.strftime('%A')}.")
+        else:
+            send_refusal(connection, msg, "period_closed", "The day had ended.")
     return item
 
 

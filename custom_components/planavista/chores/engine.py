@@ -681,6 +681,14 @@ class ChoresEngine:
                     return item
         return None
 
+    def planned_later(self, key: str, now: datetime) -> date | None:
+        """The later day an occurrence is planned for, when it doesn't show today (round 1)."""
+        planned = self._index().overrides.get(key, {}).get("planned_day")
+        if not isinstance(planned, str):
+            return None
+        day = _day(planned)
+        return day if day > self.today(now) else None
+
     def open_item(self, chore_id: str, member_id: str, now: datetime) -> Item | None:
         """The member's oldest open occurrence of a chore (spec 8.5 step 1).
 

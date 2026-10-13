@@ -230,3 +230,15 @@ async def test_a_childs_own_session_cannot_say_a_parent_did_it(hass: HomeAssista
     casey = await _unlock(kitchen, "casey", "4826")
     reply = await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": TRASH, "done_by": "blair", "session": casey})
     assert reply["error"]["code"] == "parent_mode_required"
+
+
+async def test_a_chore_planned_for_a_later_day_says_when_it_shows(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    """Round 1 (adversarial review): a chore planned for Saturday answered "The day had ended." on Tuesday."""
+    casey = await ws_client_for(hass, hass_ws_client, accounts["casey"])
+    await ws_command(casey, {"type": "planavista/chores/override", "occurrence": YARD, "planned_day": "2026-10-17"})
+    reply = await ws_command(casey, {"type": "planavista/chores/request", "occurrence": YARD, "kind": "skip"})
+    assert reply["error"] == {"code": "planned_later", "message": "Yard work is planned for Saturday."}
+    gone = await ws_command(casey, {"type": "planavista/chores/complete", "occurrence": "cat_care|casey|day:2026-10-12|1"})
+    assert gone["error"]["code"] == "period_closed"
