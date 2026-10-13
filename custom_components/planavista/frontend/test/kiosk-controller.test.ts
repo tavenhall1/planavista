@@ -17,11 +17,12 @@ const view = (shared: boolean, enabled: boolean, top_bar: 'hidden' | 'tabs' = 'h
 function fakeEnv() {
   const sheets = new Map<object, string>();
   const env = {
-    current: { name: 'dashboard' } as object | null,
+    current: { name: 'dashboard', parts: ['.header', '.action-items'] } as { parts?: string[] } | null,
     sheets,
     haKioskOn: false,
     switched: [] as boolean[],
     root: () => env.current,
+    has: (root: object, selector: string) => ((root as { parts?: string[] }).parts ?? []).includes(selector),
     addSheet: (root: object, css: string) => {
       sheets.set(root, css);
       return { set: (next: string) => sheets.set(root, next), remove: () => sheets.delete(root) };
@@ -63,7 +64,7 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     const kiosk = new KioskController(env as KioskEnv);
     kiosk.setView(view(true, true));
     const first = env.current!;
-    env.current = { name: 'another dashboard' };
+    env.current = { name: 'another dashboard', parts: ['.header', '.action-items'] };
     env.haKioskOn = false; // a reload of Home Assistant's own state, say
     kiosk.sync();
     expect(env.sheets.has(first)).toBe(false);
@@ -74,6 +75,21 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     kiosk.sync();
     expect(env.sheets.size).toBe(0);
     expect(env.haKioskOn).toBe(true);
+  });
+
+  it("fails open: no style where the part it hides isn't there (review)", () => {
+    const env = fakeEnv();
+    // A Home Assistant that renamed its header: hiding nothing beats a page that scrolls.
+    env.current = { parts: ['.action-items'] };
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true, 'hidden'));
+    expect(env.sheets.size).toBe(0);
+    expect(env.haKioskOn).toBe(true);
+    kiosk.setView(view(true, true, 'tabs'));
+    expect(env.sheets.size).toBe(1);
+    env.current = { parts: ['.header'] };
+    kiosk.sync();
+    expect(env.sheets.size).toBe(0);
   });
 
   it('turns everything back when the switch goes off, and only what it turned on', () => {

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { HouseholdView } from '../src/core/household';
 import {
+  KIOSK_PARTS,
   KIOSK_SHEETS,
   kioskLook,
   kioskStripAction,
@@ -60,6 +61,10 @@ describe("the style kiosk mode adds to Home Assistant's dashboard header (3.2)",
   it('hides the whole header for Hidden, makes no room for it, and lets the card run under the status bar', () => {
     expect(KIOSK_SHEETS.hidden).toMatch(/\.header \{ display: none !important; \}/);
     expect(KIOSK_SHEETS.hidden).toMatch(/:host \{ --header-height: 0px; --pv-under-status-bar: var\(--safe-area-inset-top, 0px\); \}/);
+  });
+
+  it('names the part each look hides, so the controller adds it only where that part is', () => {
+    expect(KIOSK_PARTS).toEqual({ hidden: '.header', tabs: '.action-items' });
   });
 
   it("keeps the tabs for Tabs only and hides only the header's buttons", () => {

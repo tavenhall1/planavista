@@ -12,13 +12,15 @@
 import type { HouseholdView } from '../core/household';
 import { HouseholdConnection, HouseholdSubscription } from '../core/household-client';
 import {
-  KIOSK_SHEETS, KioskLook, StepOut, kioskLook, startStepOut, stepOutOver, stepOutTouched, stepOutWithLimits,
+  KIOSK_PARTS, KIOSK_SHEETS, KioskLook, StepOut, kioskLook, startStepOut, stepOutOver, stepOutTouched, stepOutWithLimits,
 } from '../core/kiosk';
 
 /** What the controller needs from the page; the tests fake it. */
 export interface KioskEnv {
   /** The dashboard root's shadow root now, or null on a page without a dashboard. */
   root(): object | null;
+  /** Whether a root has the part a look hides (fails open when Home Assistant renames it). */
+  has(root: object, selector: string): boolean;
   /** Adds a style to a root; the handle changes its text or takes it away. */
   addSheet(root: object, css: string): { set(css: string): void; remove(): void };
   /** Home Assistant's own kiosk switch (the sidebar and its menu button). */
@@ -91,7 +93,8 @@ export class KioskController {
   sync(): void {
     const look = this.look;
     const wanted = look !== 'off' && !this._stepOut;
-    const root = wanted ? this._env.root() : null;
+    const found = wanted ? this._env.root() : null;
+    const root = found && look !== 'off' && this._env.has(found, KIOSK_PARTS[look]) ? found : null;
     if (this._applied && (!wanted || this._applied.root !== root)) {
       this._applied.handle.remove();
       this._applied = null;
@@ -132,6 +135,7 @@ function dashboardRoot(): ShadowRoot | null {
 
 const browserEnv: KioskEnv = {
   root: () => dashboardRoot(),
+  has: (root, selector) => (root as ShadowRoot).querySelector(selector) !== null,
   addSheet: (root, css) => {
     const shadow = root as ShadowRoot;
     const sheet = new CSSStyleSheet();

@@ -21,8 +21,8 @@ export function kioskLook(view: HouseholdView | null): KioskLook {
  * The style added to the dashboard's root (`hui-root`'s shadow root). For
  * Hidden: no header, no room kept for it, and the card runs up under the
  * status bar. For Tabs only: the header's buttons go, its tabs stay. If Home
- * Assistant renames these parts, the rules match nothing and the header
- * simply shows: kiosk mode fails open.
+ * Assistant renames these parts, the controller adds nothing (KIOSK_PARTS)
+ * and the header simply shows: kiosk mode fails open.
  */
 export const KIOSK_SHEETS: Record<Exclude<KioskLook, 'off'>, string> = {
   hidden: [
@@ -30,6 +30,17 @@ export const KIOSK_SHEETS: Record<Exclude<KioskLook, 'off'>, string> = {
     ':host { --header-height: 0px; --pv-under-status-bar: var(--safe-area-inset-top, 0px); }',
   ].join('\n'),
   tabs: '.action-items { display: none !important; }',
+};
+
+/**
+ * The part of the header each look hides. The controller adds a look's style
+ * only where its part is there (review): a Home Assistant that renamed it
+ * then just shows its header, instead of losing the header's room under a
+ * header still drawn.
+ */
+export const KIOSK_PARTS: Record<Exclude<KioskLook, 'off'>, string> = {
+  hidden: '.header',
+  tabs: '.action-items',
 };
 
 /**
