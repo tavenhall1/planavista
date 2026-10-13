@@ -31,8 +31,8 @@ export interface UnlockResult {
   /** Seconds until Parent mode ends after, however busy. */
   cap_in?: number;
   reason?: 'no_pin' | 'wrong_pin' | 'paused';
-  /** This parent may exit kiosk mode here (milestone 9, D3); missing from older backends. */
-  may_exit_kiosk?: boolean;
+  /** The PIN's parent is linked to an active Home Assistant admin (milestone 9, D3); missing from older backends. */
+  admin_parent?: boolean;
   tries_left?: number;
   retry_after?: number | null;
 }

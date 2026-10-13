@@ -67,10 +67,10 @@ describe("the style kiosk mode adds to Home Assistant's dashboard header (3.2)",
   });
 });
 
-describe('the session remembers whether its parent may exit kiosk mode (D3)', () => {
+describe('the session remembers whether its parent is an admin (D3)', () => {
   it('takes it from the unlock, and is false when an older backend says nothing', () => {
-    expect(startSession({ session: 't', member_id: 'blair', parent: true, may_exit_kiosk: true }, 0).mayExitKiosk).toBe(true);
-    expect(startSession({ session: 't', member_id: 'blair', parent: true }, 0).mayExitKiosk).toBe(false);
+    expect(startSession({ session: 't', member_id: 'blair', parent: true, admin_parent: true }, 0).adminParent).toBe(true);
+    expect(startSession({ session: 't', member_id: 'blair', parent: true }, 0).adminParent).toBe(false);
   });
 });
 
@@ -79,17 +79,23 @@ const read = (path: string) =>
   readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
 
 describe("the strip's kiosk button (D3, D4)", () => {
-  const parent = { parent: true, mayExitKiosk: true };
-  it('offers Exit kiosk mode only to a parent the backend said may, while kiosk mode is on', () => {
+  const parent = { parent: true, adminParent: true };
+  it('offers Exit kiosk mode only to a parent who is an admin, while kiosk mode is on', () => {
     expect(kioskStripAction('hidden', false, parent)).toBe('exit');
     expect(kioskStripAction('tabs', false, parent)).toBe('exit');
-    expect(kioskStripAction('hidden', false, { parent: true, mayExitKiosk: false })).toBeNull();
-    expect(kioskStripAction('hidden', false, { parent: false, mayExitKiosk: true })).toBeNull();
+    expect(kioskStripAction('hidden', false, { parent: true, adminParent: false })).toBeNull();
+    expect(kioskStripAction('hidden', false, { parent: false, adminParent: true })).toBeNull();
     expect(kioskStripAction('off', false, parent)).toBeNull();
   });
 
+  it('offers Exit as soon as kiosk mode turns on, to a session unlocked while it was off (review)', () => {
+    const session = startSession({ session: 't', member_id: 'blair', parent: true, admin_parent: true }, 0);
+    expect(kioskStripAction('off', false, session)).toBeNull();
+    expect(kioskStripAction('hidden', false, session)).toBe('exit');
+  });
+
   it('offers Back to kiosk mode to whoever is at the screen while a step out runs', () => {
-    expect(kioskStripAction('hidden', true, { parent: false, mayExitKiosk: false })).toBe('back');
+    expect(kioskStripAction('hidden', true, { parent: false, adminParent: false })).toBe('back');
   });
 
   it('draws it as a secondary button before Lock, with words that say what it does', () => {

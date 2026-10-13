@@ -131,17 +131,52 @@ async def _exit(client: Any, session: str | None) -> dict[str, Any]:
     return await ws_command(client, fields)
 
 
-async def test_unlock_says_whether_this_parent_may_exit_kiosk_mode(
+async def test_unlock_says_whether_this_parent_is_an_admin(
     hass: HomeAssistant, accounts: dict[str, MockUser], household: Any, kitchen: Any
 ) -> None:
+    """The answer is about the parent, not the moment, so a switch turned on later still offers Exit (review)."""
     # Blair's person has no login, so she isn't an admin.
-    assert (await _unlock(kitchen, "blair", PIN))["may_exit_kiosk"] is False
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is False
     _blair_is(hass, accounts["admin"])
-    assert (await _unlock(kitchen, "blair", PIN))["may_exit_kiosk"] is True
-    # A teen's PIN never may; nor anyone's while kiosk mode is off.
-    assert (await _unlock(kitchen, "casey", CASEY_PIN))["may_exit_kiosk"] is False
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is True
+    # A teen's PIN never is a parent's.
+    assert (await _unlock(kitchen, "casey", CASEY_PIN))["admin_parent"] is False
+    # Kiosk mode off doesn't change who the parent is.
     household.data["security"]["kiosk"]["enabled"] = False
-    assert (await _unlock(kitchen, "blair", PIN))["may_exit_kiosk"] is False
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is True
+
+
+async def test_admin_parent_needs_an_active_admin_login_behind_the_person(
+    hass: HomeAssistant, accounts: dict[str, MockUser], household: Any, kitchen: Any
+) -> None:
+    from homeassistant.auth.const import GROUP_ID_ADMIN
+
+    admins = await hass.auth.async_get_group(GROUP_ID_ADMIN)
+    # A login that isn't an admin.
+    _blair_is(hass, accounts["alex"])
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is False
+    # An admin login that has been turned off.
+    retired = MockUser(name="Retired", is_active=False, groups=[admins]).add_to_hass(hass)
+    _blair_is(hass, retired)
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is False
+    # A login that was removed.
+    hass.states.async_set("person.blair", "home", {"friendly_name": "Blair", "user_id": "no-such-user"})
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is False
+    # A person that no longer exists.
+    hass.states.async_remove("person.blair")
+    assert (await _unlock(kitchen, "blair", PIN))["admin_parent"] is False
+
+
+async def test_a_parent_who_unlocked_before_kiosk_mode_was_on_can_exit_once_it_is(
+    hass: HomeAssistant, accounts: dict[str, MockUser], household: Any, kitchen: Any
+) -> None:
+    """Seen in review: turning the switch on in parent mode left no Exit until a new PIN."""
+    household.data["security"]["kiosk"]["enabled"] = False
+    _blair_is(hass, accounts["admin"])
+    session = (await _unlock(kitchen, "blair", PIN))["session"]
+    household.data["security"]["kiosk"]["enabled"] = True
+    reply = await _exit(kitchen, session)
+    assert reply["success"], reply
 
 
 async def test_a_parent_who_is_an_admin_exits_kiosk_mode_with_a_live_session(

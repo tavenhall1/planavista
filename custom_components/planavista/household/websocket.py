@@ -650,8 +650,8 @@ async def ws_pin_unlock(
     connection.subscriptions[("planavista_session", session.token)] = partial(
         household.sessions.end, session.token
     )
-    account = account_for(hass, household, connection.user)
-    may_exit_kiosk = await kiosk_refusal(hass, household, account, member_id, session.parent) is None
+    # About the parent, not the moment: a switch turned on later still offers Exit (kiosk review).
+    admin_parent = session.parent and await parent_is_admin(hass, member)
     connection.send_result(
         msg["id"],
         {
@@ -662,7 +662,7 @@ async def ws_pin_unlock(
             "expires_in": _whole_seconds(household.sessions.expires_in(session, now)),
             "idle_seconds": _whole_seconds(idle),
             "cap_in": _whole_seconds(cap),
-            "may_exit_kiosk": may_exit_kiosk,
+            "admin_parent": admin_parent,
         },
     )
 
