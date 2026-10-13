@@ -341,4 +341,4 @@ def default_log() -> dict[str, Any]:
 
 def default_rewards() -> dict[str, Any]:
     """No rewards, no stars."""
-    return {"rewards": [], "ledger": [], "redemptions": []}
+    return {"rewards": [], "ledger": [], "redemptions": [], "surprises": {}}

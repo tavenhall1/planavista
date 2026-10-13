@@ -100,11 +100,32 @@ def normalize_log(data: object) -> dict[str, Any]:
     return doc
 
 
+def _surprises(value: object) -> dict[str, dict[str, Any]]:
+    """Goal surprises by member (milestone 10); entries that don't make sense are dropped."""
+    if not isinstance(value, Mapping):
+        return {}
+    kept: dict[str, dict[str, Any]] = {}
+    for member, entry in value.items():
+        if not (isinstance(member, str) and isinstance(entry, Mapping)):
+            continue
+        if not (isinstance(entry.get("reward"), str) and isinstance(entry.get("wrapped"), str)):
+            continue
+        cost = entry.get("cost")
+        if not isinstance(cost, int) or isinstance(cost, bool):
+            continue
+        opened = entry.get("opened")
+        if opened is not None and not isinstance(opened, str):
+            continue
+        kept[member] = dict(entry)
+    return kept
+
+
 def normalize_rewards(data: object) -> dict[str, Any]:
     """The stored rewards with missing parts filled in."""
     doc: dict[str, Any] = dict(data) if isinstance(data, Mapping) else {}
     for name in ("rewards", "ledger", "redemptions"):
         doc[name] = _records(doc.get(name), name)
+    doc["surprises"] = _surprises(doc.get("surprises"))
     return doc
 
 

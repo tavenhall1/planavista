@@ -64,6 +64,7 @@ MESSAGES: dict[str, str] = {
     "not_missed": "That chore wasn't missed, or it was already excused.",
     "not_for_member": "That reward isn't one they can get.",
     "not_enough_stars": "Not enough stars yet.",
+    "no_surprise": "There's no surprise waiting.",
     "reason_required": "Add a reason.",
     "too_many": "There are too many to add another.",
     "changed": "This changed on another screen.",

@@ -23,7 +23,7 @@ from homeassistant.util import dt as dt_util
 from ..const import CONF_CALENDARS, VERSION
 from ..coordinator import async_apply_config
 from ..household.members import MemberError, check_parent_pins, import_members
-from ..household.permissions import member_level, parent_level
+from ..household.permissions import may_open_surprise, member_level, parent_level
 from ..household.store import Household
 from ..household.websocket import (
     ERROR_MESSAGES,
@@ -511,6 +511,25 @@ async def ws_reward_redeem(hass: HomeAssistant, connection: websocket_api.Active
         connection.send_result(msg["id"], {"result": out.result, **out.data})
 
 
+@websocket_api.websocket_command({vol.Required("type"): "planavista/chores/surprise/open", vol.Required("member"): str})
+@websocket_api.async_response
+async def ws_surprise_open(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Open a member's goal surprise: on a shared screen or their own login (milestone 10)."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None:
+        return
+    household = runtime.household
+    account = account_for(hass, household, connection.user)
+    if not may_open_surprise(account, msg["member"], shared_screens=len(household.shared_users)):
+        name = (household.member(msg["member"]) or {}).get("name", msg["member"])
+        send_refusal(connection, msg, "not_their_screen", f"Only {name}'s own screen or a shared screen opens this.")
+        return
+    by = account.member_id or source_of(account)
+    out = await _apply(connection, msg, runtime, lambda e, now: e.open_surprise(now, member=msg["member"], by=by))
+    if out is not None:
+        connection.send_result(msg["id"], {"result": out.result})
+
+
 @websocket_api.websocket_command({
     vol.Required("type"): "planavista/stars/award",
     vol.Required("member"): str,
@@ -710,6 +729,7 @@ CHORES_COMMANDS = (
     ws_reward_save,
     ws_reward_delete,
     ws_reward_redeem,
+    ws_surprise_open,
     ws_stars_award,
     ws_stars_history,
     ws_import_preview,
