@@ -4,6 +4,8 @@ import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import { ref } from 'lit/directives/ref.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
+import { nextSheetLayer } from '../core/sheet-layer';
+import { deepActiveElement } from '../core/focus';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { statusStyles } from '../styles/status';
@@ -89,6 +91,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _settingsTarget: SettingsTarget | null = null;
   /** Setup's steps that Settings asked to run (the Chores row's short setup, spec 14.7); null when none run. */
   @state() private _flow: string[] | null = null;
+  /** The layer Settings or setup took when it opened: above whatever a module had open (round 1). */
+  @state() private _overlayLayer = 0;
   /** How to undo the short setup when a parent backs out of it. */
   private _flowCancel: RunSetupDetail['cancel'];
   @state() private _sheet: CardSheet | null = null;
@@ -157,7 +161,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         resolve(false);
         return;
       }
-      this._sheetOpener = (this.renderRoot as ShadowRoot | undefined)?.activeElement as HTMLElement | null ?? null;
+      // The control inside the module that asked, not the module's host (round 1).
+      this._sheetOpener = deepActiveElement(this.renderRoot as ShadowRoot);
       this._sheet = { kind: 'pin', purpose: 'module', heading, reason, members, resolve };
     }),
   };
@@ -249,6 +254,25 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       :host([panel]) ha-card {
         border-radius: 0;
         box-shadow: none;
+        padding-left: var(--pv-inset-left);
+        padding-right: var(--pv-inset-right);
+        box-sizing: border-box;
+      }
+
+      /* Its color runs to the side edges, its content inside the safe area (round 1): Home Assistant
+         pads its view by the side insets, the left only when narrow, and kiosk mode hides the sidebar. */
+      :host([panel]) {
+        margin-left: calc(-1 * var(--view-container-inset-left, 0px));
+        margin-right: calc(-1 * var(--view-container-inset-right, 0px));
+        --pv-inset-left: max(var(--view-container-inset-left, 0px), var(--pv-kiosk-inset-left, 0px));
+        --pv-inset-right: var(--view-container-inset-right, 0px);
+      }
+
+      :host([panel]) pv-glance-header {
+        margin-left: calc(-1 * var(--pv-inset-left));
+        margin-right: calc(-1 * var(--pv-inset-right));
+        padding-left: var(--pv-inset-left);
+        padding-right: var(--pv-inset-right);
       }
 
       /* One header, module, and bar in every layout; only their order changes,
@@ -256,7 +280,20 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       pv-glance-header {
         order: 1;
         flex-shrink: 0;
+      }
+
+      /* With kiosk mode's top bar hidden, whatever comes first makes room for the status bar, once (round 1). */
+      pv-parent-strip.under {
+        --pv-strip-top: var(--pv-under-status-bar, 0px);
+      }
+
+      pv-glance-header.under {
         padding-top: var(--pv-under-status-bar, 0px);
+      }
+
+      ha-card.under {
+        padding-top: var(--pv-under-status-bar, 0px);
+        box-sizing: border-box;
       }
 
       .pv-module {
@@ -287,6 +324,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 /* Setup-pending placeholder shown in card editor preview */
 
       .pvc-setup-pending {
+        flex: 1 1 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -330,6 +368,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         position: absolute;
         inset: 0;
         z-index: 50;
+        padding-top: var(--pv-under-status-bar, 0px);
+        box-sizing: border-box;
         background: var(--pv-card-bg, #FFFFFF);
         animation: pv-fadeIn 200ms ease forwards;
       }
@@ -470,6 +510,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
+    const opened = changed as Map<string, unknown>;
+    if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
+      this._overlayLayer = nextSheetLayer();
+    }
     // The view a card opens on is chosen once, when the data first arrives (as in 1.1.0).
     // Coming back where it was (spec 3.7): once, when the data and the household are in, so a
     // module that needs the household (Chores) can be found.
@@ -718,6 +762,13 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     `;
   }
 
+  /** What comes first in the card, and so makes room for the status bar in kiosk mode (round 1). */
+  private _underStatusBar(): 'strip' | 'header' | 'card' {
+    const session = this._session.session;
+    if (session && this._household.view?.members.some(m => m.id === session.memberId)) return 'strip';
+    return this._config?.hide_header ? 'card' : 'header';
+  }
+
   /** Whose session is open (parent mode, or a child's unlocked window), with its countdown and Lock, even when the header is hidden. */
   private _renderParentStrip() {
     const session = this._session.session;
@@ -728,6 +779,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const actions: ModuleAction[] = active && session.parent ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
     return html`
       <pv-parent-strip
+        class="under"
         .member=${member}
         .hass=${this.hass}
         .endsAt=${this._session.endsAt ?? 0}
@@ -869,7 +921,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const active = this._activeModule();
 
     return html`
-      <ha-card>
+      <ha-card class=${this._underStatusBar() === 'card' ? 'under' : ''}>
         ${this._renderParentStrip()}
         ${showsKioskReturn(kiosk.steppedOut, this._session.session) ? html`
           <div class="banner info kiosk-out" role="status">
@@ -881,7 +933,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${active ? this._renderModule(active, data, display) : nothing}
         ${active ? this._renderBar(active) : nothing}
         ${this._settingsOpen ? html`
-          <div class="pvc-settings-overlay">
+          <div class="pvc-settings-overlay" style=${`z-index:${this._overlayLayer}`}>
             <pv-settings
               .hass=${this.hass}
               .data=${data}
@@ -906,7 +958,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
           </div>
         ` : nothing}
         ${this._flow ? html`
-          <div class="pvc-settings-overlay">
+          <div class="pvc-settings-overlay" style=${`z-index:${this._overlayLayer}`}>
             <pv-setup
               .hass=${this.hass}
               .data=${data}
@@ -966,6 +1018,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const weather = this._config?.hide_weather ? null : this._getWeatherEntity();
     return html`
       <pv-glance-header
+        class=${this._underStatusBar() === 'header' ? 'under' : ''}
         ${ref(this._headerHeights.attach)}
         layout=${this._layout.layout}
         ?compact=${this._layout.layout === 'portrait' && this._compactHeader}

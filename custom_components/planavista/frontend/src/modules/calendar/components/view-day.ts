@@ -439,14 +439,32 @@ export class PVViewDay extends LitElement {
         white-space: nowrap;
       }
 
+      .positioned-event.brief .event-title {
+        flex-shrink: 3;
+      }
+
       .positioned-event.brief .event-time {
         margin-top: 0;
-        flex-shrink: 0;
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .positioned-event.shared .event-title,
       .positioned-event.shared .event-time {
         padding-right: 40px;
+      }
+
+      /* A brief chip's title and time share one row: the faces' room is kept once, on the chip (round 1). */
+      .positioned-event.brief.shared {
+        padding-right: 48px;
+      }
+
+      .positioned-event.brief.shared .event-title,
+      .positioned-event.brief.shared .event-time {
+        padding-right: 0;
       }
 
       .event-participant-avatar {

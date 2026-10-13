@@ -17,7 +17,7 @@ const view = (shared: boolean, enabled: boolean, top_bar: 'hidden' | 'tabs' = 'h
 function fakeEnv() {
   const sheets = new Map<object, string>();
   const env = {
-    current: { name: 'dashboard', parts: ['.header', '.action-items'] } as { parts?: string[] } | null,
+    current: { name: 'dashboard', parts: ['.header', '.action-items', 'ha-tab-group'] } as { parts?: string[] } | null,
     sheets,
     haKioskOn: false,
     switched: [] as boolean[],
@@ -32,6 +32,13 @@ function fakeEnv() {
       env.switched.push(enable);
     },
     haKiosk: () => env.haKioskOn,
+    at: '/wall-calendar/planavista',
+    navigated: [] as string[],
+    path: () => env.at,
+    navigate: (path: string) => {
+      env.at = path;
+      env.navigated.push(path);
+    },
   };
   return env;
 }
@@ -87,7 +94,8 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     expect(env.haKioskOn).toBe(true);
     kiosk.setView(view(true, true, 'tabs'));
     expect(env.sheets.size).toBe(1);
-    env.current = { parts: ['.header'] };
+    // Tabs showing but the buttons beside them renamed: still nothing hidden.
+    env.current = { parts: ['.header', 'ha-tab-group'] };
     kiosk.sync();
     expect(env.sheets.size).toBe(0);
   });
@@ -159,5 +167,63 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     kiosk.setView(view(true, false));
     kiosk.lift(0, 120_000, 600_000, 0);
     expect(kiosk.steppedOut).toBe(false);
+  });
+});
+
+
+// Round 1 of the adversarial review: a step out that ended while Home Assistant's own Overview showed
+// stranded the tablet there, kiosk mode back on with no sidebar, no menu button, and no card.
+describe('a step out that ends away from the card goes back to it', () => {
+  it("goes back to the card's dashboard when the quiet time ends on another page", () => {
+    const env = fakeEnv();
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true));
+    kiosk.lift(0, 60_000, 600_000);
+    env.at = '/home/overview';
+    env.current = null;
+    kiosk.tick(30_000);
+    expect(env.navigated).toEqual([]);
+    kiosk.tick(61_000);
+    expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+    expect(kiosk.steppedOut).toBe(false);
+  });
+
+  it('stays put when it ends on the card itself', () => {
+    const env = fakeEnv();
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true));
+    kiosk.lift(0, 60_000, 600_000);
+    kiosk.restore();
+    expect(env.navigated).toEqual([]);
+  });
+
+  it('goes back on Lock or a hidden page too', () => {
+    const env = fakeEnv();
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true));
+    kiosk.lift(0, 60_000, 600_000);
+    env.at = '/config/dashboard';
+    kiosk.restore();
+    expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+  });
+});
+
+
+// Round 1 of the adversarial review: Tabs only on a dashboard with one view (Home Assistant shows no
+// tabs then) left a bare title bar with nothing to tap, white over a dark card.
+describe('Tabs only on a dashboard without tabs', () => {
+  it('hides the whole top bar, as Hidden does', () => {
+    const env = fakeEnv();
+    env.current = { parts: ['.header', '.action-items'] };
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true, 'tabs'));
+    expect(env.sheets.get(env.current!)).toBe(KIOSK_SHEETS.hidden);
+  });
+
+  it('keeps the tabs once there are tabs to keep', () => {
+    const env = fakeEnv();
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true, 'tabs'));
+    expect(env.sheets.get(env.current!)).toBe(KIOSK_SHEETS.tabs);
   });
 });

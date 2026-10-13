@@ -22,7 +22,7 @@ from homeassistant.util import dt as dt_util
 
 from ..const import CONF_CALENDARS, DOMAIN, VERSION
 from ..household.permissions import Account
-from .access import async_account, member_by, not_allowed, parent_by, resolve_member, service_error, source_of
+from .access import async_account, credit_by, member_by, not_allowed, parent_by, resolve_member, service_error, source_of
 from .engine import ChoresEngine, Outcome, with_away, without_away
 from .importer import export_household
 from .model import ChoreError
@@ -141,6 +141,8 @@ async def _complete_chore(call: ServiceCall) -> ServiceResponse:
     chore = _chore(engine, call.data["chore"])
     key = _occurrence(chore, call.data.get("occurrence"))
     done_by = resolve_member(household, call.data["done_by"]) if "done_by" in call.data else None
+    if done_by is not None and done_by != member:
+        credit_by(household, account, done_by)
     approve = bool(call.data["approve"]) and account.kind in ("automation", "admin")
     if key is not None:
         item = engine.find_item(key, runtime.now())

@@ -11,6 +11,7 @@ import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
+import { PressGuard } from '../../core/press-guard';
 
 /**
  * pv-chores-people-sheet: pick a person ("Who did it?", "Who's getting it?").
@@ -22,6 +23,7 @@ export class PvChoresPeopleSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._pick(null));
   private readonly _layer = new SheetLayer(this);
+  private readonly _pressGuard = new PressGuard(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ type: String }) heading = '';
   @property({ type: String }) body = '';

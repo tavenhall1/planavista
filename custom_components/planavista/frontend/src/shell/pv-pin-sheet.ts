@@ -26,6 +26,7 @@ import '../core/pv-member-avatar';
 import { SheetMotion, motionOf } from './sheet-motion';
 import { backdropTap } from '../core/backdrop';
 import { SheetLayer } from '../core/sheet-layer';
+import { PressGuard } from '../core/press-guard';
 
 type Step = 'pick' | 'enter' | 'choose' | 'confirm';
 
@@ -51,6 +52,7 @@ export class PvPinSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._cancel());
   private readonly _layer = new SheetLayer(this);
+  private readonly _pressGuard = new PressGuard(this);
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
@@ -262,6 +264,25 @@ export class PvPinSheet extends LitElement {
         width: 100%;
         min-height: 48px;
         margin-top: 12px;
+      }
+
+      /* A phone held sideways (440 px tall): the last row stays on screen (round 1). */
+      @media (max-height: 560px) {
+        .keypad {
+          grid-template-columns: repeat(3, 52px);
+          gap: 8px 18px;
+          margin: 4px 0;
+        }
+
+        .key {
+          width: 52px;
+          height: 52px;
+          font-size: 1.375rem;
+        }
+
+        .message {
+          margin: 4px 0;
+        }
       }
 
       :host([reduced]) .boxes.shake {

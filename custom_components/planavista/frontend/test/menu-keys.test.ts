@@ -42,11 +42,24 @@ describe("the bar's pop-up button for views", () => {
   });
 
   it("tightens a phone's bar so Chores' buttons fit on its one row (measured at 390 px)", () => {
-    expect(bar).toMatch(/:host\(\[layout='phone'\]\) nav \{\s*gap: 8px;/);
-    expect(bar).toMatch(/:host\(\[layout='phone'\]\) \.modules > button \{\s*padding: 0 11px;/);
+    expect(bar).toMatch(/:host\(\[layout='phone'\]\) nav \{\s*gap: 6px;/);
+    expect(bar).toMatch(/:host\(\[layout='phone'\]\) \.modules > button \{\s*padding: 0 10px;/);
+    expect(bar).toMatch(/:host\(\[layout='phone'\]\) \.picker > span \{\s*padding: 0 6px 0 10px;/);
   });
 
   it('keeps the segments it measures out of reach while they are hidden', () => {
     expect(bar).toMatch(/class="views pv-seg measure"[^\n]*aria-hidden="true"[^\n]*inert/);
+  });
+});
+
+// Round 1 of the adversarial review: on an iPhone the bar took one row on Board and Week but two on
+// My day and Rewards, because the pop-up button was measured with the current view's name.
+describe('the pop-up button is as wide as its widest view', () => {
+  const bar = readFileSync(new URL('../src/shell/pv-nav-bar.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+
+  it('stacks every name in one spot and shows the current one, in the button and its hidden copy', () => {
+    expect(bar.match(/<span class="label">\$\{this\._labels\(\)\}<\/span>/g)).toHaveLength(2);
+    expect(bar).toMatch(/\.picker \.label > span \{\s*grid-area: 1 \/ 1;/);
+    expect(bar).toMatch(/\.picker \.label > span:not\(\.on\) \{\s*visibility: hidden;/);
   });
 });

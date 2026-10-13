@@ -40,6 +40,17 @@ export function parentAccess(view: HouseholdView | null, session: Session | null
   return parentsWithPins(view.members).length > 0 ? 'pin' : 'no_pin';
 }
 
+/**
+ * Whether this screen may say `doer` did someone else's chore (round 1 of the
+ * adversarial review): crediting a parent, whose check-offs need no OK, takes
+ * parent level; anyone else is a change to their own items.
+ */
+export function creditAccess(view: HouseholdView | null, session: Session | null, doer: Member): Access {
+  if (!doer.parent) return memberAccess(view, session, doer.id);
+  const access = parentAccess(view, session);
+  return access === 'no_pin' ? 'no' : access;
+}
+
 /** Who may unlock a member-level change to `memberId`'s items: them (when they have a PIN), then parents with PINs. */
 export function pinChoicesFor(view: HouseholdView | null, memberId: string): Member[] {
   if (!view) return [];

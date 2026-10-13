@@ -1,10 +1,11 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues, unsafeCSS } from 'lit';
 import { segmentedStyles } from '../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { type BarShape, type Layout, barShape } from '../core/layout';
 import { menuStep } from '../core/menu-keys';
 import { SMOOTH, motionOf, springEasing } from '../core/motion';
+import { MENU_LAYER } from '../core/sheet-layer';
 import type { ModuleAction, ModuleView } from '../core/module-registry';
 
 /** A module as the switcher shows it. */
@@ -74,12 +75,17 @@ export class PvNavBar extends LitElement {
     }
 
     /* A phone's bar is one row: tighter gaps and switcher segments leave room for a module's buttons. */
+    /* Phones: one row at 440 px with the waiting count, the views' button as wide as "Rewards" (round 1). */
     :host([layout='phone']) nav {
-      gap: 8px;
+      gap: 6px;
     }
 
     :host([layout='phone']) .modules > button {
-      padding: 0 11px;
+      padding: 0 10px;
+    }
+
+    :host([layout='phone']) .picker > span {
+      padding: 0 6px 0 10px;
     }
 
     button {
@@ -204,6 +210,18 @@ export class PvNavBar extends LitElement {
       background: var(--pv-seg, #ECECE8);
     }
 
+    .picker .label {
+      display: grid;
+    }
+
+    .picker .label > span {
+      grid-area: 1 / 1;
+    }
+
+    .picker .label > span:not(.on) {
+      visibility: hidden;
+    }
+
     .picker > span {
       display: inline-flex;
       align-items: center;
@@ -239,7 +257,7 @@ export class PvNavBar extends LitElement {
 
     .menu {
       position: absolute;
-      z-index: 5;
+      z-index: ${unsafeCSS(MENU_LAYER)};
       bottom: calc(100% + 6px);
       min-width: 200px;
       padding: 6px;
@@ -432,7 +450,7 @@ export class PvNavBar extends LitElement {
         ${this._shape === 'picker' ? html`
           <button type="button" class="picker" aria-haspopup="menu" aria-expanded=${this._menuOpen ? 'true' : 'false'}
             aria-label=${`View: ${this._currentLabel()}`} @click=${this._toggleMenu} @keydown=${this._pickerKey}>
-            <span>${this._currentLabel()}<ha-icon icon="mdi:unfold-more-horizontal" aria-hidden="true"></ha-icon></span>
+            <span><span class="label">${this._labels()}</span><ha-icon icon="mdi:unfold-more-horizontal" aria-hidden="true"></ha-icon></span>
           </button>
           <div class="views pv-seg measure" aria-hidden="true" inert>
             ${this.views.map(view => html`<button type="button" class="view" tabindex="-1">${view.label}</button>`)}
@@ -446,7 +464,7 @@ export class PvNavBar extends LitElement {
           </div>
           ${this.views.length ? html`
             <span class="picker measure" aria-hidden="true">
-              <span>${this._currentLabel()}<ha-icon icon="mdi:unfold-more-horizontal"></ha-icon></span>
+              <span><span class="label">${this._labels()}</span><ha-icon icon="mdi:unfold-more-horizontal"></ha-icon></span>
             </span>
           ` : nothing}
         `}
@@ -481,6 +499,15 @@ export class PvNavBar extends LitElement {
         </div>
       ` : nothing}
     `;
+  }
+
+  /**
+   * Every view's name stacked in one spot, the current one shown: the button is as
+   * wide as its widest view, so the bar's shape doesn't change with the view (round 1).
+   */
+  private _labels() {
+    const current = this._currentLabel();
+    return this.views.map(view => html`<span class=${view.label === current ? 'on' : ''}>${view.label}</span>`);
   }
 
   private _currentLabel(): string {

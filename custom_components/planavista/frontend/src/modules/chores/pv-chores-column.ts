@@ -103,6 +103,11 @@ export class PvChoresColumn extends LitElement {
         font-variant-numeric: tabular-nums;
       }
 
+      /* The line breaks between its parts, never inside one ("🔥 2 days", round 1). */
+      .line > span {
+        white-space: nowrap;
+      }
+
       .stars {
         display: inline-block;
       }
@@ -338,7 +343,7 @@ export class PvChoresColumn extends LitElement {
             .stars=${t.stars}></pv-chore-tile>
         `)}
       </div>
-      ${model.member.stars ? html`
+      ${model.member.stars && !model.empty ? html`
         <div class="stickers">
           ${stickersLabel(stickers)}
           <div class="row" role="img" aria-label=${`${stickers} ${stickers === 1 ? 'star' : 'stars'} this week`}>

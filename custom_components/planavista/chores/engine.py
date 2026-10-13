@@ -681,6 +681,14 @@ class ChoresEngine:
                     return item
         return None
 
+    def planned_later(self, key: str, now: datetime) -> date | None:
+        """The later day an occurrence is planned for, when it doesn't show today (round 1)."""
+        planned = self._index().overrides.get(key, {}).get("planned_day")
+        if not isinstance(planned, str):
+            return None
+        day = _day(planned)
+        return day if day > self.today(now) else None
+
     def open_item(self, chore_id: str, member_id: str, now: datetime) -> Item | None:
         """The member's oldest open occurrence of a chore (spec 8.5 step 1).
 
@@ -1403,6 +1411,9 @@ class ChoresEngine:
         occ = self._past_occurrence(key)
         parsed = parse_key(key)
         chore = parsed[0] if parsed else None
+        # History from before the chore began (its created time, an assignee added later, chores
+        # turned off and on) can't be worked out again; a day's own occurrence counted on that day.
+        own_period = parsed[2] if parsed else None
         for summary in self.log["summaries"]:
             missed = summary.get("missed") or []
             still_open = summary.get("open") or []
@@ -1413,6 +1424,7 @@ class ChoresEngine:
                 not period.startswith("day:")
                 or key in still_open
                 or (occ is not None and counted_on(occ, _day(period[4:]), self.clock))
+                or (occ is None and own_period == period)
             )
             summary["missed"] = [k for k in missed if k != key]
             if "open" in summary:

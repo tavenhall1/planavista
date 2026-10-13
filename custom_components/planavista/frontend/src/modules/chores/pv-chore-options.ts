@@ -12,6 +12,7 @@ import { choresStyles } from './chores-styles';
 import type { OptionId, OptionModel, OptionsModel } from './options-derive';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
+import { PressGuard } from '../../core/press-guard';
 
 const ICONS: Record<OptionId, string> = {
   plan_day: '📅', more_time: '⏰', skip: '🛌', done_by: '🙋', history: '📜', undo: '↩️',
@@ -40,6 +41,7 @@ export class PvChoreOptions extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => void this.close());
   private readonly _layer = new SheetLayer(this);
+  private readonly _pressGuard = new PressGuard(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) model!: OptionsModel;
   @property({ type: String }) color = '#5B5BD6';

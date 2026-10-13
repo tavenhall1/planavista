@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PageRegistry } from '../src/core/page-registry';
 import type { DonePart, SetupContext, SetupStep } from '../src/core/settings-registry';
@@ -15,12 +16,12 @@ function view(start: string | null, choresOn: boolean): HouseholdView {
   };
 }
 
-function steps(household: HouseholdView): string[] {
+function steps(household: HouseholdView, modulesAtStart?: HouseholdView['modules']): string[] {
   const setup = new PageRegistry<SetupContext, SetupStep>();
   registerShellSettings(undefined, setup);
   registerCalendarSettings(undefined, setup);
   registerChoresSettings(undefined, undefined, setup, new PageRegistry<SetupContext, DonePart>());
-  return setup.pages({ household, data: {} as never }).map(step => step.id);
+  return setup.pages({ household, data: {} as never, modulesAtStart }).map(step => step.id);
 }
 
 describe('first-run setup with chores (spec 14.7)', () => {
@@ -86,5 +87,28 @@ describe("setup's main button (spec 14.7)", () => {
     expect(stepButton(shared, null, { last: false, short: false }).label).toBe('Continue');
     expect(stepButton({ id: 'look' }, null, { last: false, short: false }).label).toBe('Next');
     expect(stepButton({ id: 'done' }, null, { last: true, short: false }).label).toBe('Finish');
+  });
+});
+
+
+// Round 1 of the adversarial review: running setup again on a household whose chores were running
+// asked "Do you want chores too?", and "Not now, just the calendar" turned them off.
+describe('setup run again leaves running chores alone', () => {
+  it("skips the chores question and its starts when chores were on as setup began", () => {
+    const on = { chores: { enabled: true } };
+    expect(steps(view('common', true), on)).toEqual(['welcome', 'people', 'calendars', 'shared-screen', 'look', 'done']);
+    expect(steps(view('plan', true), on)).toEqual(['welcome', 'people', 'calendars', 'shared-screen', 'look', 'done']);
+  });
+
+  it('still asks when chores were off as setup began, even once this run turns them on', () => {
+    expect(steps(view('common', true), { chores: { enabled: false } })).toEqual(
+      ['welcome', 'people', 'calendars', 'chores', 'chores-common', 'shared-screen', 'look', 'done'],
+    );
+  });
+
+  it('setup remembers which modules were on when it began', () => {
+    const setup = readFileSync(new URL('../src/shell/setup/pv-setup.ts', import.meta.url), 'utf-8');
+    expect(setup).toMatch(/if \(this\._modulesAtStart === undefined && this\.household\) this\._modulesAtStart = this\.household\.modules;/);
+    expect(setup).toMatch(/modulesAtStart: this\._modulesAtStart/);
   });
 });

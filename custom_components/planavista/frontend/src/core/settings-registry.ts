@@ -92,6 +92,8 @@ export interface SetupContext {
   household: HouseholdView | null;
   data: PlanaVistaData;
   services?: Record<string, ModuleService>;
+  /** The modules as setup began: a module already running isn't asked about again (round 1). */
+  modulesAtStart?: HouseholdView['modules'];
 }
 
 export interface SetupStep extends WizardPage<SetupContext> {

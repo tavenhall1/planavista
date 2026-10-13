@@ -26,11 +26,19 @@ export interface KioskEnv {
   /** Home Assistant's own kiosk switch (the sidebar and its menu button). */
   setHaKiosk(enable: boolean): void;
   haKiosk(): boolean;
+  /** The page's path, and going to another, as Home Assistant navigates. */
+  path(): string;
+  navigate(path: string): void;
 }
+
+/** Home Assistant 2026.10's dashboard tabs; absent when a dashboard has one view. */
+const TABS = 'ha-tab-group';
 
 export class KioskController {
   private _view: HouseholdView | null = null;
   private _stepOut: StepOut | null = null;
+  /** The card's page a step out began on, to go back to when it ends elsewhere (round 1). */
+  private _home: string | null = null;
   private _applied: { root: object; handle: { set(css: string): void; remove(): void }; css: string } | null = null;
   /** We turned Home Assistant's switch on, so we may turn it off; someone else's we leave alone. */
   private _haOn = false;
@@ -69,6 +77,7 @@ export class KioskController {
   lift(now: number, idleMs: number, capAt: number, startedAt?: number): void {
     if (this.look === 'off') return;
     this._stepOut = startStepOut(now, idleMs, capAt, startedAt);
+    this._home = this._env.path();
     this.sync();
   }
 
@@ -76,6 +85,9 @@ export class KioskController {
   restore(): void {
     if (!this._stepOut) return;
     this._stepOut = null;
+    // Ending on Home Assistant's own pages would leave them with no sidebar and no way back (round 1).
+    if (this._home && this._env.path() !== this._home) this._env.navigate(this._home);
+    this._home = null;
     this.sync();
   }
 
@@ -94,13 +106,15 @@ export class KioskController {
     const look = this.look;
     const wanted = look !== 'off' && !this._stepOut;
     const found = wanted ? this._env.root() : null;
-    const root = found && look !== 'off' && this._env.has(found, KIOSK_PARTS[look]) ? found : null;
+    // Tabs only on a dashboard without tabs (one view) would leave a bare title bar: hide it all (round 1).
+    const shown = look === 'tabs' && found && !this._env.has(found, TABS) && this._env.has(found, KIOSK_PARTS.hidden) ? 'hidden' : look;
+    const root = found && shown !== 'off' && this._env.has(found, KIOSK_PARTS[shown]) ? found : null;
     if (this._applied && (!wanted || this._applied.root !== root)) {
       this._applied.handle.remove();
       this._applied = null;
     }
-    if (wanted && root) {
-      const css = KIOSK_SHEETS[look];
+    if (wanted && root && shown !== 'off') {
+      const css = KIOSK_SHEETS[shown];
       if (!this._applied) this._applied = { root, handle: this._env.addSheet(root, css), css };
       else if (this._applied.css !== css) {
         this._applied.handle.set(css);
@@ -150,6 +164,12 @@ const browserEnv: KioskEnv = {
   },
   setHaKiosk: enable => window.dispatchEvent(new CustomEvent('hass-kiosk-mode', { detail: { enable } })),
   haKiosk: () => (document.querySelector('home-assistant') as HassElement | null)?.hass?.kioskMode === true,
+  path: () => location.pathname,
+  navigate: path => {
+    // Home Assistant's own navigate: a new history entry, then location-changed.
+    history.pushState(null, '', path);
+    window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
+  },
 };
 
 /** The page's one controller; the card's strip uses it to step out and back. */

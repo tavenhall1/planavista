@@ -130,6 +130,16 @@ def member_by(household: Household, account: Account, member_id: str) -> str:
     return by
 
 
+def credit_by(household: Household, account: Account, doer: str) -> None:
+    """Crediting `doer` with someone else's chore is theirs to say too (round 1): a parent, whose
+    check-offs need no OK, takes parent level; anyone else is a member-level change to them."""
+    member = household.member(doer) or {}
+    if member.get("parent"):
+        parent_by(account)
+    else:
+        member_by(household, account, doer)
+
+
 def parent_by(account: Account) -> str:
     """Who a parent-level change is attributed to, or not_allowed."""
     by = parent_level(account, None)

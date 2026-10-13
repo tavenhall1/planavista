@@ -44,7 +44,7 @@ export class PvParentStrip extends LitElement {
         align-items: center;
         gap: 10px;
         min-height: 48px;
-        padding: 0 6px 0 14px;
+        padding: var(--pv-strip-top, 0px) 6px 0 14px;
         border-bottom: 3px solid var(--strip-color);
         background: color-mix(in srgb, var(--strip-color) 16%, var(--pv-card-bg, #FFFFFF));
         color: var(--pv-text, #1A1B1E);

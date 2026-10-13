@@ -16,7 +16,7 @@ export interface EventGate {
   /** Whether this screen may ever change an event on these calendars (Edit and Delete show). */
   allowed(calendarIds: readonly string[]): boolean;
   /** Ask for a PIN when one is needed; true when the change may go ahead. */
-  ask(calendarIds: readonly string[], summary: string): Promise<boolean>;
+  ask(calendarIds: readonly string[], summary: string, mode?: 'change' | 'add'): Promise<boolean>;
   /** The note under an event this screen may not change. */
   note(calendarIds: readonly string[]): string;
 }
@@ -41,13 +41,13 @@ export function eventGate(state: () => GateState): EventGate {
       const { view, session, rows } = state();
       return eventAccess(view, session, ownersOf(calendarIds, rows)) !== 'no';
     },
-    async ask(calendarIds, summary) {
+    async ask(calendarIds, summary, mode = 'change') {
       const { view, session, pinGate, rows } = state();
       const owners = ownersOf(calendarIds, rows);
       const access = eventAccess(view, session, owners);
       if (access === 'yes') return true;
       if (access === 'no' || !pinGate) return false;
-      const { heading, reason } = changeReason(summary);
+      const { heading, reason } = changeReason(summary, mode);
       return pinGate.ask(eventPinChoices(view, owners), heading, reason);
     },
     note(calendarIds) {

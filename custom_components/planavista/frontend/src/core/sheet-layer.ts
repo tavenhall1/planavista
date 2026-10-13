@@ -9,6 +9,16 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit';
  */
 let top = 100;
 
+/**
+ * Toasts sit above every sheet: they say what just happened, often about the
+ * sheet below (a refusal, an Undo). Round 1 of the adversarial review: at
+ * z-index 40 they hid under every sheet.
+ */
+export const TOAST_LAYER = 2_000_000_000;
+
+/** An open menu (the phone bar's views) sits above a toast that would otherwise cover it. */
+export const MENU_LAYER = 2_000_000_100;
+
 /** The layer above every sheet opened so far. */
 export function nextSheetLayer(): number {
   top += 1;

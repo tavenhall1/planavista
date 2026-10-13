@@ -18,6 +18,7 @@ import { calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, 
 import { EventGate, calendarsOf } from '../event-gate';
 import { backdropTap } from '../../../core/backdrop';
 import { SheetLayer } from '../../../core/sheet-layer';
+import { PressGuard } from '../../../core/press-guard';
 
 interface Participant {
   entity_id: string;
@@ -44,6 +45,7 @@ export class PVEventPopup extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._sheet.dismiss());
   private readonly _layer = new SheetLayer(this);
+  private readonly _pressGuard = new PressGuard(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) event: CalendarEvent | null = null;
   /** Who may change it here (D1); without one, anyone may. */

@@ -22,7 +22,7 @@ from homeassistant.util import dt as dt_util
 from ..const import CONF_CALENDARS, VERSION
 from ..coordinator import async_apply_config
 from ..household.members import MemberError, check_parent_pins, import_members
-from ..household.permissions import member_level
+from ..household.permissions import member_level, parent_level
 from ..household.store import Household
 from ..household.websocket import (
     ERROR_MESSAGES,
@@ -37,6 +37,7 @@ from .access import MESSAGES, message, source_of
 from .engine import ChoresEngine, Item, Outcome
 from .importer import FORMAT_HOUSEHOLD, ImportProblem, export_household, plan_import, preview, read_file
 from .model import ChoreError
+from .occurrences import parse_key
 from .runtime import DATA_CHORES, STATE_NEEDS_A_LOOK, STATE_NEWER, STATE_OFF, ChoresRuntime, ChoresUnavailable
 
 STATE_MESSAGES = {
@@ -83,6 +84,39 @@ def _member_by(
     return None
 
 
+@callback
+def _may_credit(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], household: Household, doer: str
+) -> bool:
+    """Whether this screen may say `doer` did someone else's chore, or False after refusing (spec 9.5).
+
+    Crediting someone is theirs to say too: a parent, whose check-offs need no OK,
+    takes parent level; anyone else takes their own PIN when they have one.
+    """
+    member = household.member(doer)
+    if member is None:
+        return True  # the engine names an unknown member
+    account = account_for(hass, household, connection.user)
+    session = session_for(household, connection, msg)
+    name = member.get("name", doer)
+    if member.get("parent"):
+        if parent_level(account, session) is not None:
+            return True
+        if account.screen_rules or account.kind == "member":
+            send_refusal(connection, msg, "parent_mode_required", f"A parent's PIN is needed to give {name} the credit.")
+        else:
+            refuse(connection, msg, account)
+        return False
+    if member_level(account, session, doer, doer in household.pins) is not None:
+        return True
+    if account.screen_rules:
+        code = "other_pin_required" if session is not None else "pin_required"
+        send_refusal(connection, msg, code, f"{name}'s PIN or a parent's is needed.")
+    else:
+        refuse(connection, msg, account)
+    return False
+
+
 async def _apply(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
@@ -105,9 +139,17 @@ def _item(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], runtime: ChoresRuntime
 ) -> Item | None:
     """Today's occurrence named by the command, or None after saying it can't change now."""
-    item = runtime.engine.find_item(msg["occurrence"], runtime.now())
+    engine, now = runtime.engine, runtime.now()
+    item = engine.find_item(msg["occurrence"], now)
     if item is None:
-        send_refusal(connection, msg, "period_closed", "The day had ended.")
+        later = engine.planned_later(msg["occurrence"], now)
+        if later is not None:
+            parsed = parse_key(msg["occurrence"])
+            activity = engine.activity(parsed[0]) if parsed else None
+            name = activity["name"] if activity else "That chore"
+            send_refusal(connection, msg, "planned_later", f"{name} is planned for {later.strftime('%A')}.")
+        else:
+            send_refusal(connection, msg, "period_closed", "The day had ended.")
     return item
 
 
@@ -187,9 +229,12 @@ async def ws_chores_complete(hass: HomeAssistant, connection: websocket_api.Acti
     by = _member_by(hass, connection, msg, household, item.occ.member)
     if by is None:
         return
+    done_by = msg.get("done_by")
+    if done_by and done_by != item.occ.member and not _may_credit(hass, connection, msg, household, done_by):
+        return
     source = _source(hass, household, connection)
     out = await _apply(connection, msg, runtime, lambda e, now: e.complete(
-        now, key=item.occ.key, done_by=msg.get("done_by"), by=by, source=source, user=connection.user.id,
+        now, key=item.occ.key, done_by=done_by, by=by, source=source, user=connection.user.id,
     ))
     if out is not None:
         connection.send_result(msg["id"], {"result": out.result, **out.data})

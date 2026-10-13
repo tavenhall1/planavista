@@ -39,8 +39,9 @@ describe('classifyLayout', () => {
     expect(classifyLayout({ width: 390, height: 844 }, null, null, false)).toBe('phone');
   });
 
-  it('calls anything narrower than 600 px a phone', () => {
-    expect(classifyLayout({ width: 599, height: 300 }, null, null, false)).toBe('phone');
+  it('calls anything narrower than 600 px a phone, unless it is wide and short (round 1)', () => {
+    expect(classifyLayout({ width: 599, height: 700 }, null, null, false)).toBe('phone');
+    expect(classifyLayout({ width: 599, height: 300 }, null, null, false)).toBe('landscape');
     expect(classifyLayout({ width: 600, height: 900 }, null, null, false)).toBe('portrait');
   });
 
@@ -110,5 +111,21 @@ describe('LayoutTracker', () => {
     tracker.measure({ width: 800, height: 1280 });
     tracker.focus(false);
     expect(tracker.measure({ width: 800, height: 700 })).toBe('landscape');
+  });
+});
+
+// Round 1 of the adversarial review: an iPhone held sideways with Home Assistant's sidebar docked gave
+// the card 576 by 384; width alone made it a phone, whose tall header, two-row toolbar, and bottom bar
+// left the Day view no hours at all.
+describe('a wide, short card takes the landscape arrangement', () => {
+  it('is landscape when it is wider than tall and short, even under 600 px wide', () => {
+    expect(classifyLayout({ width: 576, height: 384 }, null, null, false)).toBe('landscape');
+    expect(classifyLayout({ width: 500, height: 300 }, null, null, false)).toBe('landscape');
+  });
+
+  it('stays a phone when it is tall enough, or narrow', () => {
+    expect(classifyLayout({ width: 440, height: 956 }, null, null, false)).toBe('phone');
+    expect(classifyLayout({ width: 580, height: 520 }, null, null, false)).toBe('phone');
+    expect(classifyLayout({ width: 400, height: 380 }, null, null, false)).toBe('phone');
   });
 });

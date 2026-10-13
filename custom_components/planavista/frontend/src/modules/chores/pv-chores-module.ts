@@ -9,7 +9,7 @@ import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
-import { memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
+import { creditAccess, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
@@ -27,7 +27,7 @@ import type { MyDayStyle } from './pv-chores-my-day';
 import type { DayView, WeekView } from './chores-types';
 import { weekHighlights, weekRows, weekShares } from './week-derive';
 import { addDays } from './options-derive';
-import { RewardDraft, balances, recentLine, rewardCards, rewardFrom, settleAsks } from './rewards-derive';
+import { RewardDraft, balances, elsewhereText, recentLine, redeemers, rewardCards, rewardFrom, settleAsks } from './rewards-derive';
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
@@ -510,7 +510,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (!board) return;
     const card = rewardCards(board, inOrder(this.household?.members ?? []), this._waitingAsks(board)).find(c => c.reward.id === rewardId);
     if (!card) return;
-    const ready = card.people.filter(p => p.afford && !p.asked).map(p => p.member);
+    const { ready, elsewhere } = redeemers(card, id => memberAccess(this.household, this.session, id) !== 'no');
+    if (ready.length === 0) {
+      // Never silent (round 1): say who can, and where.
+      if (elsewhere.length) this.showToast({ id: `redeem-${Date.now()}`, text: elsewhereText(elsewhere, card.reward.name) });
+      return;
+    }
     const go = async (member: Member) => {
       const api = this.service?.api;
       if (!api || !(await this.asMember(member.id, `Who's getting ${card.reward.name}?`))) return;
@@ -626,6 +631,14 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return this.pinGate.ask(pinChoicesFor(this.household, memberId), heading);
   }
 
+  /** Whether this screen may say `doer` did it: a parent takes a parent's PIN, anyone else their own (round 1). */
+  private async _asDoer(doer: Member, heading: string): Promise<boolean> {
+    const access = creditAccess(this.household, this.session, doer);
+    if (access === 'yes') return true;
+    if (access === 'no' || !this.pinGate) return false;
+    return doer.parent ? this.asParent(heading) : this.pinGate.ask(pinChoicesFor(this.household, doer.id), heading);
+  }
+
   private async _complete(detail: HoldDetail): Promise<void> {
     const { row } = detail;
     const service = this.service;
@@ -730,7 +743,16 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Run one change from a sheet: close it and say what happened, or say what went wrong (spec 11.7). */
+  /** An option this screen chose is running: its own toast says what happened. */
+  private _acting = false;
+
+  private _choreName(key: string): string {
+    const id = key.split('|')[0];
+    return this.service?.board()?.chores.find(chore => chore.id === id)?.name ?? 'That chore';
+  }
+
   private async _run(action: () => Promise<unknown>, done: string): Promise<boolean> {
+    this._acting = true;
     try {
       await action();
       this._sheet = null;
@@ -740,6 +762,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       this.showToast({ id: `err-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad', ms: 6000 });
       if (this._sheet?.kind === 'options') this._sheet = { ...this._sheet, busy: false };
       return false;
+    } finally {
+      this._acting = false;
     }
   }
 
@@ -795,6 +819,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
           body: whoDidItBody(name),
           pick: async member => {
             if (!member || !(await this.asMember(owner.id, `Who's checking off ${name}?`))) return;
+            if (!(await this._asDoer(member, `Who's giving ${member.name} the credit?`))) return;
             const fresh = this.service?.board();
             if (!fresh) return;
             if (item.status === 'done' || item.status === 'pending') {
@@ -864,9 +889,10 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       heading: 'Who did it?',
       body: whoDidItBody(last.row.name),
       people,
-      pick: member => {
+      pick: async member => {
+        if (!member || !(await this._asDoer(member, `Who's giving ${member.name} the credit?`))) return;
         const board = this.service?.board();
-        if (!member || !board || !this.service) return;
+        if (!board || !this.service) return;
         this.service.enqueue({ op: 'undo', occurrence: last.row.key, member: last.member, name: last.row.name });
         this._checkOff(last.row, last.member, board, member.id);
       },
@@ -1040,7 +1066,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (sheet.kind === 'options') {
       const found = this._optionsModel(sheet.key);
       if (!found) {
-        queueMicrotask(() => { if (this._sheet === sheet) this._sheet = null; });
+        // Its chore left the board: say so when another screen did it (round 1), not after this screen's own change.
+        queueMicrotask(() => {
+          if (this._sheet !== sheet) return;
+          this._sheet = null;
+          if (!this._acting) this.showToast({ id: `moved-${sheet.key}`, text: `${this._choreName(sheet.key)} changed on another screen.` });
+        });
         return nothing;
       }
       return html`
