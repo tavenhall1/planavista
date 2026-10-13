@@ -222,7 +222,12 @@ class ChoresNotifier:
         message = {
             "title": f"{name} reached a goal",
             "message": f"{icon + ' ' if icon else ''}{data['reward_name']}. There's a surprise waiting on {name}'s screen.",
-            "data": {"tag": f"{TAG_PREFIX}goal-{member_id}", "group": "planavista"},
+            # News, not a question: it arrives quietly, since it can come with the 3 AM approval.
+            "data": {
+                "tag": f"{TAG_PREFIX}goal-{member_id}", "group": "planavista",
+                "push": {"interruption-level": "passive"},  # iOS
+                "channel": "PlanaVista goals", "importance": "low",  # Android
+            },
         }
         for parent in self._parents_to_ask():
             for phone in parent["phones"]:

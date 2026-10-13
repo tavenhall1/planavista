@@ -1768,7 +1768,12 @@ class ChoresEngine:
     # Goal surprises (milestone 10) -------------------------------------------------------
 
     def _goal_reward(self, member: Mapping[str, Any]) -> dict[str, Any] | None:
-        """The reward a member is saving for, when it exists and is one they can get."""
+        """The reward a member is saving for, when it exists and is one they can get.
+
+        Someone who earns no stars (stars off, as for parents) has no goal to reach.
+        """
+        if not member.get("stars"):
+            return None
         goal = member.get("goal")
         reward = self.reward(goal) if isinstance(goal, str) else None
         if reward is None or (reward.get("who") and member["id"] not in reward["who"]):

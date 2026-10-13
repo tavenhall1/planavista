@@ -520,9 +520,12 @@ async def ws_surprise_open(hass: HomeAssistant, connection: websocket_api.Active
         return
     household = runtime.household
     account = account_for(hass, household, connection.user)
+    member = household.member(msg["member"])
+    if member is None:  # fixed words: never repeat what the caller sent
+        send_refusal(connection, msg, "no_surprise", MESSAGES["no_surprise"])
+        return
     if not may_open_surprise(account, msg["member"], shared_screens=len(household.shared_users)):
-        name = (household.member(msg["member"]) or {}).get("name", msg["member"])
-        send_refusal(connection, msg, "not_their_screen", f"Only {name}'s own screen or a shared screen opens this.")
+        send_refusal(connection, msg, "not_their_screen", f"Only {member['name']}'s own screen or a shared screen opens this.")
         return
     by = account.member_id or source_of(account)
     out = await _apply(connection, msg, runtime, lambda e, now: e.open_surprise(now, member=msg["member"], by=by))

@@ -88,7 +88,7 @@ def test_it_goes_away_when_the_goal_is_out_of_reach_and_comes_back_when_saved_ag
     assert engine.rewards["surprises"]["dana"]["opened"] is None
 
 
-@pytest.mark.parametrize("change", ["goal_cleared", "goal_changed", "reward_deleted", "not_for_them", "stars_taken"])
+@pytest.mark.parametrize("change", ["goal_cleared", "goal_changed", "reward_deleted", "not_for_them", "stars_taken", "stars_off"])
 def test_an_unopened_surprise_goes_away_quietly(change: str) -> None:
     engine = _engine()
     engine.save_reward({"name": "Zoo day", "icon": "🦁", "cost": 30})
@@ -102,6 +102,8 @@ def test_an_unopened_surprise_goes_away_quietly(change: str) -> None:
         engine.delete_reward("ice_cream_trip")
     elif change == "not_for_them":
         engine.save_reward({"who": ["casey"]}, reward_id="ice_cream_trip")
+    elif change == "stars_off":  # review A2: someone who earns no stars has no goal to reach
+        engine.set_members([dict(m, stars=False) if m["id"] == "dana" else m for m in _with_goal("ice_cream_trip")])
     else:
         engine.award_stars(SCENE, member="dana", stars=-1, reason="Oops", by="alex")
     out = engine.settle_surprises(SCENE)
@@ -227,6 +229,9 @@ async def test_a_shared_screen_opens_it_and_a_parents_own_login_does_not(hass, c
     assert chores.engine.rewards["surprises"]["dana"]["opened"] is not None
     none = await ws_command(kitchen, {"type": "planavista/chores/surprise/open", "member": "casey"})
     assert none["error"]["code"] == "no_surprise"
+    # Review A3: a made-up member is answered in fixed words, never with what was sent.
+    made_up = await ws_command(alex, {"type": "planavista/chores/surprise/open", "member": "<b>zzz</b> nobody"})
+    assert (made_up["error"]["code"], made_up["error"]["message"]) == ("no_surprise", "There's no surprise waiting.")
 
 
 async def test_with_no_shared_screens_any_login_opens_it(hass, chores, accounts, hass_ws_client) -> None:
@@ -266,7 +271,11 @@ async def test_parents_hear_once_that_a_goal_was_reached(hass, chores) -> None:
     assert _goal_notes(alex) == [{
         "title": "Dana reached a goal",
         "message": "🍦 Ice cream trip. There's a surprise waiting on Dana's screen.",
-        "data": {"tag": "planavista-goal-dana", "group": "planavista"},
+        # Review A4: news, not a question, so it arrives quietly (it can come with the 3 AM approval).
+        "data": {
+            "tag": "planavista-goal-dana", "group": "planavista",
+            "push": {"interruption-level": "passive"}, "channel": "PlanaVista goals", "importance": "low",
+        },
     }]
 
 
