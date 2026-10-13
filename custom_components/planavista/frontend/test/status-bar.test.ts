@@ -86,3 +86,15 @@ describe("the header's chips never run into the date or off the card", () => {
     expect(header).toMatch(/\.chip span\.pill \.text \{[^}]*text-overflow: ellipsis;/);
   });
 });
+
+// Round 1: in a crowded Day view lane, a brief shared event's time ran under the people's faces (33 px):
+// the time couldn't shrink, and each part reserved the faces' room on its own.
+describe("a brief shared event keeps its time clear of the faces", () => {
+  const day = read('modules/calendar/components/view-day.ts');
+
+  it('reserves the room once, on the chip, and lets the time end in an ellipsis', () => {
+    expect(day).toMatch(/\.positioned-event\.brief\.shared \{\s*padding-right: 48px;\s*\}/);
+    expect(day).toMatch(/\.positioned-event\.brief\.shared \.event-title,\s*\.positioned-event\.brief\.shared \.event-time \{\s*padding-right: 0;\s*\}/);
+    expect(day).toMatch(/\.positioned-event\.brief \.event-time \{\s*margin-top: 0;\s*flex-shrink: 1;\s*min-width: 0;\s*overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;\s*\}/);
+  });
+});
