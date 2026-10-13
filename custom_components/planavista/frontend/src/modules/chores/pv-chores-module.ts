@@ -743,7 +743,16 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Run one change from a sheet: close it and say what happened, or say what went wrong (spec 11.7). */
+  /** An option this screen chose is running: its own toast says what happened. */
+  private _acting = false;
+
+  private _choreName(key: string): string {
+    const id = key.split('|')[0];
+    return this.service?.board()?.chores.find(chore => chore.id === id)?.name ?? 'That chore';
+  }
+
   private async _run(action: () => Promise<unknown>, done: string): Promise<boolean> {
+    this._acting = true;
     try {
       await action();
       this._sheet = null;
@@ -753,6 +762,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       this.showToast({ id: `err-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad', ms: 6000 });
       if (this._sheet?.kind === 'options') this._sheet = { ...this._sheet, busy: false };
       return false;
+    } finally {
+      this._acting = false;
     }
   }
 
@@ -1055,7 +1066,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (sheet.kind === 'options') {
       const found = this._optionsModel(sheet.key);
       if (!found) {
-        queueMicrotask(() => { if (this._sheet === sheet) this._sheet = null; });
+        // Its chore left the board: say so when another screen did it (round 1), not after this screen's own change.
+        queueMicrotask(() => {
+          if (this._sheet !== sheet) return;
+          this._sheet = null;
+          if (!this._acting) this.showToast({ id: `moved-${sheet.key}`, text: `${this._choreName(sheet.key)} changed on another screen.` });
+        });
         return nothing;
       }
       return html`

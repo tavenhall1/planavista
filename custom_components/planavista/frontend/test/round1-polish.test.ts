@@ -33,3 +33,11 @@ describe('rings follow the Motion setting at once', () => {
     expect(ring).toMatch(/protected willUpdate\(changed: PropertyValues\): void \{\s*\/\/[^\n]*\n\s*if \(changed\.has\('progress'\)\) this\._setEasing\(\);/);
   });
 });
+
+describe("a chore's options say why they closed", () => {
+  it('tells when another screen moved the chore, but not after this screen\'s own change', () => {
+    const module = read('modules/chores/pv-chores-module.ts');
+    expect(module).toMatch(/if \(!this\._acting\) this\.showToast\(\{ id: `moved-\$\{sheet\.key\}`, text: `\$\{this\._choreName\(sheet\.key\)\} changed on another screen\.` \}\);/);
+    expect(module).toMatch(/this\._acting = true;\n\s+try \{\n\s+await action\(\);/);
+  });
+});
