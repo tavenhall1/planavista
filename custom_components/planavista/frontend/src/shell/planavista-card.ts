@@ -262,6 +262,16 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         flex-shrink: 0;
       }
 
+      /* The card's own toast sits just after the module area: above the bar in
+         portrait and on phones, at the bottom in landscape, as the chores
+         toasts do (review: it covered the bar). */
+      .toast-anchor {
+        order: 3;
+        position: relative;
+        height: 0;
+        flex: none;
+      }
+
       :host([layout='landscape']) pv-nav-bar {
         order: 2;
       }
@@ -902,7 +912,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
           </div>
         ` : nothing}
         ${this._renderSheet()}
-        <pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}></pv-toast>
+        <div class="toast-anchor"><pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}></pv-toast></div>
       </ha-card>
     `;
   }

@@ -186,3 +186,11 @@ describe('a step out follows a change to the limits (review)', () => {
     expect(stepOutWithLimits(out, undefined, undefined)).toBe(out);
   });
 });
+
+describe("the card's own toast sits above the bar, as the chores toasts do (review)", () => {
+  it('anchors it right after the module area, so the bar never hides under it', () => {
+    const card = read('shell/planavista-card.ts');
+    expect(card).toMatch(/<div class="toast-anchor"><pv-toast \.toast=\$\{this\._toast\}/);
+    expect(card).toMatch(/\.toast-anchor \{\s*order: 3;\s*position: relative;\s*height: 0;/);
+  });
+});
