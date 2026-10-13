@@ -48,13 +48,22 @@ export class PvSurpriseReveal extends LitElement {
       font-family: var(--pv-font-family, -apple-system, system-ui, sans-serif);
       --gold: var(--pv-present-gold, #F5B800);
       --s: min(40vw, 40vh);
+      --y: 42%;
+    }
+
+    /* A short screen (a phone held sideways): the picture smaller and higher, the buttons clear of the home indicator (review B4). */
+    @media (max-height: 500px) {
+      :host {
+        --s: min(40vw, 32vh);
+        --y: 36%;
+      }
     }
 
     .layer {
       position: absolute;
       inset: 0;
       overflow: hidden;
-      background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--member) 38%, rgba(12, 12, 24, 0.86)), rgba(12, 12, 24, 0.9) 65%);
+      background: radial-gradient(circle at 50% var(--y), color-mix(in srgb, var(--member) 38%, rgba(12, 12, 24, 0.86)), rgba(12, 12, 24, 0.9) 65%);
       touch-action: none;
       -webkit-tap-highlight-color: transparent;
       -webkit-user-select: none;
@@ -64,7 +73,7 @@ export class PvSurpriseReveal extends LitElement {
     .gift, .reward {
       position: absolute;
       left: 50%;
-      top: 42%;
+      top: var(--y);
       width: var(--s);
       height: var(--s);
       margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
@@ -102,7 +111,7 @@ export class PvSurpriseReveal extends LitElement {
       position: absolute;
       left: 16px;
       right: 16px;
-      top: calc(42% + var(--s) / 2 + 12px);
+      top: calc(var(--y) + var(--s) / 2 + 12px);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -170,7 +179,7 @@ export class PvSurpriseReveal extends LitElement {
     .piece {
       position: absolute;
       left: 50%;
-      top: 42%;
+      top: var(--y);
       border-radius: 2px;
       opacity: 0;
       pointer-events: none;

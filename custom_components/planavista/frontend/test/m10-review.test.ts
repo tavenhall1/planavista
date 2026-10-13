@@ -19,6 +19,15 @@ describe('the goal surprise against the controls beside it', () => {
     expect(rewards).toMatch(/<button class="again pv-btn pv-btn-secondary accent" type="button"/);
   });
 
+  // Review B4: at 956 by 440 the reveal's buttons ended 6 px under the home indicator.
+  it('on a short screen the reveal draws its picture smaller and higher, so its buttons stay clear', () => {
+    const reveal = read('modules/chores/pv-surprise-reveal.ts');
+    expect(reveal).toMatch(/--s: min\(40vw, 40vh\);\n\s+--y: 42%;/);
+    expect(reveal.match(/top: var\(--y\);/g)).toHaveLength(2);
+    expect(reveal).toMatch(/top: calc\(var\(--y\) \+ var\(--s\) \/ 2 \+ 12px\);/);
+    expect(reveal).toMatch(/@media \(max-height: 500px\) \{\n\s+:host \{\n\s+--s: min\(40vw, 32vh\);\n\s+--y: 36%;/);
+  });
+
   it("the present's tint is worked out where the person's color is set, so it shows in Rewards too", () => {
     const present = read('modules/chores/pv-surprise-present.ts');
     expect(block(present, '    :host')).not.toMatch(/--tint/);
