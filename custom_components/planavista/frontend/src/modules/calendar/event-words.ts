@@ -176,6 +176,20 @@ export function lockedEventNote(ownerNames: readonly string[]): string {
   return ownerNames.length === 1 ? `Only ${ownerNames[0]} or a parent can change this event.` : 'Only a parent can change this event.';
 }
 
+/**
+ * An event's times as `day` shows them: "9:00 AM – 10:00 AM"; on a day after it
+ * began, "Until 1:00 AM", or "All day" when it covers the whole day (round 2:
+ * an overnight shift read as a second shift on its second day). Without a day, its times.
+ */
+export function timeOnDay(start: string, end: string, day: Date | undefined, format: '12h' | '24h'): string {
+  const times = `${formatTime(start, format)} – ${formatTime(end, format)}`;
+  if (!day) return times;
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime();
+  if (parseEventDate(start).getTime() >= dayStart) return times;
+  return parseEventDate(end).getTime() >= dayEnd ? 'All day' : `Until ${formatTime(end, format)}`;
+}
+
 /** The PIN sheet's question, and the line that says why it is asking. */
 export function changeReason(summary: string, mode: 'change' | 'add' | 'delete' = 'change'): { heading: string; reason: string } {
   const name = summary.trim() || 'this event';

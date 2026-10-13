@@ -7,6 +7,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../../../styles/shared';
 import { formatTime, parseEventDate } from '../../../utils/date-utils';
+import { timeOnDay } from '../event-words';
 import {
   isAllDayEvent,
   isEventPast,
@@ -1083,7 +1084,8 @@ export class PVViewDay extends LitElement {
               @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, event)}
             >
               <div class="event-title">${event.summary}</div>
-              <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
+              <div class="event-time">${parseEventDate(event.start) < new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), this.currentDate.getDate())
+                ? timeOnDay(event.start, event.end, this.currentDate, this.timeFormat) : formatTime(event.start, this.timeFormat)}</div>
               ${isShared ? this._faces(sharedInfo!) : nothing}
             </div>
           `;
