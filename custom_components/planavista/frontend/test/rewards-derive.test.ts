@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  elsewhereText,
+  redeemers,
   balances,
   eligible,
   recentLine,
@@ -100,5 +102,24 @@ describe('the reward sheet', () => {
     expect(rewardProblem(rewardDraft())).toBe('Add a name.');
     expect(rewardProblem({ ...rewardDraft(), name: 'Pizza', cost: 0 })).toBe('A reward costs from 1 to 10,000 stars.');
     expect(rewardFrom({ ...rewardDraft(), name: ' Pizza night ', icon: '🍕' })).toEqual({ name: 'Pizza night', icon: '🍕', cost: 20, needs_ok: true, who: [] });
+  });
+});
+
+// Round 1 of the adversarial review: on Casey's own phone Redeem listed Dana, then did nothing.
+describe('who can redeem here', () => {
+  const casey = { id: 'casey', name: 'Casey' } as never;
+  const dana = { id: 'dana', name: 'Dana' } as never;
+  const card = (people: Array<{ member: never; afford: boolean; asked: boolean }>) => ({ people }) as never;
+
+  it('offers only the people this screen may act for, and names the rest', () => {
+    const here = (id: string) => id === 'casey';
+    expect(redeemers(card([{ member: casey, afford: true, asked: false }, { member: dana, afford: true, asked: false }]), here))
+      .toEqual({ ready: [casey], elsewhere: [dana] });
+    expect(redeemers(card([{ member: casey, afford: false, asked: false }, { member: dana, afford: true, asked: false }]), here))
+      .toEqual({ ready: [], elsewhere: [dana] });
+  });
+
+  it('says where the others can get it', () => {
+    expect(elsewhereText([dana], 'Ice cream trip')).toBe('Dana can get Ice cream trip on a shared screen or their own login.');
   });
 });

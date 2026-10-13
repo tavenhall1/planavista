@@ -27,7 +27,7 @@ import type { MyDayStyle } from './pv-chores-my-day';
 import type { DayView, WeekView } from './chores-types';
 import { weekHighlights, weekRows, weekShares } from './week-derive';
 import { addDays } from './options-derive';
-import { RewardDraft, balances, recentLine, rewardCards, rewardFrom, settleAsks } from './rewards-derive';
+import { RewardDraft, balances, elsewhereText, recentLine, redeemers, rewardCards, rewardFrom, settleAsks } from './rewards-derive';
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
@@ -510,7 +510,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (!board) return;
     const card = rewardCards(board, inOrder(this.household?.members ?? []), this._waitingAsks(board)).find(c => c.reward.id === rewardId);
     if (!card) return;
-    const ready = card.people.filter(p => p.afford && !p.asked).map(p => p.member);
+    const { ready, elsewhere } = redeemers(card, id => memberAccess(this.household, this.session, id) !== 'no');
+    if (ready.length === 0) {
+      // Never silent (round 1): say who can, and where.
+      if (elsewhere.length) this.showToast({ id: `redeem-${Date.now()}`, text: elsewhereText(elsewhere, card.reward.name) });
+      return;
+    }
     const go = async (member: Member) => {
       const api = this.service?.api;
       if (!api || !(await this.asMember(member.id, `Who's getting ${card.reward.name}?`))) return;

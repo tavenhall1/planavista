@@ -70,6 +70,22 @@ export function settleAsks<T extends { member: string; reward: string }>(asks: r
   return left.length === asks.length ? asks : left;
 }
 
+/**
+ * Who Redeem offers on this screen (round 1): people who can afford it, haven't
+ * asked, and this screen may act for; `elsewhere` are the others who could.
+ */
+export function redeemers(card: Pick<RewardCard, 'people'>, mayAct: (memberId: string) => boolean): { ready: Member[]; elsewhere: Member[] } {
+  const able = card.people.filter(p => p.afford && !p.asked).map(p => p.member);
+  return { ready: able.filter(m => mayAct(m.id)), elsewhere: able.filter(m => !mayAct(m.id)) };
+}
+
+/** "Dana can get Ice cream trip on a shared screen or their own login." */
+export function elsewhereText(people: Member[], rewardName: string): string {
+  const names = people.map(m => m.name);
+  const who = names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+  return `${who} can get ${rewardName} on a shared screen or their own login.`;
+}
+
 /** The card's button: Redeem while anyone can; otherwise why not. */
 export function redeemLabel(card: Pick<RewardCard, 'canRedeem' | 'asked'>): string {
   if (card.canRedeem) return 'Redeem';
