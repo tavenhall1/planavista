@@ -220,6 +220,42 @@ export class PvGlanceHeader extends LitElement {
       padding-left: 12px;
     }
 
+    .chip {
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .chip span.pill {
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* A chip too long for its line ends in an ellipsis instead of off the card (round 1). */
+    .chip span.pill .text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* A landscape header too narrow for chips beside the weather puts them on their own line (round 1). */
+    .below {
+      display: none;
+    }
+
+    :host([shape='landscape']) .below .chips {
+      padding: 0 20px 10px;
+    }
+
+    @container (max-width: 760px) {
+      :host([shape='landscape']) .inline {
+        display: none;
+      }
+
+      :host([shape='landscape']) .below {
+        display: block;
+      }
+    }
+
     .chip:focus-visible {
       outline: none;
     }
@@ -310,10 +346,11 @@ export class PvGlanceHeader extends LitElement {
     }
     return html`
       <div class="row">
-        <div class="left">${this._weather(32, 'condition')}${this._chips(primary)}</div>
+        <div class="left">${this._weather(32, 'condition')}<div class="inline">${this._chips(primary)}</div></div>
         <div class="date">${date}</div>
         ${clock}
       </div>
+      <div class="below">${this._chips(primary)}</div>
     `;
   }
 
@@ -327,7 +364,7 @@ export class PvGlanceHeader extends LitElement {
               ${chip.progress !== undefined ? html`
                 <pv-ring size="18" .progress=${chip.progress} color="var(--pv-accent, #5B5BD6)" ?closed=${chip.progress >= 1}></pv-ring>
               ` : nothing}
-              ${chip.text}
+              <span class="text">${chip.text}</span>
             </span>
           </button>
         `)}

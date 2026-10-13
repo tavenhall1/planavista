@@ -69,3 +69,20 @@ describe('the keypad fits a short screen', () => {
     expect(sheet).toMatch(/padding: 20px 20px calc\(20px \+ var\(--safe-area-inset-bottom, env\(safe-area-inset-bottom, 0px\)\)\);/);
   });
 });
+
+// Round 1: a wide, short card (an iPhone held sideways) takes the landscape header, whose chips sat
+// beside the weather and ran into the date; and a long "Next:" chip was cut mid-word at the edge.
+describe("the header's chips never run into the date or off the card", () => {
+  const header = read('shell/pv-glance-header.ts');
+
+  it('a narrow landscape header moves its chips to their own line', () => {
+    expect(header).toMatch(/<div class="left">\$\{this\._weather\(32, 'condition'\)\}<div class="inline">\$\{this\._chips\(primary\)\}<\/div><\/div>/);
+    expect(header).toMatch(/<div class="below">\$\{this\._chips\(primary\)\}<\/div>/);
+    expect(header).toMatch(/@container \(max-width: 760px\) \{\s*:host\(\[shape='landscape'\]\) \.inline \{\s*display: none;\s*\}\s*:host\(\[shape='landscape'\]\) \.below \{\s*display: block;/);
+  });
+
+  it('a chip too long for its line ends in an ellipsis', () => {
+    expect(header).toMatch(/<span class="text">\$\{chip\.text\}<\/span>/);
+    expect(header).toMatch(/\.chip span\.pill \.text \{[^}]*text-overflow: ellipsis;/);
+  });
+});
