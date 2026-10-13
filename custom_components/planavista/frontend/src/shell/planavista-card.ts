@@ -894,9 +894,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     }
 
     // First-run setup: a card that starts setup, until setup is finished.
+    // It has no header, so the card makes room for the status bar unless the strip does (round 2).
     if (data.onboarding_complete === false && !this._onboardingDone) {
       return html`
-        <ha-card>
+        <ha-card class=${this._underStatusBar() === 'strip' ? '' : 'under'}>
+          ${this._renderParentStrip()}
           ${this._wizardOpen ? html`
             <pv-setup
               .hass=${this.hass}

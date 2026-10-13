@@ -39,6 +39,13 @@ describe('whatever comes first in the card makes room for the status bar, once',
   it('Settings and setup over the card make room too', () => {
     expect(block(card, '      .pvc-settings-overlay')).toMatch(/padding-top: var\(--pv-under-status-bar, 0px\);/);
   });
+
+  // Round 2: first-run setup (and Run setup again) on a kiosk screen drew Back and the
+  // progress dots under the status bar, and parent mode ran with no strip to see or Lock.
+  it('first-run setup, which has no header, makes room itself unless the strip does, and shows the strip', () => {
+    const firstRun = card.slice(card.indexOf('// First-run setup: a card that starts setup'), card.indexOf('const display = this._display();'));
+    expect(firstRun).toMatch(/<ha-card class=\$\{this\._underStatusBar\(\) === 'strip' \? '' : 'under'\}>\n\s+\$\{this\._renderParentStrip\(\)\}/);
+  });
 });
 
 // Round 1: cancelling a PIN a sheet asked for left focus on the page, since the card
