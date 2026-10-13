@@ -11,7 +11,9 @@
  */
 import type { HouseholdView } from '../core/household';
 import { HouseholdConnection, HouseholdSubscription } from '../core/household-client';
-import { KIOSK_SHEETS, KioskLook, StepOut, kioskLook, startStepOut, stepOutOver, stepOutTouched } from '../core/kiosk';
+import {
+  KIOSK_SHEETS, KioskLook, StepOut, kioskLook, startStepOut, stepOutOver, stepOutTouched, stepOutWithLimits,
+} from '../core/kiosk';
 
 /** What the controller needs from the page; the tests fake it. */
 export interface KioskEnv {
@@ -54,13 +56,17 @@ export class KioskController {
   setView(view: HouseholdView | null): void {
     this._view = view;
     if (this.look === 'off') this._stepOut = null;
+    else if (this._stepOut && view) {
+      // Limits saved meanwhile apply to the step out too, as they do to parent mode (review).
+      this._stepOut = stepOutWithLimits(this._stepOut, view.security.session_idle_seconds, view.security.parent_mode_minutes);
+    }
     this.sync();
   }
 
-  /** Step out until the quiet time passes without a touch, or the cap (D4). */
-  lift(now: number, idleMs: number, capAt: number): void {
+  /** Step out until the quiet time passes without a touch, or the cap (D4); `startedAt` is the PIN's time. */
+  lift(now: number, idleMs: number, capAt: number, startedAt?: number): void {
     if (this.look === 'off') return;
-    this._stepOut = startStepOut(now, idleMs, capAt);
+    this._stepOut = startStepOut(now, idleMs, capAt, startedAt);
     this.sync();
   }
 

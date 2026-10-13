@@ -746,7 +746,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (!session) return;
     try {
       await this._api.exitKiosk();
-      kiosk.lift(Date.now(), session.idleMs, session.capAt);
+      kiosk.lift(Date.now(), session.idleMs, session.capAt, session.startedAt);
     } catch (err) {
       this._toast = { id: `kiosk-${Date.now()}`, text: errorMessage(err) ?? "Couldn't exit kiosk mode. Try again.", tone: 'bad' };
     }

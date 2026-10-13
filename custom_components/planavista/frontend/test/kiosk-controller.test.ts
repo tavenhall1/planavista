@@ -98,7 +98,7 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     const changes: string[] = [];
     kiosk.onChange(() => changes.push(kiosk.steppedOut ? 'out' : kiosk.look));
     kiosk.setView(view(true, true));
-    kiosk.lift(0, 120_000, 600_000);
+    kiosk.lift(0, 120_000, 600_000, 0);
     expect(kiosk.steppedOut).toBe(true);
     expect(env.sheets.size).toBe(0);
     expect(env.haKioskOn).toBe(false);
@@ -112,11 +112,26 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     expect(changes).toEqual(['hidden', 'out', 'hidden']);
   });
 
+  it('takes new limits from the household while stepped out (review)', () => {
+    const env = fakeEnv();
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true));
+    kiosk.lift(0, 120_000, 600_000, 0);
+    const shorter = view(true, true);
+    shorter.security.session_idle_seconds = 30;
+    shorter.security.parent_mode_minutes = 5;
+    kiosk.setView(shorter);
+    kiosk.tick(29_000);
+    expect(kiosk.steppedOut).toBe(true);
+    kiosk.tick(30_000);
+    expect(kiosk.steppedOut).toBe(false);
+  });
+
   it('comes back at once on Back to kiosk mode, on Lock, or when the page is hidden', () => {
     const env = fakeEnv();
     const kiosk = new KioskController(env as KioskEnv);
     kiosk.setView(view(true, true));
-    kiosk.lift(0, 120_000, 600_000);
+    kiosk.lift(0, 120_000, 600_000, 0);
     kiosk.restore();
     expect(kiosk.steppedOut).toBe(false);
     expect(env.sheets.size).toBe(1);
@@ -126,7 +141,7 @@ describe('the page-wide kiosk controller (spec 3.2)', () => {
     const env = fakeEnv();
     const kiosk = new KioskController(env as KioskEnv);
     kiosk.setView(view(true, false));
-    kiosk.lift(0, 120_000, 600_000);
+    kiosk.lift(0, 120_000, 600_000, 0);
     expect(kiosk.steppedOut).toBe(false);
   });
 });

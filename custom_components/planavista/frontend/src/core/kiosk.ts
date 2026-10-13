@@ -68,10 +68,23 @@ export interface StepOut {
   idleMs: number;
   /** When parent mode would end however busy (ms since the epoch). */
   capAt: number;
+  /** When the PIN opened parent mode (ms), so a new cap counts from it. */
+  startedAt?: number;
 }
 
-export function startStepOut(now: number, idleMs: number, capAt: number): StepOut {
-  return { lastTouch: now, idleMs, capAt };
+export function startStepOut(now: number, idleMs: number, capAt: number, startedAt?: number): StepOut {
+  return { lastTouch: now, idleMs, capAt, startedAt };
+}
+
+/**
+ * New limits saved while stepped out (review): the quiet time at once, and the
+ * cap counted from the PIN, as parent mode itself does (core/session.ts withLimits).
+ */
+export function stepOutWithLimits(out: StepOut, idleSeconds: number | undefined, capMinutes: number | undefined): StepOut {
+  const idleMs = idleSeconds ? idleSeconds * 1000 : out.idleMs;
+  const capAt = capMinutes && out.startedAt !== undefined ? out.startedAt + capMinutes * 60_000 : out.capAt;
+  if (idleMs === out.idleMs && capAt === out.capAt) return out;
+  return { ...out, idleMs, capAt };
 }
 
 export function stepOutTouched(out: StepOut, now: number): StepOut {

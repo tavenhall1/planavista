@@ -10,6 +10,7 @@ import {
   stepOutEndsAt,
   stepOutOver,
   stepOutTouched,
+  stepOutWithLimits,
 } from '../src/core/kiosk';
 import { startSession } from '../src/core/session';
 
@@ -136,7 +137,7 @@ describe('the card runs under the status bar when the top bar is hidden (3.3)', 
 
   it('tells a refused exit in a toast', () => {
     expect(card).toMatch(/<pv-toast \.toast=\$\{this\._toast\}/);
-    expect(card).toMatch(/await this\._api\.exitKiosk\(\);\s*kiosk\.lift\(Date\.now\(\), session\.idleMs, session\.capAt\);/);
+    expect(card).toMatch(/await this\._api\.exitKiosk\(\);\s*kiosk\.lift\(Date\.now\(\), session\.idleMs, session\.capAt, session\.startedAt\);/);
   });
 });
 
@@ -166,5 +167,17 @@ describe("who may change kiosk mode in Settings (review: the owner's rule)", () 
     expect(pins).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, !mayChange\)/);
     expect(pins).toMatch(/Only a Home Assistant admin, or a parent who is one, can change kiosk mode\./);
     expect(read('shell/settings/pv-settings.ts')).toMatch(/\.session=\$\{this\.session\}\n\s*mode="settings"/);
+  });
+});
+
+describe('a step out follows a change to the limits (review)', () => {
+  it('takes the new quiet time and the new cap, counted from the PIN', () => {
+    const out = startStepOut(60_000, 120_000, 600_000, 0);
+    // Lock after no touches cut to 30 s and Parent mode ends after to 5 min while stepped out.
+    const shorter = stepOutWithLimits(out, 30, 5);
+    expect(stepOutEndsAt(shorter)).toBe(90_000);
+    expect(shorter.capAt).toBe(300_000);
+    // A backend that sends no limits leaves them as they were.
+    expect(stepOutWithLimits(out, undefined, undefined)).toBe(out);
   });
 });
