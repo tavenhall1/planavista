@@ -77,6 +77,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) public hass!: HomeAssistant;
   /** Home Assistant sets this when the card is a panel view's one card; shown on the host as `panel`. */
   @property({ type: Boolean, reflect: true, attribute: 'panel' }) isPanel = false;
+  /** 'grid' in a sections view, where the card fills its cell (shown on the host as `grid`; round 2). */
+  @property({ attribute: false }) layout?: string;
   /** Puts Home Assistant's view back as it was (core/panel-fit). */
   private _unfitView?: () => void;
   /** Stops hearing kiosk mode's changes (milestone 9). */
@@ -251,6 +253,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
       /* A panel view's one card meets the edges of the screen, as Home Assistant's
          own cards do there: the screen's corners are the only rounded ones. */
+      /* A sections view gives the card a cell of its own size: fill it, and nothing more (round 2). */
+      :host([grid]) {
+        height: 100%;
+        margin: 0;
+      }
+
       :host([panel]) ha-card {
         border-radius: 0;
         box-shadow: none;
@@ -372,6 +380,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         box-sizing: border-box;
         background: var(--pv-card-bg, #FFFFFF);
         animation: pv-fadeIn 200ms ease forwards;
+      }
+
+      /* Settings' own strip in parent mode makes the room, in its tint (round 2: a white band sat above it). */
+      .pvc-settings-overlay.strip {
+        padding-top: 0;
+        --pv-strip-top: var(--pv-under-status-bar, 0px);
       }
 
       @keyframes pv-fadeIn {
@@ -510,6 +524,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
+    if (changed.has('layout')) this.toggleAttribute('grid', this.layout === 'grid');
     const opened = changed as Map<string, unknown>;
     if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
       this._overlayLayer = nextSheetLayer();
@@ -561,6 +576,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     }, 60_000);
     void this.updateComplete.then(() => this._fitView());
     this._unhearKiosk = kiosk.onChange(() => this.requestUpdate());
+    kiosk.cardShown(location.pathname);
   }
 
   disconnectedCallback(): void {
@@ -571,6 +587,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._unfitView = undefined;
     this._unhearKiosk?.();
     this._unhearKiosk = undefined;
+    kiosk.cardGone();
   }
 
   updated(changedProps: PropertyValues) {
@@ -709,6 +726,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       this._sheet = { kind: 'pin', purpose: 'continue', heading: "Enter a parent's PIN to keep changing settings" };
       return;
     }
+    // Say why it closed, and that an editor's changes wait on the card (round 2: it vanished without a word).
+    const kept = [...this._drafts.keys()].some(key => key !== 'appearance');
+    this._toast = {
+      id: `settings-lapsed-${Date.now()}`,
+      text: kept ? 'Parent mode ended, so Settings closed. Your changes are kept for when you come back.' : 'Parent mode ended, so Settings closed.',
+    };
     this._onSettingsClose();
   }
 
@@ -894,9 +917,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     }
 
     // First-run setup: a card that starts setup, until setup is finished.
+    // It has no header, so the card makes room for the status bar unless the strip does (round 2).
     if (data.onboarding_complete === false && !this._onboardingDone) {
       return html`
-        <ha-card>
+        <ha-card class=${this._underStatusBar() === 'strip' ? '' : 'under'}>
+          ${this._renderParentStrip()}
           ${this._wizardOpen ? html`
             <pv-setup
               .hass=${this.hass}
@@ -933,7 +958,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${active ? this._renderModule(active, data, display) : nothing}
         ${active ? this._renderBar(active) : nothing}
         ${this._settingsOpen ? html`
-          <div class="pvc-settings-overlay" style=${`z-index:${this._overlayLayer}`}>
+          <div class="pvc-settings-overlay ${this._underStatusBar() === 'strip' ? 'strip' : ''}" style=${`z-index:${this._overlayLayer}`}>
             <pv-settings
               .hass=${this.hass}
               .data=${data}
@@ -1021,6 +1046,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         class=${this._underStatusBar() === 'header' ? 'under' : ''}
         ${ref(this._headerHeights.attach)}
         layout=${this._layout.layout}
+        ?short=${this._layout.short}
         ?compact=${this._layout.layout === 'portrait' && this._compactHeader}
         .timeFormat=${display.time_format || '12h'}
         .weather=${weather ?? null}
@@ -1037,6 +1063,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return html`
       <pv-nav-bar
         layout=${this._layout.layout}
+        ?short=${this._layout.short}
         .modules=${this._modules().shown.map(m => ({ id: m.id, label: m.label, icon: m.icon }))}
         .activeModule=${active.id}
         .views=${active.views}
@@ -1061,6 +1088,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   getCardSize(): number {
     return 10;
+  }
+
+  /** A sections view's starting size: the full width and about 630 px, never under about 370 px. */
+  getGridOptions() {
+    return { columns: 'full', rows: 10, min_rows: 6, min_columns: 6 };
   }
 }
 

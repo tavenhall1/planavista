@@ -78,6 +78,18 @@ describe('timed events with an offset that differs from the browser zone', () =>
     expect(getEventsForDateRange([lateEastern], ...day(2026, 10, 10))).toHaveLength(0);
   });
 
+  // Round 2: a 15-minute chip is drawn at least 30 px tall, more than its slot, so the
+  // event starting at its end was painted over its lower half and its faces.
+  it('lays a short event out at the height it is drawn, so the next one takes another lane', () => {
+    const brief = ev('Test 2', '2026-10-15T09:45:00-05:00', '2026-10-15T10:00:00-05:00');
+    const next = ev('Thing 7', '2026-10-15T10:00:00-05:00', '2026-10-15T11:00:00-05:00');
+    expect(detectOverlaps([brief, next]).map(p => p.totalColumns)).toEqual([1, 1]);
+    const drawn = detectOverlaps([brief, next], 30 * 60_000);
+    expect(drawn.map(p => [p.summary, p.column, p.totalColumns])).toEqual([['Test 2', 0, 2], ['Thing 7', 1, 2]]);
+    const later = ev('Lunch', '2026-10-15T11:00:00-05:00', '2026-10-15T12:00:00-05:00');
+    expect(detectOverlaps([next, later], 30 * 60_000).map(p => p.totalColumns)).toEqual([1, 1]);
+  });
+
   it('overlap by instant, not by string', () => {
     const chicago = ev('Standup', '2026-10-09T09:30:00-05:00', '2026-10-09T10:00:00-05:00');
     const placed = detectOverlaps([chicago, eastern]);

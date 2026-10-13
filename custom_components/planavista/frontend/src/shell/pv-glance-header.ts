@@ -26,6 +26,8 @@ export interface HeaderWeather {
  */
 export class PvGlanceHeader extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** A short card (under 500 px tall): no line of chips under a landscape header (round 2). */
+  @property({ type: Boolean, reflect: true }) short = false;
   /** Portrait with the content scrolled down: the header shrinks to one line (spec 12.2). */
   @property({ type: Boolean }) compact = false;
   /** The shape drawn: the layout, or the phone's one row for a compact portrait header. Styles key off it. */
@@ -251,7 +253,7 @@ export class PvGlanceHeader extends LitElement {
         display: none;
       }
 
-      :host([shape='landscape']) .below {
+      :host([shape='landscape']:not([short])) .below {
         display: block;
       }
     }

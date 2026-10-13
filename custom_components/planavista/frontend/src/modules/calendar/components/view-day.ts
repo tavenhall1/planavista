@@ -7,6 +7,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarEvent, CalendarConfig } from '../../../types';
 import { baseStyles, eventStyles, nowIndicatorStyles, animationStyles } from '../../../styles/shared';
 import { formatTime, parseEventDate } from '../../../utils/date-utils';
+import { timeOnDay } from '../event-words';
 import {
   isAllDayEvent,
   isEventPast,
@@ -21,7 +22,7 @@ import { contrastText } from '../../../core/color';
 import { stripStart } from '../../../core/people-strip';
 import { groupSameEvents, sameEventKey } from '../calendar-derive';
 import type { Layout } from '../../../core/layout';
-import { HOUR_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
+import { HOUR_PX, MIN_CHIP_PX, dayHourHeight, rescaleScroll } from '../layout-rules';
 
 /** Enough of a person to draw their face on an event. */
 interface FaceOf {
@@ -642,11 +643,16 @@ export class PVViewDay extends LitElement {
         .person-name { font-size: 0.8125rem; }
       }
 
-      /* short height: compact avatars */
+      /* short height: compact avatars, and the hours keep the room (round 2: 39 px of hours on a 384 px card) */
       @media (max-height: 500px) {
         .person-avatar, .person-initial { width: 32px; height: 32px; font-size: 0.875rem; }
         .person-header { padding: 0.375rem 0.25rem; gap: 3px; }
         .person-name { font-size: 0.75rem; }
+        .day-people .person-avatar,
+        .day-people .person-initial { width: 24px; height: 24px; margin: 2px; font-size: 0.6875rem; }
+        .day-container { position: relative; }
+        .day-empty { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none; background: color-mix(in srgb, var(--pv-card-bg, #FFFFFF) 90%, transparent); }
+        .day-empty-add { pointer-events: auto; }
       }
 
       /* tall height: larger avatars */
@@ -834,7 +840,7 @@ export class PVViewDay extends LitElement {
               const face = this._face(key, visibleCalendars);
               return html`
                 <button type="button" class="pv-person" role="tab" aria-selected=${key === chosenKey ? 'true' : 'false'}
-                  style="--member:${face.color}" @click=${() => { this._dayPick = key; }}>${face.picture}${face.name}</button>
+                  style="--member:${face.color}" @click=${() => { this._dayPick = key; }}>${face.picture}<span class="pv-person-name">${face.name}</span></button>
               `;
             })}
           </div>
@@ -1039,7 +1045,8 @@ export class PVViewDay extends LitElement {
   }
 
   private _renderColumn(personKey: string, events: CalendarEvent[], chosen: boolean) {
-    const positioned = detectOverlaps(events);
+    // Lanes by the height each chip is drawn: a brief chip is taller than its slot (round 2).
+    const positioned = detectOverlaps(events, (MIN_CHIP_PX / this._hourPx) * 3_600_000);
 
     return html`
       <div class="person-column ${chosen ? 'chosen' : ''}">
@@ -1077,7 +1084,8 @@ export class PVViewDay extends LitElement {
               @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, event)}
             >
               <div class="event-title">${event.summary}</div>
-              <div class="event-time">${formatTime(event.start, this.timeFormat)}</div>
+              <div class="event-time">${parseEventDate(event.start) < new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), this.currentDate.getDate())
+                ? timeOnDay(event.start, event.end, this.currentDate, this.timeFormat) : formatTime(event.start, this.timeFormat)}</div>
               ${isShared ? this._faces(sharedInfo!) : nothing}
             </div>
           `;

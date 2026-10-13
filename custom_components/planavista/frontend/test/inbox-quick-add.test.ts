@@ -34,12 +34,12 @@ describe('inboxGroups (spec 13.7)', () => {
   });
 
   it('words each the way the approved inbox does', () => {
-    expect(groups.chores[0]).toMatchObject({ lead: 'Dana finished', what: 'Feed the fish', detail: 'Today at 3:58 PM · ★ 1', allow: 'Looks good', decline: 'Send back' });
-    expect(groups.chores[1]).toMatchObject({ lead: 'Blair finished', tail: ' for Casey', detail: 'Yesterday at 7:10 PM · ★ 4' });
+    expect(groups.chores[0]).toMatchObject({ lead: 'Dana finished', what: 'Feed the fish', detail: 'Today at 3:58 PM · ★\u00a01', allow: 'Looks good', decline: 'Send back' });
+    expect(groups.chores[1]).toMatchObject({ lead: 'Blair finished', tail: ' for Casey', detail: 'Yesterday at 7:10 PM · ★\u00a04' }); // the star keeps its number (round 2)
     expect(groups.requests[0]).toMatchObject({ lead: 'Casey asks for more time on', what: 'Yard work', detail: 'Move the due date to October 25', allow: 'Allow', decline: 'Not this time' });
     expect(groups.requests[1]).toMatchObject({ lead: 'Casey asks to skip', tail: ' this week' });
-    expect(groups.rewards[0]).toMatchObject({ lead: 'Casey wants', detail: '★ 10 of 23', allow: 'Approve', blocked: false });
-    expect(groups.rewards[1]).toMatchObject({ detail: '★ 40, and Dana has 12: not enough stars yet', blocked: true });
+    expect(groups.rewards[0]).toMatchObject({ lead: 'Casey wants', detail: '★\u00a010 of 23', allow: 'Approve', blocked: false });
+    expect(groups.rewards[1]).toMatchObject({ detail: '★ 40, and Dana has 12: not enough stars yet', blocked: true });
   });
 
   it('says what was done once a parent answers', () => {

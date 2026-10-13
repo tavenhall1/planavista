@@ -41,8 +41,8 @@ export interface OverrideChanges {
 
 /** The chores commands (spec 10.7), with this card's PIN session added when it has one. */
 export class ChoresApi extends WsApi {
-  complete(occurrence: string, doneBy?: string): Promise<CompleteResult> {
-    return this.call('planavista/chores/complete', doneBy ? { occurrence, done_by: doneBy } : { occurrence });
+  complete(occurrence: string, doneBy?: string, at?: string): Promise<CompleteResult> {
+    return this.call('planavista/chores/complete', { occurrence, ...(doneBy ? { done_by: doneBy } : {}), ...(at ? { at } : {}) });
   }
 
   undo(occurrence: string): Promise<{ result: string }> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actingParent, creditAccess, eventAccess, eventPinChoices, mayEverReview, memberAccess, parentAccess, pinChoicesFor } from '../src/core/access';
+import { actingParent, creditAccess, creditable, eventAccess, eventPinChoices, mayEverReview, memberAccess, parentAccess, pinChoicesFor } from '../src/core/access';
 import type { AccountKind, HouseholdView, Member } from '../src/core/household';
 import type { Session } from '../src/core/session';
 
@@ -154,5 +154,14 @@ describe('creditAccess (round 1: saying someone else did it)', () => {
     expect(creditAccess(view('shared'), null, PEOPLE[2])).toBe('pin');
     expect(creditAccess(view('shared'), session('casey', false), PEOPLE[2])).toBe('yes');
     expect(creditAccess(view('shared'), null, PEOPLE[3])).toBe('yes');
+  });
+
+  // Round 2: on Casey's own login the Who did it? sheet listed everyone, and a pick did nothing.
+  it('lists only the people this screen could credit, never the one who has it', () => {
+    const names = (people: Member[]) => people.map(m => m.id);
+    expect(names(creditable(view('member', 'casey'), null, PEOPLE, 'casey'))).toEqual([]);
+    expect(names(creditable(view('shared'), null, PEOPLE, 'casey'))).toEqual(['alex', 'blair', 'dana']);
+    expect(names(creditable(view('parent', 'alex'), null, PEOPLE, 'dana'))).toEqual(['alex', 'blair', 'casey']);
+    expect(names(creditable(null, null, PEOPLE, 'dana'))).toEqual([]);
   });
 });

@@ -227,6 +227,7 @@ export const peopleStripStyles = css`
     align-items: center;
     gap: 2px;
     min-width: 56px;
+    max-width: 88px;
     min-height: 56px;
     padding: 4px 6px;
     border: none;
@@ -249,6 +250,14 @@ export const peopleStripStyles = css`
   .pv-person:focus-visible {
     outline: 2px solid var(--pv-accent-ink, #5B5BD6);
     outline-offset: -2px;
+  }
+
+  /* A long name ends in an ellipsis; the button still says it whole (round 2: a 31-letter name pushed the others off). */
+  .pv-person-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 `;
 

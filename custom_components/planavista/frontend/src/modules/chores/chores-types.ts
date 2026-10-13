@@ -191,6 +191,8 @@ export interface WeekDay {
   missed: number;
   /** What was missed, on a past day. */
   missed_items?: PastItem[];
+  /** How many were excused (round 2; absent from older backends). */
+  excused?: number;
 }
 
 export interface WeeklyEntry {

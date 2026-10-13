@@ -387,6 +387,16 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-10-13: Changed: the second adversarial review
+
+- A toast takes the next layer when it appears, as a sheet does: above the sheet it is about, under the keypad, Settings, or setup that opens after it. Above every sheet, a check-off's Undo stayed live over the next keypad and over Settings.
+- A sheet on its way out takes no taps, so the next tap reaches what is under it.
+- A short card (under 500 px tall) keeps its header and bar to one line each: the bar's buttons take their short labels and a landscape header leaves out the chips' own line. On a short screen the Day view's people strip is smaller and its empty-day line lies over the hours; a board whose rows would be too short keeps one row that scrolls sideways; a sideways phone's keypad sits beside the heading and dots.
+- In a sections view the card fills its cell; a board's short last row keeps its columns the width of the others.
+- A picture tile says Sent back and why, in red, as a row does; a narrow tile's ring starts below its corner controls.
+- Who did it? lists only the people a screen can credit. A long name in a people strip ends in an ellipsis.
+- A 15-minute event's chip takes its own lane beside the event that starts when it ends; an overnight event reads "Until 1:00 AM" on its second day.
+
 ### 2026-10-13: Changed: the first adversarial review
 
 - A sheet or toast ignores the tap of a finger that went down before it appeared, and taps in its first 300 ms (`core/press-guard.ts`): Safari sends a lifting finger's click to whatever is under it, so a hold that opened the PIN sheet picked the face under the finger, and a double tap closed the options it opened.

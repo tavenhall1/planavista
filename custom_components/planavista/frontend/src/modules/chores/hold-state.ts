@@ -27,3 +27,23 @@ export function tileRingFill(state: RowModel['state'], held: boolean, fill: numb
   const progress = held ? 1 : fill;
   return state === 'done' ? 1 - progress : progress;
 }
+
+export interface TileLine {
+  /** 'waiting' (indigo), 'bad' (red, as a row's badge), or a plain hint. */
+  kind: 'waiting' | 'bad' | 'hint';
+  text: string;
+}
+
+/**
+ * The line under a picture tile's name (spec 11.4: Waiting for approval and
+ * Sent back are spelled out even on picture tiles). A sent-back chore says so
+ * and why, in its badge's words, until a hold starts (round 2: the tile looked
+ * untouched, so the parent's note never reached the child).
+ */
+export function tileLine(row: RowModel, fill: number, large: boolean, stars: number): TileLine {
+  const done = row.state === 'done';
+  if (row.state === 'pending') return { kind: 'waiting', text: '⏳ Waiting for approval' };
+  if (fill > 0 && !done) return { kind: 'hint', text: `Keep holding… ${stars > 0 ? `⭐ +${stars}` : ''}`.trim() };
+  if (row.state === 'sent_back') return { kind: 'bad', text: `↩ ${row.badge?.words ?? 'Sent back'}` };
+  return { kind: 'hint', text: large && !done ? 'Hold me' : '' };
+}

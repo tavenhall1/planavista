@@ -51,6 +51,16 @@ export function creditAccess(view: HouseholdView | null, session: Session | null
   return access === 'no_pin' ? 'no' : access;
 }
 
+/**
+ * The people this screen could say did a chore instead of `exceptId`, in the
+ * order given: everyone `creditAccess` doesn't rule out (round 2: on a child's
+ * own login the list held everyone, and every pick did nothing).
+ */
+export function creditable(view: HouseholdView | null, session: Session | null, members: Member[], exceptId: string): Member[] {
+  if (!view) return [];
+  return members.filter(m => m.id !== exceptId && creditAccess(view, session, m) !== 'no');
+}
+
 /** Who may unlock a member-level change to `memberId`'s items: them (when they have a PIN), then parents with PINs. */
 export function pinChoicesFor(view: HouseholdView | null, memberId: string): Member[] {
   if (!view) return [];

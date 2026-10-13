@@ -394,7 +394,7 @@ export class PvChoresMyDay extends LitElement {
               <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${this.colorOf(col.member)}>
                 <pv-member-avatar .member=${{ ...col.member, color: this.colorOf(col.member) }} .hass=${this.hass} size="28"></pv-member-avatar>
               </pv-ring>
-              ${col.member.name}
+              <span class="pv-person-name">${col.member.name}</span>
             </button>
           `)}
         </div>

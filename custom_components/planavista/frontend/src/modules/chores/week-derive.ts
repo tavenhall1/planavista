@@ -53,10 +53,13 @@ export function weekCell(day: WeekDay): WeekCell {
   const due = day.due ?? 0;
   const finished = (day.done ?? 0) + (day.pending ?? 0);
   if (day.kind === 'future') {
-    return { ...base, label: due ? `${due} due` : '', tone: 'muted', progress: 0, closed: false, empty: !due };
+    // Round 2: a day to come with nothing on it said nothing at all.
+    const label = due ? `${due} due` : day.due === 0 ? 'Nothing due' : '';
+    return { ...base, label, tone: 'muted', progress: 0, closed: false, empty: !due };
   }
   if (day.due === null) return { ...base, label: '', tone: 'muted', progress: 0, closed: false, empty: true };
-  if (due === 0) return { ...base, label: 'Nothing due', tone: 'muted', progress: 0, closed: false, empty: true };
+  // Round 2: a day whose only chore was excused read "Nothing due".
+  if (due === 0) return { ...base, label: (day.excused ?? 0) > 0 ? 'Excused' : 'Nothing due', tone: 'muted', progress: 0, closed: false, empty: true };
   if (day.kind === 'past' && day.missed > 0) {
     return { ...base, label: `${day.missed} missed`, tone: 'bad', progress: Math.min(1, finished / due), closed: false, empty: false };
   }

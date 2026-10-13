@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CalendarEvent } from '../src/types';
 import {
-  calendarCan, changeReason, dayOfStatus, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, lockedEventNote, longDate,
+  calendarCan, changeReason, dayOfStatus, timeOnDay, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, lockedEventNote, longDate,
   namesList, saveFailedText,
 } from '../src/modules/calendar/event-words';
 
@@ -169,5 +169,13 @@ describe('who may change an event, in words (milestone 8, D1)', () => {
     // Round 1: a new event's PIN sheet asked who was changing something that didn't exist yet.
     expect(changeReason('Piano lesson', 'add')).toEqual({ heading: "Who's adding Piano lesson?", reason: 'To add Piano lesson' });
     expect(changeReason('', 'add')).toEqual({ heading: "Who's adding this event?", reason: 'To add this event' });
+    // Round 2: an overnight event read "11:00 PM – 1:00 AM" again on the day after, as a second night shift.
+    const shift = ['2026-10-13T23:00:00-05:00', '2026-10-14T01:00:00-05:00'] as const;
+    expect(timeOnDay(shift[0], shift[1], new Date(2026, 9, 13), '12h')).toBe('11:00 PM – 1:00 AM');
+    expect(timeOnDay(shift[0], shift[1], new Date(2026, 9, 14), '12h')).toBe('Until 1:00 AM');
+    expect(timeOnDay('2026-10-13T20:00:00-05:00', '2026-10-15T08:00:00-05:00', new Date(2026, 9, 14), '12h')).toBe('All day');
+    expect(timeOnDay('2026-10-13T09:00:00-05:00', '2026-10-13T10:00:00-05:00', undefined, '12h')).toBe('9:00 AM – 10:00 AM');
+    // Round 2: Delete asked "To change Weekend trip".
+    expect(changeReason('Weekend trip', 'delete')).toEqual({ heading: "Who's deleting Weekend trip?", reason: 'To delete Weekend trip' });
   });
 });

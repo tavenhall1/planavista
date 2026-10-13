@@ -52,7 +52,7 @@ export function inboxGroups(requests: ChoreRequest[], members: Member[], today: 
     const name = member?.name ?? r.member;
     if (r.kind === 'completion') {
       const doer = r.done_by && r.done_by !== r.member ? byId.get(r.done_by)?.name ?? r.done_by : null;
-      const stars = r.stars ? ` · ★ ${r.stars}` : '';
+      const stars = r.stars ? ` · ★\u00a0${r.stars}` : ''; // the star keeps its number (round 2)
       groups.chores.push({
         id: r.id, kind: r.kind, member, lead: doer ? `${doer} finished` : `${name} finished`, what: r.name,
         tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format)}${stars}`,
@@ -72,7 +72,7 @@ export function inboxGroups(requests: ChoreRequest[], members: Member[], today: 
       const balance = r.balance ?? 0;
       groups.rewards.push({
         id: r.id, kind: r.kind, member, lead: `${name} wants`, what: r.name, tail: '',
-        detail: balance >= cost ? `★ ${cost} of ${balance}` : `★ ${cost}, and ${name} has ${balance}: not enough stars yet`,
+        detail: balance >= cost ? `★\u00a0${cost} of ${balance}` : `★\u00a0${cost}, and ${name} has ${balance}: not enough stars yet`,
         allow: 'Approve', decline: 'Decline', blocked: balance < cost,
       });
     }

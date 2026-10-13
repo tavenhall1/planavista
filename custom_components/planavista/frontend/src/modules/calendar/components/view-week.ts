@@ -297,6 +297,7 @@ export class PVViewWeek extends LitElement {
               <pv-event-chip
                 .hass=${this.hass}
                 .event=${event}
+                .day=${day}
                 .calendars=${this.calendars}
                 .timeFormat=${this.timeFormat}
                 .showStripes=${this.showStripes}

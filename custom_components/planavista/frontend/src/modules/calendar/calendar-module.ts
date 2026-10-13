@@ -447,6 +447,11 @@ export class PvCalendarModule extends LitElement {
         gap: 6px;
       }
 
+      /* A short screen: the toolbar pads less, so the view keeps its room (round 2). */
+      @media (max-height: 500px) {
+        .pvc-toolbar { padding: 6px 12px; }
+      }
+
       :host([layout='phone']) .pvc-filter-wrap {
         display: none;
       }

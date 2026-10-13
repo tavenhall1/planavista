@@ -7,7 +7,7 @@ import { contrastText } from '../../core/color';
 import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
-import { rowChange, tileRingFill } from './hold-state';
+import { rowChange, tileLine, tileRingFill } from './hold-state';
 import { chorePicture } from './picture-words';
 
 /** The picture for a chore: its emoji, or a star when it has none (spec 7.3: the icon is also the picture tile). */
@@ -75,6 +75,7 @@ export class PvChoreTile extends LitElement {
       border: 2px solid transparent;
       background: var(--tint);
       color: var(--pv-text, #1A1B1E);
+      container-type: inline-size;
     }
 
     .hold {
@@ -98,6 +99,13 @@ export class PvChoreTile extends LitElement {
     :host([large]) .hold {
       min-height: 300px;
       gap: 10px;
+    }
+
+    /* A narrow tile (a phone's two across): the ring starts below the corner controls, which sat on its arc (round 2). */
+    @container (max-width: 160px) {
+      .hold {
+        padding-top: 36px;
+      }
     }
 
     .hold:focus-visible {
@@ -156,6 +164,15 @@ export class PvChoreTile extends LitElement {
       text-align: center;
       text-wrap: balance;
       color: var(--pv-accent-tint-ink, #3B3BB0);
+    }
+
+    .sent-back {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+      text-wrap: balance;
+      color: var(--pv-danger-ink, #A12828);
     }
 
     .more {
@@ -312,11 +329,13 @@ export class PvChoreTile extends LitElement {
     const done = state === 'done';
     const pending = state === 'pending';
     const fill = tileRingFill(state, this._held, this._fill);
+    const line = tileLine(row, fill, this.large, this.stars);
     const ring = this.large ? 132 : 84;
     return html`
       <div class="tile ${pending ? 'pending' : ''} ${done ? 'done' : ''}" style="--member:${this.color}">
         <div class="hold" role="button" tabindex=${this.locked ? -1 : 0} aria-disabled=${this.locked ? 'true' : 'false'}
-          aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for approval` : `Hold to complete ${row.name}`}
+          aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for approval`
+            : state === 'sent_back' ? `${row.name}, ${row.badge?.words ?? 'sent back'}. Hold to complete` : `Hold to complete ${row.name}`}
           @pointerdown=${this._down} @pointermove=${(e: PointerEvent) => this._gesture.move(e.clientX, e.clientY)}
           @pointerup=${this._up} @pointercancel=${() => { this._hintPress = null; this._gesture.cancel(); }} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>
@@ -329,9 +348,7 @@ export class PvChoreTile extends LitElement {
           <span class="picture" aria-hidden="true">${chorePicture(row.icon, row.name)}</span>
         </pv-ring>
         <span class="name">${row.name}</span>
-        ${pending
-          ? html`<span class="waiting">⏳ Waiting for approval</span>`
-          : html`<span class="hint">${fill > 0 && !done ? html`Keep holding… ${this.stars > 0 ? `⭐ +${this.stars}` : ''}` : this.large && !done ? 'Hold me' : ''}</span>`}
+        <span class=${line.kind === 'waiting' ? 'waiting' : line.kind === 'bad' ? 'sent-back' : 'hint'}>${line.text}</span>
         </div>
         <button class="more" type="button" aria-label=${`Options for ${row.name}`}
           @click=${() => this._fire('pv-row-options', { row })}>

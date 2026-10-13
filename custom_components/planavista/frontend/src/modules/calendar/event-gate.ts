@@ -16,7 +16,7 @@ export interface EventGate {
   /** Whether this screen may ever change an event on these calendars (Edit and Delete show). */
   allowed(calendarIds: readonly string[]): boolean;
   /** Ask for a PIN when one is needed; true when the change may go ahead. */
-  ask(calendarIds: readonly string[], summary: string, mode?: 'change' | 'add'): Promise<boolean>;
+  ask(calendarIds: readonly string[], summary: string, mode?: 'change' | 'add' | 'delete'): Promise<boolean>;
   /** The note under an event this screen may not change. */
   note(calendarIds: readonly string[]): string;
 }

@@ -19,6 +19,7 @@ export class SheetMotion {
   }
 
   open(panel: HTMLElement, backdrop: HTMLElement): void {
+    this._host.style.pointerEvents = '';
     backdrop.animate({ opacity: [0, 1] }, { duration: 200, easing: 'ease-out' });
     if (motionOf(this._host) === 'reduced') {
       panel.animate({ opacity: [0, 1] }, { duration: QUICK_MS, easing: 'ease-out' });
@@ -33,6 +34,8 @@ export class SheetMotion {
 
   /** Animate out; resolves once the sheet has left, so it closes only then. */
   async close(panel: HTMLElement, backdrop: HTMLElement): Promise<void> {
+    // On its way out it takes no taps: the next one goes to what is under it (round 2).
+    this._host.style.pointerEvents = 'none';
     const reduced = motionOf(this._host) === 'reduced';
     const now = getComputedStyle(panel).transform;
     const from = now && now !== 'none' ? now : 'translateY(0)';

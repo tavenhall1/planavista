@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   activityLine, byCategory, emptyChoices, fileLine, importedText, importNote, ImportPreview, importSummary, lookLines, matchOf, missingAges, onBoardOf, peopleHint, personLine, sections, tiles,
+  MAX_FILE_LENGTH, fileTooBig,
 } from '../src/modules/chores/settings/import-derive';
 import { MEMBERS } from './chores-fixtures';
 
@@ -103,5 +104,18 @@ describe('what the Import bar says stays (spec 14.6, 15.3)', () => {
     expect(importNote({ ...restore, fills_in: true })).toBe(
       "Nothing is deleted. The file fills in what couldn't be read, and stars and history that could still be read stay.",
     );
+  });
+});
+
+
+// Round 2: a 2.1 MB paste showed "Can't read this file length of value must be at most
+// 2000000 at 'text'. Got '{"schema":...", the backend's words with the file's own text.
+describe('a file too big to read', () => {
+  it('is said plainly before anything is sent', () => {
+    expect(fileTooBig('x'.repeat(MAX_FILE_LENGTH))).toBeNull();
+    expect(fileTooBig('x'.repeat(MAX_FILE_LENGTH + 1))).toBe("This file is too big to read. PlanaVista files are 2 MB at most.");
+    const page = readFileSync(new URL('../src/modules/chores/settings/pv-import-export-page.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    const read = page.slice(page.indexOf('private async _read('));
+    expect(read.slice(0, read.indexOf('importPreview('))).toMatch(/const tooBig = fileTooBig\(text\);/);
   });
 });

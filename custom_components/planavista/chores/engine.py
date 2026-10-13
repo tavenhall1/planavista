@@ -886,9 +886,13 @@ class ChoresEngine:
                             | {
                                 "missed": len(summary.get("missed", [])),
                                 "missed_items": [self._past_item(k, "missed") for k in summary.get("missed", [])],
+                                "excused": len(summary.get("excused") or []),
                             }
                             if summary
-                            else {"due": None, "done": None, "pending": None, "closed": None, "missed": 0, "missed_items": []}
+                            else {
+                                "due": None, "done": None, "pending": None, "closed": None,
+                                "missed": 0, "missed_items": [], "excused": 0,
+                            }
                         ),
                     })
                     continue
@@ -903,6 +907,7 @@ class ChoresEngine:
                     "pending": tally["pending"],
                     "closed": bool(tally["due"]) and tally["done"] + tally["pending"] == tally["due"],
                     "missed": 0,
+                    "excused": sum(1 for i in live[d].get(member_id, []) if i.status == "excused"),
                 })
             weekly: dict[str, dict[str, Any]] = {}
             for item in week_items.get(member_id, {}).values():
@@ -1735,8 +1740,13 @@ class ChoresEngine:
         }
         self.rewards["redemptions"].append(redemption)
         out = Outcome("requested", {"request": redemption["id"]}, changed={"rewards"})
+        doer = self.member(by)
         if not found.get("needs_ok", True):
             self._give(redemption, now, AUTO, source, out)
+            out.result = "given"
+        elif doer is not None and doer.get("parent"):
+            # A parent's own ask is their answer too (round 2: they approved it in the inbox afterwards).
+            self._give(redemption, now, by, source, out)
             out.result = "given"
         return out
 

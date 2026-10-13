@@ -19,6 +19,15 @@ export const SHORT_MIN_WIDTH = 480;
 const SHORT_MIN_RATIO = 1.2;
 
 /**
+ * A card this short keeps its header and bar to one line each: the bar takes
+ * its buttons' short labels and the header leaves out the chips' own line, so
+ * the module keeps its room (round 2: a 638 by 384 card left the Day view no hours).
+ */
+export function isShort(box: Box): boolean {
+  return box.height < SHORT_MAX_HEIGHT;
+}
+
+/**
  * Whether the bar's groups (the module switcher, the views, the buttons, the
  * gear), at their natural widths and `gap` apart, fit in `available` pixels on
  * one row (spec 12.2); when they don't, the views get a row of their own.

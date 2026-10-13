@@ -41,6 +41,8 @@ export interface OptionsContext {
   today: string;
   member: Access;
   parent: ParentAccess;
+  /** False when this screen can't credit anyone else (`creditable` is empty): no Done by someone else. */
+  credit?: boolean;
 }
 
 export interface OptionsModel {
@@ -181,11 +183,13 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       });
       member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs approval', hint: 'Sick, away, rained out…' });
     }
-    member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
+    if (ctx.credit !== false) member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
   }
   if ((status === 'done' || status === 'pending') && memberMay) {
     member.push({ id: 'undo', label: 'Uncheck it', tag: memberTag, hint: 'It goes back on the list.' });
-    if (status === 'done') member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'Change who gets the credit.' });
+    if (status === 'done' && ctx.credit !== false) {
+      member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'Change who gets the credit.' });
+    }
   }
   member.push({ id: 'history', label: 'History', hint: 'The streak, recent check-offs, and when it usually gets done.' });
 

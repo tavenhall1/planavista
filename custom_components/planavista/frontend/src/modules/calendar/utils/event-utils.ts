@@ -236,7 +236,12 @@ export function getEventPosition(
  * Events that don't overlap each other get full width (totalColumns=1).
  * Returns events with column and totalColumns properties.
  */
-export function detectOverlaps(events: CalendarEvent[]): Array<CalendarEvent & { column: number; totalColumns: number }> {
+/**
+ * `minMs` is the shortest an event is drawn, as time: a chip has a minimum
+ * height, so a 15-minute event takes more than its slot, and the event that
+ * starts when it ends must take another lane (round 2).
+ */
+export function detectOverlaps(events: CalendarEvent[], minMs = 0): Array<CalendarEvent & { column: number; totalColumns: number }> {
   const timed = events.filter(e => !isAllDayEvent(e)).sort(
     (a, b) => parseEventDate(a.start).getTime() - parseEventDate(b.start).getTime()
   );
@@ -245,13 +250,10 @@ export function detectOverlaps(events: CalendarEvent[]): Array<CalendarEvent & {
 
   // Build overlap clusters: groups of events that transitively overlap
   type EventInfo = { event: CalendarEvent; start: number; end: number; column: number; cluster: number };
-  const infos: EventInfo[] = timed.map(e => ({
-    event: e,
-    start: parseEventDate(e.start).getTime(),
-    end: parseEventDate(e.end).getTime(),
-    column: 0,
-    cluster: 0,
-  }));
+  const infos: EventInfo[] = timed.map(e => {
+    const start = parseEventDate(e.start).getTime();
+    return { event: e, start, end: Math.max(parseEventDate(e.end).getTime(), start + minMs), column: 0, cluster: 0 };
+  });
 
   // Assign columns within clusters using a greedy algorithm
   let clusterIdx = 0;

@@ -341,6 +341,23 @@ def test_a_reward_without_an_ok_is_given_at_once() -> None:
     assert err.value.code == "not_enough_stars"
 
 
+def test_a_parent_who_redeems_for_a_child_gives_it_at_once() -> None:
+    """Round 2: Alex redeemed for Dana from their own phone, was told "A parent will answer.",
+    and then had to approve their own ask in the inbox."""
+    engine = sample_engine()
+    engine.award_stars(SCENE, member="dana", stars=5, reason="Great week", by="alex")
+    engine.save_reward({"name": "Pick the weekend game", "icon": "🎲", "cost": 4, "who": ["casey", "dana"]})
+    out = engine.redeem(SCENE, member="dana", reward="pick_the_weekend_game", by="alex", source="phone")
+    assert out.result == "given" and engine.balance("dana") == 1
+    assert engine.open_requests() == []
+    [given] = [r for r in engine.rewards["redemptions"] if r["member"] == "dana"]
+    assert given["review"]["by"] == "alex"
+    # A child's own ask, or an account that is nobody in the household, still waits for a parent.
+    engine.award_stars(SCENE, member="casey", stars=8, reason="Great week", by="alex")
+    assert engine.redeem(SCENE, member="casey", reward="pick_the_weekend_game", by="casey", source="tablet").result == "requested"
+    assert engine.redeem(SCENE, member="casey", reward="pick_the_weekend_game", by="admin", source="phone").result == "requested"
+
+
 def test_stars_by_hand_need_a_reason_and_never_go_below_zero() -> None:
     engine = sample_engine()
     assert engine.award_stars(SCENE, member="casey", stars=5, reason="Helped a neighbor", by="blair").data == {"balance": 5}

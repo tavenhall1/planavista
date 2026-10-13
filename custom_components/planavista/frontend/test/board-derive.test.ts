@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   bandAt,
@@ -209,6 +210,23 @@ describe('boardRows (spec 12.3)', () => {
     expect(boardRows(6, 776)).toEqual([3, 3]);
     expect(boardRows(2, 200)).toEqual([1, 1]);
     expect(boardRows(0, 800)).toEqual([]);
+  });
+
+  // Round 2: an iPhone held sideways with the sidebar (a 236 px board) drew two rows of
+  // clipped heads with no chores showing.
+  it('keeps one row, scrolling sideways, when rows would be too short to show a chore', () => {
+    expect(boardRows(4, 614, 12, 240, 236)).toEqual([4]);
+    expect(boardRows(4, 614, 12, 240, 800)).toEqual([2, 2]);
+    expect(boardRows(8, 776, 12, 240, 1000)).toEqual([3, 3, 2]);
+  });
+});
+
+describe('the board draws every column the same width (round 2)', () => {
+  it("fills a short last row's empty places, and scrolls a row too wide to fit", () => {
+    const source = readFileSync(new URL('../src/modules/chores/pv-chores-board.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    expect(source).toMatch(/Array\.from\(\{ length: perRow - count \}, \(\) => html`<div class="filler" aria-hidden="true"><\/div>`\)/);
+    expect(source).toMatch(/const rows = boardRows\(columns\.length, width \|\| 1200, GAP, MIN_COLUMN, this\._height \|\| Infinity\);/);
+    expect(source).toMatch(/\.row\.scroll \{\n\s+overflow-x: auto;/);
   });
 });
 

@@ -39,6 +39,21 @@ describe('whatever comes first in the card makes room for the status bar, once',
   it('Settings and setup over the card make room too', () => {
     expect(block(card, '      .pvc-settings-overlay')).toMatch(/padding-top: var\(--pv-under-status-bar, 0px\);/);
   });
+
+  // Round 2: in parent mode Settings drew a white band above its strip, where the card runs the strip's tint up.
+  it("in parent mode Settings' strip makes the room, in its own tint", () => {
+    expect(card).toMatch(/<div class="pvc-settings-overlay \$\{this\._underStatusBar\(\) === 'strip' \? 'strip' : ''\}"/);
+    const strip = block(card, '      .pvc-settings-overlay.strip');
+    expect(strip).toMatch(/padding-top: 0;/);
+    expect(strip).toMatch(/--pv-strip-top: var\(--pv-under-status-bar, 0px\);/);
+  });
+
+  // Round 2: first-run setup (and Run setup again) on a kiosk screen drew Back and the
+  // progress dots under the status bar, and parent mode ran with no strip to see or Lock.
+  it('first-run setup, which has no header, makes room itself unless the strip does, and shows the strip', () => {
+    const firstRun = card.slice(card.indexOf('// First-run setup: a card that starts setup'), card.indexOf('const display = this._display();'));
+    expect(firstRun).toMatch(/<ha-card class=\$\{this\._underStatusBar\(\) === 'strip' \? '' : 'under'\}>\n\s+\$\{this\._renderParentStrip\(\)\}/);
+  });
 });
 
 // Round 1: cancelling a PIN a sheet asked for left focus on the page, since the card
@@ -63,6 +78,15 @@ describe('the keypad fits a short screen', () => {
     expect(short).toMatch(/\.key \{\s*width: 52px;\s*height: 52px;/);
   });
 
+  // Round 2: on an iPhone held sideways the sheet's back link and reason line came after
+  // round 1's smaller keys, and the last row was 23 px under the sheet's edge again.
+  it('on a short landscape screen puts the keypad beside the heading and dots', () => {
+    const pin = read('shell/pv-pin-sheet.ts');
+    expect(pin).toMatch(/<div class="pad">\n\s+<div class="intro">/);
+    const short = pin.slice(pin.indexOf('@media (max-height: 460px) {'));
+    expect(short.slice(0, short.indexOf('\n      }\n'))).toMatch(/:host\(\[layout='landscape'\]\) \.pad \{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/);
+  });
+
   it("sheets measure against the screen as shown and pad by Home Assistant's inset, as the bar does", () => {
     const sheet = read('styles/sheet.ts');
     expect(sheet).toMatch(/max-height: 92vh;\s*max-height: 92dvh;/);
@@ -75,10 +99,10 @@ describe('the keypad fits a short screen', () => {
 describe("the header's chips never run into the date or off the card", () => {
   const header = read('shell/pv-glance-header.ts');
 
-  it('a narrow landscape header moves its chips to their own line', () => {
+  it('a narrow landscape header moves its chips to their own line, unless the card is short (round 2)', () => {
     expect(header).toMatch(/<div class="left">\$\{this\._weather\(32, 'condition'\)\}<div class="inline">\$\{this\._chips\(primary\)\}<\/div><\/div>/);
     expect(header).toMatch(/<div class="below">\$\{this\._chips\(primary\)\}<\/div>/);
-    expect(header).toMatch(/@container \(max-width: 760px\) \{\s*:host\(\[shape='landscape'\]\) \.inline \{\s*display: none;\s*\}\s*:host\(\[shape='landscape'\]\) \.below \{\s*display: block;/);
+    expect(header).toMatch(/@container \(max-width: 760px\) \{\s*:host\(\[shape='landscape'\]\) \.inline \{\s*display: none;\s*\}\s*:host\(\[shape='landscape'\]:not\(\[short\]\)\) \.below \{\s*display: block;/);
   });
 
   it('a chip too long for its line ends in an ellipsis', () => {

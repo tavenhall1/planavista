@@ -314,12 +314,20 @@ export function eveningCheck(columns: ColumnModel[], board: Board, now: Date): {
   return { text: `Evening check: ${text}`, members: behind.map(c => c.member.id) };
 }
 
-/** How many people each row holds (spec 12.3): columns while each can be 240 px wide, else an even grid. */
-export function boardRows(count: number, width: number, gap = 12, minWidth = 240): number[] {
+/** A board row shorter than this shows a column's head and no chores. */
+export const MIN_ROW_HEIGHT = 180;
+
+/**
+ * How many people each row holds (spec 12.3): columns while each can be 240 px
+ * wide, else an even grid; one row that scrolls sideways when the grid's rows
+ * would be too short to show a chore (round 2: a 236 px board drew two rows of heads).
+ */
+export function boardRows(count: number, width: number, gap = 12, minWidth = 240, height = Infinity): number[] {
   if (count <= 0) return [];
   const fits = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
   if (count <= fits) return [count];
   const rows = Math.ceil(count / fits);
+  if ((height - gap * (rows + 1)) / rows < MIN_ROW_HEIGHT) return [count];
   const perRow = Math.ceil(count / rows);
   const result: number[] = [];
   let left = count;

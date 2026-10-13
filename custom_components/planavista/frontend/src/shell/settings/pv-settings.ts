@@ -10,7 +10,7 @@ import type { HouseholdView, Member } from '../../core/household';
 import type { HouseholdApi } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import type { ModuleService, OpenTarget } from '../../core/module-registry';
-import { OPEN_TARGET, PAGE_EDITOR, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PageEditor, PushPageDetail } from '../../core/page-host';
+import { OPEN_TARGET, PAGE_EDITOR, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PageEditor, PushPageDetail, pushedTitle } from '../../core/page-host';
 import type { Session } from '../../core/session';
 import {
   LookItem, SettingsContext, SettingsPage, SettingsTarget, groupPages, needsALook, settingsAt, settingsRegistry,
@@ -401,7 +401,7 @@ export class PvSettings extends LitElement {
 
   private _renderPage(page: SettingsPage, top: PushPageDetail | undefined) {
     const tag = unsafeStatic(top ? top.tag : page.tag);
-    const title = top ? top.title : page.label;
+    const title = top ? pushedTitle(top, this.household?.members ?? []) : page.label;
     const key = [page.id, ...this._stack.map(s => `${s.tag}:${JSON.stringify(s.props ?? {})}`)].join('/');
     return html`
       <section class="page" aria-label=${title}>

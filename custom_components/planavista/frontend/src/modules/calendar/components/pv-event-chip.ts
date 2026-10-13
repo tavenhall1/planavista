@@ -6,6 +6,7 @@ import { CalendarConfig } from '../../../types';
 import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isAllDayEvent, isEventPast } from '../utils/event-utils';
 import { contrastText } from '../../../core/color';
 import { formatTime } from '../../../utils/date-utils';
+import { timeOnDay } from '../event-words';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
 import { baseStyles } from '../../../styles/shared';
 import { statusStyles } from '../../../styles/status';
@@ -17,6 +18,8 @@ export class PVEventChip extends LitElement {
   @property({ attribute: false }) calendars: CalendarConfig[] = [];
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: Boolean }) compact = false;
+  /** The day the chip is drawn on: an overnight event reads "Until 1:00 AM" on its second day (round 2). */
+  @property({ attribute: false }) day?: Date;
   @property({ type: Boolean }) showStripes = true;
   @property({ type: Number }) tick = 0;
   /** A status from the status map (Now, In 10 min), when the view shows one (spec 11.4). */
@@ -243,7 +246,7 @@ export class PVEventChip extends LitElement {
           <div class="${titleClass}">${event.summary}</div>
           ${!this.compact ? html`
             <div class="chip-time">
-              <span class="time-text">${isAllDay ? 'All day' : `${formatTime(event.start, this.timeFormat)} – ${formatTime(event.end, this.timeFormat)}`}</span>
+              <span class="time-text">${isAllDay ? 'All day' : timeOnDay(event.start, event.end, this.day, this.timeFormat)}</span>
               ${this.badge ? html`<span class="badge ${this.badge.tone}">${this.badge.words}</span>` : nothing}
             </div>
           ` : nothing}

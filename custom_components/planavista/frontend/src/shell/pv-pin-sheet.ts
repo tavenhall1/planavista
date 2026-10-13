@@ -285,6 +285,20 @@ export class PvPinSheet extends LitElement {
         }
       }
 
+      /* A short landscape screen (an iPhone held sideways): the keypad beside the heading and dots, so its last row stays on screen (round 2). */
+      @media (max-height: 460px) {
+        :host([layout='landscape']) .panel {
+          width: min(640px, calc(100vw - 32px));
+        }
+
+        :host([layout='landscape']) .pad {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 24px;
+        }
+      }
+
       :host([reduced]) .boxes.shake {
         animation: pv-fade 300ms ease-in-out;
       }
@@ -343,6 +357,8 @@ export class PvPinSheet extends LitElement {
       ? `Too many tries. Try again in ${formatWait(this._pausedUntil - this._now)}.`
       : this._message;
     return html`
+      <div class="pad">
+      <div class="intro">
       ${this._step === 'enter' && this.members.length > 1
         ? html`<button class="back" type="button" @click=${this._backToPicker}>‹ Someone else</button>`
         : nothing}
@@ -356,11 +372,13 @@ export class PvPinSheet extends LitElement {
       </div>
       <p class="sr" aria-live="polite">${this._entry.digits.length} of ${this._entry.length} digits entered</p>
       <p class="message" role="alert">${message}</p>
+      </div>
       <div class="keypad">
         ${this._digits.slice(0, 9).map(digit => this._renderKey(digit, paused))}
         <button class="key text" type="button" @click=${this._cancel}>Cancel</button>
         ${this._renderKey(this._digits[9], paused)}
         <button class="key text" type="button" aria-label="Delete last digit" ?disabled=${paused} @click=${this._delete}>⌫</button>
+      </div>
       </div>
       ${this._step === 'choose'
         ? html`

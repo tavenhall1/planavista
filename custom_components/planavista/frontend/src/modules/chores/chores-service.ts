@@ -200,7 +200,8 @@ export class ChoresService implements ModuleService {
   async send(entry: QueuedCheckoff): Promise<SendOutcome> {
     if (!this.connected) return { kind: 'wait' };
     try {
-      if (entry.op === 'complete') await this.api.complete(entry.occurrence, entry.doneBy);
+      // The time it was done, not when it reaches Home Assistant (round 2).
+      if (entry.op === 'complete') await this.api.complete(entry.occurrence, entry.doneBy, new Date(entry.at).toISOString());
       else await this.api.undo(entry.occurrence);
       return { kind: 'sent' };
     } catch (err) {

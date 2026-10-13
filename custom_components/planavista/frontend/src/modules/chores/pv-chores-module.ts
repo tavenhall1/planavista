@@ -9,7 +9,7 @@ import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
-import { creditAccess, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
+import { creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
@@ -631,11 +631,20 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return this.pinGate.ask(pinChoicesFor(this.household, memberId), heading);
   }
 
+  /** Who this screen could credit instead of `memberId`, in the household's order. */
+  private _creditable(memberId: string): Member[] {
+    return creditable(this.household, this.session, inOrder(this.household?.members ?? []), memberId);
+  }
+
   /** Whether this screen may say `doer` did it: a parent takes a parent's PIN, anyone else their own (round 1). */
   private async _asDoer(doer: Member, heading: string): Promise<boolean> {
     const access = creditAccess(this.household, this.session, doer);
     if (access === 'yes') return true;
-    if (access === 'no' || !this.pinGate) return false;
+    if (access === 'no') {
+      this.showToast({ id: `credit-${Date.now()}`, text: `${doer.name} can't be given the credit from this screen.`, tone: 'bad' });
+      return false;
+    }
+    if (!this.pinGate) return false;
     return doer.parent ? this.asParent(heading) : this.pinGate.ask(pinChoicesFor(this.household, doer.id), heading);
   }
 
@@ -671,7 +680,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this.showToast({
       id,
       text: waits ? `${row.name}: waiting for approval.` : credited ?? 'Done.',
-      actions: [{ id: 'undo', label: 'Undo' }, ...(doneBy ? [] : [{ id: 'someone', label: 'Someone else did it?' }])],
+      actions: [{ id: 'undo', label: 'Undo' }, ...(doneBy || !this._creditable(member).length ? [] : [{ id: 'someone', label: 'Someone else did it?' }])],
       ms: 6000,
     });
     const owner = this._member(doneBy ?? member);
@@ -738,6 +747,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         today: board.today,
         member: memberAccess(this.household, this.session, owner.id),
         parent: parentAccess(this.household, this.session),
+        credit: this._creditable(owner.id).length > 0,
       }),
     };
   }
@@ -745,6 +755,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   /** Run one change from a sheet: close it and say what happened, or say what went wrong (spec 11.7). */
   /** An option this screen chose is running: its own toast says what happened. */
   private _acting = false;
+
+  /** Each options sheet's title as last shown, so a chore deleted on another screen is still named (round 2). */
+  private readonly _optionNames = new WeakMap<object, string>();
 
   private _choreName(key: string): string {
     const id = key.split('|')[0];
@@ -813,7 +826,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         return;
       }
       case 'done_by': {
-        const people = inOrder(this.household?.members ?? []).filter(m => m.id !== owner.id);
+        const people = this._creditable(owner.id);
         this._sheet = {
           kind: 'people', heading: 'Who did it?', people,
           body: whoDidItBody(name),
@@ -883,7 +896,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** "Someone else did it?": pick who, then credit them instead (spec 13.2). */
   private _someoneElse(last: LastCheckoff): void {
-    const people = inOrder(this.household?.members ?? []).filter(m => m.id !== last.member);
+    const people = this._creditable(last.member);
     this._sheet = {
       kind: 'people',
       heading: 'Who did it?',
@@ -1070,10 +1083,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         queueMicrotask(() => {
           if (this._sheet !== sheet) return;
           this._sheet = null;
-          if (!this._acting) this.showToast({ id: `moved-${sheet.key}`, text: `${this._choreName(sheet.key)} changed on another screen.` });
+          if (!this._acting) this.showToast({ id: `moved-${sheet.key}`, text: `${this._optionNames.get(sheet) ?? this._choreName(sheet.key)} changed on another screen.` });
         });
         return nothing;
       }
+      this._optionNames.set(sheet, found.model.title);
       return html`
         <pv-chore-options .layout=${this.layout} .model=${found.model} color=${memberColor(found.owner, this.mode)}
           .history=${sheet.history} ?busy=${sheet.busy}
