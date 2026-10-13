@@ -59,7 +59,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 - In landscape a sheet is a centered card that pops in.
 - A sheet leaves before it reports why it closed, so whatever happens next never fights the exit. A sheet the state lets go of (an event saved, a delete done) stays on screen while it leaves.
 - Escape steps back: an open picker first, then the sheet. Escape, a tap outside, or a drag ask before a sheet throws away what was typed ("Discard your changes?"); Cancel is the deliberate way out and doesn't ask.
-- A sheet opened from another (Edit over an event's details) stacks on it, and closing it goes back. Focus returns to whatever opened each one.
+- A sheet opened from another (Edit over an event's details, a parent's PIN over a chore's options) stacks on it, and closing it goes back. Focus returns to whatever opened each one. Sheets stack in the order they open, whichever part of the card opened them (`core/sheet-layer.ts`): one shared z-index would leave the order to the layout.
 - The same sheets take both shapes; no screen gets a portrait-only version.
 
 ---
@@ -386,6 +386,11 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-13: Changed: sheets and done tiles (1.6.2)
+
+- Sheets stack in the order they open, so a parent's PIN asked for from a chore's options covers them.
+- A done picture tile's ring is closed in the person's color, as their own ring is when the day is done, with the check over it; holding it to uncheck drains it.
 
 ### 2026-10-13: Changed: edges (1.6.1)
 
