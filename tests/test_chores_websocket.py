@@ -49,6 +49,19 @@ async def test_subscribe_sends_the_board_and_every_change(hass: HomeAssistant, c
     assert pushed[-1]["board"]["members"]["casey"]["today"]["done"] == 1
 
 
+async def test_a_queued_check_off_keeps_the_time_it_was_done(hass: HomeAssistant, chores: Any, hass_ws_client: Any) -> None:
+    """Round 2: a check-off queued while Home Assistant was out of reach was stamped when it arrived."""
+    client = await hass_ws_client(hass)
+    done = await ws_command(client, {"type": "planavista/chores/complete", "occurrence": TRASH, "at": "2026-10-13T21:00:00.000Z"})
+    assert done["result"]["result"] == "done"
+    assert chores.engine.log["completions"][-1]["at"] == "2026-10-13T16:00:00-05:00"
+    # Never later than now, and never from another chore day: those take the time it arrives.
+    await ws_command(client, {"type": "planavista/chores/complete", "occurrence": FISH, "at": "2026-10-13T23:00:00Z"})
+    assert chores.engine.log["completions"][-1]["at"] == "2026-10-13T16:10:00-05:00"
+    await ws_command(client, {"type": "planavista/chores/complete", "occurrence": "cat_care|casey|day:2026-10-13|0", "at": "2026-10-12T21:00:00Z"})
+    assert chores.engine.log["completions"][-1]["at"] == "2026-10-13T16:10:00-05:00"
+
+
 async def test_subscribe_says_when_chores_are_off(hass: HomeAssistant, household: Any, hass_ws_client: Any) -> None:
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": "planavista/chores/subscribe"})

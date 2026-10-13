@@ -9,6 +9,7 @@ the member whose PIN (or a parent's) would allow it.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 import voluptuous as vol
@@ -82,6 +83,16 @@ def _member_by(
     else:
         refuse(connection, msg, account)
     return None
+
+
+def _done_at(engine: Any, now: datetime, at: str | None) -> datetime:
+    """When a check-off was done: the card's own time for it (queued while Home Assistant was out of
+    reach), when that is no later than now and on the same chore day; otherwise now (round 2)."""
+    when = dt_util.parse_datetime(at) if at else None
+    if when is None or when.tzinfo is None or when > now:
+        return now
+    clock = engine.clock
+    return when.astimezone(now.tzinfo) if clock.chore_date(when) == clock.chore_date(now) else now
 
 
 @callback
@@ -217,6 +228,7 @@ def ws_chores_history(hass: HomeAssistant, connection: websocket_api.ActiveConne
     vol.Required("type"): "planavista/chores/complete",
     vol.Required("occurrence"): str,
     vol.Optional("done_by"): str,
+    vol.Optional("at"): str,
     SESSION: str,
 })
 @websocket_api.async_response
@@ -234,7 +246,7 @@ async def ws_chores_complete(hass: HomeAssistant, connection: websocket_api.Acti
         return
     source = _source(hass, household, connection)
     out = await _apply(connection, msg, runtime, lambda e, now: e.complete(
-        now, key=item.occ.key, done_by=done_by, by=by, source=source, user=connection.user.id,
+        _done_at(e, now, msg.get("at")), key=item.occ.key, done_by=done_by, by=by, source=source, user=connection.user.id,
     ))
     if out is not None:
         connection.send_result(msg["id"], {"result": out.result, **out.data})

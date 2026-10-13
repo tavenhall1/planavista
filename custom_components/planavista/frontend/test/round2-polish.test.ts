@@ -36,6 +36,12 @@ describe('round 2 polish', () => {
     expect(body.indexOf('this._toast = {')).toBeLessThan(body.lastIndexOf('this._onSettingsClose();'));
   });
 
+  // An offline check-off was stamped when it reached Home Assistant, not when it was done.
+  it('a queued check-off sends the time it was done', () => {
+    expect(read('modules/chores/chores-service.ts')).toMatch(/await this\.api\.complete\(entry\.occurrence, entry\.doneBy, new Date\(entry\.at\)\.toISOString\(\)\);/);
+    expect(read('modules/chores/chores-client.ts')).toMatch(/complete\(occurrence: string, doneBy\?: string, at\?: string\): Promise<CompleteResult> \{/);
+  });
+
   it("a long name in a people strip ends in an ellipsis instead of pushing the others off", () => {
     const controls = read('styles/controls.ts');
     expect(controls).toMatch(/\.pv-person \{[^}]*max-width: 88px;/);
