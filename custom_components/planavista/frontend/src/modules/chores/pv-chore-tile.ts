@@ -7,7 +7,7 @@ import { contrastText } from '../../core/color';
 import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
-import { rowChange } from './hold-state';
+import { rowChange, tileRingFill } from './hold-state';
 import { chorePicture } from './picture-words';
 
 /** The picture for a chore: its emoji, or a star when it has none (spec 7.3: the icon is also the picture tile). */
@@ -191,6 +191,8 @@ export class PvChoreTile extends LitElement {
 
     .tick {
       position: absolute;
+      /* Over the ring, which is positioned too and comes later. */
+      z-index: 1;
       top: 10px;
       left: 10px;
       width: 28px;
@@ -306,7 +308,7 @@ export class PvChoreTile extends LitElement {
     const state = row.state;
     const done = state === 'done';
     const pending = state === 'pending';
-    const fill = this._held ? 1 : this._fill;
+    const fill = tileRingFill(state, this._held, this._fill);
     const ring = this.large ? 132 : 84;
     return html`
       <div class="tile ${pending ? 'pending' : ''} ${done ? 'done' : ''}" style="--member:${this.color}">
