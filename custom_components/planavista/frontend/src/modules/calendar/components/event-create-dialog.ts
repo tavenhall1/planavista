@@ -1227,7 +1227,7 @@ export class PVEventCreateDialog extends LitElement {
       return;
     }
     this._gating = true;
-    const allowed = this.gate ? await this.gate.ask([...touched], this._title) : true;
+    const allowed = this.gate ? await this.gate.ask([...touched], this._title, this.mode === 'edit' ? 'change' : 'add') : true;
     this._gating = false;
     if (!allowed) return;
 

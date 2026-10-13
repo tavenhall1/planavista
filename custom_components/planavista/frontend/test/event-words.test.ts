@@ -166,5 +166,8 @@ describe('who may change an event, in words (milestone 8, D1)', () => {
   it('the PIN sheet says why it is asking', () => {
     expect(changeReason('Team standup')).toEqual({ heading: "Who's changing Team standup?", reason: 'To change Team standup' });
     expect(changeReason('  ')).toEqual({ heading: "Who's changing this event?", reason: 'To change this event' });
+    // Round 1: a new event's PIN sheet asked who was changing something that didn't exist yet.
+    expect(changeReason('Piano lesson', 'add')).toEqual({ heading: "Who's adding Piano lesson?", reason: 'To add Piano lesson' });
+    expect(changeReason('', 'add')).toEqual({ heading: "Who's adding this event?", reason: 'To add this event' });
   });
 });
