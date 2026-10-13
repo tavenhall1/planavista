@@ -77,6 +77,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) public hass!: HomeAssistant;
   /** Home Assistant sets this when the card is a panel view's one card; shown on the host as `panel`. */
   @property({ type: Boolean, reflect: true, attribute: 'panel' }) isPanel = false;
+  /** A module's full-screen layer, shown outside ha-card. */
+  @state() private _fullscreen: HTMLElement | null = null;
   /** Puts Home Assistant's view back as it was (core/panel-fit). */
   private _unfitView?: () => void;
   /** Stops hearing kiosk mode's changes (milestone 9). */
@@ -310,6 +312,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       /* The card's own toast sits just after the module area: above the bar in
          portrait and on phones, at the bottom in landscape, as the chores
          toasts do (review: it covered the bar). */
+      .fullscreen {
+        display: contents;
+      }
+
       .toast-anchor {
         order: 3;
         position: relative;
@@ -921,7 +927,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const active = this._activeModule();
 
     return html`
-      <ha-card class=${this._underStatusBar() === 'card' ? 'under' : ''}>
+      <ha-card class=${this._underStatusBar() === 'card' ? 'under' : ''} @pv-fullscreen=${this._onFullscreen}>
         ${this._renderParentStrip()}
         ${showsKioskReturn(kiosk.steppedOut, this._session.session) ? html`
           <div class="banner info kiosk-out" role="status">
@@ -980,8 +986,27 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${this._renderSheet()}
         <div class="toast-anchor"><pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}></pv-toast></div>
       </ha-card>
+      ${this._renderFullscreen()}
     `;
   }
+
+  /**
+   * A module's full-screen layer (the goal surprise's reveal, milestone 10). It
+   * sits outside ha-card, whose container query would hold a fixed layer
+   * inside the card, so it covers the whole screen, Home Assistant's bars too.
+   */
+  private _renderFullscreen() {
+    const layer = this._fullscreen;
+    if (!layer) return nothing;
+    return html`<div class="fullscreen" @pv-fullscreen-done=${(e: Event) => {
+      if (e.composedPath()[0] === layer) this._fullscreen = null;
+    }}>${layer}</div>`;
+  }
+
+  private _onFullscreen = (event: CustomEvent<{ element: HTMLElement }>): void => {
+    event.stopPropagation();
+    this._fullscreen = event.detail.element;
+  };
 
   /** Render a module through its registered element. */
   private _renderModule(mod: ModuleDefinition, data: PlanaVistaData, display: DisplayConfig) {

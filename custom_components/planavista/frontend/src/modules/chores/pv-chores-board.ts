@@ -23,6 +23,7 @@ import { eventsOn } from './calendar-ties';
 import { chime, haptic } from './effects';
 import './pv-chores-column';
 import type { PvChoresColumn } from './pv-chores-column';
+import { mayOpenSurprise, surpriseOf } from './surprise-derive';
 
 const GAP = 12;
 const NARROW_PX = 300;
@@ -230,7 +231,8 @@ export class PvChoresBoard extends LitElement {
     return html`
       <pv-chores-column member=${id} .model=${model} .hass=${this.hass} color=${memberColor(model.member, this.mode)}
         ?narrow=${narrow} ?locked=${memberAccess(this.household, this.session, id) === 'no'}
-        .celebrate=${this._celebrate[id] ?? 0} .pulse=${this._pulse[id] ?? 0}></pv-chores-column>
+        .celebrate=${this._celebrate[id] ?? 0} .pulse=${this._pulse[id] ?? 0}
+        .surprise=${surpriseOf(id, model.entry, this.board.rewards)} ?mayOpen=${mayOpenSurprise(this.household, id)}></pv-chores-column>
     `;
   }
 

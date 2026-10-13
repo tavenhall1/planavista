@@ -22,7 +22,7 @@ describe('whatever comes first in the card makes room for the status bar, once',
   it('the strip in parent mode, else the header, else the card itself', () => {
     const rule = card.slice(card.indexOf("private _underStatusBar(): 'strip' | 'header' | 'card' {"));
     expect(rule).toMatch(/if \(session && this\._household\.view\?\.members\.some\(m => m\.id === session\.memberId\)\) return 'strip';\n\s+return this\._config\?\.hide_header \? 'card' : 'header';/);
-    expect(card).toMatch(/<ha-card class=\$\{this\._underStatusBar\(\) === 'card' \? 'under' : ''\}>/);
+    expect(card).toMatch(/<ha-card class=\$\{this\._underStatusBar\(\) === 'card' \? 'under' : ''\}[ >]/);
     expect(card).toMatch(/<pv-parent-strip\n\s+class="under"/);
     expect(card).toMatch(/<pv-glance-header\n\s+class=\$\{this\._underStatusBar\(\) === 'header' \? 'under' : ''\}/);
     expect(block(card, '      pv-parent-strip.under')).toMatch(/--pv-strip-top: var\(--pv-under-status-bar, 0px\);/);
