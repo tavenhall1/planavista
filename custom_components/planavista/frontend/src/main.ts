@@ -5,10 +5,14 @@ import './modules/chores';
 import './shell/planavista-card';
 import { version } from '../package.json';
 import { registerCardPicker } from './shell/card-picker';
+import { startKiosk } from './shell/kiosk-controller';
 
 // Register the card with the HA card picker (once, even if another copy of the bundle ran first).
 window.customCards = window.customCards || [];
 registerCardPicker(window.customCards);
+
+// Kiosk mode on shared screens, on every Home Assistant page (milestone 9).
+startKiosk();
 
 console.info(
   `%c PLANAVISTA %c v${version} `,
