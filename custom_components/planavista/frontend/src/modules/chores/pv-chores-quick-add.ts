@@ -13,6 +13,7 @@ import { minutesText } from '../../core/status-map';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import { backdropTap } from '../../core/backdrop';
+import { SheetLayer } from '../../core/sheet-layer';
 import {
   MINUTE_CHOICES,
   QuickAddDraft,
@@ -37,6 +38,7 @@ import {
 export class PvChoresQuickAdd extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => void this.close());
+  private readonly _layer = new SheetLayer(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) people: Member[] = [];
   @property({ attribute: false }) hass?: HomeAssistant;

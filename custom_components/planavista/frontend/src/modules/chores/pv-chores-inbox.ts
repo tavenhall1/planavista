@@ -15,6 +15,7 @@ import '../../core/pv-member-avatar';
 import type { InboxGroups, InboxRow } from './inbox-derive';
 import { SEND_BACK_REASONS } from './pv-chore-options';
 import { backdropTap } from '../../core/backdrop';
+import { SheetLayer } from '../../core/sheet-layer';
 
 export interface ReviewDetail {
   row: InboxRow;
@@ -35,6 +36,7 @@ export interface ReviewDetail {
 export class PvChoresInbox extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => void this.close());
+  private readonly _layer = new SheetLayer(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) groups!: InboxGroups;
   @property({ attribute: false }) hass?: HomeAssistant;

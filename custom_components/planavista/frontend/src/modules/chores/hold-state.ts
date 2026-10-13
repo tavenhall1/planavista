@@ -16,3 +16,14 @@ export function rowChange(before: RowModel | undefined, row: RowModel): RowChang
   if (before.key !== row.key) return 'reset';
   return before.state !== row.state ? 'answered' : 'none';
 }
+
+/**
+ * How full a picture tile's ring is drawn: a hold fills it, and it stays full
+ * while the answer comes. A done chore's ring is closed, as a person's ring is
+ * when their day is done, and holding it to uncheck drains it (1.6.2: a done
+ * tile drew an empty, faded track that read as "not started").
+ */
+export function tileRingFill(state: RowModel['state'], held: boolean, fill: number): number {
+  const progress = held ? 1 : fill;
+  return state === 'done' ? 1 - progress : progress;
+}

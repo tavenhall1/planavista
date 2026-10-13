@@ -22,3 +22,15 @@ describe("a picture tile's hold (spec 11.5: it tracks the finger)", () => {
     expect(column.match(/<pv-chore-tile\b/g)).toHaveLength(1);
   });
 });
+
+describe("a done tile's check", () => {
+  it('sits over the ring, not under it (the ring is positioned and comes later)', () => {
+    const start = tile.indexOf('    .tick {');
+    expect(start).toBeGreaterThan(-1);
+    expect(tile.slice(start, tile.indexOf('}', start))).toMatch(/z-index: 1;/);
+  });
+
+  it('draws the ring by the tile rule', () => {
+    expect(tile).toMatch(/tileRingFill\(state, this\._held, this\._fill\)/);
+  });
+});
