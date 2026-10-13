@@ -1,6 +1,7 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 import { PressGuard } from './press-guard';
+import { TOAST_LAYER } from './sheet-layer';
 import { defineElement } from '../utils/define';
 import { SMOOTH, motionOf, springEasing } from './motion';
 
@@ -43,7 +44,7 @@ export class PvToast extends LitElement {
       display: flex;
       justify-content: center;
       pointer-events: none;
-      z-index: 40;
+      z-index: ${unsafeCSS(TOAST_LAYER)};
     }
 
     .toast {

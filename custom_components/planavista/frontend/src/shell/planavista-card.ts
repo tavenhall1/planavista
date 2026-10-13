@@ -4,6 +4,7 @@ import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import { ref } from 'lit/directives/ref.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
+import { nextSheetLayer } from '../core/sheet-layer';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { statusStyles } from '../styles/status';
@@ -89,6 +90,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _settingsTarget: SettingsTarget | null = null;
   /** Setup's steps that Settings asked to run (the Chores row's short setup, spec 14.7); null when none run. */
   @state() private _flow: string[] | null = null;
+  /** The layer Settings or setup took when it opened: above whatever a module had open (round 1). */
+  @state() private _overlayLayer = 0;
   /** How to undo the short setup when a parent backs out of it. */
   private _flowCancel: RunSetupDetail['cancel'];
   @state() private _sheet: CardSheet | null = null;
@@ -470,6 +473,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
+    const opened = changed as Map<string, unknown>;
+    if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
+      this._overlayLayer = nextSheetLayer();
+    }
     // The view a card opens on is chosen once, when the data first arrives (as in 1.1.0).
     // Coming back where it was (spec 3.7): once, when the data and the household are in, so a
     // module that needs the household (Chores) can be found.
@@ -881,7 +888,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${active ? this._renderModule(active, data, display) : nothing}
         ${active ? this._renderBar(active) : nothing}
         ${this._settingsOpen ? html`
-          <div class="pvc-settings-overlay">
+          <div class="pvc-settings-overlay" style=${`z-index:${this._overlayLayer}`}>
             <pv-settings
               .hass=${this.hass}
               .data=${data}
@@ -906,7 +913,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
           </div>
         ` : nothing}
         ${this._flow ? html`
-          <div class="pvc-settings-overlay">
+          <div class="pvc-settings-overlay" style=${`z-index:${this._overlayLayer}`}>
             <pv-setup
               .hass=${this.hass}
               .data=${data}

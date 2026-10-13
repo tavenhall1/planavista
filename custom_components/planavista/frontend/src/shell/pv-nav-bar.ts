@@ -1,10 +1,11 @@
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { LitElement, html, css, nothing, PropertyValues, unsafeCSS } from 'lit';
 import { segmentedStyles } from '../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { type BarShape, type Layout, barShape } from '../core/layout';
 import { menuStep } from '../core/menu-keys';
 import { SMOOTH, motionOf, springEasing } from '../core/motion';
+import { MENU_LAYER } from '../core/sheet-layer';
 import type { ModuleAction, ModuleView } from '../core/module-registry';
 
 /** A module as the switcher shows it. */
@@ -239,7 +240,7 @@ export class PvNavBar extends LitElement {
 
     .menu {
       position: absolute;
-      z-index: 5;
+      z-index: ${unsafeCSS(MENU_LAYER)};
       bottom: calc(100% + 6px);
       min-width: 200px;
       padding: 6px;
