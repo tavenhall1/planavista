@@ -31,6 +31,8 @@ export interface UnlockResult {
   /** Seconds until Parent mode ends after, however busy. */
   cap_in?: number;
   reason?: 'no_pin' | 'wrong_pin' | 'paused';
+  /** The PIN's parent is linked to an active Home Assistant admin (milestone 9, D3); missing from older backends. */
+  admin_parent?: boolean;
   tries_left?: number;
   retry_after?: number | null;
 }
@@ -60,7 +62,13 @@ export class HouseholdApi extends WsApi {
     return this.call('planavista/household/shared_screen', { shared });
   }
 
-  saveSecurity(settings: { shuffle_keypad?: boolean; session_idle_seconds?: number; parent_mode_minutes?: number }): Promise<void> {
+  saveSecurity(settings: {
+    shuffle_keypad?: boolean;
+    session_idle_seconds?: number;
+    parent_mode_minutes?: number;
+    kiosk_enabled?: boolean;
+    kiosk_top_bar?: 'hidden' | 'tabs';
+  }): Promise<void> {
     return this.call('planavista/household/settings/save', settings);
   }
 
@@ -94,5 +102,10 @@ export class HouseholdApi extends WsApi {
 
   touch(token: string): Promise<{ expires_in: number }> {
     return this.call('planavista/pin/touch', { session: token }, false);
+  }
+
+  /** Step out of kiosk mode with this card's parent session (the backend checks D3 again). */
+  exitKiosk(): Promise<Record<string, never>> {
+    return this.call('planavista/kiosk/exit', {});
   }
 }

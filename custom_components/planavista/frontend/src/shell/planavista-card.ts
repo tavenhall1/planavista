@@ -52,6 +52,11 @@ import './setup/pv-setup';
 import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/content-scroll';
 import { PLACE_STORAGE, Place, placeKey, readPlace, usablePlace, writePlace } from '../core/place';
 import { SCREEN_AS_SHOWN, composedAncestor, fitView } from '../core/panel-fit';
+import { kioskStripAction, showsKioskReturn } from '../core/kiosk';
+import { errorMessage } from '../core/ws-api';
+import type { Toast } from '../core/pv-toast';
+import '../core/pv-toast';
+import { kiosk } from './kiosk-controller';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
@@ -72,6 +77,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ attribute: false }) isPanel = false;
   /** Puts Home Assistant's view back as it was (core/panel-fit). */
   private _unfitView?: () => void;
+  /** Stops hearing kiosk mode's changes (milestone 9). */
+  private _unhearKiosk?: () => void;
+  /** A short message the card itself shows: a refused Exit kiosk mode. */
+  @state() private _toast: Toast | null = null;
   @state() private _config?: PlanaVistaCardConfig;
   @state() private _wizardOpen = false;
   @state() private _onboardingDone = false;
@@ -201,25 +210,29 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       /* Only the space Home Assistant leaves, so the page itself never scrolls:
          on an iPhone its header grows by the status bar and its view pads the
          home indicator, and Safari's 100vh is the screen with its toolbars
-         hidden (dvh is the screen as shown). */
+         hidden (dvh is the screen as shown). The card runs under the home
+         indicator, as iOS's own bars do: the bottom bar pads itself by the
+         inset, and in landscape the card pads its own bottom. */
       :host {
         display: block;
-        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px));
-        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px));
+        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
+        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
+        /* Kiosk mode with the top bar hidden: the card runs up under the status bar (milestone 9). */
+        margin-top: calc(-1 * var(--pv-under-status-bar, 0px));
+        margin-bottom: calc(-1 * var(--safe-area-inset-bottom, 0px));
         overflow: hidden;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
       }
 
-      /* With the bar at the bottom, the card runs under the home indicator,
-         as iOS's own bars do; the bar pads itself by the same inset. */
-      :host(:not([layout='landscape'])) {
-        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px));
-        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px));
-        margin-bottom: calc(-1 * var(--safe-area-inset-bottom, 0px));
+      /* In landscape the bar is at the top: content stays clear of the home indicator, the card's color behind it (review). */
+      :host([layout='landscape']) ha-card {
+        padding-bottom: var(--safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
       }
 
       ha-card {
+        position: relative;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -236,6 +249,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       pv-glance-header {
         order: 1;
         flex-shrink: 0;
+        padding-top: var(--pv-under-status-bar, 0px);
       }
 
       .pv-module {
@@ -247,6 +261,16 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       pv-nav-bar {
         order: 4;
         flex-shrink: 0;
+      }
+
+      /* The card's own toast sits just after the module area: above the bar in
+         portrait and on phones, at the bottom in landscape, as the chores
+         toasts do (review: it covered the bar). */
+      .toast-anchor {
+        order: 3;
+        position: relative;
+        height: 0;
+        flex: none;
       }
 
       :host([layout='landscape']) pv-nav-bar {
@@ -485,6 +509,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       if (document.visibilityState === 'visible') this._savePlace();
     }, 60_000);
     void this.updateComplete.then(() => this._fitView());
+    this._unhearKiosk = kiosk.onChange(() => this.requestUpdate());
   }
 
   disconnectedCallback(): void {
@@ -493,6 +518,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._savePlace();
     this._unfitView?.();
     this._unfitView = undefined;
+    this._unhearKiosk?.();
+    this._unhearKiosk = undefined;
   }
 
   updated(changedProps: PropertyValues) {
@@ -700,11 +727,41 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         .span=${this._session.spanMs}
         .parent=${session.parent}
         .actions=${actions}
-        @pv-lock=${() => this._session.lock()}
+        .kiosk=${this._kioskAction()}
+        @pv-lock=${this._lockAndKiosk}
+        @pv-kiosk=${this._onKiosk}
         @pv-strip-action=${(e: CustomEvent<{ id: string }>) => this._moduleAction(e.detail.id)}
       ></pv-parent-strip>
     `;
   }
+
+  /** The strip's kiosk button, in the card's strip and Settings' alike. */
+  private _kioskAction(): 'exit' | 'back' | null {
+    const session = this._session.session;
+    return session ? kioskStripAction(kiosk.look, kiosk.steppedOut, session) : null;
+  }
+
+  /** Lock ends parent mode and brings kiosk mode back (milestone 9, D4). */
+  private _lockAndKiosk = (): void => {
+    this._session.lock();
+    kiosk.restore();
+  };
+
+  /** The strip's kiosk button: step out (the backend checks again) or back in. */
+  private _onKiosk = async (): Promise<void> => {
+    if (kiosk.steppedOut) {
+      kiosk.restore();
+      return;
+    }
+    const session = this._session.session;
+    if (!session) return;
+    try {
+      await this._api.exitKiosk();
+      kiosk.lift(Date.now(), session.idleMs, session.capAt, session.startedAt);
+    } catch (err) {
+      this._toast = { id: `kiosk-${Date.now()}`, text: errorMessage(err) ?? "Couldn't exit kiosk mode. Try again.", tone: 'bad' };
+    }
+  };
 
   private _onSettingsClose() {
     this._settingsOpen = false;
@@ -744,6 +801,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   private _onSettingsLock() {
     this._session.lock();
+    kiosk.restore();
     if (this._access() !== 'open') this._onSettingsClose();
   }
 
@@ -806,6 +864,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return html`
       <ha-card>
         ${this._renderParentStrip()}
+        ${showsKioskReturn(kiosk.steppedOut, this._session.session) ? html`
+          <div class="banner info kiosk-out" role="status">
+            <span class="text">Home Assistant's menus are showing for now.</span>
+            <button class="pv-btn pv-btn-secondary" type="button" @click=${() => kiosk.restore()}>Back to kiosk mode</button>
+          </div>
+        ` : nothing}
         ${this._config.hide_header ? nothing : this._renderHeader(display)}
         ${active ? this._renderModule(active, data, display) : nothing}
         ${active ? this._renderBar(active) : nothing}
@@ -820,6 +884,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .session=${this._session.session}
               .sessionEndsAt=${this._session.endsAt ?? 0}
               .sessionSpan=${this._session.spanMs}
+              .kioskAction=${this._kioskAction()}
               .parent=${this._household.view?.members.find(m => m.id === this._session.session?.memberId) ?? null}
               .drafts=${this._drafts}
               .services=${this._services}
@@ -828,6 +893,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               @pv-settings-close=${this._onSettingsClose}
               @pv-run-setup=${this._onRunSetup}
               @pv-settings-open-target=${(e: CustomEvent<OpenTarget>) => { this._onSettingsClose(); this._open(e.detail); }}
+              @pv-kiosk=${this._onKiosk}
               @pv-lock=${this._onSettingsLock}
             ></pv-settings>
           </div>
@@ -853,6 +919,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
           </div>
         ` : nothing}
         ${this._renderSheet()}
+        <div class="toast-anchor"><pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}></pv-toast></div>
       </ha-card>
     `;
   }

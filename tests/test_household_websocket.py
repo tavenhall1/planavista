@@ -56,6 +56,7 @@ async def test_subscribe_describes_the_account(
     assert [m["id"] for m in view["members"]] == ["alex", "blair", "casey", "dana"]
     assert view["security"] == {
         "shuffle_keypad": False, "shared_screens": 1, "session_idle_seconds": 120, "parent_mode_minutes": 10,
+        "kiosk": {"enabled": False, "top_bar": "hidden"},
     }
 
 

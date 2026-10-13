@@ -50,6 +50,8 @@ export class PvSettings extends LitElement {
   @property({ type: Number }) sessionEndsAt = 0;
   /** A full ring (ms): the household's Lock after no touches. */
   @property({ type: Number }) sessionSpan = 0;
+  /** Kiosk mode's strip button, the same as the card's (milestone 9). */
+  @property({ attribute: false }) kioskAction: 'exit' | 'back' | null = null;
   @property({ attribute: false }) parent: Member | null = null;
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
   /** The card's module services, and a number that changes whenever one of them does. */
@@ -333,7 +335,7 @@ export class PvSettings extends LitElement {
     const stackedPage = !this._split && current;
     return html`
       ${this.session?.parent && this.parent ? html`
-        <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt} .span=${this.sessionSpan}></pv-parent-strip>
+        <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt} .span=${this.sessionSpan} .kiosk=${this.kioskAction}></pv-parent-strip>
       ` : nothing}
       <div class="bar">
         ${stackedPage && this._editor
@@ -416,6 +418,7 @@ export class PvSettings extends LitElement {
             .household=${this.household}
             .api=${this.api}
             .layout=${this.layout}
+            .session=${this.session}
             mode="settings"
             .pageProps=${top?.props ?? {}}
             .drafts=${this.drafts}

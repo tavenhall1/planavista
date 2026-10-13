@@ -8,7 +8,7 @@ const UNLOCKED = { session: 'token', member_id: 'blair', parent: true };
 describe('session', () => {
   it('starts with two minutes left', () => {
     const session = startSession(UNLOCKED, 1000);
-    expect(session).toEqual({ token: 'token', memberId: 'blair', parent: true, lastTouch: 1000, startedAt: 1000, idleMs: SESSION_IDLE_MS, capAt: 601_000 });
+    expect(session).toEqual({ token: 'token', memberId: 'blair', parent: true, lastTouch: 1000, startedAt: 1000, idleMs: SESSION_IDLE_MS, capAt: 601_000, adminParent: false });
     expect(remainingMs(session, 1000)).toBe(SESSION_IDLE_MS);
   });
 

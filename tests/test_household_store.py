@@ -52,6 +52,7 @@ def test_normalize_fills_gaps_and_keeps_unknown_fields() -> None:
         "shuffle_keypad": False,
         "session_idle_seconds": 120,
         "parent_mode_minutes": 10,
+        "kiosk": {"enabled": False, "top_bar": "hidden"},
     }
     assert normalize({"security": {"session_idle_seconds": 45, "parent_mode_minutes": 15}})["security"][
         "session_idle_seconds"

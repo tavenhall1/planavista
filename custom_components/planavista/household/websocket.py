@@ -33,6 +33,7 @@ from .members import (
     set_prefs,
     update_member,
 )
+from .kiosk import KIOSK_TOP_BARS, exit_refusal, may_change_kiosk
 from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
     PARENT_MODE_CHOICES,
@@ -146,6 +147,30 @@ def session_for(
     return SessionView(session.member_id, session.parent) if session else None
 
 
+async def parent_is_admin(hass: HomeAssistant, member: dict[str, Any] | None) -> bool:
+    """Whether a parent's own Home Assistant login (through their person) is an active admin (kiosk D3)."""
+    if not member or not member.get("parent") or not member.get("person"):
+        return False
+    state = hass.states.get(member["person"])
+    user_id = state.attributes.get("user_id") if state else None
+    if not isinstance(user_id, str):
+        return False
+    user = await hass.auth.async_get_user(user_id)
+    return bool(user and user.is_active and user.is_admin)
+
+
+async def kiosk_refusal(
+    hass: HomeAssistant, household: Household, account: Account, member_id: str | None, parent_session: bool
+) -> str | None:
+    """Why this account and session may not step out of kiosk mode, or None (kiosk D3)."""
+    return exit_refusal(
+        enabled=household.data["security"]["kiosk"]["enabled"],
+        shared=account.shared,
+        parent_session=parent_session,
+        parent_is_admin=await parent_is_admin(hass, household.member(member_id) if member_id else None),
+    )
+
+
 @callback
 def household_for(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
@@ -222,6 +247,10 @@ def _view(hass: HomeAssistant, household: Household, user: User) -> dict[str, An
             "shared_screens": len(household.shared_users),
             "session_idle_seconds": household.data["security"]["session_idle_seconds"],
             "parent_mode_minutes": household.data["security"]["parent_mode_minutes"],
+            "kiosk": {
+                "enabled": household.data["security"]["kiosk"]["enabled"],
+                "top_bar": household.data["security"]["kiosk"]["top_bar"],
+            },
         },
         "modules": household.data["modules"],
         "setup": household.data["setup"],
@@ -450,6 +479,8 @@ async def ws_shared_screen(
         vol.Optional("shuffle_keypad"): bool,
         vol.Optional("session_idle_seconds"): vol.In(SESSION_IDLE_CHOICES),
         vol.Optional("parent_mode_minutes"): vol.In(PARENT_MODE_CHOICES),
+        vol.Optional("kiosk_enabled"): bool,
+        vol.Optional("kiosk_top_bar"): vol.In(KIOSK_TOP_BARS),
         vol.Optional("session"): str,
     }
 )
@@ -457,14 +488,30 @@ async def ws_shared_screen(
 async def ws_settings_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Household-wide PIN settings: Shuffle the keypad, Lock after no touches, Parent mode ends after."""
+    """Household-wide PIN settings: Shuffle the keypad, Lock after no touches, Parent mode ends after, Kiosk mode."""
     context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
+    if "kiosk_enabled" in msg or "kiosk_top_bar" in msg:
+        account = account_for(hass, household, connection.user)
+        session = session_for(household, connection, msg)
+        member = household.member(session.member_id) if session and session.parent else None
+        if not may_change_kiosk(
+            shared=account.shared,
+            account_admin=account.is_admin,
+            session_parent_admin=await parent_is_admin(hass, member),
+        ):
+            send_refusal(connection, msg, "not_admin", KIOSK_CHANGE_REFUSAL)
+            return
     for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
         if key in msg:
             household.data["security"][key] = msg[key]
+    kiosk = household.data["security"]["kiosk"]
+    if "kiosk_enabled" in msg:
+        kiosk["enabled"] = msg["kiosk_enabled"]
+    if "kiosk_top_bar" in msg:
+        kiosk["top_bar"] = msg["kiosk_top_bar"]
     await household.async_save()
     connection.send_result(msg["id"])
 
@@ -614,6 +661,8 @@ async def ws_pin_unlock(
     connection.subscriptions[("planavista_session", session.token)] = partial(
         household.sessions.end, session.token
     )
+    # About the parent, not the moment: a switch turned on later still offers Exit (kiosk review).
+    admin_parent = session.parent and await parent_is_admin(hass, member)
     connection.send_result(
         msg["id"],
         {
@@ -624,6 +673,7 @@ async def ws_pin_unlock(
             "expires_in": _whole_seconds(household.sessions.expires_in(session, now)),
             "idle_seconds": _whole_seconds(idle),
             "cap_in": _whole_seconds(cap),
+            "admin_parent": admin_parent,
         },
     )
 
@@ -769,8 +819,46 @@ HOUSEHOLD_COMMANDS = (
 )
 
 
+KIOSK_CHANGE_REFUSAL = "Only a Home Assistant admin, or a parent who is one, can change kiosk mode."
+
+KIOSK_REFUSALS = {
+    "pin_required": "Enter a parent's PIN to exit kiosk mode.",
+    "kiosk_off": "Kiosk mode is off.",
+    "not_shared": "Kiosk mode only applies on shared family screens.",
+    "parent_mode_required": "Only a parent can exit kiosk mode.",
+    "not_admin": "Only a parent who is a Home Assistant admin can exit kiosk mode.",
+}
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "planavista/kiosk/exit", vol.Optional("session"): str}
+)
+@websocket_api.async_response
+async def ws_kiosk_exit(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Step out of kiosk mode: a live parent session here, an admin parent, a shared screen (kiosk D3).
+
+    The card keeps Home Assistant's menus shown by parent mode's own clock; the
+    backend only decides whether it may.
+    """
+    household = household_for(hass, connection, msg)
+    if household is None:
+        return
+    session = session_for(household, connection, msg)
+    if session is None:
+        send_refusal(connection, msg, "pin_required", KIOSK_REFUSALS["pin_required"])
+        return
+    account = account_for(hass, household, connection.user)
+    refusal = await kiosk_refusal(hass, household, account, session.member_id, session.parent)
+    if refusal is not None:
+        send_refusal(connection, msg, refusal, KIOSK_REFUSALS[refusal])
+        return
+    connection.send_result(msg["id"], {})
+
+
 @callback
 def async_setup_household_websocket(hass: HomeAssistant) -> None:
     """Register the household commands (once per Home Assistant start)."""
-    for command in HOUSEHOLD_COMMANDS:
+    for command in (*HOUSEHOLD_COMMANDS, ws_kiosk_exit):
         websocket_api.async_register_command(hass, command)

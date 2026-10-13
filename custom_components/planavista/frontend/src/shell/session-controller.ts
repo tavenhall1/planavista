@@ -92,7 +92,7 @@ export class SessionController implements ReactiveController {
     this.session = startSession(
       {
         session: result.session, member_id: result.member_id, parent: !!result.parent,
-        idle_seconds: result.idle_seconds, cap_in: result.cap_in,
+        idle_seconds: result.idle_seconds, cap_in: result.cap_in, admin_parent: result.admin_parent,
       },
       Date.now(),
     );

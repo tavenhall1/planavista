@@ -386,6 +386,13 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-10-13: Changed: kiosk mode (1.6.0)
+
+- Kiosk mode on shared screens: Home Assistant's sidebar and top bar hidden, or all of it but the tabs (Settings, PINs and parent mode, Shared screens). With the top bar hidden the card runs up under the status bar, as its bar runs under the home indicator.
+- The strip's Exit kiosk mode and Back to kiosk mode: a secondary button before Lock, in the card's strip and Settings' alike, its edge mixed from the person's color so it shows on the strip's tint. Once the strip is gone, a quiet info banner offers Back to kiosk mode.
+- The card's own toast sits above the bar, as the module toasts do (a zero-height anchor after the module area).
+- The card runs under the home indicator in every layout: in landscape, where the bar is at the top, it pads its own bottom by the inset, so a dark card never shows Home Assistant's light page below it.
+
 ### 2026-10-13: Changed: sheets and holds (1.5.4)
 
 - A sheet's backdrop closes it only on a tap that began on the backdrop, so the finger that finished a hold and opened the sheet doesn't close it as it lifts (`core/backdrop.ts`).
