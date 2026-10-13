@@ -33,6 +33,7 @@ from .members import (
     set_prefs,
     update_member,
 )
+from .kiosk import KIOSK_TOP_BARS
 from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
     PARENT_MODE_CHOICES,
@@ -222,6 +223,10 @@ def _view(hass: HomeAssistant, household: Household, user: User) -> dict[str, An
             "shared_screens": len(household.shared_users),
             "session_idle_seconds": household.data["security"]["session_idle_seconds"],
             "parent_mode_minutes": household.data["security"]["parent_mode_minutes"],
+            "kiosk": {
+                "enabled": household.data["security"]["kiosk"]["enabled"],
+                "top_bar": household.data["security"]["kiosk"]["top_bar"],
+            },
         },
         "modules": household.data["modules"],
         "setup": household.data["setup"],
@@ -450,6 +455,8 @@ async def ws_shared_screen(
         vol.Optional("shuffle_keypad"): bool,
         vol.Optional("session_idle_seconds"): vol.In(SESSION_IDLE_CHOICES),
         vol.Optional("parent_mode_minutes"): vol.In(PARENT_MODE_CHOICES),
+        vol.Optional("kiosk_enabled"): bool,
+        vol.Optional("kiosk_top_bar"): vol.In(KIOSK_TOP_BARS),
         vol.Optional("session"): str,
     }
 )
@@ -457,7 +464,7 @@ async def ws_shared_screen(
 async def ws_settings_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Household-wide PIN settings: Shuffle the keypad, Lock after no touches, Parent mode ends after."""
+    """Household-wide PIN settings: Shuffle the keypad, Lock after no touches, Parent mode ends after, Kiosk mode."""
     context = parent_for(hass, connection, msg)
     if context is None:
         return
@@ -465,6 +472,11 @@ async def ws_settings_save(
     for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
         if key in msg:
             household.data["security"][key] = msg[key]
+    kiosk = household.data["security"]["kiosk"]
+    if "kiosk_enabled" in msg:
+        kiosk["enabled"] = msg["kiosk_enabled"]
+    if "kiosk_top_bar" in msg:
+        kiosk["top_bar"] = msg["kiosk_top_bar"]
     await household.async_save()
     connection.send_result(msg["id"])
 

@@ -14,6 +14,7 @@ from homeassistant.util.hass_dict import HassKey
 
 from ..const import CONF_CALENDARS, CONF_ONBOARDING_COMPLETE, DOMAIN
 from ..coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
+from .kiosk import default_kiosk, normalize_kiosk
 from .members import clear_missing_persons, link_calendars
 from .security import (
     PARENT_MODE_CHOICES,
@@ -39,6 +40,7 @@ def default_document() -> dict[str, Any]:
         "security": {
             "pins": {}, "shared_users": [], "shuffle_keypad": False,
             "session_idle_seconds": SESSION_IDLE_SECONDS, "parent_mode_minutes": PARENT_MODE_MINUTES,
+            "kiosk": default_kiosk(),
         },
         "modules": {},
         "setup": {"completed": False, "step": None},
@@ -66,6 +68,7 @@ def normalize(data: object) -> dict[str, Any]:
         security["session_idle_seconds"] = SESSION_IDLE_SECONDS
     if security.get("parent_mode_minutes") not in PARENT_MODE_CHOICES:
         security["parent_mode_minutes"] = PARENT_MODE_MINUTES
+    security["kiosk"] = normalize_kiosk(security.get("kiosk"))
     doc["security"] = security
     setup = dict(doc["setup"]) if isinstance(doc.get("setup"), Mapping) else {}
     if not isinstance(setup.get("completed"), bool):
