@@ -387,6 +387,16 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-10-13: Changed: the first adversarial review
+
+- A sheet or toast ignores the tap of a finger that went down before it appeared, and taps in its first 300 ms (`core/press-guard.ts`): Safari sends a lifting finger's click to whatever is under it, so a hold that opened the PIN sheet picked the face under the finger, and a double tap closed the options it opened.
+- One order for everything over the card: sheets, Settings, and setup take the next layer when they open; toasts sit above every sheet; an open menu above a toast (`core/sheet-layer.ts`).
+- With kiosk mode's top bar hidden, whatever comes first makes room for the status bar, once: the parent strip in parent mode (its tint runs under the status bar), else the header.
+- A full-screen card's color runs to the side edges and its content stays inside the safe area, the header's gradient bleeding into the insets; Apple's way, on a phone held sideways too.
+- A wide, short card (under 500 px tall, a phone held sideways beside Home Assistant's sidebar) takes the landscape arrangement; a narrow landscape header puts its chips on their own line; a chip too long for its line ends in an ellipsis.
+- The phone bar keeps one shape whatever view is picked: its views' button is as wide as its widest view.
+- The keypad shrinks to 52 px keys on a short screen; sheets measure against the screen as shown.
+
 ### 2026-10-13: Changed: sheets and done tiles
 
 - Sheets stack in the order they open, so a parent's PIN asked for from a chore's options covers them.
