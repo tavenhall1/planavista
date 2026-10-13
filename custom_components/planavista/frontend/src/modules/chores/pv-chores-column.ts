@@ -11,6 +11,8 @@ import type { ColumnEntry, ColumnModel, RowModel } from './board-derive';
 import { bump, flyStars, glide, measure } from './effects';
 import './pv-chore-item';
 import './pv-chore-tile';
+import './pv-surprise-present';
+import type { SurpriseModel } from './surprise-derive';
 import { ref } from 'lit/directives/ref.js';
 import { ScrollReporter } from '../../core/content-scroll';
 import { stickersLabel } from './my-day-derive';
@@ -42,6 +44,10 @@ export class PvChoresColumn extends LitElement {
   @property({ type: Number }) celebrate = 0;
   /** Change it to pulse once (the evening check). */
   @property({ type: Number }) pulse = 0;
+  /** Their goal surprise, waiting until it is opened (milestone 10). */
+  @property({ attribute: false }) surprise: SurpriseModel | null = null;
+  /** This screen may open it. */
+  @property({ type: Boolean }) mayOpen = false;
   @property({ type: String, reflect: true }) member = '';
 
   private _before: Map<string, DOMRect> | null = null;
@@ -305,7 +311,17 @@ export class PvChoresColumn extends LitElement {
   }
 
   private _list(model: ColumnModel) {
-    return repeat(model.entries, entry => entry.key, entry => this._entry(entry));
+    return html`${this._present(model, 'row')}${repeat(model.entries, entry => entry.key, entry => this._entry(entry))}`;
+  }
+
+  /** The goal surprise, while it waits to be opened. */
+  private _present(model: ColumnModel, shape: 'tile' | 'row') {
+    const surprise = this.surprise;
+    if (!surprise || surprise.opened) return nothing;
+    return html`
+      <pv-surprise-present class="surprise" .model=${surprise} name=${model.member.name} color=${this.color}
+        ?may=${this.mayOpen} shape=${shape}></pv-surprise-present>
+    `;
   }
 
   private _entry(entry: ColumnEntry) {
@@ -338,6 +354,7 @@ export class PvChoresColumn extends LitElement {
     const stickers = model.entry.week_stars;
     return html`
       <div class="tiles">
+        ${this._present(model, 'tile')}
         ${repeat(tiles, t => t.row.key, t => html`
           <pv-chore-tile data-key=${t.row.key} .row=${t.row} color=${this.color} ?now=${t.now} ?locked=${this.locked}
             .stars=${t.stars}></pv-chore-tile>

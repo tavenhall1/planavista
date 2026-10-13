@@ -38,6 +38,11 @@ import { InboxRow, answeredText, inboxGroups } from './inbox-derive';
 import type { ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorMessage } from '../../core/ws-api';
+import './pv-surprise-present';
+import './pv-surprise-reveal';
+import type { SurpriseOpenDetail } from './pv-surprise-present';
+import type { RevealDetail } from './pv-surprise-reveal';
+import { mayOpenSurprise, surpriseOf } from './surprise-derive';
 import { chime, haptic } from './effects';
 import type { PvChoresBoard } from './pv-chores-board';
 import { IMPORT_EXPORT, editChore } from './settings/targets';
@@ -406,6 +411,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         .colorOf=${this._colorOf} .timeFormat=${timeFormat} .minute=${this._minute}
         .goal=${goalFor(member, column.entry, board.rewards)} .shares=${fairShares(board, inOrder(this.household?.members ?? []))}
         .bedtime=${bedtimeOn(member, new Date())}
+        .surprise=${surpriseOf(member.id, column.entry, board.rewards)} ?mayOpen=${mayOpenSurprise(this.household, member.id)}
+        @pv-surprise-open=${(e: CustomEvent<SurpriseOpenDetail>) => this._openSurprise(e.detail)}
         ?locked=${memberAccess(this.household, this.session, member.id) === 'no'}
         @pv-my-day-member=${(e: CustomEvent<{ member: string }>) => { this._myDayMember = e.detail.member; }}
         @pv-my-day-style=${(e: CustomEvent<{ member: string; style: MyDayStyle }>) => void this._setStyle(e.detail.member, e.detail.style)}
@@ -493,7 +500,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return html`
       <pv-chores-rewards .balances=${balances(board, members)} .cards=${rewardCards(board, members, this._waitingAsks(board))}
         .recent=${recentLine(board, members)} .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout}
-        ?canEdit=${parentAccess(this.household, this.session) !== 'no'}
+        ?canEdit=${parentAccess(this.household, this.session) !== 'no'} .mayOpen=${this._mayOpen}
+        @pv-surprise-open=${(e: CustomEvent<SurpriseOpenDetail>) => this._openSurprise(e.detail)}
+        @pv-surprise-replay=${(e: CustomEvent<{ member: string }>) => this._replaySurprise(e.detail.member)}
         @pv-reward-redeem=${(e: CustomEvent<{ reward: string }>) => this._redeem(e.detail.reward)}
         @pv-reward-open=${(e: CustomEvent<{ reward: string | null }>) => void this._openReward(e.detail.reward)}></pv-chores-rewards>
     `;
@@ -516,23 +525,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       if (elsewhere.length) this.showToast({ id: `redeem-${Date.now()}`, text: elsewhereText(elsewhere, card.reward.name) });
       return;
     }
-    const go = async (member: Member) => {
-      const api = this.service?.api;
-      if (!api || !(await this.asMember(member.id, `Who's getting ${card.reward.name}?`))) return;
-      const ask = { member: member.id, reward: rewardId };
-      this._asking = [...this._asking, ask];
-      try {
-        const out = await api.redeem(member.id, rewardId);
-        if (out.result === 'given') this._asking = this._asking.filter(a => a !== ask);
-        this.showToast({
-          id: `redeem-${Date.now()}`,
-          text: out.result === 'given' ? `${card.reward.name} is ${member.name}'s!` : `Asked for ${card.reward.name}. A parent will answer.`,
-        });
-      } catch (err) {
-        this._asking = this._asking.filter(a => a !== ask);
-        this.showToast({ id: `redeem-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
-      }
-    };
+    const go = (member: Member) => this._redeemAs(member, rewardId, card.reward.name);
     if (ready.length === 1) {
       void go(ready[0]);
       return;
@@ -541,6 +534,69 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       kind: 'people', heading: `Who's getting ${card.reward.name}?`, people: ready, body: `It costs ★ ${card.reward.cost}.`,
       pick: member => { if (member) void go(member); },
     };
+  }
+
+  /** One member spends their stars on a reward, behind their PIN if they have one. */
+  private async _redeemAs(member: Member, rewardId: string, rewardName: string): Promise<void> {
+    const api = this.service?.api;
+    if (!api || !(await this.asMember(member.id, `Who's getting ${rewardName}?`))) return;
+    const ask = { member: member.id, reward: rewardId };
+    this._asking = [...this._asking, ask];
+    try {
+      const out = await api.redeem(member.id, rewardId);
+      if (out.result === 'given') this._asking = this._asking.filter(a => a !== ask);
+      this.showToast({
+        id: `redeem-${Date.now()}`,
+        text: out.result === 'given' ? `${rewardName} is ${member.name}'s!` : `Asked for ${rewardName}. A parent will answer.`,
+      });
+    } catch (err) {
+      this._asking = this._asking.filter(a => a !== ask);
+      this.showToast({ id: `redeem-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
+  }
+
+  // The goal surprise (milestone 10) -------------------------------------------------------
+
+  private _mayOpen = (memberId: string): boolean => mayOpenSurprise(this.household, memberId);
+
+  /** A present held open: the reveal plays at once while Home Assistant marks it opened. */
+  private _openSurprise(detail: SurpriseOpenDetail): void {
+    const api = this.service?.api;
+    if (!api) {
+      detail.settle(false);
+      return;
+    }
+    const reveal = this._reveal({ model: detail.model, name: detail.name, color: detail.color, from: detail.from });
+    api.openSurprise(detail.model.memberId).then(
+      () => detail.settle(true),
+      err => {
+        detail.settle(false);
+        reveal.dispatchEvent(new CustomEvent('pv-fullscreen-done', { bubbles: true, composed: true }));
+        this.showToast({ id: `surprise-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t open. Try again.', tone: 'bad' });
+      },
+    );
+  }
+
+  /** Watch it again, from Rewards: the same reveal, nothing to change. */
+  private _replaySurprise(memberId: string): void {
+    const board = this.service?.board();
+    const member = this.household?.members.find(m => m.id === memberId);
+    const model = board && member ? surpriseOf(memberId, board.members[memberId], board.rewards) : null;
+    if (!model || !member) return;
+    this._reveal({ model, name: member.name, color: this._colorOf(member), from: null });
+  }
+
+  /** Asks the card to show the reveal over everything; its button asks for the reward. */
+  private _reveal(detail: Omit<RevealDetail, 'sound'>): HTMLElement {
+    const reveal = document.createElement('pv-surprise-reveal');
+    reveal.detail = { ...detail, sound: !!this.service?.board()?.settings.sound };
+    reveal.addEventListener('pv-reveal-choice', event => {
+      if ((event as CustomEvent<{ choice: string }>).detail.choice !== 'ask') return;
+      const member = this.household?.members.find(m => m.id === detail.model.memberId);
+      if (member) void this._redeemAs(member, detail.model.reward.id, detail.model.reward.name);
+    });
+    this.dispatchEvent(new CustomEvent('pv-fullscreen', { detail: { element: reveal }, bubbles: true, composed: true }));
+    return reveal;
   }
 
   private async _openReward(id: string | null): Promise<void> {
@@ -593,6 +649,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
         @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}
         @pv-row-options=${(e: CustomEvent<{ row: RowModel }>) => this._openOptions(e.detail.row)}
+        @pv-surprise-open=${(e: CustomEvent<SurpriseOpenDetail>) => this._openSurprise(e.detail)}
         @pv-member-open=${(e: CustomEvent<{ member: string }>) => this._openMyDay(e.detail.member)}></pv-chores-board>
     `;
   }
