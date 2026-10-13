@@ -234,7 +234,7 @@ export class PvChoresRewards extends LitElement {
                       ?may=${this.mayOpen(b.member.id)} shape="row"></pv-surprise-present>
                   ` : nothing}
                   ${b.surprise?.opened ? html`
-                    <button class="again pv-btn pv-btn-text" type="button"
+                    <button class="again pv-btn pv-btn-secondary accent" type="button"
                       @click=${() => this._fire('pv-surprise-replay', { member: b.member.id })}>🎁 Watch it again</button>
                   ` : nothing}
                 </div>

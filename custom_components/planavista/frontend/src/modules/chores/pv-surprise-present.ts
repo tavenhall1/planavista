@@ -59,11 +59,12 @@ export class PvSurprisePresent extends LitElement {
   static styles = css`
     :host {
       display: block;
-      --tint: color-mix(in srgb, var(--member) 12%, var(--pv-card-bg, #FFFFFF));
       --gold: var(--pv-present-gold, #F5B800);
     }
 
     .surprise {
+      /* Here, where --member is set: on the host it resolved only under a column or My day (review B2). */
+      --tint: color-mix(in srgb, var(--member) 12%, var(--pv-card-bg, #FFFFFF));
       position: relative;
       box-sizing: border-box;
       width: 100%;
