@@ -15,7 +15,13 @@ from homeassistant.util.hass_dict import HassKey
 from ..const import CONF_CALENDARS, CONF_ONBOARDING_COMPLETE, DOMAIN
 from ..coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .members import clear_missing_persons, link_calendars
-from .security import SessionManager
+from .security import (
+    PARENT_MODE_CHOICES,
+    PARENT_MODE_MINUTES,
+    SESSION_IDLE_CHOICES,
+    SESSION_IDLE_SECONDS,
+    SessionManager,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +36,10 @@ def default_document() -> dict[str, Any]:
     """A household with nobody in it yet."""
     return {
         "members": [],
-        "security": {"pins": {}, "shared_users": [], "shuffle_keypad": False},
+        "security": {
+            "pins": {}, "shared_users": [], "shuffle_keypad": False,
+            "session_idle_seconds": SESSION_IDLE_SECONDS, "parent_mode_minutes": PARENT_MODE_MINUTES,
+        },
         "modules": {},
         "setup": {"completed": False, "step": None},
         "migrations": {},
@@ -53,6 +62,10 @@ def normalize(data: object) -> dict[str, Any]:
         security["shared_users"] = []
     if not isinstance(security.get("shuffle_keypad"), bool):
         security["shuffle_keypad"] = False
+    if security.get("session_idle_seconds") not in SESSION_IDLE_CHOICES:
+        security["session_idle_seconds"] = SESSION_IDLE_SECONDS
+    if security.get("parent_mode_minutes") not in PARENT_MODE_CHOICES:
+        security["parent_mode_minutes"] = PARENT_MODE_MINUTES
     doc["security"] = security
     setup = dict(doc["setup"]) if isinstance(doc.get("setup"), Mapping) else {}
     if not isinstance(setup.get("completed"), bool):
@@ -73,9 +86,16 @@ class Household:
         """Wrap a loaded document; no store means a newer version wrote it."""
         self._store = store
         self.data = data
-        self.sessions = SessionManager()
+        self.sessions = SessionManager(self.session_limits)
         self._listeners: list[Callable[[], None]] = []
         self._pin_locks: dict[str, asyncio.Lock] = {}
+
+    def session_limits(self) -> tuple[float, float]:
+        """How long a quiet session lasts, and when any session ends, in seconds (milestone 8, D3)."""
+        security = self.data.get("security", {})
+        idle = security.get("session_idle_seconds", SESSION_IDLE_SECONDS)
+        cap = security.get("parent_mode_minutes", PARENT_MODE_MINUTES)
+        return float(idle), float(cap) * 60
 
     @property
     def available(self) -> bool:

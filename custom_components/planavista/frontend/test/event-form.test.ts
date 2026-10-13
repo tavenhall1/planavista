@@ -11,6 +11,9 @@ import {
   withEndTime,
   withStartTime,
   type EventFormDates,
+  defaultWho,
+  withAllDayEnd,
+  withAllDayStart,
 } from '../src/modules/calendar/utils/event-form';
 
 describe('calendarDaysBetween', () => {
@@ -235,5 +238,40 @@ describe('buildEventBase', () => {
       location: ' Museum ',
     });
     expect(base).toEqual({ summary: 'Field trip', start_date: '2026-10-09', end_date: '2026-10-10', location: 'Museum' });
+  });
+});
+
+describe("a new event's Who (milestone 8)", () => {
+  it('picks the one calendar offered, or nobody when there is a choice', () => {
+    expect(defaultWho(['calendar.test_casey'])).toEqual(['calendar.test_casey']);
+    expect(defaultWho(['calendar.test_alex', 'calendar.test_blair'])).toEqual([]);
+    expect(defaultWho([])).toEqual([]);
+  });
+});
+
+describe('all-day events over several days (milestone 8, spec 3.4)', () => {
+  const friday = { date: '2026-10-16', allDay: true, startTime: '09:00', endTime: '10:00', spanDays: 1, endDayOffset: 0 };
+
+  it("a trip from Friday to Sunday is one event, with Home Assistant's end the day after", () => {
+    const trip = withAllDayEnd(friday, '2026-10-18');
+    expect(trip.spanDays).toBe(3);
+    expect(formEndDate(trip)).toBe('2026-10-18');
+    expect(buildDatePayload(trip)).toEqual({ start_date: '2026-10-16', end_date: '2026-10-19' });
+  });
+
+  it('editing shows the last day and keeps both days', () => {
+    const f = formDatesFromEvent('2026-10-16', '2026-10-19');
+    expect(f.spanDays).toBe(3);
+    expect(formEndDate(f)).toBe('2026-10-18');
+  });
+
+  it('a new start moves the end along, so the trip keeps its length', () => {
+    const moved = withAllDayStart(withAllDayEnd(friday, '2026-10-18'), '2026-10-23');
+    expect(moved.date).toBe('2026-10-23');
+    expect(formEndDate(moved)).toBe('2026-10-25');
+  });
+
+  it('an end before the start is the start day', () => {
+    expect(withAllDayEnd(friday, '2026-10-14').spanDays).toBe(1);
   });
 });

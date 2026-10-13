@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { personChipStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
@@ -6,7 +7,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { HouseholdView, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { POP_PAGE } from '../../../core/page-host';
+import { POP_PAGE, announceEditor } from '../../../core/page-host';
 import { errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
@@ -75,6 +76,7 @@ export class PvRewardEditor extends LitElement {
   }
 
   static styles = [
+    personChipStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -137,7 +139,7 @@ export class PvRewardEditor extends LitElement {
 
       .name-row input {
         flex: 1;
-        min-height: 44px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: inherit;
@@ -159,6 +161,23 @@ export class PvRewardEditor extends LitElement {
     `,
   ];
 
+  /** The editor's Cancel and Save, held in the Settings header (milestone 8). */
+  private _announced = '';
+
+  protected updated(): void {
+    const isNew = this._rewardId === null;
+    const editor = {
+      label: isNew ? 'Add' : 'Save',
+      ready: !(this._saving || (!isNew && !rewardDirty(this._record))),
+      save: () => void this._save(),
+      cancel: () => this._cancel(),
+    };
+    const said = `${editor.label}|${editor.ready}`;
+    if (said === this._announced) return;
+    this._announced = said;
+    announceEditor(this, editor);
+  }
+
   render() {
     if (this._rewardId !== null && this._chores?.board() && !this._reward) {
       return html`<p class="gone">This reward was removed on another screen.</p>`;
@@ -170,11 +189,6 @@ export class PvRewardEditor extends LitElement {
     return html`
       <div class="top">
         <span class="big" aria-hidden="true">${d.icon || pictureFor(d.name || 'reward', '🎁')}</span>
-        <div class="actions">
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${this._cancel}>Cancel</button>
-          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._saving || (!isNew && !rewardDirty(this._record))}
-            @click=${this._save}>${isNew ? 'Add' : 'Save'}</button>
-        </div>
       </div>
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
       <div class="group">
@@ -214,11 +228,11 @@ export class PvRewardEditor extends LitElement {
       </div>
       <h2 class="section-label">Who can get it</h2>
       <div class="group">
-        <div class="people chips" role="group" aria-label="Who can get it">
-          <button class="chip chip--plain" type="button" aria-pressed=${d.who.length === 0 ? 'true' : 'false'}
+        <div class="pv-person-chips" role="group" aria-label="Who can get it">
+          <button class="chip" type="button" aria-pressed=${d.who.length === 0 ? 'true' : 'false'}
             @click=${() => this._change({ who: [] })}>Everyone</button>
           ${earners.map(member => html`
-            <button class="chip" type="button" aria-pressed=${d.who.includes(member.id) ? 'true' : 'false'}
+            <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(member.id) ? 'true' : 'false'} style="--member:${member.color}"
               @click=${() => this._change({ who: d.who.includes(member.id) ? d.who.filter(id => id !== member.id) : [...d.who, member.id] })}>
               <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>${member.name}
             </button>
@@ -226,7 +240,7 @@ export class PvRewardEditor extends LitElement {
         </div>
       </div>
       <p class="hint">${whoText(d.who, earners)}. People earn stars when Stars is on for them on their page.</p>
-      ${this._reward ? html`<button class="destructive" type="button" @click=${() => { this._notice = 'delete'; }}>Delete ${this._reward.name}…</button>` : nothing}
+      ${this._reward ? html`<button class="pv-btn pv-btn-secondary danger apart end-delete" type="button" @click=${() => { this._notice = 'delete'; }}>Delete reward</button>` : nothing}
       ${this._renderNotice()}
     `;
   }
@@ -235,7 +249,7 @@ export class PvRewardEditor extends LitElement {
     if (this._notice === 'discard') {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Discard changes?"
-          .actions=${[{ id: 'keep', label: 'Keep editing', kind: 'secondary' }, { id: 'discard', label: 'Discard', kind: 'destructive' }]}
+          .actions=${[{ id: 'discard', label: 'Discard changes', kind: 'destructive' }, { id: 'keep', label: 'Keep editing', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDiscard}></pv-notice-sheet>
       `;
     }
@@ -243,7 +257,7 @@ export class PvRewardEditor extends LitElement {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Delete ${this._reward.name}?"
           body="Rewards already given stay in everyone's history."
-          .actions=${[{ id: 'cancel', label: 'Cancel', kind: 'secondary' }, { id: 'delete', label: 'Delete', kind: 'destructive' }]}
+          .actions=${[{ id: 'delete', label: `Delete ${this._reward.name}`, kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDelete}></pv-notice-sheet>
       `;
     }

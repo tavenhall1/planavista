@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -37,8 +38,9 @@ const VERSION_LABELS: Record<Mode, string> = { light: 'Light', dark: 'Dark' };
 
 type ShapeKey = 'corner_style' | 'shadow_depth' | 'event_style';
 const SHAPE_CHOICES: Array<{ key: ShapeKey; label: string; options: Array<[string, string]> }> = [
-  { key: 'corner_style', label: 'Corners', options: [['sharp', 'Sharp'], ['rounded', 'Rounded'], ['pill', 'Pill']] },
-  { key: 'shadow_depth', label: 'Shadows', options: [['none', 'None'], ['subtle', 'Subtle'], ['bold', 'Bold']] },
+  // "Theme" is the theme's own corners or shadows, which may be none of the others (milestone 8).
+  { key: 'corner_style', label: 'Corners', options: [['', 'Theme'], ['sharp', 'Sharp'], ['rounded', 'Rounded'], ['pill', 'Pill']] },
+  { key: 'shadow_depth', label: 'Shadows', options: [['', 'Theme'], ['none', 'None'], ['subtle', 'Subtle'], ['bold', 'Bold']] },
   { key: 'event_style', label: 'Events', options: [['stripes', 'Stripes'], ['solid', 'Solid']] },
 ];
 
@@ -65,6 +67,7 @@ export class PvSettingsCustomize extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    segmentedStyles,
     buttonStyles,
     formStyles,
     settingsPageStyles,
@@ -79,10 +82,9 @@ export class PvSettingsCustomize extends LitElement {
 
       .section-heading {
         margin: 0 0 10px;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--pv-text, #1A1B1E);
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .help {
@@ -209,7 +211,7 @@ export class PvSettingsCustomize extends LitElement {
         border: 1px solid var(--pv-border, #E7E7E3);
       }
 
-      .editor .pill-group {
+      .editor .pv-seg {
         margin-bottom: 12px;
       }
 
@@ -228,9 +230,6 @@ export class PvSettingsCustomize extends LitElement {
         color: var(--pv-text-secondary, #5F6670);
       }
 
-      .pill-btn {
-        min-height: 48px;
-      }
 
       .border-custom {
         display: flex;
@@ -358,13 +357,13 @@ export class PvSettingsCustomize extends LitElement {
     const unset = mode === 'light' ? 'Original' : 'Matched';
     const hex = own && own.startsWith('#') ? own : '';
     return html`
-      <div class="editor" aria-label=${`${ROWS.find(r => r.key === key)?.label} for ${VERSION_LABELS[mode]}`} role="group">
-        <div class="pill-group">
-          <button class="pill-btn ${own === undefined ? 'pill-btn--active' : ''}" type="button"
+      <div class="editor">
+        <div class="pv-seg" role="group" aria-label=${`${ROWS.find(r => r.key === key)?.label} for ${VERSION_LABELS[mode]}`}>
+          <button type="button"
             aria-pressed=${own === undefined ? 'true' : 'false'}
             @click=${(e: Event) => this._setColor(mode, key, undefined, e)}>${unset}</button>
           ${key === 'header' ? HEADER_CHOICES.map(choice => html`
-            <button class="pill-btn ${own === choice.key ? 'pill-btn--active' : ''}" type="button"
+            <button type="button"
               aria-pressed=${own === choice.key ? 'true' : 'false'}
               @click=${(e: Event) => this._setColor(mode, key, choice.key, e)}>${choice.label}</button>
           `) : nothing}
@@ -386,31 +385,31 @@ export class PvSettingsCustomize extends LitElement {
     return html`
       <div class="shape">
         ${SHAPE_CHOICES.map(group => {
-          // Events start as Stripes; corners and shadows start as the theme's own, which may be none of these.
-          const chosen = shape[group.key] ?? (group.key === 'event_style' ? 'stripes' : undefined);
+          // Events start as Stripes; corners and shadows start as the theme's own ("Theme").
+          const chosen = shape[group.key] ?? (group.key === 'event_style' ? 'stripes' : '');
           return html`
-            <div role="group" aria-label=${group.label}>
+            <div>
               <span class="shape-label">${group.label}</span>
-              <div class="pill-group">
+              <div class="pv-seg" role="group" aria-label=${group.label}>
                 ${group.options.map(([value, label]) => html`
-                  <button class="pill-btn ${chosen === value ? 'pill-btn--active' : ''}" type="button"
+                  <button type="button"
                     aria-pressed=${chosen === value ? 'true' : 'false'}
-                    @click=${(e: Event) => this._setShape({ [group.key]: value } as Partial<ThemeShape>, e)}>${label}</button>
+                    @click=${(e: Event) => this._setShape({ [group.key]: value || undefined } as Partial<ThemeShape>, e)}>${label}</button>
                 `)}
               </div>
             </div>
           `;
         })}
-        <div role="group" aria-label="Avatar border">
+        <div>
           <span class="shape-label">Avatar border</span>
-          <div class="pill-group">
-            <button class="pill-btn ${border === 'primary' ? 'pill-btn--active' : ''}" type="button"
+          <div class="pv-seg" role="group" aria-label="Avatar border">
+            <button type="button"
               aria-pressed=${border === 'primary' ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: 'primary' }, e)}>Their color</button>
-            <button class="pill-btn ${border === 'white' || border === 'light' ? 'pill-btn--active' : ''}" type="button"
+            <button type="button"
               aria-pressed=${border === 'white' || border === 'light' ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: 'white' }, e)}>White</button>
-            <button class="pill-btn ${custom ? 'pill-btn--active' : ''}" type="button"
+            <button type="button"
               aria-pressed=${custom ? 'true' : 'false'}
               @click=${(e: Event) => this._setShape({ avatar_border: custom ? border : CUSTOM_BORDER }, e)}>Custom</button>
           </div>

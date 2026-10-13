@@ -3,7 +3,7 @@ import {
   choreRow, choresList, durationText, groupOf, onTheBoard, rhythmText,
 } from '../src/modules/chores/settings/chores-list-derive';
 import type { Activity } from '../src/modules/chores/chores-types';
-import { MEMBERS, TODAY, activity } from './chores-fixtures';
+import { MEMBERS, TODAY, activity, item } from './chores-fixtures';
 
 const SETTINGS = { minutes_per_star: 15 };
 
@@ -96,5 +96,23 @@ describe('choresList', () => {
     expect(onTheBoard(SAMPLE.find(a => a.id === 'wash_the_car')!)).toBe(false);
     expect(onTheBoard(SAMPLE.find(a => a.id === 'soccer_practice')!)).toBe(false);
     expect(onTheBoard(SAMPLE.find(a => a.id === 'laundry')!)).toBe(true);
+  });
+});
+
+describe("a standing new date (milestone 8)", () => {
+  const water = activity('water_the_plants', { name: 'Water the plants', schedule: 'once', assignees: ['casey'], once: { on: '2026-10-11', by: null, by_time: null, sessions: 1, estimate_minutes: 15 } });
+
+  it("shows a parent's new due date next to the chore's own", () => {
+    const moved = item('water_the_plants|casey|once|0', { chore: 'water_the_plants', window: 'once', period: 'once', due_day: '2026-10-12', dated: true });
+    const list = choresList([water], MEMBERS, SETTINGS, { today: TODAY, items: [moved] });
+    expect(list.groups.flatMap(g => g.rows).map(r => r.rhythm)).toEqual(['On Oct 11 · moved to Oct 12']);
+  });
+
+  it('says nothing more when the date stands, or once it is done', () => {
+    const same = item('water_the_plants|casey|once|0', { chore: 'water_the_plants', window: 'once', period: 'once', due_day: '2026-10-11', dated: true });
+    const done = item('water_the_plants|casey|once|0', { chore: 'water_the_plants', window: 'once', period: 'once', due_day: '2026-10-12', dated: true, status: 'done' });
+    for (const items of [[same], [done], []]) {
+      expect(choresList([water], MEMBERS, SETTINGS, { today: TODAY, items }).groups.flatMap(g => g.rows).map(r => r.rhythm)).toEqual(['On Oct 11']);
+    }
   });
 });

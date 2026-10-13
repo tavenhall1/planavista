@@ -192,6 +192,25 @@ describe('HouseholdApi', () => {
     expect(ended).toEqual(['abc']);
   });
 
+  it('tells the card when a command kept its session open (the backend counts it as a touch)', async () => {
+    const refusal = { code: 'invalid_format', message: 'x' };
+    let fail = false;
+    const ws = { callWS: <T>(_message: Record<string, unknown>) => (fail ? Promise.reject(refusal) : Promise.resolve({} as T)) as Promise<T> };
+    const used: string[] = [];
+    let token: string | null = 'abc';
+    const api = new HouseholdApi(ws, () => token, undefined, used.push.bind(used));
+    await api.saveSecurity({ session_idle_seconds: 30 });
+    expect(used).toEqual(['abc']);
+    // Unlock and lock don't carry the session; a refused command proves nothing.
+    await api.unlock('blair', '4826');
+    fail = true;
+    await expect(api.reorder(['dana'])).rejects.toBe(refusal);
+    token = null;
+    fail = false;
+    await api.reorder(['dana']);
+    expect(used).toEqual(['abc']);
+  });
+
   it('reads the code of a failed command', () => {
     expect(errorCode({ code: 'parent_mode_required', message: 'x' })).toBe('parent_mode_required');
     expect(errorCode(new Error('boom'))).toBe('unknown');

@@ -111,7 +111,9 @@ Twenty presets in two palettes. Each has a color and a light fill for its events
 | Oxidized Iron | `#AE2012` | `#E3B1AC` | Blue Slate | `#577590` | `#C4CFD8` |
 | Brown Red | `#9B2226` | `#DCB2B3` | Cerulean | `#277DA1` | `#B3D2DE` |
 
-A custom color gets its fill computed for it. In dark mode both are derived in OKLCH (section 5.3), so contrast is measured rather than eyeballed.
+A custom color gets its fill computed for it, 65 percent of the way to white, as every preset's fill is. In dark mode both are derived in OKLCH (section 5.3), so contrast is measured rather than eyeballed.
+
+**One color per person.** A person's color is set once, on their page in People, and both modules draw it: the board, rings, avatars, and every calendar that belongs to them, with its fill made from that color. A calendar that belongs to nobody keeps its own color and picker.
 
 ### 4.3 Text on color
 
@@ -335,6 +337,29 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 - Fifteen animated icons. The condition text is capitalized, with hyphens as spaces.
 - Without a weather entity the space collapses, with no placeholder.
 
+### 11.9 Controls: one for each kind of choice
+
+The shared styles live in `styles/controls.ts`; each site keeps its own buttons, inputs, and handlers.
+
+| Job | Control | Where |
+|---|---|---|
+| Pick one of a few | Segmented: a grey track, the chosen choice on a white chip, 48 px tall, choices keep their width | The module switcher and views, My day's style, quick add's When, Motion, every Settings segment, the repeat picker, a person's Picture, Lock after no touches |
+| Pick from a row that may wrap | Chips: 48 px pills, the chosen one on the accent tint (`chipStyles`) | Quick add's When, repeat, and minutes, the chore editor's estimate, setup's rhythms, the options sheet's days, the inbox's reasons |
+| Pick from named choices with a line each | Choice rows around real radios, a check on the chosen row | Age group, the missed rule, Automatic's rules |
+| Pick a look | Picture cards that preview | Light, Dark, Automatic, and the themes |
+| Whose view this is | The people strip: round faces with names, the shown one filled with its color; it never shrinks | The phone board, Day when its lanes are hidden, My day |
+| Who something is for | Person chips: avatar chips with the person's color ring and a check | New event's Who, quick add, a chore's people, a reward's who |
+| A label on a row | A tag: one pill in sentence case (muted, OK, ask, attention) | Parent, Needs an OK, Plan only, Organizer |
+| A heading over a group or a field | 0.8125rem at 750 in the secondary text color | Settings groups and pages, the person page, every form's labels, the board's bands, My day |
+| On or off | One toggle, 44 by 24 with a 48 px hit area | Every on/off setting |
+| A date or a time | The event editor's month grid and time list, shared (`pv-date-field`, `pv-time-field`) | Every date and time; no native inputs |
+
+Buttons are one family: primary (filled, one per screen; a list page's New ... is its primary), secondary, and text, 48 px tall with one radius. A disabled button is dimmed and shows nothing to press. Deleting in place is a secondary button with red text (`--pv-danger-ink`) set apart at the end, naming the kind of thing (Delete event, Delete chore, Delete reward, Remove from household, Remove PIN); its question names the thing itself (Delete School drop-off, Remove Casey). A fill uses `--pv-danger`.
+
+Sheets end the same way: an editing sheet with Cancel then its action, in halves; a read-only sheet with its actions, Delete set apart, and Done last; a sheet that asks you to pick (Who did it?, Who's getting ...?) with Cancel. A sheet opens with focus on its title, questions too, and its text sits on the left under the title. Settings editors put Cancel and Save in the Settings header so Save stays in view.
+
+The PIN session strip shows whose session is open, a parent's or a child's, in their color, with the countdown and Lock. The PIN sheet always says why it is asking ("To change Team standup").
+
 ### 11.8 Card options
 
 Settings are saved for the whole household; a card's YAML can override some for that card:
@@ -356,6 +381,16 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-12: Changed: one product (1.5.0)
+
+- One control for each kind of choice (section 11.9), and one button family with a disabled look and one red for deleting.
+- One color per person in both modules; a calendar that belongs to someone draws its person's color.
+- Every sheet ends the same way; Settings editors keep Save in view; one toast, light in dark mode.
+- Dates and times picked one way everywhere; both Week views share one toolbar.
+- The PIN strip for a child's unlocked time too; the PIN sheet says why it is asking.
+- One event in every view; all-day events with Starts and Ends.
+- Settings pages share one column.
 
 ### 2026-10-11: Changed: the calendar takes on the rest (1.4.0)
 

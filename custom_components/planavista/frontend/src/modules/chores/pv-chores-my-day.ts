@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { peopleStripStyles, segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { keyed } from 'lit/directives/keyed.js';
@@ -16,8 +17,10 @@ import {
   FairShare,
   GoalModel,
   TimelineEntry,
+  goalWords,
   nextLine,
   picturesFor,
+  stickersLabel,
   timelineFor,
 } from './my-day-derive';
 import { pictureOf } from './pv-chore-tile';
@@ -62,6 +65,8 @@ export class PvChoresMyDay extends LitElement {
   @property({ attribute: false }) minute = 0;
 
   static styles = [
+    peopleStripStyles,
+    segmentedStyles,
     choresStyles,
     css`
       :host {
@@ -73,37 +78,8 @@ export class PvChoresMyDay extends LitElement {
         overscroll-behavior: contain;
       }
 
-      .picker {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        padding: 12px 12px 4px;
-        flex-wrap: wrap;
-      }
 
-      .face {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        min-width: 56px;
-        min-height: 48px;
-        padding: 2px 4px;
-        border: none;
-        border-radius: 12px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.75rem;
-        font-weight: 700;
-        cursor: pointer;
-        opacity: 0.6;
-      }
 
-      .face[aria-pressed='true'] {
-        opacity: 1;
-        color: var(--pv-text, #1A1B1E);
-      }
 
       .layout {
         display: grid;
@@ -155,31 +131,8 @@ export class PvChoresMyDay extends LitElement {
         font-size: 0.9375rem;
       }
 
-      .seg {
-        display: inline-flex;
-        padding: 3px;
-        border-radius: 10px;
-        background: var(--pv-seg, #ECECE8);
-      }
 
-      .seg button {
-        min-height: 40px;
-        padding: 0 12px;
-        border: none;
-        border-radius: 8px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.875rem;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .seg button[aria-pressed='true'] {
-        background: var(--pv-seg-on, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-      }
 
       .goal {
         margin-top: 12px;
@@ -219,7 +172,7 @@ export class PvChoresMyDay extends LitElement {
         grid-template-columns: 56px minmax(0, 1fr);
         gap: 8px;
         align-items: center;
-        min-height: 40px;
+        min-height: 48px;
       }
 
       .tl-time {
@@ -231,10 +184,8 @@ export class PvChoresMyDay extends LitElement {
 
       .tl-band {
         margin: 14px 0 4px 64px;
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         font-weight: 750;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
         color: var(--pv-text-muted, #8E949C);
       }
 
@@ -390,12 +341,6 @@ export class PvChoresMyDay extends LitElement {
         font-size: 22px;
       }
 
-      .side h3 {
-        margin: 0 0 8px;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1.0625rem;
-        font-weight: 800;
-      }
 
       .side .section + .section {
         margin-top: 16px;
@@ -436,12 +381,12 @@ export class PvChoresMyDay extends LitElement {
     const style = this._style();
     return html`
       ${this.columns.length > 1 ? html`
-        <div class="picker" role="group" aria-label="Whose day">
+        <div class="pv-people" role="tablist" aria-label="Whose day">
           ${this.columns.map(col => html`
-            <button class="face" type="button" aria-pressed=${col.member.id === member.id ? 'true' : 'false'}
-              @click=${() => this._fire('pv-my-day-member', { member: col.member.id })}>
-              <pv-ring size="44" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${this.colorOf(col.member)}>
-                <pv-member-avatar .member=${{ ...col.member, color: this.colorOf(col.member) }} .hass=${this.hass} size="32"></pv-member-avatar>
+            <button class="pv-person" type="button" role="tab" aria-selected=${col.member.id === member.id ? 'true' : 'false'}
+              style="--member:${this.colorOf(col.member)}" @click=${() => this._fire('pv-my-day-member', { member: col.member.id })}>
+              <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${this.colorOf(col.member)}>
+                <pv-member-avatar .member=${{ ...col.member, color: this.colorOf(col.member) }} .hass=${this.hass} size="28"></pv-member-avatar>
               </pv-ring>
               ${col.member.name}
             </button>
@@ -458,7 +403,7 @@ export class PvChoresMyDay extends LitElement {
               <div class="name">${member.name}</div>
               <div class="line">${column.line}</div>
             </div>
-            <div class="seg" role="group" aria-label="My day style">
+            <div class="pv-seg" role="group" aria-label="My day style">
               ${STYLES.map(s => html`
                 <button type="button" aria-pressed=${s.id === style ? 'true' : 'false'}
                   @click=${() => this._fire('pv-my-day-style', { member: member.id, style: s.id })}>${s.label}</button>
@@ -478,7 +423,7 @@ export class PvChoresMyDay extends LitElement {
       <div class="goal">
         <div class="text">
           <span>Goal: ${pictureOf(goal.reward.icon)} ${goal.reward.name}</span>
-          <span class="num">${goal.need > 0 ? `${goal.have} of ${goal.reward.cost} ★ · ${goal.need} more` : 'Enough stars!'}</span>
+          <span class="num">${goalWords(goal)}</span>
         </div>
         <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax=${goal.reward.cost} aria-valuenow=${goal.have}
           aria-label=${`${goal.reward.name}: ${goal.have} of ${goal.reward.cost} stars`}><span style="width:${Math.round(goal.progress * 100)}%"></span></div>
@@ -563,10 +508,10 @@ export class PvChoresMyDay extends LitElement {
     return html`
       <div class="fair">
         <div class="section-head" style="margin-left:0"><span>Shared chores this week, by time done</span></div>
-        <div class="bar" role="img" aria-label=${this.shares.map(s => `${s.member.name} ${s.percent}%`).join(', ')}>
+        <div class="bar" role="img" aria-label=${this.shares.map(s => s.text).join(', ')}>
           ${this.shares.map(s => html`<span style="width:${s.percent}%;background:${this.colorOf(s.member)}"></span>`)}
         </div>
-        <div class="legend">${this.shares.map(s => html`<span><i style="background:${this.colorOf(s.member)}"></i>${s.member.name} ${s.percent}%</span>`)}</div>
+        <div class="legend">${this.shares.map(s => html`<span><i style="background:${this.colorOf(s.member)}"></i>${s.text}</span>`)}</div>
       </div>
     `;
   }
@@ -602,7 +547,7 @@ export class PvChoresMyDay extends LitElement {
         </div>
       ` : nothing}
       ${this.column.member.stars ? html`
-        <div class="label">Stickers this week${this.goal ? html` → ${pictureOf(this.goal.reward.icon)} ${this.goal.reward.name} at ${this.goal.reward.cost}` : nothing}</div>
+        <div class="label">${stickersLabel(stars)}${this.goal ? html` · Goal: ${pictureOf(this.goal.reward.icon)} ${this.goal.reward.name} · ${goalWords(this.goal)}` : nothing}</div>
         <div class="stickers" role="img" aria-label=${`${stars} stars this week`}>
           ${Array.from({ length: Math.min(30, stars) }, () => html`<span aria-hidden="true">⭐</span>`)}
           ${stars === 0 ? html`<span class="meta">Stars show up here.</span>` : nothing}
@@ -621,13 +566,13 @@ export class PvChoresMyDay extends LitElement {
       <aside class="card side">
         ${column.member.stars ? html`
           <div class="section">
-            <h3>Stars</h3>
+            <div class="section-head"><span>Stars</span></div>
             <div class="stars-big num">★ ${column.entry.stars}</div>
             ${this.goal ? this._goal(this.goal) : nothing}
           </div>
         ` : nothing}
         <div class="section">
-          <h3>This week</h3>
+          <div class="section-head"><span>This week</span><span class="right">${this.board.week.days_left} days left</span></div>
           ${week.length ? repeat(week, r => r.key, r => this._row(r, 'week')) : html`<p class="meta">Nothing more this week.</p>`}
         </div>
       </aside>

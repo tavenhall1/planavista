@@ -2,27 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { property, state, query } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { baseStyles } from '../styles/shared';
-
-/**
- * Computes the light variant of a hex color by blending toward white at 88%.
- * Formula: channel = channel + (255 - channel) * 0.88
- */
-function computeLightVariant(hex: string): string {
-  let clean = hex.replace('#', '');
-  if (clean.length === 3) clean = clean.split('').map(c => c + c).join('');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
-
-  const rLight = Math.round(r + (255 - r) * 0.65);
-  const gLight = Math.round(g + (255 - g) * 0.65);
-  const bLight = Math.round(b + (255 - b) * 0.65);
-
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(rLight)}${toHex(gLight)}${toHex(bLight)}`;
-}
+import { lightTint } from './color';
 
 interface Preset {
   name: string;
@@ -99,7 +79,7 @@ export class PvColorSwatchPicker extends LitElement {
   private _onCustomColorChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const color = input.value;
-    const colorLight = computeLightVariant(color);
+    const colorLight = lightTint(color);
     this._isCustom = true;
     this._emit(color, colorLight);
   }
@@ -135,8 +115,8 @@ export class PvColorSwatchPicker extends LitElement {
 
       /* Each cell is a 44×44 touch target */
       .swatch-btn {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         padding: 6px;
         background: transparent;
         border: none;

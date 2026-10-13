@@ -116,10 +116,8 @@ export class PvSetupSharedScreen extends LitElement {
 
       .label {
         margin: 0 4px 8px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
+        font-size: 0.8125rem;
+        font-weight: 750;
         color: var(--pv-text-secondary, #6B7280);
       }
 

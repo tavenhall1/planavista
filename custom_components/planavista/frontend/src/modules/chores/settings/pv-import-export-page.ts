@@ -196,7 +196,8 @@ export class PvImportExportPage extends LitElement {
   private _renderActions(mode: Mode) {
     return html`
       <div class="actions">
-        <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._reading} @click=${() => this._choose(mode)}>Choose a file</button>
+        <button class="pv-btn ${mode === 'restore' ? 'pv-btn-secondary' : 'pv-btn-primary'}" type="button" ?disabled=${this._reading}
+          @click=${() => this._choose(mode)}>Choose a file</button>
         <button class="pv-btn pv-btn-secondary" type="button" @click=${() => { this._pasting = this._pasting === mode ? null : mode; this._problem = null; }}>
           Paste text</button>
       </div>

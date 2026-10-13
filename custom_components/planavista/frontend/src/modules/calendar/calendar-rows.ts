@@ -94,3 +94,16 @@ export function belongsTo(
   const chosen = members.some(m => m.id === row.member_id) ? row.member_id : null;
   return { memberId: chosen, viaPerson: false };
 }
+
+/**
+ * The color a calendar row shows (milestone 8, spec 3.1): its person's, set
+ * in People, when it belongs to someone; its own otherwise.
+ */
+export function rowColor<M extends Pick<Member, 'id' | 'person' | 'color'>>(
+  row: Pick<CalendarRow, 'person_entity' | 'member_id' | 'color'>,
+  members: M[],
+): { owner: M | null; color: string } {
+  const { memberId } = belongsTo(row, members);
+  const owner = members.find(m => m.id === memberId) ?? null;
+  return { owner, color: owner ? owner.color : row.color };
+}

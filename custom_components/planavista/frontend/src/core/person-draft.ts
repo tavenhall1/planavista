@@ -47,6 +47,24 @@ export function withAgeGroup(draft: PersonDraft, age: AgeGroup): PersonDraft {
   return { ...draft, age_group: age, ...AGE_GROUP_DEFAULTS[age] };
 }
 
+const STYLE_WORDS: Record<string, string> = { timeline: 'Timeline', list: 'List', pictures: 'Pictures' };
+const OK_WORDS: Record<string, string> = {
+  all: 'an OK for every chore', marked: 'an OK for chores marked Needs an OK', none: 'no OKs',
+};
+
+type AgeSettings = { my_day: string; needs_ok_for: string; stars: boolean };
+
+/** What a new age group changed, in a line under the choices ("Now Timeline, and earns stars."; milestone 8). */
+export function ageGroupNote(before: AgeSettings, after: AgeSettings): string | null {
+  const parts: string[] = [];
+  if (before.my_day !== after.my_day) parts.push(STYLE_WORDS[after.my_day] ?? after.my_day);
+  if (before.needs_ok_for !== after.needs_ok_for) parts.push(OK_WORDS[after.needs_ok_for] ?? after.needs_ok_for);
+  if (before.stars !== after.stars) parts.push(after.stars ? 'earns stars' : 'no stars');
+  if (!parts.length) return null;
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+  return `Now ${list}.`;
+}
+
 /** The editor's starting point: the person as saved, or someone new with the first free color. */
 export function draftOf(member: Member | null, members: Member[], palette: string[]): PersonDraft {
   if (member) {

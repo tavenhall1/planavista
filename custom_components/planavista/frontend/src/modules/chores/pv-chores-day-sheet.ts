@@ -88,7 +88,7 @@ export class PvChoresDaySheet extends LitElement {
       }
 
       .link {
-        min-height: 40px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: var(--pv-accent-ink, #5B5BD6);
@@ -104,7 +104,7 @@ export class PvChoresDaySheet extends LitElement {
     const backdrop = this.renderRoot.querySelector<HTMLElement>('.backdrop')!;
     this._motion.open(panel, backdrop);
     this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
-    this.renderRoot.querySelector<HTMLElement>('.actions button')?.focus();
+    this.renderRoot.querySelector<HTMLElement>('#day-title')?.focus();
   }
 
   disconnectedCallback(): void {
@@ -144,7 +144,7 @@ export class PvChoresDaySheet extends LitElement {
       <div class="backdrop" @click=${() => void this.close()}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="day-title" @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <h2 class="heading" id="day-title">${this.member?.name} · ${longDay(this.date)}</h2>
+        <h2 class="heading" id="day-title" tabindex="-1">${this.member?.name} · ${longDay(this.date)}</h2>
         ${sub ? html`<p class="sub">${sub}</p>` : nothing}
         ${this.failed ? html`<p class="sub">Couldn't load this day. Try again in a moment.</p>` : !this.day ? html`
           <div aria-busy="true"><div class="bone" style="height:44px;margin-bottom:8px"></div><div class="bone" style="height:44px"></div></div>

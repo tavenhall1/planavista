@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  calendarWatchedEntities, deriveCalendarData, eventForPopup, initialView, selectCalendars,
+  calendarWatchedEntities, deriveCalendarData, eventForPopup, groupSameEvents, initialView, ownersOf, sameEventKey, selectCalendars,
 } from '../src/modules/calendar/calendar-derive';
 import type { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../src/types';
 
@@ -41,14 +41,25 @@ describe('deriveCalendarData', () => {
     expect(deriveCalendarData(d, card(), new Set(['calendar.test_blair'])).visibleEvents.map(e => e.uid)).toEqual(['a']);
   });
 
-  it('groups shared events by uid, once per calendar, and skips events without a uid', () => {
+  it("groups the copies of one event (same title and times), once per calendar, whatever their ids (milestone 8)", () => {
     const d = data([cal('calendar.test_alex', 'person.alex'), cal('calendar.test_blair')], [
-      ev('calendar.test_alex', 'dinner'), ev('calendar.test_blair', 'dinner'), ev('calendar.test_alex', 'dinner'), ev('calendar.test_alex'),
+      ev('calendar.test_alex', 'dinner'), ev('calendar.test_blair', 'its-own'), ev('calendar.test_alex', 'dinner'), ev('calendar.test_alex'),
+      { ...ev('calendar.test_blair', 'later'), start: '2026-10-14T18:00:00-05:00', end: '2026-10-14T19:00:00-05:00' },
     ]);
     const map = deriveCalendarData(d, card(), new Set()).sharedEventMap;
-    expect([...map.keys()]).toEqual(['dinner']);
-    expect(map.get('dinner')!.map(p => [p.entity_id, p.person_entity])).toEqual([
+    const key = sameEventKey(ev('calendar.test_alex'));
+    expect(map.get(key)!.map(p => [p.entity_id, p.person_entity])).toEqual([
       ['calendar.test_alex', 'person.alex'], ['calendar.test_blair', ''],
+    ]);
+    expect(map.get(sameEventKey({ ...ev('calendar.test_blair'), start: '2026-10-14T18:00:00-05:00', end: '2026-10-14T19:00:00-05:00' }))!.length).toBe(1);
+  });
+
+  it("puts the copies of one event together, in order, for Day's all-day row", () => {
+    const trip = (calendar: string) => ({ ...ev(calendar), summary: 'Weekend trip' });
+    const groups = groupSameEvents([trip('calendar.test_alex'), ev('calendar.test_alex'), trip('calendar.test_blair')]);
+    expect(groups.map(g => g.map(e => `${e.summary} ${e.calendar_entity_id}`))).toEqual([
+      ['Weekend trip calendar.test_alex', 'Weekend trip calendar.test_blair'],
+      ['Dinner calendar.test_alex'],
     ]);
   });
 });
@@ -96,8 +107,47 @@ describe('eventForPopup (what the event popup opens with)', () => {
     expect(people(eventForPopup(merged, [merged, ev('calendar.test_casey', 'two')]))).toEqual([{ ...blair, uid: 'one' }, { ...casey, uid: 'two' }]);
   });
 
+  it("finds the other copies of an event by its title and times, as Week merges them, so Day's lanes open the same details (milestone 8)", () => {
+    const a = ev('calendar.test_blair', 'one');
+    const b = ev('calendar.test_casey', 'two');
+    expect(people(eventForPopup(a, [a, b]))).toEqual([{ ...blair, uid: 'one' }, { ...casey, uid: 'two' }]);
+  });
+
+  it("a recurring event shared by one uid opens on the tapped day's copies, so Delete for everyone deletes that day (review)", () => {
+    const weekly = (calendar: string, day: string) => ({
+      ...ev(calendar, 'standup'), summary: 'Team standup',
+      start: `2026-10-${day}T09:00:00-05:00`, end: `2026-10-${day}T09:30:00-05:00`, recurrence_id: `202610${day}T090000`,
+    });
+    const all = ['06', '13', '20'].flatMap(day => [weekly('calendar.test_blair', day), weekly('calendar.test_casey', day)]);
+    const tapped = weekly('calendar.test_casey', '13');
+    const copies = people(eventForPopup(tapped, all)) as Array<{ entity_id: string; recurrence_id?: string }>;
+    expect(copies.map(c => [c.entity_id, c.recurrence_id])).toEqual([
+      ['calendar.test_blair', '20261013T090000'], ['calendar.test_casey', '20261013T090000'],
+    ]);
+  });
+
   it('leaves an event on one calendar as it is', () => {
     const a = ev('calendar.test_blair', 'alone');
     expect(eventForPopup(a, [a])).toBe(a);
+  });
+});
+
+describe('ownersOf (milestone 8, D1)', () => {
+  const rows = [
+    { entity_id: 'calendar.alex', member_id: 'alex' },
+    { entity_id: 'calendar.alex_work', member_id: 'alex' },
+    { entity_id: 'calendar.casey', member_id: 'casey' },
+    { entity_id: 'calendar.family', member_id: null },
+  ] as CalendarConfig[];
+
+  it('names whose calendars an event is on, once each', () => {
+    expect(ownersOf(['calendar.casey'], rows)).toEqual(['casey']);
+    expect(ownersOf(['calendar.alex', 'calendar.alex_work'], rows)).toEqual(['alex']);
+    expect(ownersOf(['calendar.alex', 'calendar.casey'], rows)).toEqual(['alex', 'casey']);
+  });
+
+  it("a calendar that belongs to nobody, or one PlanaVista no longer shows, counts as nobody's", () => {
+    expect(ownersOf(['calendar.family'], rows)).toEqual([null]);
+    expect(ownersOf(['calendar.gone', 'calendar.casey'], rows)).toEqual([null, 'casey']);
   });
 });

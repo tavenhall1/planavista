@@ -29,13 +29,14 @@ export function choresEnabled(ctx: Pick<ModuleContext, 'household'>): boolean {
   return !!ctx.household?.available && modules?.chores?.enabled === true;
 }
 
-/** What a refused check-off says (spec 15.1). */
+/** What a refused check-off or Undo says (spec 15.1): what it couldn't do, and what to do next. */
 export function refusalText(entry: QueuedCheckoff, code: string): string {
-  if (code === 'period_closed') return `Couldn't save "${entry.name}": the day had ended.`;
-  if (code === 'pin_required' || code === 'parent_mode_required') {
-    return `Couldn't save "${entry.name}". The PIN timed out, so hold it again.`;
-  }
-  return `Couldn't save "${entry.name}". Try again.`;
+  const did = entry.op === 'undo' ? `Couldn't uncheck "${entry.name}"` : `Couldn't save "${entry.name}"`;
+  if (code === 'period_closed') return `${did}: the day had ended.`;
+  if (code === 'pin_required' || code === 'parent_mode_required') return `${did}. The PIN timed out, so hold it again.`;
+  // Someone else's PIN is open on this screen (review).
+  if (code === 'other_pin_required') return `${did}. It needs its owner's PIN or a parent's.`;
+  return `${did}. Try again.`;
 }
 
 // One queue per page: localStorage is shared by every card on it.
@@ -112,6 +113,7 @@ export class ChoresService implements ModuleService {
       { callWS: <T>(msg: Record<string, unknown>) => (this._host.hass as unknown as { callWS(m: unknown): Promise<T> }).callWS(msg) },
       () => this._host.pinSession?.token ?? null,
       token => this._host.sessionEnded(token),
+      token => this._host.sessionUsed?.(token),
     );
     this.queue = sharedQueue();
     this._subscription = new ChoresSubscription(

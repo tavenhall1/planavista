@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { tagStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
@@ -7,6 +8,8 @@ import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
 import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
+import { goalWords } from './my-day-derive';
+import { redeemLabel } from './rewards-derive';
 import type { Balance, RewardCard } from './rewards-derive';
 import { pictureOf } from './pv-chore-tile';
 import { ScrollReporter } from '../../core/content-scroll';
@@ -18,7 +21,7 @@ import { ScrollReporter } from '../../core/content-scroll';
  * a reward tile; a line at the bottom says who got what lately.
  *
  * @fires pv-reward-redeem - { reward } Redeem was tapped
- * @fires pv-reward-open - { reward } a card was tapped (its sheet), or { reward: null } for Add a reward
+ * @fires pv-reward-open - { reward } a card was tapped (its sheet), or { reward: null } for New reward
  */
 export class PvChoresRewards extends LitElement {
   /** Tells the card how far down this is, so the portrait header can shrink (spec 12.2). */
@@ -30,10 +33,11 @@ export class PvChoresRewards extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
-  /** Parents (or a screen that can ask for a parent's PIN) see Add a reward. */
+  /** Parents (or a screen that can ask for a parent's PIN) see New reward. */
   @property({ type: Boolean }) canEdit = false;
 
   static styles = [
+    tagStyles,
     buttonStyles,
     choresStyles,
     css`
@@ -164,18 +168,7 @@ export class PvChoresRewards extends LitElement {
         gap: 4px;
       }
 
-      .tag {
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: var(--pv-chip, #F1F1EE);
-        color: var(--pv-text-secondary, #5F6670);
-        font-size: 0.75rem;
-        font-weight: 700;
-      }
 
-      .tag.ok {
-        color: var(--pv-text, #1A1B1E);
-      }
 
       .goal-tag {
         position: absolute;
@@ -185,7 +178,7 @@ export class PvChoresRewards extends LitElement {
 
       .card .action {
         margin-top: auto;
-        min-height: 44px;
+        min-height: 48px;
         width: 100%;
       }
 
@@ -230,7 +223,7 @@ export class PvChoresRewards extends LitElement {
                 <span class="stars num" aria-label=${`${b.member.name}: ${b.stars} stars`}>★ ${b.stars}</span>
                 <div class="goal">
                   ${b.goal ? html`
-                    Goal: ${pictureOf(b.goal.reward.icon)} ${b.goal.reward.name} · ${b.goal.need > 0 ? `${b.goal.need} more` : 'enough stars!'}
+                    Goal: ${pictureOf(b.goal.reward.icon)} ${b.goal.reward.name} · ${goalWords(b.goal)}
                     <div class="bar"><span style="width:${Math.round(b.goal.progress * 100)}%"></span></div>
                   ` : html`No goal yet`}
                 </div>
@@ -244,7 +237,7 @@ export class PvChoresRewards extends LitElement {
           <div class="catalog">
             ${this.cards.map(card => this._card(card))}
             ${this.canEdit ? html`
-              <button class="card add" type="button" @click=${() => this._fire('pv-reward-open', { reward: null })}>+ Add a reward<span class="meta">parents</span></button>
+              <button class="card add" type="button" @click=${() => this._fire('pv-reward-open', { reward: null })}>+ New reward<span class="meta">Parents</span></button>
             ` : nothing}
           </div>
         `}
@@ -258,19 +251,19 @@ export class PvChoresRewards extends LitElement {
     const asked = card.asked.length;
     return html`
       <div class="card">
-        ${card.goals.length ? html`<span class="tag goal-tag">${card.goals.map(m => `${m.name}'s goal`).join(', ')}</span>` : nothing}
+        ${card.goals.length ? html`<span class="pv-tag goal-tag">${card.goals.map(m => `${m.name}'s goal`).join(', ')}</span>` : nothing}
         <button class="open" type="button" @click=${() => this._fire('pv-reward-open', { reward: reward.id })}>
           <span class="icon" aria-hidden="true">${pictureOf(reward.icon)}</span>
           <span class="name">${reward.name}</span>
           <span class="cost num">★ ${reward.cost}</span>
         </button>
         <div class="tags">
-          ${card.people.map(p => html`<span class="tag ${p.afford ? 'ok' : ''}">${p.member.name}${p.afford ? ' ✓' : `: ${p.more} more`}</span>`)}
+          ${card.people.map(p => html`<span class="pv-tag muted ${p.afford ? 'ok' : ''}">${p.member.name}${p.afford ? ' ✓' : `: ${p.more} more`}</span>`)}
           ${asked ? html`<span class="badge act">⏳ ${card.asked.map(m => m.name).join(', ')} · Waiting for OK</span>` : nothing}
         </div>
         ${card.canRedeem
-          ? html`<button class="pv-btn pv-btn-primary action" type="button" @click=${() => this._fire('pv-reward-redeem', { reward: reward.id })}>Redeem</button>`
-          : html`<button class="pv-btn pv-btn-secondary action" type="button" disabled>${asked ? 'Requested' : 'Not enough stars yet'}</button>`}
+          ? html`<button class="pv-btn pv-btn-secondary accent action" type="button" @click=${() => this._fire('pv-reward-redeem', { reward: reward.id })}>Redeem</button>`
+          : html`<button class="pv-btn pv-btn-secondary action" type="button" disabled>${redeemLabel(card)}</button>`}
       </div>
     `;
   }

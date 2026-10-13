@@ -46,8 +46,9 @@ export class PvPersonPhones extends LitElement {
       .legend {
         display: block;
         margin: 0 0 8px;
-        font-weight: 600;
-        font-size: 0.9375rem;
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .legend + .group {
@@ -73,7 +74,7 @@ export class PvPersonPhones extends LitElement {
       }
 
       .copy {
-        min-height: 40px;
+        min-height: 48px;
         margin-left: auto;
       }
 

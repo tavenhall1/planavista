@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
+import { tagStyles } from '../../../styles/controls';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig, CalendarEvent } from '../../../types';
 import type { Layout } from '../../../core/layout';
@@ -14,6 +15,7 @@ import { SheetController } from '../../../shell/sheet-controller';
 import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
 import { calendarCan, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen } from '../event-words';
+import { EventGate, calendarsOf } from '../event-gate';
 
 interface Participant {
   entity_id: string;
@@ -39,6 +41,8 @@ function participantsOf(event: CalendarEvent): Participant[] {
 export class PVEventPopup extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) event: CalendarEvent | null = null;
+  /** Who may change it here (D1); without one, anyone may. */
+  @property({ attribute: false }) gate?: EventGate;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** The calendars shown, for what each one lets PlanaVista change. */
@@ -62,6 +66,7 @@ export class PVEventPopup extends LitElement {
   private _lastOrganizerUid = '';
 
   static styles = [
+    tagStyles,
     buttonStyles,
     sheetStyles,
     statusStyles,
@@ -77,21 +82,7 @@ export class PVEventPopup extends LitElement {
         outline: none;
       }
 
-      .who {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 6px 0 0;
-        color: var(--pv-text-secondary, #5F6670);
-        font-weight: 600;
-      }
 
-      .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
 
       .people {
         display: flex;
@@ -108,12 +99,6 @@ export class PVEventPopup extends LitElement {
         border-radius: 9999px;
         font-size: 0.8125rem;
         font-weight: 700;
-      }
-
-      .person .tag {
-        font-size: 0.75rem;
-        font-weight: 600;
-        opacity: 0.85;
       }
 
       .status {
@@ -168,18 +153,8 @@ export class PVEventPopup extends LitElement {
         line-height: 1.4;
       }
 
-      .pair {
-        display: flex;
-        gap: 10px;
-      }
 
-      .pair button {
-        flex: 1 1 0;
-      }
 
-      .danger {
-        color: var(--pv-bad-ink, #A12828);
-      }
     `,
   ];
 
@@ -208,11 +183,17 @@ export class PVEventPopup extends LitElement {
     const event = this.event;
     if (!event) return nothing;
     const shared = participantsOf(event);
+    // Everyone it is for, as chips, the same way in every view (even for one person).
+    const people = shared.length
+      ? shared
+      : [{ entity_id: event.calendar_entity_id, calendar_name: event.calendar_name, calendar_color: event.calendar_color }];
     const when = eventWhen(event, this.timeFormat, this.now);
     const status = eventStatus(event, this.now);
     const calendar = this.calendars.find(c => c.entity_id === event.calendar_entity_id);
     const can = calendarCan(calendar?.attributes);
     const changeable = !!event.uid;
+    const ids = calendarsOf(event);
+    const allowed = this.gate?.allowed(ids) ?? true;
     const question = deleteQuestion(event, shared.length > 1 ? shared.map(p => p.calendar_name) : []);
 
     return html`
@@ -220,18 +201,12 @@ export class PVEventPopup extends LitElement {
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="event-title" @keydown=${this._sheet.onKeydown}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>
-        ${shared.length > 1 ? html`
-          <div class="people">
-            ${shared.map(p => html`
-              <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">
-                ${p.calendar_name}
-                ${p.entity_id === this._organizerEntityId ? html`<span class="tag">Organizer</span>` : nothing}
-              </span>
-            `)}
-          </div>
-        ` : html`
-          <div class="who"><span class="dot" style="background: ${event.calendar_color}"></span>${event.calendar_name}</div>
-        `}
+        <div class="people">
+          ${people.map(p => html`
+            <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">${p.calendar_name}</span>
+            ${people.length > 1 && p.entity_id === this._organizerEntityId ? html`<span class="pv-tag muted">Organizer</span>` : nothing}
+          `)}
+        </div>
         ${status ? html`<div class="status"><span class="badge ${status.tone}">${status.words}</span></div>` : nothing}
 
         <div class="rows">
@@ -250,19 +225,17 @@ export class PVEventPopup extends LitElement {
         ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
         ${!changeable || (!can.edit && !can.delete) ? html`
           <p class="note">This event can only be changed in its calendar's own app.</p>
+        ` : !allowed ? html`
+          <p class="note">${this.gate?.note(ids)}</p>
         ` : nothing}
 
         <div class="actions">
-          ${changeable && (can.edit || can.delete) ? html`
-            <div class="pair">
-              ${can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
-              ${can.delete ? html`
-                <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${this._deleting}
-                  @click=${() => { this._asking = true; }}>${this._deleting ? 'Deleting…' : 'Delete'}</button>
-              ` : nothing}
-            </div>
+          ${allowed && changeable && can.edit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${this._edit}>Edit</button>` : nothing}
+          ${allowed && changeable && can.delete ? html`
+            <button class="pv-btn pv-btn-secondary danger apart" type="button" ?disabled=${this._deleting}
+              @click=${this._askDelete}>${this._deleting ? 'Deleting…' : 'Delete event'}</button>
           ` : nothing}
-          <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
+          <button class="pv-btn pv-btn-secondary ${allowed && changeable && can.delete ? 'apart' : ''}" type="button" ?disabled=${this._deleting} @click=${() => void this._sheet.close()}>Done</button>
         </div>
       </div>
       ${this._asking ? html`
@@ -270,14 +243,14 @@ export class PVEventPopup extends LitElement {
           .layout=${this.layout}
           .heading=${question.heading}
           .body=${question.body}
-          .actions=${this._deleteActions(question.shared)}
+          .actions=${this._deleteActions(question.shared, eventName(event))}
           @pv-sheet-action=${this._onDeleteChoice}
         ></pv-notice-sheet>
       ` : nothing}
     `;
   }
 
-  private _deleteActions(shared: boolean): NoticeAction[] {
+  private _deleteActions(shared: boolean, name: string): NoticeAction[] {
     return shared
       ? [
           { id: 'everyone', label: 'Delete for everyone', kind: 'destructive' },
@@ -285,7 +258,7 @@ export class PVEventPopup extends LitElement {
           { id: 'cancel', label: 'Cancel', kind: 'secondary' },
         ]
       : [
-          { id: 'delete', label: 'Delete', kind: 'destructive' },
+          { id: 'delete', label: `Delete ${eventName({ summary: name })}`, kind: 'destructive' },
           { id: 'cancel', label: 'Cancel', kind: 'secondary' },
         ];
   }
@@ -305,8 +278,23 @@ export class PVEventPopup extends LitElement {
     else void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.danger')?.focus());
   };
 
-  private _edit() {
-    if (this.event) this.store.openEditDialog(this.event);
+  /** A PIN first when this screen needs one (D1), then the editor. */
+  private async _edit(): Promise<void> {
+    const event = this.event;
+    if (!event || !(await this._mayChange(event))) return;
+    // The sheet may have been handed a fresh copy meanwhile (the minute's refresh); it is the same event.
+    if (this.isConnected && this.event) this.store.openEditDialog(this.event);
+  }
+
+  /** A PIN first when this screen needs one (D1), then the question. */
+  private _askDelete = async (): Promise<void> => {
+    const event = this.event;
+    if (!event || !(await this._mayChange(event))) return;
+    if (this.isConnected && this.event) this._asking = true;
+  };
+
+  private _mayChange(event: CalendarEvent): Promise<boolean> {
+    return this.gate ? this.gate.ask(calendarsOf(event), event.summary ?? '') : Promise.resolve(true);
   }
 
   private async _delete(everyone: boolean) {

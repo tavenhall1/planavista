@@ -55,7 +55,8 @@ export const shellSettingsPages: SettingsPage[] = [
     applies: ({ household }) => household !== null,
     summary: ({ household }) => {
       const pins = household?.members.filter(m => m.has_pin).length ?? 0;
-      const screen = household?.account.shared ? 'Shared screen' : 'Not a shared screen';
+      // Names the switch on the page (milestone 8): this screen, shared or not.
+      const screen = household?.account.shared ? 'This screen: shared family screen' : 'This screen: not shared';
       return pins > 0 ? `${screen} · ${count(pins, 'PIN', 'PINs')}` : screen;
     },
   },

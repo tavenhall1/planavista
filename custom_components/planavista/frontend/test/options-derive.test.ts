@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   chipLabel,
+  creditedText,
   dayWords,
   dueChips,
   historyLines,
   itemOptions,
   moreTimeChips,
+  type OptionsContext,
   planChips,
   rhythmText,
-  type OptionsContext,
+  whoDidItBody,
 } from '../src/modules/chores/options-derive';
 import { MEMBERS, TODAY, activity, item } from './chores-fixtures';
 
@@ -40,18 +42,23 @@ describe('itemOptions (spec 13.3)', () => {
   it('offers a member planning, requests, done by someone else, and history', () => {
     const options = itemOptions(ctx({}));
     expect(ids(options.member)).toEqual(['plan_day', 'more_time', 'skip', 'done_by', 'history']);
-    expect(options.member[1]).toMatchObject({ tag: 'needs OK', hint: 'Sends a request to Alex and Blair.' });
+    expect(options.member[1]).toMatchObject({ tag: 'Needs an OK', hint: 'Sends a request to Alex and Blair.' });
     expect(options.member[0].hint).toBe('Shows on that day, and it\'s still due Sunday.');
     expect(options.title).toBe('Yard work');
     expect(options.meta).toBe('Casey · Every week · 1 h · ★ 4');
     expect(options.added).toBe('Added by Blair on Sunday');
   });
 
+  it('names a person who added a chore, never an account kind (milestone 8)', () => {
+    const byAdmin = activity('yard_work', { minimum: { hours: 1, per: 'week' }, created: { by: 'admin', source: 'tablet', at: '2026-10-10T19:00:00-05:00' } });
+    expect(itemOptions(ctx({ activity: byAdmin })).added).toBe('Added on Saturday');
+  });
+
   it('marks the parent options with a lock on a shared screen, and hides them on a child\'s own login', () => {
     const shared = itemOptions(ctx({}));
     expect(ids(shared.parent)).toEqual(['change_due', 'hand_off', 'excuse', 'edit', 'delete']);
     expect(shared.parent.find(o => o.id === 'edit')!.hint).toBe('Opens it in Settings.');
-    expect(shared.parent.every(o => o.tag === '🔒 parent')).toBe(true);
+    expect(shared.parent.every(o => o.tag === '🔒 Parent')).toBe(true);
     expect(itemOptions(ctx({ parent: 'no' })).parent).toEqual([]);
     expect(itemOptions(ctx({ parent: 'yes' })).parent[0].tag).toBeUndefined();
   });
@@ -135,5 +142,17 @@ describe('historyLines', () => {
       recent: [{ at: '2026-10-12T19:30:00-05:00', done_by: 'blair', state: 'done', occurrence: 'x' }], usual: { band: 'evening', day: null },
     }, TODAY, [blair, casey], '24h');
     expect(byBlair).toEqual(['🔥 3 days in a row', 'Last done Monday at 19:30 by Blair', 'Usually in the evening']);
+  });
+});
+
+describe('Who did it? (milestone 8)', () => {
+  it('both sheets say the same thing before anyone is picked', () => {
+    expect(whoDidItBody('Cat care')).toBe('They get the credit for Cat care.');
+  });
+
+  it('after the pick, says the stars only when that person earns them', () => {
+    expect(creditedText({ name: 'Dana', stars: true }, 1)).toBe('Dana gets the credit and the stars.');
+    expect(creditedText({ name: 'Blair', stars: false }, 1)).toBe('Blair gets the credit.');
+    expect(creditedText({ name: 'Dana', stars: true }, 0)).toBe('Dana gets the credit.');
   });
 });

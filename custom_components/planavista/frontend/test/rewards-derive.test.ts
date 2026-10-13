@@ -3,7 +3,9 @@ import {
   balances,
   eligible,
   recentLine,
+  redeemLabel,
   rewardCards,
+  settleAsks,
   rewardDraft,
   rewardFrom,
   rewardProblem,
@@ -50,6 +52,37 @@ describe('rewardCards', () => {
   it('keeps a reward to the people named on it', () => {
     expect(eligible(reward('x', 5, ['dana']), PEOPLE).map(m => m.id)).toEqual(['dana']);
     expect(eligible(reward('x', 5), PEOPLE).map(m => m.id)).toEqual(['casey', 'dana']);
+  });
+});
+
+describe('asking for a reward (milestone 8)', () => {
+  it('Redeem waits as soon as someone asks, before the board comes back', () => {
+    const asking = rewardCards(B, PEOPLE, [{ member: 'dana', reward: 'weekend_game' }])[1];
+    expect(asking.asked.map(m => m.id)).toEqual(['casey', 'dana']);
+    expect(asking.canRedeem).toBe(false);
+    expect(redeemLabel(asking)).toBe('Waiting for OK');
+  });
+
+  it('says Redeem while anyone can, and why not otherwise', () => {
+    const cards = rewardCards(B, PEOPLE);
+    expect(redeemLabel(cards[0])).toBe('Redeem');
+    expect(redeemLabel(cards[1])).toBe('Redeem');
+    expect(redeemLabel(cards[2])).toBe('Not enough stars yet');
+  });
+});
+
+describe('an ask, once the board has it (review)', () => {
+  const ask = { member: 'casey', reward: 'weekend_game' };
+
+  it("is the board's from then on, so an answer clears it", () => {
+    expect(settleAsks([ask], B)).toEqual([]);
+    const answered = { ...B, requests: [] };
+    expect(rewardCards(answered, PEOPLE, settleAsks([ask], B))[1].asked).toEqual([]);
+  });
+
+  it("stays while the board hasn't shown it yet", () => {
+    const asks = [{ member: 'dana', reward: 'weekend_game' }];
+    expect(settleAsks(asks, B)).toBe(asks);
   });
 });
 

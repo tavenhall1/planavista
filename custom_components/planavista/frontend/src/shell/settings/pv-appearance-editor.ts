@@ -1,5 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { choiceStyles, segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
+import '../../core/pv-time-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { buttonStyles, formStyles } from '../../styles/shared';
@@ -76,6 +78,8 @@ export class PvAppearanceEditor extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    choiceStyles,
+    segmentedStyles,
     buttonStyles,
     formStyles,
     settingsPageStyles,
@@ -90,10 +94,9 @@ export class PvAppearanceEditor extends LitElement {
 
       .section-heading {
         margin: 0 0 10px;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--pv-text, #1A1B1E);
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .help {
@@ -248,43 +251,9 @@ export class PvAppearanceEditor extends LitElement {
       }
 
       /* When to switch */
-      .rows {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
 
-      .row {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        width: 100%;
-        min-height: 56px;
-        padding: 12px 14px;
-        border: 1.5px solid var(--pv-border, #E7E7E3);
-        border-radius: var(--pv-radius, 12px);
-        background: var(--pv-card-bg, #FFFFFF);
-        text-align: left;
-        cursor: pointer;
-      }
 
-      .row[aria-checked='true'] {
-        border-color: var(--pv-accent, #5B5BD6);
-      }
 
-      .dot {
-        flex-shrink: 0;
-        width: 20px;
-        height: 20px;
-        margin-top: 1px;
-        box-sizing: border-box;
-        border-radius: 50%;
-        border: 2px solid var(--pv-text-secondary, #5F6670);
-      }
-
-      .row[aria-checked='true'] .dot {
-        border: 6px solid var(--pv-accent, #5B5BD6);
-      }
 
       .row-text {
         display: flex;
@@ -401,31 +370,8 @@ export class PvAppearanceEditor extends LitElement {
         color: var(--pv-text-secondary, #5F6670);
       }
 
-      /* Motion */
-      .seg {
-        display: inline-flex;
-        flex-wrap: wrap;
-        padding: 3px;
-        border-radius: 12px;
-        background: var(--pv-seg, #ECECE8);
-      }
 
-      .seg-btn {
-        min-height: 48px;
-        padding: 0 16px;
-        border: none;
-        border-radius: 9px;
-        background: transparent;
-        font-weight: 650;
-        color: var(--pv-text-secondary, #5F6670);
-        cursor: pointer;
-      }
 
-      .seg-btn[aria-checked='true'] {
-        background: var(--pv-seg-on, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-      }
     `,
   ];
 
@@ -503,33 +449,31 @@ export class PvAppearanceEditor extends LitElement {
       : "Home Assistant's Sun integration isn't set up, so the schedule's times are used until it is.";
     const help: Record<AppearanceSwitch, string> = { ...SWITCH_HELP, sun: sunLine };
     return html`
-      <div class="rows" role="radiogroup" aria-labelledby="switch-heading"
-        @keydown=${(e: KeyboardEvent) => this._arrows(e, SWITCHES, chosen, value => this._page.set({ appearance_switch: value }, e))}>
+      <div class="pv-choices" role="radiogroup" aria-labelledby="switch-heading">
         ${SWITCHES.map(rule => html`
-          <button class="row" type="button" role="radio" data-value=${rule}
-            aria-checked=${rule === chosen ? 'true' : 'false'}
-            tabindex=${rule === chosen ? '0' : '-1'}
-            @click=${(e: Event) => this._page.set({ appearance_switch: rule }, e)}>
-            <span class="dot" aria-hidden="true"></span>
-            <span class="row-text">
-              <span class="row-title">${SWITCH_LABELS[rule]}</span>
-              ${help[rule] ? html`<span class="row-help">${help[rule]}</span>` : nothing}
+          <label class="pv-choice">
+            <input type="radio" name="appearance-switch" .checked=${rule === chosen}
+              @change=${(e: Event) => this._page.set({ appearance_switch: rule }, e)} />
+            <span class="choice-text">
+              <span class="choice-title">${SWITCH_LABELS[rule]}</span>
+              ${help[rule] ? html`<span class="choice-sub">${help[rule]}</span>` : nothing}
             </span>
-          </button>
-          ${rule === 'schedule' && chosen === 'schedule' ? html`
-            <div class="times">
-              <label>Light from
-                <input class="pv-input" type="time" .value=${lightFrom}
-                  @change=${(e: Event) => this._time('light_from', e)}>
-              </label>
-              <label>Dark from
-                <input class="pv-input" type="time" .value=${darkFrom}
-                  @change=${(e: Event) => this._time('dark_from', e)}>
-              </label>
-            </div>
-          ` : nothing}
+            <span class="choice-check" aria-hidden="true">✓</span>
+          </label>
         `)}
       </div>
+      ${chosen === 'schedule' ? html`
+        <div class="times">
+          <label>Light from
+            <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${lightFrom}
+              @change=${(e: Event) => this._time('light_from', e)}></pv-time-field>
+          </label>
+          <label>Dark from
+            <pv-time-field  .format=${this.data.display?.time_format === '24h' ? '24h' : '12h'} .value=${darkFrom}
+              @change=${(e: Event) => this._time('dark_from', e)}></pv-time-field>
+          </label>
+        </div>
+      ` : nothing}
     `;
   }
 
@@ -559,10 +503,10 @@ export class PvAppearanceEditor extends LitElement {
 
   private _renderMotion(chosen: MotionSetting) {
     return html`
-      <div class="seg" role="radiogroup" aria-labelledby="motion-heading"
+      <div class="pv-seg" role="radiogroup" aria-labelledby="motion-heading"
         @keydown=${(e: KeyboardEvent) => this._arrows(e, MOTIONS, chosen, value => this._page.set({ motion: value }, e))}>
         ${MOTIONS.map(motion => html`
-          <button class="seg-btn" type="button" role="radio" data-value=${motion}
+          <button type="button" role="radio" data-value=${motion}
             aria-checked=${motion === chosen ? 'true' : 'false'}
             tabindex=${motion === chosen ? '0' : '-1'}
             @click=${(e: Event) => this._page.set({ motion }, e)}>${MOTION_LABELS[motion]}</button>

@@ -92,3 +92,56 @@ async def test_a_pin_never_leaks_through_chores(
     }
     for place, text in places.items():
         assert PIN not in text, place
+
+
+async def test_diagnostics_list_the_last_20_refusals_without_names(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any, hass_client: Any
+) -> None:
+    """A report like "Undo did nothing" can be traced (milestone 8): time, command, and reason only."""
+    assert await async_setup_component(hass, "diagnostics", {})
+    household = chores.household
+    household.shared_users.append(accounts["kitchen"].id)
+    await set_pin(hass, household, "casey", PIN)
+    await set_pin(hass, household, "blair", "2468")
+    kitchen = await ws_client_for(hass, hass_ws_client, accounts["kitchen"])
+    trash = "take_out_the_trash|casey|week:2026-10-12|0"
+    refused = await ws_command(kitchen, {"type": "planavista/chores/undo", "occurrence": trash})
+    assert refused["error"]["code"] == "pin_required"
+    refused = await ws_command(kitchen, {"type": "planavista/household/settings/save", "shuffle_keypad": True})
+    assert refused["error"]["code"] == "parent_mode_required"
+    result = await get_diagnostics_for_config_entry(hass, hass_client, chores.entry)
+    assert [(r["command"], r["reason"]) for r in result["recent_refusals"]] == [
+        ("planavista/chores/undo", "pin_required"),
+        ("planavista/household/settings/save", "parent_mode_required"),
+    ]
+    assert all(set(r) == {"at", "command", "reason"} for r in result["recent_refusals"])
+    text = json.dumps(result["recent_refusals"])
+    for secret in ("Casey", "casey", PIN, accounts["kitchen"].id):
+        assert secret not in text, secret
+    for _ in range(25):
+        await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": trash})
+    result = await get_diagnostics_for_config_entry(hass, hass_client, chores.entry)
+    assert len(result["recent_refusals"]) == 20
+    assert {r["command"] for r in result["recent_refusals"]} == {"planavista/chores/complete"}
+
+
+async def test_diagnostics_list_pin_outcomes_without_the_pin(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any, hass_client: Any
+) -> None:
+    """A report like "the PIN didn't work" can be traced too (review): the outcome, never the member or the digits."""
+    assert await async_setup_component(hass, "diagnostics", {})
+    household = chores.household
+    household.shared_users.append(accounts["kitchen"].id)
+    await set_pin(hass, household, "blair", "2468")
+    kitchen = await ws_client_for(hass, hass_ws_client, accounts["kitchen"])
+    wrong = await ws_command(kitchen, {"type": "planavista/pin/unlock", "member_id": "blair", "pin": "1357"})
+    assert wrong["result"]["reason"] == "wrong_pin"
+    none = await ws_command(kitchen, {"type": "planavista/pin/unlock", "member_id": "dana", "pin": "1357"})
+    assert none["result"]["reason"] == "no_pin"
+    result = await get_diagnostics_for_config_entry(hass, hass_client, chores.entry)
+    assert [(r["command"], r["reason"]) for r in result["recent_refusals"]] == [
+        ("planavista/pin/unlock", "wrong_pin"), ("planavista/pin/unlock", "no_pin"),
+    ]
+    text = json.dumps(result["recent_refusals"])
+    for secret in ("1357", "2468", "blair", "dana", "Blair", "Dana"):
+        assert secret not in text, secret

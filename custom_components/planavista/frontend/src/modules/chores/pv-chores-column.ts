@@ -13,6 +13,7 @@ import './pv-chore-item';
 import './pv-chore-tile';
 import { ref } from 'lit/directives/ref.js';
 import { ScrollReporter } from '../../core/content-scroll';
+import { stickersLabel } from './my-day-derive';
 
 /** The most stickers a strip draws before it says "+5". */
 const STICKERS = 20;
@@ -339,7 +340,7 @@ export class PvChoresColumn extends LitElement {
       </div>
       ${model.member.stars ? html`
         <div class="stickers">
-          This week:
+          ${stickersLabel(stickers)}
           <div class="row" role="img" aria-label=${`${stickers} ${stickers === 1 ? 'star' : 'stars'} this week`}>
             ${Array.from({ length: Math.min(STICKERS, stickers) }, () => html`<span aria-hidden="true">⭐</span>`)}
             ${stickers > STICKERS ? html`<span class="meta">+${stickers - STICKERS}</span>` : nothing}

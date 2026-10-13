@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { segmentedStyles } from '../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { type Layout, barFits } from '../core/layout';
@@ -34,7 +35,9 @@ export class PvNavBar extends LitElement {
   /** The module's own buttons, between its views and the gear. */
   @property({ attribute: false }) actions: ModuleAction[] = [];
 
-  static styles = css`
+  static styles = [
+    segmentedStyles,
+    css`
     :host {
       display: block;
       background: var(--pv-card-bg, #FFFFFF);
@@ -50,6 +53,7 @@ export class PvNavBar extends LitElement {
     nav {
       display: flex;
       align-items: center;
+      min-height: 56px;
       gap: 12px;
       padding: 0 20px;
     }
@@ -74,41 +78,10 @@ export class PvNavBar extends LitElement {
       border-radius: 10px;
     }
 
-    /* Every control is at least 48 px to the touch; the pill inside is drawn smaller. */
-    .seg,
-    .views {
-      display: flex;
-      align-items: center;
-      min-height: 56px;
-    }
 
-    .seg-inner {
-      display: flex;
-      background: var(--pv-seg, #ECECE8);
-      border-radius: 10px;
-      padding: 3px;
-    }
 
-    .seg-btn {
-      min-height: 48px;
-    }
 
-    .seg-btn span {
-      display: inline-flex;
-      align-items: center;
-      height: 34px;
-      padding: 0 14px;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 650;
-      color: var(--pv-text-secondary, #5F6670);
-    }
 
-    .seg-btn.on span {
-      background: var(--pv-seg-on, #FFFFFF);
-      color: var(--pv-text, #1A1B1E);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-    }
 
     .views {
       gap: 2px;
@@ -127,30 +100,9 @@ export class PvNavBar extends LitElement {
       display: none;
     }
 
-    .view {
-      min-height: 48px;
-      flex-shrink: 0;
-    }
 
-    .view span {
-      display: inline-flex;
-      align-items: center;
-      height: 36px;
-      padding: 0 14px;
-      border-radius: 9px;
-      font-size: 0.9375rem;
-      font-weight: 650;
-      color: var(--pv-text-secondary, #5F6670);
-    }
 
-    .view.on span {
-      background: var(--pv-accent, #5B5BD6);
-      color: var(--pv-accent-text, #FFFFFF);
-    }
 
-    .view:not(.on):hover span {
-      color: var(--pv-text, #1A1B1E);
-    }
 
     .actions {
       display: flex;
@@ -159,7 +111,12 @@ export class PvNavBar extends LitElement {
       flex-shrink: 0;
     }
 
+    /* Every bar button is a 48 px target, the short "+" too (review); the pill is drawn inside. */
     .action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
       min-height: 48px;
       flex-shrink: 0;
     }
@@ -228,7 +185,8 @@ export class PvNavBar extends LitElement {
       overflow-x: visible;
       margin-left: 0;
     }
-  `;
+  `,
+  ];
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -267,25 +225,17 @@ export class PvNavBar extends LitElement {
     return html`
       <nav aria-label="PlanaVista">
         ${this.modules.length > 1 ? html`
-          <div class="seg" role="group" aria-label="Modules">
-            <div class="seg-inner">
-              ${this.modules.map(mod => html`
-                <button type="button" class="seg-btn ${mod.id === this.activeModule ? 'on' : ''}"
-                  aria-pressed=${mod.id === this.activeModule ? 'true' : 'false'}
-                  @click=${() => this._fire('pv-module-select', { id: mod.id })}>
-                  <span>${mod.label}</span>
-                </button>
-              `)}
-            </div>
+          <div class="pv-seg modules" role="group" aria-label="Modules">
+            ${this.modules.map(mod => html`
+              <button type="button" aria-pressed=${mod.id === this.activeModule ? 'true' : 'false'}
+                @click=${() => this._fire('pv-module-select', { id: mod.id })}>${mod.label}</button>
+            `)}
           </div>
         ` : nothing}
-        <div class="views" role="group" aria-label="Views">
+        <div class="views pv-seg" role="group" aria-label="Views">
           ${this.views.map(view => html`
-            <button type="button" class="view ${view.id === this.activeView ? 'on' : ''}"
-              aria-pressed=${view.id === this.activeView ? 'true' : 'false'}
-              @click=${() => this._fire('pv-view-select', { id: view.id })}>
-              <span>${view.label}</span>
-            </button>
+            <button type="button" class="view" aria-pressed=${view.id === this.activeView ? 'true' : 'false'}
+              @click=${() => this._fire('pv-view-select', { id: view.id })}>${view.label}</button>
           `)}
         </div>
         ${this.actions.length ? html`

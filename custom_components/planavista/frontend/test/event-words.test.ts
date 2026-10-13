@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CalendarEvent } from '../src/types';
 import {
-  calendarCan, dayOfStatus, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, longDate, namesList, saveFailedText,
+  calendarCan, changeReason, dayOfStatus, deleteFailedText, deleteQuestion, eventName, eventStatus, eventWhen, formSignature, lockedEventNote, longDate,
+  namesList, saveFailedText,
 } from '../src/modules/calendar/event-words';
 
 const NOW = new Date(2026, 9, 12, 8, 50); // Mon Oct 12, 8:50 AM
@@ -152,5 +153,18 @@ describe('saveFailedText', () => {
   it('says what happened and what to do next', () => {
     expect(saveFailedText('Dentist', true)).toBe("Couldn't save Dentist. Check that Home Assistant is reachable, then try again.");
     expect(saveFailedText('', false)).toBe("Couldn't add this event. Check that Home Assistant is reachable, then try again.");
+  });
+});
+
+describe('who may change an event, in words (milestone 8, D1)', () => {
+  it("says who can change an event this login can't", () => {
+    expect(lockedEventNote(['Dana'])).toBe('Only Dana or a parent can change this event.');
+    expect(lockedEventNote([])).toBe('Only a parent can change this event.');
+    expect(lockedEventNote(['Alex', 'Dana'])).toBe('Only a parent can change this event.');
+  });
+
+  it('the PIN sheet says why it is asking', () => {
+    expect(changeReason('Team standup')).toEqual({ heading: "Who's changing Team standup?", reason: 'To change Team standup' });
+    expect(changeReason('  ')).toEqual({ heading: "Who's changing this event?", reason: 'To change this event' });
   });
 });

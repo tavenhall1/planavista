@@ -3,13 +3,14 @@ import { property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import type { HomeAssistant } from 'custom-card-helpers';
+import '../../core/pv-toast';
 import { defineElement } from '../../utils/define';
 import { baseStyles, buttonStyles } from '../../styles/shared';
 import type { HouseholdView, Member } from '../../core/household';
 import type { HouseholdApi } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
 import type { ModuleService, OpenTarget } from '../../core/module-registry';
-import { OPEN_TARGET, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PushPageDetail } from '../../core/page-host';
+import { OPEN_TARGET, PAGE_EDITOR, PAGE_ERROR, POP_PAGE, PUSH_PAGE, PageEditor, PushPageDetail } from '../../core/page-host';
 import type { Session } from '../../core/session';
 import {
   LookItem, SettingsContext, SettingsPage, SettingsTarget, groupPages, needsALook, settingsAt, settingsRegistry,
@@ -47,6 +48,8 @@ export class PvSettings extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) session: Session | null = null;
   @property({ type: Number }) sessionEndsAt = 0;
+  /** A full ring (ms): the household's Lock after no touches. */
+  @property({ type: Number }) sessionSpan = 0;
   @property({ attribute: false }) parent: Member | null = null;
   @property({ attribute: false }) drafts: Map<string, unknown> = new Map();
   /** The card's module services, and a number that changes whenever one of them does. */
@@ -61,6 +64,8 @@ export class PvSettings extends LitElement {
   @state() private _stack: PushPageDetail[] = [];
   @state() private _toast = '';
   private _toastTimer: number | undefined;
+  /** The editor page open now, whose Cancel and Save the header holds. */
+  @state() private _editor: PageEditor | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -68,6 +73,7 @@ export class PvSettings extends LitElement {
     this.addEventListener(POP_PAGE, this._onPop);
     this.addEventListener(PAGE_ERROR, this._onError as EventListener);
     this.addEventListener(OPEN_TARGET, this._onOpen as EventListener);
+    this.addEventListener(PAGE_EDITOR, this._onEditor as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -76,10 +82,13 @@ export class PvSettings extends LitElement {
     this.removeEventListener(POP_PAGE, this._onPop);
     this.removeEventListener(PAGE_ERROR, this._onError as EventListener);
     this.removeEventListener(OPEN_TARGET, this._onOpen as EventListener);
+    this.removeEventListener(PAGE_EDITOR, this._onEditor as EventListener);
     window.clearTimeout(this._toastTimer);
   }
 
   protected willUpdate(changed: PropertyValues): void {
+    // Another page in view: the editor that was open has gone (it can't say so once it has left the page).
+    if (changed.has('_stack') || changed.has('_selected')) this._editor = null;
     if (changed.has('target') && this.target) {
       const at = settingsAt(settingsRegistry.pages(this._context()), this.target);
       this._selected = at.selected;
@@ -119,9 +128,22 @@ export class PvSettings extends LitElement {
         font-weight: 800;
       }
 
-      .done {
+      .done,
+      .cancel,
+      .save {
         min-height: 48px;
         min-width: 88px;
+      }
+
+      .done,
+      .cancel {
+        color: var(--pv-accent-ink, #5B5BD6);
+        font-weight: 700;
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: 8px;
       }
 
       .back {
@@ -157,15 +179,14 @@ export class PvSettings extends LitElement {
       }
 
       .group {
-        margin-bottom: 14px;
+        margin-bottom: 10px;
       }
 
       .group-label {
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
         margin: 8px 12px 4px;
         font-size: 0.8125rem;
-        font-weight: 600;
-        color: var(--pv-text-secondary, #6B7280);
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .row {
@@ -218,8 +239,11 @@ export class PvSettings extends LitElement {
         font-size: 1.25rem;
       }
 
+      /* Compact, so the page list fits a landscape screen 800 px tall (milestone 8); the whole list scrolls. */
       .look-row {
         align-items: flex-start;
+        min-height: 48px;
+        padding: 6px 12px;
         background: color-mix(in srgb, #F59E0B 12%, transparent);
       }
 
@@ -246,7 +270,11 @@ export class PvSettings extends LitElement {
       }
 
       .look-text {
-        font-size: 0.9375rem;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: 0.875rem;
         line-height: 1.35;
       }
 
@@ -260,6 +288,12 @@ export class PvSettings extends LitElement {
         box-sizing: border-box;
         overflow-y: auto;
         padding: 12px 20px 40px;
+      }
+
+      /* Every page the same column (milestone 8): 640 px at most, from the left. */
+      .page-el {
+        display: block;
+        max-width: 640px;
       }
 
       .page-heading {
@@ -276,20 +310,6 @@ export class PvSettings extends LitElement {
         background: color-mix(in srgb, #F59E0B 14%, transparent);
       }
 
-      .toast {
-        position: absolute;
-        left: 16px;
-        right: 16px;
-        bottom: 20px;
-        margin: 0 auto;
-        max-width: 480px;
-        padding: 12px 16px;
-        border-radius: 12px;
-        background: var(--pv-text, #1A1B1E);
-        color: var(--pv-card-bg, #FFFFFF);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        text-align: center;
-      }
     `,
   ];
 
@@ -313,19 +333,27 @@ export class PvSettings extends LitElement {
     const stackedPage = !this._split && current;
     return html`
       ${this.session?.parent && this.parent ? html`
-        <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt}></pv-parent-strip>
+        <pv-parent-strip .member=${this.parent} .hass=${this.hass} .endsAt=${this.sessionEndsAt} .span=${this.sessionSpan}></pv-parent-strip>
       ` : nothing}
       <div class="bar">
-        ${stackedPage
-          ? html`<button class="back" type="button" @click=${this._back}>‹ ${top ? top.back : 'Settings'}</button>`
-          : html`<h1 class="title">Settings</h1>`}
-        <button class="pv-btn pv-btn-primary done" type="button" @click=${this._done}>Done</button>
+        ${stackedPage && this._editor
+          ? html`<button class="pv-btn pv-btn-ghost cancel" type="button" @click=${() => this._editor?.cancel()}>Cancel</button>`
+          : stackedPage
+            ? html`<button class="back" type="button" @click=${this._back}>‹ ${top ? top.back : 'Settings'}</button>`
+            : html`<h1 class="title">Settings</h1>`}
+        ${this._editor ? html`
+          <div class="editor-actions">
+            ${stackedPage ? nothing : html`<button class="pv-btn pv-btn-ghost cancel" type="button" @click=${() => this._editor?.cancel()}>Cancel</button>`}
+            <button class="pv-btn pv-btn-primary save" type="button" ?disabled=${!this._editor.ready}
+              @click=${() => this._editor?.save()}>${this._editor.label}</button>
+          </div>
+        ` : html`<button class="pv-btn pv-btn-ghost done" type="button" @click=${this._done}>Done</button>`}
       </div>
       <div class="body">
         ${this._split || !current ? this._renderList(pages, current) : nothing}
         ${current ? this._renderPage(current, top) : nothing}
       </div>
-      ${this._toast ? html`<div class="toast" role="status">${this._toast}</div>` : nothing}
+      <pv-toast .toast=${this._toast ? { id: this._toast, text: this._toast, tone: 'bad' } : null}></pv-toast>
     `;
   }
 
@@ -449,6 +477,11 @@ export class PvSettings extends LitElement {
     if (!(await this._mayLeave())) return;
     this.dispatchEvent(new CustomEvent('pv-settings-open-target', { detail: target, bubbles: true, composed: true }));
   }
+
+  private _onEditor = (event: CustomEvent<PageEditor | null>): void => {
+    event.stopPropagation();
+    this._editor = event.detail;
+  };
 
   private _onError = (event: CustomEvent<{ message: string }>): void => {
     event.stopPropagation();

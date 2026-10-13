@@ -1,6 +1,6 @@
 import type { CalendarConfig, CalendarEvent, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
 import { selectCalendars } from '../../core/calendars';
-import { filterVisibleEvents } from './utils/event-utils';
+import { filterVisibleEvents, sameEventKey } from './utils/event-utils';
 
 /** A calendar that shares an event (same UID), for Day-view participant avatars. */
 export interface SharedParticipant {
@@ -17,7 +17,7 @@ export interface CalendarDerived {
   sharedEventMap: Map<string, SharedParticipant[]>;
 }
 
-export { selectCalendars };
+export { sameEventKey, selectCalendars };
 
 /** The calendars, the events the filter leaves visible, and the shared-event map. */
 export function deriveCalendarData(
@@ -28,13 +28,12 @@ export function deriveCalendarData(
   const calendars = selectCalendars(data, config);
   const events = data?.events || [];
 
-  // Group all events by UID to find shared events (Day-view participant avatars).
+  // The copies of one event on several calendars, by the same key every view merges by (Day-view participant avatars).
   const sharedEventMap = new Map<string, SharedParticipant[]>();
   for (const ev of events) {
-    const uid = ev.uid;
-    if (!uid) continue;
-    if (!sharedEventMap.has(uid)) sharedEventMap.set(uid, []);
-    const arr = sharedEventMap.get(uid)!;
+    const key = sameEventKey(ev);
+    if (!sharedEventMap.has(key)) sharedEventMap.set(key, []);
+    const arr = sharedEventMap.get(key)!;
     const eid = ev.calendar_entity_id;
     // Deduplicate by calendar entity (recurring events share UIDs)
     if (!arr.some(p => p.entity_id === eid)) {
@@ -83,8 +82,12 @@ interface MergedParticipant {
  */
 export function eventForPopup(clicked: CalendarEvent, allEvents: CalendarEvent[]): CalendarEvent {
   if (clicked.uid) {
-    const siblings = allEvents.filter(ev => ev.uid === clicked.uid && ev.uid !== '');
-    // Recurring events share one uid across instances: one chip per calendar.
+    // A recurring event shares one uid across its instances: only the tapped instance's copies,
+    // so Delete for everyone and the editor reach that day on every calendar (review).
+    const instance = (ev: CalendarEvent) => (clicked.recurrence_id
+      ? ev.recurrence_id === clicked.recurrence_id
+      : sameEventKey(ev) === sameEventKey(clicked));
+    const siblings = allEvents.filter(ev => ev.uid === clicked.uid && ev.uid !== '' && instance(ev));
     const seen = new Set<string>();
     const unique = siblings.filter(s => {
       if (seen.has(s.calendar_entity_id)) return false;
@@ -113,7 +116,41 @@ export function eventForPopup(clicked: CalendarEvent, allEvents: CalendarEvent[]
     }));
     return { ...clicked, shared_calendars: shared } as CalendarEvent;
   }
+  // Day draws each copy in its person's lane: the others are found as Week merges them.
+  const key = sameEventKey(clicked);
+  const copies = onePerCalendar(allEvents.filter(ev => sameEventKey(ev) === key));
+  if (copies.length > 1) {
+    const shared: PopupParticipant[] = copies.map(s => ({
+      entity_id: s.calendar_entity_id,
+      calendar_name: s.calendar_name,
+      calendar_color: s.calendar_color,
+      uid: s.uid,
+      recurrence_id: s.recurrence_id,
+    }));
+    return { ...clicked, shared_calendars: shared } as CalendarEvent;
+  }
   return clicked;
+}
+
+function onePerCalendar(events: CalendarEvent[]): CalendarEvent[] {
+  const seen = new Set<string>();
+  return events.filter(ev => {
+    if (seen.has(ev.calendar_entity_id)) return false;
+    seen.add(ev.calendar_entity_id);
+    return true;
+  });
+}
+
+/** The copies of each event together, in the order the events first appear (Day's all-day row: one pill per event). */
+export function groupSameEvents(events: readonly CalendarEvent[]): CalendarEvent[][] {
+  const groups = new Map<string, CalendarEvent[]>();
+  for (const ev of events) {
+    const key = sameEventKey(ev);
+    const group = groups.get(key);
+    if (group) group.push(ev);
+    else groups.set(key, [ev]);
+  }
+  return [...groups.values()];
 }
 
 export function calendarWatchedEntities(calendars: CalendarConfig[]): string[] {
@@ -123,4 +160,18 @@ export function calendarWatchedEntities(calendars: CalendarConfig[]): string[] {
 /** The view a card opens on: its `view` or `default_view`, else the saved default view. */
 export function initialView(config: PlanaVistaCardConfig | undefined, data: PlanaVistaData | null): ViewType | undefined {
   return config?.view || config?.default_view || data?.display?.default_view || undefined;
+}
+
+/**
+ * Whose calendars an event is on (milestone 8, D1), once each: a member id,
+ * or null for a calendar that belongs to nobody (or that PlanaVista no
+ * longer shows).
+ */
+export function ownersOf(calendarIds: readonly string[], rows: readonly CalendarConfig[]): (string | null)[] {
+  const owners: (string | null)[] = [];
+  for (const id of calendarIds) {
+    const owner = rows.find(row => row.entity_id === id)?.member_id ?? null;
+    if (!owners.includes(owner)) owners.push(owner);
+  }
+  return owners;
 }

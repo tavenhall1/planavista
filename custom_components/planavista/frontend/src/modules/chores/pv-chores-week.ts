@@ -66,26 +66,37 @@ export class PvChoresWeek extends LitElement {
         margin-bottom: 10px;
       }
 
+      /* The calendar's toolbar grammar: the range on the left, then round arrows around This week. */
       .top h2 {
         margin: 0 6px;
         font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1.375rem;
+        font-size: 1.125rem;
         font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .week-nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: auto;
       }
 
       .nav {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        border: 1px solid var(--pv-border, #E7E7E3);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        font-size: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--pv-text-secondary, #5F6670);
         cursor: pointer;
       }
 
-      .this-week {
-        margin-left: auto;
+      .nav:hover {
+        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
       }
 
       .card {
@@ -280,7 +291,7 @@ export class PvChoresWeek extends LitElement {
       }
 
       .highlights .link {
-        min-height: 40px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: var(--pv-accent-ink, #5B5BD6);
@@ -315,10 +326,16 @@ export class PvChoresWeek extends LitElement {
     return html`
       <div class="wrap" @touchstart=${this._touchStart} @touchend=${this._touchEnd}>
         <div class="top">
-          <button class="nav" type="button" aria-label="Last week" @click=${() => this._nav(-1)}>‹</button>
           <h2>${view ? weekTitle(view) : 'This week'}</h2>
-          <button class="nav" type="button" aria-label="Next week" @click=${() => this._nav(1)}>›</button>
-          ${this.current ? nothing : html`<button class="pv-btn pv-btn-secondary this-week" type="button" @click=${() => this._nav(0)}>This week</button>`}
+          <div class="week-nav">
+            <button class="nav" type="button" aria-label="Last week" title="Last week" @click=${() => this._nav(-1)}>
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+            <button class="pv-btn pv-btn-secondary this-week" type="button" ?disabled=${this.current} @click=${() => this._nav(0)}>This week</button>
+            <button class="nav" type="button" aria-label="Next week" title="Next week" @click=${() => this._nav(1)}>
+              <ha-icon icon="mdi:chevron-right"></ha-icon>
+            </button>
+          </div>
         </div>
         ${this.failed ? html`
           <div class="state"><div class="art" aria-hidden="true">📡</div><h2>Couldn't load this week</h2>

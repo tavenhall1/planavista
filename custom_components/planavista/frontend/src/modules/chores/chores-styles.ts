@@ -33,8 +33,8 @@ export const choresStyles = css`
     gap: 8px;
     margin: 14px 4px 6px;
     font-size: 0.8125rem;
-    font-weight: 700;
-    color: var(--pv-text-muted, #8E949C);
+    font-weight: 750;
+    color: var(--pv-text-secondary, #5F6670);
   }
 
   .section-head .right {

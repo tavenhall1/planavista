@@ -1,9 +1,11 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { chipStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { buttonStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
+import { statusStyles } from '../../styles/status';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
@@ -44,8 +46,10 @@ export class PvChoresInbox extends LitElement {
   private _closing = false;
 
   static styles = [
+    chipStyles,
     buttonStyles,
     sheetStyles,
+    statusStyles,
     css`
       :host([layout='landscape']) {
         position: absolute;
@@ -91,8 +95,21 @@ export class PvChoresInbox extends LitElement {
         font-weight: 800;
       }
 
+      .actions {
+        display: flex;
+        margin-top: 16px;
+      }
+
+      .actions .pv-btn {
+        flex: 1;
+      }
+
+      h2[tabindex='-1']:focus {
+        outline: none;
+      }
+
       .done {
-        min-height: 44px;
+        min-height: 48px;
         font-weight: 750;
       }
 
@@ -107,7 +124,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       .link {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 4px;
         border: none;
         background: transparent;
@@ -147,7 +164,7 @@ export class PvChoresInbox extends LitElement {
       }
 
       .answers button {
-        min-height: 44px;
+        min-height: 48px;
         padding: 0 14px;
       }
 
@@ -173,20 +190,9 @@ export class PvChoresInbox extends LitElement {
         font-size: 0.8125rem;
       }
 
-      .chip {
-        min-height: 40px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--pv-border, #E7E7E3);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
       input {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 12px;
         border-radius: 12px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -195,16 +201,6 @@ export class PvChoresInbox extends LitElement {
         font: inherit;
       }
 
-      .empty {
-        padding: 32px 24px;
-        text-align: center;
-        color: var(--pv-text-secondary, #5F6670);
-        line-height: 1.5;
-      }
-
-      .empty .art {
-        font-size: 32px;
-      }
     `,
   ];
 
@@ -221,7 +217,7 @@ export class PvChoresInbox extends LitElement {
       this._motion.open(panel, backdrop);
       this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
     }
-    this.renderRoot.querySelector<HTMLElement>('.answers button, .done')?.focus();
+    this.renderRoot.querySelector<HTMLElement>('#inbox-title')?.focus();
   }
 
   protected updated(changed: PropertyValues): void {
@@ -263,11 +259,14 @@ export class PvChoresInbox extends LitElement {
         @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <div class="top">
-          <h2 id="inbox-title">Waiting for OK${g.count ? ` · ${g.count}` : ''}</h2>
-          <button class="pv-btn pv-btn-ghost done" type="button" @click=${() => void this.close()}>Done</button>
+          <h2 id="inbox-title" tabindex="-1">Waiting for OK${g.count ? ` · ${g.count}` : ''}</h2>
         </div>
         ${g.count === 0 ? html`
-          <div class="empty"><div class="art" aria-hidden="true">✅</div>Nothing is waiting. Check-offs that need a parent's OK, requests, and rewards land here.</div>
+          <div class="state">
+            <div class="art" aria-hidden="true">✅</div>
+            <h2>Nothing is waiting</h2>
+            <p>Check-offs that need a parent's OK, requests, and rewards land here.</p>
+          </div>
         ` : nothing}
         ${g.chores.length ? html`
           <div class="group"><span>Chores to check</span>
@@ -278,6 +277,9 @@ export class PvChoresInbox extends LitElement {
         ` : nothing}
         ${g.requests.length ? html`<div class="group"><span>Requests</span></div>${g.requests.map(row => this._row(row))}` : nothing}
         ${g.rewards.length ? html`<div class="group"><span>Rewards</span></div>${g.rewards.map(row => this._row(row))}` : nothing}
+        <div class="actions">
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
+        </div>
       </div>
     `;
   }
@@ -295,7 +297,7 @@ export class PvChoresInbox extends LitElement {
         <div class="answers">
           <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${busy}
             @click=${() => this._decline(row)}>${row.decline}</button>
-          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${busy || row.blocked}
+          <button class="pv-btn pv-btn-secondary accent" type="button" ?disabled=${busy || row.blocked}
             @click=${() => this._review(row, true)}>${busy ? 'Saving…' : row.allow}</button>
         </div>
       </div>

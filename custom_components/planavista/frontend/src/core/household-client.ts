@@ -26,6 +26,10 @@ export interface UnlockResult {
   member_id?: string;
   parent?: boolean;
   expires_in?: number;
+  /** Lock after no touches, in seconds (milestone 8, D3). */
+  idle_seconds?: number;
+  /** Seconds until Parent mode ends after, however busy. */
+  cap_in?: number;
   reason?: 'no_pin' | 'wrong_pin' | 'paused';
   tries_left?: number;
   retry_after?: number | null;
@@ -56,7 +60,7 @@ export class HouseholdApi extends WsApi {
     return this.call('planavista/household/shared_screen', { shared });
   }
 
-  saveSecurity(settings: { shuffle_keypad: boolean }): Promise<void> {
+  saveSecurity(settings: { shuffle_keypad?: boolean; session_idle_seconds?: number; parent_mode_minutes?: number }): Promise<void> {
     return this.call('planavista/household/settings/save', settings);
   }
 

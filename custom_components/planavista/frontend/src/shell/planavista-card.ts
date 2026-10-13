@@ -26,7 +26,7 @@ import {
   resolveModules,
 } from '../core/module-registry';
 import { HouseholdView, Member, SettingsAccess, parentsWithPins, settingsAccess, setupNeedsPin } from '../core/household';
-import type { PinGate } from '../core/pin-gate';
+import { PinGate, pinReason } from '../core/pin-gate';
 import type { Session } from '../core/session';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { AppearanceEdits } from '../core/appearance-edits';
@@ -50,11 +50,12 @@ import './pv-notice-sheet';
 import './settings/pv-settings';
 import './setup/pv-setup';
 import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/content-scroll';
+import { PLACE_STORAGE, Place, placeKey, readPlace, usablePlace, writePlace } from '../core/place';
 
 /** A sheet the card shows over everything: a PIN, or why there is no way in. */
 type CardSheet =
   | { kind: 'pin'; purpose: 'settings' | 'setup' | 'continue' | 'keep_setup'; heading: string }
-  | { kind: 'pin'; purpose: 'module'; heading: string; members: Member[]; resolve: (unlocked: boolean) => void }
+  | { kind: 'pin'; purpose: 'module'; heading: string; reason?: string; members: Member[]; resolve: (unlocked: boolean) => void }
   | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
@@ -86,6 +87,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _views: Record<string, string> = {};
   /** The module the switcher picked; null for the card's first. */
   @state() private _moduleId: string | null = null;
+  /** Where this card was, if it was on screen within the hour (spec 3.7); applied once data and the household are in. */
+  private _remembered: Place | null = null;
+  private _placeKey = '';
+  private _placeApplied = false;
+  private _placeTimer: number | undefined;
   /** Portrait with the content scrolled down: the header shows one line (spec 12.2). */
   @state() private _compactHeader = false;
   /** The header's two heights, for how much its step to one line gives the content. */
@@ -124,6 +130,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     { callWS: <T>(msg: Record<string, unknown>) => (this.hass as any).callWS(msg) as Promise<T> },
     () => this._session.token,
     token => this._session.ended(token),
+    token => this._session.used(token),
   );
 
   /** Each module's card-wide state (the chores feed), made once per card. */
@@ -131,13 +138,13 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   /** How a module asks for a PIN: the card's PIN sheet, then the card's session. */
   private readonly _pinGate: PinGate = {
-    ask: (members, heading) => new Promise<boolean>(resolve => {
+    ask: (members, heading, reason) => new Promise<boolean>(resolve => {
       if (members.length === 0 || this._sheet) {
         resolve(false);
         return;
       }
       this._sheetOpener = (this.renderRoot as ShadowRoot | undefined)?.activeElement as HTMLElement | null ?? null;
-      this._sheet = { kind: 'pin', purpose: 'module', heading, members, resolve };
+      this._sheet = { kind: 'pin', purpose: 'module', heading, reason, members, resolve };
     }),
   };
 
@@ -167,6 +174,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   /** ServiceHost: the backend refused a command made with this session. */
   sessionEnded(token: string): void {
     this._session.ended(token);
+  }
+
+  /** ServiceHost: the backend accepted a command made with this session (a touch there). */
+  sessionUsed(token: string): void {
+    this._session.used(token);
   }
 
   /** ServiceHost: a module's service has news. */
@@ -373,9 +385,32 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   setConfig(config: PlanaVistaCardConfig) {
     this._config = { entity: DEFAULT_ENTITY, ...config };
-    // The card's own view and module options apply whenever its config changes.
+    // The card's own view and module options apply whenever its config changes,
+    // unless this card was on screen within the hour: then it comes back where it was.
     this._views = {};
     this._moduleId = null;
+    this._placeKey = placeKey(window.location.pathname, config as unknown as Record<string, unknown>);
+    this._remembered = readPlace(this._storedPlaces(), this._placeKey, Date.now());
+    this._placeApplied = false;
+  }
+
+  private _storedPlaces(): string | null {
+    try {
+      return window.localStorage.getItem(PLACE_STORAGE);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Remember where this card is now (on every change, each minute on screen, and when it leaves). */
+  private _savePlace(): void {
+    const mod = this._activeModule();
+    if (!this._placeApplied || !mod || !this._placeKey) return;
+    try {
+      window.localStorage.setItem(PLACE_STORAGE, writePlace(this._storedPlaces(), this._placeKey, { module: mod.id, views: this._views }, Date.now()));
+    } catch {
+      // Private windows and blocked storage: the card opens on its start, as before.
+    }
   }
 
   /** The module on screen: the one the switcher picked, else the card's first. */
@@ -387,6 +422,16 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
     // The view a card opens on is chosen once, when the data first arrives (as in 1.1.0).
+    // Coming back where it was (spec 3.7): once, when the data and the household are in, so a
+    // module that needs the household (Chores) can be found.
+    if (!this._placeApplied && this._data() && this._household.view) {
+      this._placeApplied = true;
+      const place = usablePlace(this._remembered, this._modules().shown);
+      if (place) {
+        this._moduleId = place.module;
+        this._views = { ...this._views, ...place.views };
+      }
+    }
     const mod = this._activeModule();
     const data = this._data();
     if (mod && data && !(mod.id in this._views)) {
@@ -395,6 +440,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     // Another view or module starts at its top, so the header starts tall again. Turning the
     // tablet keeps the content's place (spec 12.1), so it keeps the header's shape too.
     if (changed.has('_views') || changed.has('_moduleId')) this._compactHeader = false;
+    // Lock after no touches and Parent mode ends after apply to an open session as soon as they're saved.
+    this._session.follow(this._household.view?.security);
   }
 
   private _setView(id: string): void {
@@ -415,10 +462,21 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     super.connectedCallback();
     // The heading face is declared on the page; shadow roots ignore @font-face (spec 11.2).
     ensurePageStyles();
+    // "Within an hour" counts from when the card was last on screen, not from its last change.
+    this._placeTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') this._savePlace();
+    }, 60_000);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.clearInterval(this._placeTimer);
+    this._savePlace();
   }
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    if (changedProps.has('_moduleId') || changedProps.has('_views')) this._savePlace();
     this._guardSettings();
     this._guardSetup();
   }
@@ -581,6 +639,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         mode="unlock"
         .members=${sheet.purpose === 'module' ? sheet.members : view ? parentsWithPins(view.members) : []}
         .heading=${sheet.heading}
+        .reason=${(sheet.purpose === 'module' ? sheet.reason : undefined) ?? pinReason(sheet.heading) ?? ''}
         .shuffle=${!!view?.security.shuffle_keypad}
         @pv-unlocked=${this._onUnlocked}
         @pv-sheet-close=${this._onSheetCancel}
@@ -588,19 +647,21 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     `;
   }
 
-  /** Whose parent mode is on, with its countdown and Lock, even when the header is hidden. */
+  /** Whose session is open (parent mode, or a child's unlocked window), with its countdown and Lock, even when the header is hidden. */
   private _renderParentStrip() {
     const session = this._session.session;
-    if (!session?.parent) return nothing;
-    const parent = this._household.view?.members.find(m => m.id === session.memberId);
-    if (!parent) return nothing;
+    if (!session) return nothing;
+    const member = this._household.view?.members.find(m => m.id === session.memberId);
+    if (!member) return nothing;
     const active = this._activeModule();
-    const actions: ModuleAction[] = active ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
+    const actions: ModuleAction[] = active && session.parent ? this._services[active.id]?.stripActions?.(this._ctx()) ?? [] : [];
     return html`
       <pv-parent-strip
-        .member=${parent}
+        .member=${member}
         .hass=${this.hass}
         .endsAt=${this._session.endsAt ?? 0}
+        .span=${this._session.spanMs}
+        .parent=${session.parent}
         .actions=${actions}
         @pv-lock=${() => this._session.lock()}
         @pv-strip-action=${(e: CustomEvent<{ id: string }>) => this._moduleAction(e.detail.id)}
@@ -721,6 +782,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
               .layout=${this._layout.layout}
               .session=${this._session.session}
               .sessionEndsAt=${this._session.endsAt ?? 0}
+              .sessionSpan=${this._session.spanMs}
               .parent=${this._household.view?.members.find(m => m.id === this._session.session?.memberId) ?? null}
               .drafts=${this._drafts}
               .services=${this._services}

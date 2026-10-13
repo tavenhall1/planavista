@@ -1,8 +1,9 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { personChipStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
-import { buttonStyles } from '../../styles/shared';
+import { buttonStyles, formStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
@@ -42,6 +43,8 @@ export class PvChoresRewardSheet extends LitElement {
   private _started = false;
 
   static styles = [
+    personChipStyles,
+    formStyles,
     buttonStyles,
     sheetStyles,
     css`
@@ -79,7 +82,7 @@ export class PvChoresRewardSheet extends LitElement {
       }
 
       .toggle {
-        min-height: 40px;
+        min-height: 48px;
         padding: 0 12px;
         border-radius: 999px;
         border: 1px solid var(--pv-border, #E7E7E3);
@@ -125,8 +128,8 @@ export class PvChoresRewardSheet extends LitElement {
       }
 
       .pictures button {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         border-radius: 12px;
         border: 1px solid var(--pv-border, #E7E7E3);
         background: var(--pv-card-bg, #FFFFFF);
@@ -138,33 +141,8 @@ export class PvChoresRewardSheet extends LitElement {
         border: 2px solid var(--pv-accent, #5B5BD6);
       }
 
-      .faces {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
 
-      .face {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        min-height: 48px;
-        padding: 4px;
-        border: none;
-        background: transparent;
-        font: inherit;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: var(--pv-text-secondary, #5F6670);
-        cursor: pointer;
-        opacity: 0.55;
-      }
 
-      .face[aria-pressed='true'] {
-        opacity: 1;
-        color: var(--pv-text, #1A1B1E);
-      }
 
       .row {
         display: flex;
@@ -174,37 +152,9 @@ export class PvChoresRewardSheet extends LitElement {
         margin-top: 12px;
       }
 
-      .switch {
-        position: relative;
-        width: 52px;
-        height: 32px;
-        flex-shrink: 0;
-        border: none;
-        border-radius: 999px;
-        background: var(--pv-track, #ECECE8);
-        cursor: pointer;
-      }
 
-      .switch::after {
-        content: '';
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #FFFFFF;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-        transition: transform 180ms ease;
-      }
 
-      .switch[aria-checked='true'] {
-        background: var(--pv-accent, #5B5BD6);
-      }
 
-      .switch[aria-checked='true']::after {
-        transform: translateX(20px);
-      }
 
       .problem {
         margin-top: 8px;
@@ -212,9 +162,6 @@ export class PvChoresRewardSheet extends LitElement {
         font-weight: 650;
       }
 
-      .danger {
-        color: var(--pv-danger, #C62828);
-      }
     `,
   ];
 
@@ -230,7 +177,7 @@ export class PvChoresRewardSheet extends LitElement {
     const backdrop = this.renderRoot.querySelector<HTMLElement>('.backdrop')!;
     this._motion.open(panel, backdrop);
     this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
-    this.renderRoot.querySelector<HTMLElement>('input, button')?.focus();
+    (this.renderRoot.querySelector<HTMLElement>('input') ?? this.renderRoot.querySelector<HTMLElement>('#reward-title'))?.focus();
   }
 
   disconnectedCallback(): void {
@@ -263,7 +210,7 @@ export class PvChoresRewardSheet extends LitElement {
     const reward = card.reward;
     return html`
       <div class="icon" aria-hidden="true">${pictureOf(reward.icon)}</div>
-      <h2 class="heading" id="reward-title">${reward.name}</h2>
+      <h2 class="heading" id="reward-title" tabindex="-1">${reward.name}</h2>
       <div class="cost">★ ${reward.cost}${reward.needs_ok ? ' · needs a parent\'s OK' : ''}</div>
       ${card.people.map(p => html`
         <div class="person">
@@ -280,8 +227,8 @@ export class PvChoresRewardSheet extends LitElement {
       `)}
       ${card.people.length === 0 ? html`<p class="body">Nobody who earns stars can get this one yet.</p>` : nothing}
       <div class="actions">
-        ${this.canEdit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${() => { this._editing = true; }}>Edit reward</button>` : nothing}
-        <button class="pv-btn pv-btn-ghost" type="button" @click=${() => void this.close()}>Done</button>
+        ${this.canEdit ? html`<button class="pv-btn pv-btn-secondary" type="button" @click=${() => { this._editing = true; }}>Edit</button>` : nothing}
+        <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
       </div>
     `;
   }
@@ -295,7 +242,7 @@ export class PvChoresRewardSheet extends LitElement {
     const d = this._draft;
     const editing = !!this.card;
     return html`
-      <h2 class="heading" id="reward-title">${editing ? 'Edit reward' : 'Add a reward'}</h2>
+      <h2 class="heading" id="reward-title">${editing ? 'Edit reward' : 'New reward'}</h2>
       <span class="title">Picture</span>
       <div class="pictures">
         ${REWARD_PICTURES.map(p => html`<button type="button" aria-pressed=${d.icon === p ? 'true' : 'false'} aria-label=${p} @click=${() => this._set({ icon: p })}>${p}</button>`)}
@@ -308,25 +255,29 @@ export class PvChoresRewardSheet extends LitElement {
         @input=${(e: Event) => this._set({ cost: Math.round(Number((e.target as HTMLInputElement).value)) })} />
       <div class="row">
         <span>Needs a parent's OK</span>
-        <button class="switch" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
+        <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
           @click=${() => this._set({ needsOk: !d.needsOk })}></button>
       </div>
       <span class="title">Who can get it (nobody picked means everyone who earns stars)</span>
-      <div class="faces">
+      <div class="pv-person-chips" role="group" aria-label="Who can get it">
         ${this.people.filter(p => p.stars).map(person => html`
-          <button class="face" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'}
+          <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'} style="--member:${this.colorOf(person)}"
             @click=${() => this._set({ who: d.who.includes(person.id) ? d.who.filter(id => id !== person.id) : [...d.who, person.id] })}>
-            <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="36"></pv-member-avatar>
+            <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="28"></pv-member-avatar>
             ${person.name}
           </button>
         `)}
       </div>
       ${this._problem ? html`<div class="problem" role="alert">${this._problem}</div>` : nothing}
-      <div class="actions">
-        <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this.busy} @click=${this._save}>${this.busy ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
+      <div class="sheet-footer">
         <button class="pv-btn pv-btn-secondary" type="button" @click=${() => (editing ? (this._editing = false) : void this.close())}>Cancel</button>
-        ${editing ? html`<button class="pv-btn pv-btn-ghost danger" type="button" @click=${() => this._fire('pv-reward-delete', {})}>Delete reward</button>` : nothing}
+        <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this.busy} @click=${this._save}>${this.busy ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
       </div>
+      ${editing ? html`
+        <div class="sheet-delete">
+          <button class="pv-btn pv-btn-secondary danger" type="button" @click=${() => this._fire('pv-reward-delete', {})}>Delete reward</button>
+        </div>
+      ` : nothing}
     `;
   }
 

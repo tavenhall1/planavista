@@ -1,8 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
+import '../../../core/pv-time-field';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, formStyles } from '../../../styles/shared';
 import type { PersonDraft } from '../../../core/person-draft';
+import type { PlanaVistaData } from '../../../types';
 import { PERSON_CHANGE } from '../../../core/settings-registry';
 import { sleepText } from './person-derive';
 import { choresSettingsStyles } from './settings-styles';
@@ -13,6 +15,8 @@ import { choresSettingsStyles } from './settings-styles';
  */
 export class PvPersonSleep extends LitElement {
   @property({ attribute: false }) draft!: PersonDraft;
+  /** For the household's 12- or 24-hour times. */
+  @property({ attribute: false }) data?: PlanaVistaData;
 
   static styles = [
     baseStyles,
@@ -26,8 +30,9 @@ export class PvPersonSleep extends LitElement {
       .legend {
         display: block;
         margin-bottom: 8px;
-        font-weight: 600;
-        font-size: 0.9375rem;
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .row .pv-input {
@@ -61,13 +66,13 @@ export class PvPersonSleep extends LitElement {
       <div class="group">
         <label class="row">
           <span class="row-text">Bedtime, weeknights</span>
-          <input class="pv-input" type="time" .value=${d.bedtime?.weeknight ?? ''}
-            @change=${(e: Event) => this._bedtime('weeknight', (e.target as HTMLInputElement).value)} />
+          <pv-time-field  .format=${this.data?.display?.time_format === '24h' ? '24h' : '12h'} .value=${d.bedtime?.weeknight ?? ''}
+            @change=${(e: Event) => this._bedtime('weeknight', (e.target as HTMLInputElement).value)}></pv-time-field>
         </label>
         <label class="row">
           <span class="row-text">Bedtime, weekends<span class="row-sub">Friday and Saturday nights</span></span>
-          <input class="pv-input" type="time" .value=${d.bedtime?.weekend ?? ''} ?disabled=${!d.bedtime}
-            @change=${(e: Event) => this._bedtime('weekend', (e.target as HTMLInputElement).value)} />
+          <pv-time-field  .format=${this.data?.display?.time_format === '24h' ? '24h' : '12h'} .value=${d.bedtime?.weekend ?? ''} ?disabled=${!d.bedtime}
+            @change=${(e: Event) => this._bedtime('weekend', (e.target as HTMLInputElement).value)}></pv-time-field>
         </label>
         <div class="row">
           <span class="row-text">Sleep</span>

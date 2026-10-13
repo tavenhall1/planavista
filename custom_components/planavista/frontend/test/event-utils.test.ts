@@ -9,6 +9,7 @@ import {
   isAllDayEvent,
   isEventPast,
   isMultiDayEvent,
+  sameEventKey,
 } from '../src/modules/calendar/utils/event-utils';
 
 function ev(summary: string, start: string, end: string, extra: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -148,5 +149,20 @@ describe('deduplicateSharedEvents', () => {
       ['calendar.test_blair', 'blair-copy', '20261012T140000Z'],
       ['calendar.test_casey', 'casey-copy', undefined],
     ]);
+  });
+});
+
+describe('sameEventKey (review)', () => {
+  const at = (start: string, end: string) => ({ summary: 'Dentist', start, end });
+
+  it('one instant written two ways is one event', () => {
+    expect(sameEventKey(at('2026-10-13T09:00:00-05:00', '2026-10-13T10:00:00-05:00')))
+      .toBe(sameEventKey(at('2026-10-13T14:00:00Z', '2026-10-13T15:00:00Z')));
+  });
+
+  it('keeps all-day dates and different times apart', () => {
+    expect(sameEventKey(at('2026-10-13', '2026-10-14'))).not.toBe(sameEventKey(at('2026-10-13T00:00:00-05:00', '2026-10-14T00:00:00-05:00')));
+    expect(sameEventKey(at('2026-10-13T09:00:00-05:00', '2026-10-13T10:00:00-05:00')))
+      .not.toBe(sameEventKey(at('2026-10-13T10:00:00-05:00', '2026-10-13T11:00:00-05:00')));
   });
 });

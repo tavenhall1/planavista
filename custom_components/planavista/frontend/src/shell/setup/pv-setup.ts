@@ -3,6 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { html as staticHtml, unsafeStatic } from 'lit/static-html.js';
 import type { HomeAssistant } from 'custom-card-helpers';
+import '../../core/pv-toast';
 import { defineElement } from '../../utils/define';
 import { baseStyles, buttonStyles } from '../../styles/shared';
 import type { HouseholdView } from '../../core/household';
@@ -199,7 +200,7 @@ export class PvSetup extends LitElement {
       }
 
       .second {
-        min-height: 44px;
+        min-height: 48px;
         border: none;
         background: transparent;
         color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
@@ -219,19 +220,6 @@ export class PvSetup extends LitElement {
         cursor: pointer;
       }
 
-      .toast {
-        position: absolute;
-        left: 16px;
-        right: 16px;
-        bottom: 92px;
-        margin: 0 auto;
-        max-width: 480px;
-        padding: 12px 16px;
-        border-radius: 12px;
-        background: var(--pv-text, #1A1B1E);
-        color: var(--pv-card-bg, #FFFFFF);
-        text-align: center;
-      }
 
       .progress-dots {
         display: flex;
@@ -330,7 +318,7 @@ export class PvSetup extends LitElement {
           <button class="second" type="button" ?disabled=${this._busy} @click=${this._secondary}>${secondary}</button>
         ` : nothing}
       </div>
-      ${this._toast ? html`<div class="toast" role="status">${this._toast}</div>` : nothing}
+      <pv-toast .toast=${this._toast ? { id: this._toast, text: this._toast, tone: 'bad' } : null}></pv-toast>
     `;
   }
 

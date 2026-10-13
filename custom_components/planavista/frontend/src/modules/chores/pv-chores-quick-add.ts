@@ -1,8 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { chipStyles, personChipStyles, segmentedStyles } from '../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
-import { buttonStyles } from '../../styles/shared';
+import { buttonStyles, formStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
@@ -49,6 +51,10 @@ export class PvChoresQuickAdd extends LitElement {
   private _closing = false;
 
   static styles = [
+    chipStyles,
+    personChipStyles,
+    formStyles,
+    segmentedStyles,
     buttonStyles,
     sheetStyles,
     css`
@@ -56,27 +62,11 @@ export class PvChoresQuickAdd extends LitElement {
         width: min(480px, calc(100vw - 32px));
       }
 
-      .bar {
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
-        align-items: center;
-        margin: -4px -6px 10px;
-      }
 
-      .bar h2 {
-        margin: 0;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1.125rem;
-        font-weight: 800;
-      }
 
-      .bar .add {
-        justify-self: end;
-        font-weight: 800;
-      }
 
       .text {
-        min-height: 44px;
+        min-height: 48px;
         padding: 0 8px;
         border: none;
         background: transparent;
@@ -127,92 +117,15 @@ export class PvChoresQuickAdd extends LitElement {
         outline-offset: 1px;
       }
 
-      .faces {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
 
-      .face {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        min-width: 56px;
-        min-height: 48px;
-        padding: 4px;
-        border: none;
-        border-radius: 14px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        cursor: pointer;
-        opacity: 0.55;
-      }
 
-      .face[aria-pressed='true'] {
-        opacity: 1;
-        color: var(--pv-text, #1A1B1E);
-      }
 
-      .face[aria-pressed='true'] pv-member-avatar {
-        outline: 3px solid var(--face);
-        outline-offset: 2px;
-        border-radius: 50%;
-      }
 
-      .seg {
-        display: inline-flex;
-        padding: 3px;
-        border-radius: 10px;
-        background: var(--pv-seg, #ECECE8);
-        margin-bottom: 10px;
-      }
 
-      .seg button {
-        min-height: 40px;
-        padding: 0 14px;
-        border: none;
-        border-radius: 8px;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .seg button[aria-pressed='true'] {
-        background: var(--pv-seg-on, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-      }
 
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
 
-      .chip {
-        min-height: 40px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--pv-border, #E7E7E3);
-        background: var(--pv-card-bg, #FFFFFF);
-        color: var(--pv-text, #1A1B1E);
-        font: inherit;
-        font-weight: 650;
-        cursor: pointer;
-      }
 
-      .chip[aria-pressed='true'] {
-        border-color: var(--pv-accent, #5B5BD6);
-        background: var(--pv-accent-tint, #EEEEFC);
-        color: var(--pv-accent-tint-ink, #3B3BB0);
-      }
 
       .switch-row {
         display: flex;
@@ -226,37 +139,9 @@ export class PvChoresQuickAdd extends LitElement {
         font-size: 0.8125rem;
       }
 
-      .switch {
-        position: relative;
-        width: 52px;
-        height: 32px;
-        flex-shrink: 0;
-        border: none;
-        border-radius: 999px;
-        background: var(--pv-track, #ECECE8);
-        cursor: pointer;
-      }
 
-      .switch::after {
-        content: '';
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #FFFFFF;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-        transition: transform 180ms ease;
-      }
 
-      .switch[aria-checked='true'] {
-        background: var(--pv-accent, #5B5BD6);
-      }
 
-      .switch[aria-checked='true']::after {
-        transform: translateX(20px);
-      }
 
       .worth {
         color: var(--pv-text-secondary, #5F6670);
@@ -271,8 +156,8 @@ export class PvChoresQuickAdd extends LitElement {
       }
 
       .stepper button {
-        min-width: 44px;
-        min-height: 44px;
+        min-width: 48px;
+        min-height: 48px;
       }
 
       .problem {
@@ -336,11 +221,7 @@ export class PvChoresQuickAdd extends LitElement {
       <div class="backdrop" @click=${() => void this.close()}></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="add-title" @keydown=${this._key}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <div class="bar">
-          <button class="text" type="button" @click=${() => void this.close()}>Cancel</button>
-          <h2 id="add-title">New chore</h2>
-          <button class="text add" type="button" ?disabled=${this.busy} @click=${this._add}>${this.busy ? 'Adding…' : 'Add'}</button>
-        </div>
+        <h2 class="heading" id="add-title">New chore</h2>
         <section>
           <label class="title" for="name">What needs doing?</label>
           <input id="name" type="text" maxlength="60" placeholder="Clean out the garage" autocomplete="off" .value=${d.name}
@@ -349,11 +230,11 @@ export class PvChoresQuickAdd extends LitElement {
         </section>
         <section>
           <span class="title" id="who-title">Who</span>
-          <div class="faces" role="group" aria-labelledby="who-title">
+          <div class="pv-person-chips" role="group" aria-labelledby="who-title">
             ${this.people.map(person => html`
-              <button class="face" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'}
-                style="--face:${this.colorOf(person)}" @click=${() => this._toggle(person)}>
-                <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="40"></pv-member-avatar>
+              <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(person.id) ? 'true' : 'false'}
+                style="--member:${this.colorOf(person)}" @click=${() => this._toggle(person)}>
+                <pv-member-avatar .member=${{ ...person, color: this.colorOf(person) }} .hass=${this.hass} size="28"></pv-member-avatar>
                 ${person.name}
               </button>
             `)}
@@ -361,7 +242,7 @@ export class PvChoresQuickAdd extends LitElement {
         </section>
         <section>
           <span class="title">When</span>
-          <div class="seg" role="group" aria-label="When">
+          <div class="pv-seg stretch" role="group" aria-label="When">
             ${when.map(w => html`<button type="button" aria-pressed=${d.when === w.id ? 'true' : 'false'} @click=${() => this._set({ when: w.id })}>${w.label}</button>`)}
           </div>
           ${d.when === 'by' ? html`
@@ -369,8 +250,8 @@ export class PvChoresQuickAdd extends LitElement {
               ${byChips(this.today).map(chip => html`
                 <button class="chip" type="button" aria-pressed=${d.by === chip.day ? 'true' : 'false'} @click=${() => this._set({ by: chip.day })}>${chip.label}</button>
               `)}
-              <input type="date" aria-label="Pick a date" min=${this.today} .value=${d.by && !byChips(this.today).some(c => c.day === d.by) ? d.by : ''}
-                @change=${(e: Event) => this._set({ by: (e.target as HTMLInputElement).value || null })} />
+              <pv-date-field  aria-label="Pick a date" min=${this.today} .value=${d.by && !byChips(this.today).some(c => c.day === d.by) ? d.by : ''}
+                @change=${(e: Event) => this._set({ by: (e.target as HTMLInputElement).value || null })}></pv-date-field>
             </div>
           ` : nothing}
           ${d.when === 'repeats' ? html`
@@ -401,7 +282,7 @@ export class PvChoresQuickAdd extends LitElement {
               <div>Needs a parent's OK</div>
               <div class="caption">On for young children automatically</div>
             </div>
-            <button class="switch" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
+            <button class="pv-toggle" type="button" role="switch" aria-checked=${d.needsOk ? 'true' : 'false'} aria-label="Needs a parent's OK"
               @click=${() => this._set({ needsOk: !d.needsOk, needsOkSet: true })}></button>
           </div>
         </section>
@@ -419,6 +300,10 @@ export class PvChoresQuickAdd extends LitElement {
           ` : nothing}
           ${this._problem ? html`<div class="problem" role="alert">${this._problem}</div>` : nothing}
         </section>
+        <div class="sheet-footer">
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Cancel</button>
+          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this.busy} @click=${this._add}>${this.busy ? 'Adding…' : 'Add'}</button>
+        </div>
       </div>
     `;
   }

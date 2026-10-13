@@ -122,7 +122,9 @@ PlanaVista keeps a list of the people in your household. Anyone whose calendar i
 
 **Shared family screens.** A wall tablet that the whole family uses should sign in with its own Home Assistant account, one that isn't an admin. On that account, Settings asks for a parent's PIN first. Once a parent has a PIN, mark the tablet's account as a shared family screen in Settings, under PINs and parent mode. A non-admin account is safer on a shared screen because an admin account also opens Home Assistant's own settings, which no PlanaVista PIN can guard. An account that isn't linked to anyone and isn't an admin is treated as a shared screen too.
 
-**PINs and parent mode.** Anyone can have a PIN of 4 to 6 digits. A parent's PIN starts parent mode on that screen: the top of the card shows whose it is, with a countdown and a Lock button. Parent mode ends after two quiet minutes, when the screen sleeps, when the page reloads, or when someone taps Lock. After 5 wrong tries a PIN pauses for 30 seconds, and each pause after that is twice as long, up to 15 minutes. A parent can clear a pause. PlanaVista keeps PINs only as salted hashes, and never puts them in actions, events, or its logs.
+**PINs and parent mode.** Anyone can have a PIN of 4 to 6 digits; 6 is much harder to guess. PINs that are easy to guess are turned away: the same digit over and over, a run like 1234, or straight down the keypad like 2580. A parent's PIN starts parent mode on that screen: the top of the card shows whose it is, with a countdown and a Lock button. A child's PIN shows the same strip in their color while their changes are unlocked. Either ends once nobody has touched the screen for two minutes, when the screen sleeps, when the page reloads, when someone taps Lock, and in any case ten minutes after the PIN. Both times can be changed in Settings, under PINs and parent mode (Lock after no touches, and Parent mode ends after). After 5 wrong tries a PIN pauses for 30 seconds, and each pause after that is twice as long, up to 15 minutes. A parent can clear a pause. PlanaVista keeps PINs only as salted hashes, and never puts them in actions, events, or its logs.
+
+**Who may change calendar events.** On your own login you can add, change, and delete events that are only on your own calendar, and a parent's login can change any event. On a shared family screen, an event on the calendar of someone without a PIN can be changed straight away; an event on the calendar of someone with a PIN asks for their PIN or a parent's; and an event on several people's calendars, or on a calendar that belongs to nobody, asks for a parent's PIN. Until a parent has a PIN, events can be changed as before. This is PlanaVista's rule: Home Assistant's own calendar page and its actions stay as Home Assistant allows them.
 
 **Forgot every parent's PIN?** Sign in to Home Assistant with a parent's or an admin's own account and set new ones in Settings, under PINs and parent mode.
 
@@ -161,6 +163,8 @@ In Settings, Appearance shows Light, Dark, and Automatic as small pictures of th
 - **At sunset and sunrise**, from Home Assistant's Sun integration, so every screen in the house changes at the same moment.
 - **On a schedule**, with a time for light and a time for dark.
 - **Matching Home Assistant**: each screen follows its own Home Assistant theme setting. Handy for phones.
+
+**On a wall tablet**, Home Assistant's own header and menus keep Home Assistant's theme. So they don't glare around a dark card at night, set the tablet's Home Assistant profile to Dark, or to Auto with the tablet's own dark mode on a schedule.
 
 Night falls from the top of the screen and day rises from the bottom. A change never happens while someone is touching the screen or has a sheet open, and a screen that was asleep wakes up already changed.
 

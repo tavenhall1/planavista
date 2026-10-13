@@ -1,21 +1,23 @@
 import { css } from 'lit';
+import { chipStyles, tagStyles } from '../../../styles/controls';
 
 /**
  * The chores Settings pages' look (the approved settings-editors mockup):
  * small headings over grouped cards of rows, tags as pills, person chips,
  * steppers, and segmented controls. Built on the card's theme tokens.
  */
-export const choresSettingsStyles = css`
+export const choresSettingsStyles = [
+  chipStyles,
+  tagStyles,
+  css`
   :host {
     display: block;
   }
 
   .section-label {
     margin: 22px 4px 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 0.8125rem;
+    font-weight: 750;
     color: var(--pv-text-secondary, #6B7280);
   }
 
@@ -109,26 +111,8 @@ export const choresSettingsStyles = css`
     margin-top: 2px;
   }
 
-  .tag {
-    flex-shrink: 0;
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-    background: color-mix(in srgb, var(--pv-accent, #6366F1) 12%, transparent);
-    color: var(--pv-accent-ink, var(--pv-accent, #6366F1));
-  }
 
-  .tag--muted {
-    background: color-mix(in srgb, var(--pv-text, #1A1B1E) 7%, transparent);
-    color: var(--pv-text-secondary, #6B7280);
-  }
 
-  .tag--attention {
-    background: color-mix(in srgb, #F59E0B 18%, transparent);
-    color: var(--pv-text, #1A1B1E);
-  }
 
   .stars {
     flex-shrink: 0;
@@ -153,65 +137,16 @@ export const choresSettingsStyles = css`
     color: var(--pv-text-secondary, #6B7280);
   }
 
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
 
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 40px;
-    padding: 0 14px 0 6px;
-    border-radius: 999px;
-    border: 1px solid var(--pv-border-subtle, #E5E7EB);
-    background: var(--pv-card-bg, #FFFFFF);
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
 
-  .chip--plain {
-    padding: 0 14px;
-  }
 
-  .chip[aria-pressed='true'] {
-    border-color: var(--pv-accent, #6366F1);
-    background: color-mix(in srgb, var(--pv-accent, #6366F1) 12%, var(--pv-card-bg, #FFFFFF));
-    font-weight: 600;
-  }
 
-  .segmented {
-    display: flex;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--pv-text, #1A1B1E) 6%, transparent);
-  }
 
-  .row > .segmented {
+  .row > .pv-seg {
     flex: 1;
   }
 
-  .segmented button {
-    flex: 1;
-    min-height: 44px;
-    padding: 0 12px;
-    border: none;
-    border-radius: 9px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
 
-  .segmented button[aria-pressed='true'] {
-    background: var(--pv-card-bg, #FFFFFF);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-    font-weight: 600;
-  }
 
   .stepper {
     display: inline-flex;
@@ -227,8 +162,8 @@ export const choresSettingsStyles = css`
   }
 
   .stepper button {
-    width: 44px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--pv-border-subtle, #E5E7EB);
     border-radius: 10px;
     background: var(--pv-card-bg, #FFFFFF);
@@ -260,18 +195,10 @@ export const choresSettingsStyles = css`
     color: var(--pv-success-ink, #2F7D4F);
   }
 
-  .destructive {
+  /* The one delete in place (the sheets' danger button), across the end of an editor (review). */
+  .end-delete {
     width: 100%;
-    min-height: 52px;
     margin-top: 24px;
-    border-radius: 14px;
-    border: none;
-    background: var(--pv-card-bg, #FFFFFF);
-    box-shadow: inset 0 0 0 1px var(--pv-border-subtle, #E5E7EB);
-    color: var(--pv-danger, #DC2626);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
   }
 
   .empty {
@@ -298,4 +225,5 @@ export const choresSettingsStyles = css`
       opacity: 0.5;
     }
   }
-`;
+`,
+];

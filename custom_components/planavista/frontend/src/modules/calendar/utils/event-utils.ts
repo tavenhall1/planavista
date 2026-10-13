@@ -14,6 +14,22 @@ export interface SharedEvent extends CalendarEvent {
   }>;
 }
 
+/**
+ * One event's copies on several people's calendars share this key: the same
+ * title and the same start and end instants (each copy keeps its own uid).
+ * Every view merges by it (milestone 8, spec 3.3).
+ */
+export function sameEventKey(event: Pick<CalendarEvent, 'summary' | 'start' | 'end'>): string {
+  return `${event.summary}|${instantKey(event.start)}|${instantKey(event.end)}`;
+}
+
+/** A timed start or end as its instant, so one moment written with two offsets matches; an all-day date as it is. */
+function instantKey(value: string): string {
+  if (isDateOnly(value)) return value;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? value : String(ms);
+}
+
 export function deduplicateSharedEvents(
   events: CalendarEvent[],
   calendars: CalendarConfig[]
@@ -22,8 +38,7 @@ export function deduplicateSharedEvents(
   const eventMap = new Map<string, SharedEvent>();
 
   for (const event of events) {
-    // Key: summary + start + end (normalized)
-    const key = `${event.summary}|${event.start}|${event.end}`;
+    const key = sameEventKey(event);
 
     if (eventMap.has(key)) {
       // Add this calendar as a participant

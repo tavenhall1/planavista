@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { belongsTo, buildCalendarRows, toSavedCalendars } from '../src/modules/calendar/calendar-rows';
+import { belongsTo, buildCalendarRows, toSavedCalendars, rowColor } from '../src/modules/calendar/calendar-rows';
 import { Member } from '../src/core/household';
 
 const PRESETS = [{ color: '#001219', light: '#A6ACAF' }, { color: '#005F73', light: '#A6C7CE' }];
@@ -51,5 +51,21 @@ describe('calendar rows', () => {
     expect(belongsTo({ person_entity: 'person.casey', member_id: 'dana' }, members)).toEqual({ memberId: 'casey', viaPerson: true });
     expect(belongsTo({ person_entity: 'person.alex', member_id: 'dana' }, members)).toEqual({ memberId: 'dana', viaPerson: false });
     expect(belongsTo({ person_entity: '', member_id: 'blair' }, members)).toEqual({ memberId: null, viaPerson: false });
+  });
+});
+
+describe("a calendar's color (milestone 8, spec 3.1)", () => {
+  const people = [{ id: 'alex', name: 'Alex', person: 'person.alex', color: '#277DA1' }];
+
+  it("a calendar that belongs to someone shows their color, set in People", () => {
+    const row = { person_entity: '', member_id: 'alex', color: '#F94144', color_light: '#FDBDBE' };
+    expect(rowColor(row, people)).toEqual({ owner: people[0], color: '#277DA1' });
+    const viaPerson = { person_entity: 'person.alex', member_id: null, color: '#F94144', color_light: '#FDBDBE' };
+    expect(rowColor(viaPerson, people).owner).toBe(people[0]);
+  });
+
+  it('a calendar that belongs to nobody keeps its own color and picker', () => {
+    const row = { person_entity: '', member_id: null, color: '#90BE6D', color_light: '#D8E8CC' };
+    expect(rowColor(row, people)).toEqual({ owner: null, color: '#90BE6D' });
   });
 });

@@ -1,5 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
@@ -33,6 +35,7 @@ export class PvPersonChores extends LitElement {
   @state() private _adding: AwayRange | null = null;
 
   static styles = [
+    segmentedStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -45,8 +48,9 @@ export class PvPersonChores extends LitElement {
       .legend {
         display: block;
         margin-bottom: 8px;
-        font-weight: 600;
-        font-size: 0.9375rem;
+        font-size: 0.8125rem;
+        font-weight: 750;
+        color: var(--pv-text-secondary, #5F6670);
       }
 
       .stack {
@@ -68,7 +72,7 @@ export class PvPersonChores extends LitElement {
       }
 
       .remove {
-        min-height: 40px;
+        min-height: 48px;
         margin-left: auto;
       }
     `,
@@ -95,7 +99,7 @@ export class PvPersonChores extends LitElement {
           <div class="row">
             <div class="stack">
               <span>Needs an OK for</span>
-              <div class="segmented" role="group" aria-label="Needs an OK for">
+              <div class="pv-seg stretch" role="group" aria-label="Needs an OK for">
                 ${NEEDS_OK.map(([id, label]) => html`
                   <button type="button" aria-pressed=${d.needs_ok_for === id ? 'true' : 'false'}
                     @click=${() => this._change({ needs_ok_for: id })}>${label}</button>
@@ -107,7 +111,7 @@ export class PvPersonChores extends LitElement {
         <div class="row">
           <div class="stack">
             <span>My day</span>
-            <div class="segmented" role="group" aria-label="My day">
+            <div class="pv-seg stretch" role="group" aria-label="My day">
               ${MY_DAY.map(([id, label]) => html`
                 <button type="button" aria-pressed=${d.my_day === id ? 'true' : 'false'}
                   @click=${() => this._change({ my_day: id })}>${label}</button>
@@ -164,10 +168,10 @@ export class PvPersonChores extends LitElement {
         <div class="row">
           <div class="stack">
             <div class="away-form">
-              <label>From <input class="pv-input" type="date" .value=${this._adding.from}
-                @change=${(e: Event) => { this._adding = { ...this._adding!, from: (e.target as HTMLInputElement).value }; }} /></label>
-              <label>To <input class="pv-input" type="date" .value=${this._adding.to} min=${this._adding.from}
-                @change=${(e: Event) => { this._adding = { ...this._adding!, to: (e.target as HTMLInputElement).value }; }} /></label>
+              <label>From <pv-date-field  .value=${this._adding.from}
+                @change=${(e: Event) => { this._adding = { ...this._adding!, from: (e.target as HTMLInputElement).value }; }}></pv-date-field></label>
+              <label>To <pv-date-field  .value=${this._adding.to} min=${this._adding.from}
+                @change=${(e: Event) => { this._adding = { ...this._adding!, to: (e.target as HTMLInputElement).value }; }}></pv-date-field></label>
               <label>Note <input class="pv-input" type="text" maxlength="60" placeholder="At Grandma's" .value=${this._adding.note ?? ''}
                 @input=${(e: Event) => { this._adding = { ...this._adding!, note: (e.target as HTMLInputElement).value }; }} /></label>
             </div>

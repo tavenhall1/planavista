@@ -1,5 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { segmentedStyles } from '../styles/controls';
 import { property } from 'lit/decorators.js';
+import './pv-date-field';
 import { defineElement } from '../utils/define';
 import { Freq, RecurrenceValue, WEEKDAYS, Weekday, ordinal, recurrenceSummary, weekdayOf } from './recurrence';
 
@@ -22,7 +24,9 @@ const UNITS: Record<Freq, [string, string]> = { DAILY: ['day', 'days'], WEEKLY: 
 export class PvRecurrencePicker extends LitElement {
   @property({ attribute: false }) value!: RecurrenceValue;
 
-  static styles = css`
+  static styles = [
+    segmentedStyles,
+    css`
     :host {
       display: block;
     }
@@ -53,31 +57,11 @@ export class PvRecurrencePicker extends LitElement {
       min-width: 80px;
     }
 
-    .segmented {
-      display: flex;
+    .row > .pv-seg {
       flex: 1 1 100%;
-      gap: 4px;
-      padding: 4px;
-      border-radius: 12px;
-      background: color-mix(in srgb, var(--pv-text, #1A1B1E) 6%, transparent);
     }
 
-    .segmented button {
-      flex: 1;
-      min-height: 44px;
-      border: none;
-      border-radius: 9px;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      cursor: pointer;
-    }
 
-    .segmented button[aria-pressed='true'] {
-      background: var(--pv-card-bg, #FFFFFF);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-      font-weight: 600;
-    }
 
     .stepper {
       display: inline-flex;
@@ -93,8 +77,8 @@ export class PvRecurrencePicker extends LitElement {
 
     .stepper button,
     .day {
-      width: 44px;
-      height: 44px;
+      width: 48px;
+      height: 48px;
       border: 1px solid var(--pv-border-subtle, #E5E7EB);
       background: var(--pv-card-bg, #FFFFFF);
       color: inherit;
@@ -132,7 +116,7 @@ export class PvRecurrencePicker extends LitElement {
 
     input,
     select {
-      min-height: 44px;
+      min-height: 48px;
       padding: 0 10px;
       border-radius: 10px;
       border: 1px solid var(--pv-border-subtle, #E5E7EB);
@@ -146,7 +130,8 @@ export class PvRecurrencePicker extends LitElement {
       font-size: 0.8125rem;
       color: var(--pv-text-secondary, #6B7280);
     }
-  `;
+  `,
+  ];
 
   render() {
     const v = this.value;
@@ -155,7 +140,7 @@ export class PvRecurrencePicker extends LitElement {
     return html`
       <div class="group">
         <div class="row">
-          <div class="segmented" role="group" aria-label="Repeats">
+          <div class="pv-seg stretch" role="group" aria-label="Repeats">
             ${(['DAILY', 'WEEKLY', 'MONTHLY'] as Freq[]).map(freq => html`
               <button type="button" aria-pressed=${v.freq === freq ? 'true' : 'false'} @click=${() => this._freq(freq)}>
                 ${freq === 'DAILY' ? 'Every day' : freq === 'WEEKLY' ? 'Every week' : 'Every month'}
@@ -199,12 +184,12 @@ export class PvRecurrencePicker extends LitElement {
         ` : nothing}
         <div class="row">
           <label class="label" for="start">Starts</label>
-          <input id="start" type="date" .value=${v.start}
-            @change=${(e: Event) => this._start((e.target as HTMLInputElement).value)} />
+          <pv-date-field id="start"  .value=${v.start}
+            @change=${(e: Event) => this._start((e.target as HTMLInputElement).value)}></pv-date-field>
         </div>
         <div class="row">
           <span class="label">Ends</span>
-          <div class="segmented" role="group" aria-label="Ends">
+          <div class="pv-seg stretch" role="group" aria-label="Ends">
             ${(['never', 'count', 'until'] as const).map(ends => html`
               <button type="button" aria-pressed=${v.ends === ends ? 'true' : 'false'} @click=${() => this._set({ ends })}>
                 ${ends === 'never' ? 'Never' : ends === 'count' ? 'After a number of times' : 'On a date'}
@@ -227,8 +212,8 @@ export class PvRecurrencePicker extends LitElement {
         ${v.ends === 'until' ? html`
           <div class="row">
             <label class="label" for="until">End date</label>
-            <input id="until" type="date" .value=${v.until} min=${v.start}
-              @change=${(e: Event) => this._set({ until: (e.target as HTMLInputElement).value || v.until })} />
+            <pv-date-field id="until"  .value=${v.until} min=${v.start}
+              @change=${(e: Event) => this._set({ until: (e.target as HTMLInputElement).value || v.until })}></pv-date-field>
           </div>
         ` : nothing}
       </div>

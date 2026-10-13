@@ -69,7 +69,7 @@ describe('settings registry', () => {
       calendars: '2 calendars',
       'calendar-options': 'Week · 12-hour',
       appearance: 'Dark · PlanaVista',
-      pins: 'Shared screen · 1 PIN',
+      pins: 'This screen: shared family screen · 1 PIN',
       about: `Version ${version}`,
     });
     const quiet = context({
@@ -77,7 +77,7 @@ describe('settings registry', () => {
       account: { kind: 'admin', shared: false, parent_level: true } as unknown as HouseholdView['account'],
     });
     expect(settings.pages(quiet).find(p => p.id === 'people')?.summary?.(quiet)).toBe('No one yet');
-    expect(settings.pages(quiet).find(p => p.id === 'pins')?.summary?.(quiet)).toBe('Not a shared screen');
+    expect(settings.pages(quiet).find(p => p.id === 'pins')?.summary?.(quiet)).toBe('This screen: not shared');
   });
 
   it('leaves out People and PINs when there is no household', () => {

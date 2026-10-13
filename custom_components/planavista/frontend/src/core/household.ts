@@ -42,7 +42,14 @@ export interface HouseholdView {
   available: boolean;
   members: Member[];
   account: AccountView;
-  security: { shuffle_keypad: boolean; shared_screens: number };
+  security: {
+    shuffle_keypad: boolean;
+    shared_screens: number;
+    /** Lock after no touches (30, 60, 120, or 300); missing from older backends. */
+    session_idle_seconds?: number;
+    /** Parent mode ends after (5, 10, 15, or 30). */
+    parent_mode_minutes?: number;
+  };
   modules: Record<string, unknown>;
   /** Where setup stands; `start` is how the household started (restore, plan, common, empty, calendar). */
   setup: { completed: boolean; step: string | null; start?: string | null };
@@ -187,7 +194,10 @@ export function calendarsOf(memberId: string, calendars: CalendarLink[]): Calend
 
 /** A People row's summary, such as "Parent · PIN on · Alex's calendar" (spec 14.2). */
 export function memberSummary(member: Member, calendars: CalendarLink[]): string {
-  const parts = [member.parent ? 'Parent' : AGE_GROUP_LABELS[member.age_group]];
+  // A parent who isn't an adult is named both ways: "Parent · Teen" (milestone 8).
+  const parts = member.parent
+    ? ['Parent', ...(member.age_group === 'adult' ? [] : [AGE_GROUP_LABELS[member.age_group]])]
+    : [AGE_GROUP_LABELS[member.age_group]];
   if (member.has_pin) parts.push('PIN on');
   const own = calendarsOf(member.id, calendars);
   if (own.length === 0) parts.push('no calendar');

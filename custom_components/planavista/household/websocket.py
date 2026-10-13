@@ -35,8 +35,10 @@ from .members import (
 )
 from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
-    SESSION_IDLE_SECONDS,
+    PARENT_MODE_CHOICES,
+    SESSION_IDLE_CHOICES,
     after_failure,
+    easy_pin,
     after_success,
     hash_pin,
     pause_remaining,
@@ -44,6 +46,7 @@ from .security import (
     valid_pin,
     verify_pin,
 )
+from ..refusals import note_refusal, send_refusal
 from .store import DATA_HOUSEHOLD, Household
 
 # What the card shows when a change breaks a rule (spec 11.7: say what to do).
@@ -149,7 +152,7 @@ def household_for(
 ) -> Household | None:
     household = hass.data.get(DATA_HOUSEHOLD)
     if household is None:
-        connection.send_error(msg["id"], "not_loaded", "PlanaVista is not set up yet.")
+        send_refusal(connection, msg, "not_loaded", "PlanaVista is not set up yet.")
     return household
 
 
@@ -158,11 +161,10 @@ def refuse(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], account: Account
 ) -> None:
     if account.screen_rules:
-        connection.send_error(
-            msg["id"], "parent_mode_required", "A parent's PIN is needed on this screen."
+        send_refusal(connection, msg, "parent_mode_required", "A parent's PIN is needed on this screen."
         )
     else:
-        connection.send_error(msg["id"], "not_allowed", "Only a parent can do this.")
+        send_refusal(connection, msg, "not_allowed", "Only a parent can do this.")
 
 
 @callback
@@ -183,8 +185,7 @@ def parent_for(
         refuse(connection, msg, account)
         return None
     if needs_file and not household.available:
-        connection.send_error(
-            msg["id"], "unavailable", "Update PlanaVista to change people and PINs."
+        send_refusal(connection, msg, "unavailable", "Update PlanaVista to change people and PINs."
         )
         return None
     return household, by
@@ -194,8 +195,7 @@ def parent_for(
 def _member_error(
     connection: websocket_api.ActiveConnection, msg: dict[str, Any], err: MemberError
 ) -> None:
-    connection.send_error(
-        msg["id"], err.code, ERROR_MESSAGES.get(err.code, "That change can't be saved.")
+    send_refusal(connection, msg, err.code, ERROR_MESSAGES.get(err.code, "That change can't be saved.")
     )
 
 
@@ -220,6 +220,8 @@ def _view(hass: HomeAssistant, household: Household, user: User) -> dict[str, An
         "security": {
             "shuffle_keypad": household.data["security"]["shuffle_keypad"],
             "shared_screens": len(household.shared_users),
+            "session_idle_seconds": household.data["security"]["session_idle_seconds"],
+            "parent_mode_minutes": household.data["security"]["parent_mode_minutes"],
         },
         "modules": household.data["modules"],
         "setup": household.data["setup"],
@@ -309,19 +311,18 @@ async def ws_member_prefs(
     if household is None:
         return
     if not household.available:
-        connection.send_error(msg["id"], "unavailable", "Update PlanaVista to change people and PINs.")
+        send_refusal(connection, msg, "unavailable", "Update PlanaVista to change people and PINs.")
         return
     member_id = msg["member_id"]
     member = household.member(member_id)
     if member is None:
-        connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
+        send_refusal(connection, msg, "unknown_member", ERROR_MESSAGES["unknown_member"])
         return
     account = account_for(hass, household, connection.user)
     session = session_for(household, connection, msg)
     if member_level(account, session, member_id, member_id in household.pins) is None:
         if account.screen_rules:
-            connection.send_error(
-                msg["id"], "pin_required", f"{member.get('name', member_id)}'s PIN or a parent's is needed."
+            send_refusal(connection, msg, "pin_required", f"{member.get('name', member_id)}'s PIN or a parent's is needed."
             )
         else:
             refuse(connection, msg, account)
@@ -434,8 +435,7 @@ async def ws_shared_screen(
     users = [user_id for user_id in household.shared_users if user_id != connection.user.id]
     if msg["shared"]:
         if not parents_with_pins(household.members, household.pins):
-            connection.send_error(
-                msg["id"], "needs_parent_pin", ERROR_MESSAGES["needs_parent_pin"]
+            send_refusal(connection, msg, "needs_parent_pin", ERROR_MESSAGES["needs_parent_pin"]
             )
             return
         users.append(connection.user.id)
@@ -448,6 +448,8 @@ async def ws_shared_screen(
     {
         vol.Required("type"): "planavista/household/settings/save",
         vol.Optional("shuffle_keypad"): bool,
+        vol.Optional("session_idle_seconds"): vol.In(SESSION_IDLE_CHOICES),
+        vol.Optional("parent_mode_minutes"): vol.In(PARENT_MODE_CHOICES),
         vol.Optional("session"): str,
     }
 )
@@ -455,13 +457,14 @@ async def ws_shared_screen(
 async def ws_settings_save(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Household-wide PIN settings (today, Shuffle the keypad)."""
+    """Household-wide PIN settings: Shuffle the keypad, Lock after no touches, Parent mode ends after."""
     context = parent_for(hass, connection, msg)
     if context is None:
         return
     household, _by = context
-    if "shuffle_keypad" in msg:
-        household.data["security"]["shuffle_keypad"] = msg["shuffle_keypad"]
+    for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
+        if key in msg:
+            household.data["security"][key] = msg[key]
     await household.async_save()
     connection.send_result(msg["id"])
 
@@ -522,7 +525,13 @@ async def ws_config_save(
 
 # PIN fields accept any value; the handler checks the format with a fixed
 # message, so Home Assistant's error logging can never quote a PIN.
+def _whole_seconds(seconds: float) -> int:
+    """Seconds for the card, rounded up, after the clock's float noise is gone (60.000000000007 is 60)."""
+    return max(0, math.ceil(round(seconds, 3)))
+
+
 INVALID_PIN = "PINs are 4 to 6 digits."
+EASY_PIN = "That PIN is easy to guess: the same digit, a run, or straight down the keypad. Try another."
 
 
 @callback
@@ -534,7 +543,7 @@ def _pin_manager(
     if household is None:
         return None
     if household.member(msg["member_id"]) is None:
-        connection.send_error(msg["id"], "unknown_member", ERROR_MESSAGES["unknown_member"])
+        send_refusal(connection, msg, "unknown_member", ERROR_MESSAGES["unknown_member"])
         return None
     account = account_for(hass, household, connection.user)
     session = session_for(household, connection, msg)
@@ -542,8 +551,7 @@ def _pin_manager(
         refuse(connection, msg, account)
         return None
     if not household.available:
-        connection.send_error(
-            msg["id"], "unavailable", "Update PlanaVista to change people and PINs."
+        send_refusal(connection, msg, "unavailable", "Update PlanaVista to change people and PINs."
         )
         return None
     return household, msg.get("session") if session else None
@@ -570,10 +578,12 @@ async def ws_pin_unlock(
     async with household.pin_lock(member_id):
         record = household.pins.get(member_id) if member else None
         if record is None:
+            note_refusal(hass, msg["type"], "no_pin")
             connection.send_result(msg["id"], {"ok": False, "reason": "no_pin"})
             return
         now = dt_util.utcnow()
         if (wait := pause_remaining(record, now)) > 0:
+            note_refusal(hass, msg["type"], "paused")
             connection.send_result(
                 msg["id"], {"ok": False, "reason": "paused", "retry_after": math.ceil(wait)}
             )
@@ -584,6 +594,7 @@ async def ws_pin_unlock(
             household.pins[member_id] = record
             await household.async_save()
             wait = pause_remaining(record, now)
+            note_refusal(hass, msg["type"], "paused" if wait else "wrong_pin")
             connection.send_result(
                 msg["id"],
                 {
@@ -597,9 +608,9 @@ async def ws_pin_unlock(
         if record.get("failures") or record.get("lockouts"):
             household.pins[member_id] = after_success(record)
             await household.async_save()
-    session = household.sessions.start(
-        member_id, bool(member.get("parent")), connection, _monotonic()
-    )
+    now = _monotonic()
+    session = household.sessions.start(member_id, bool(member.get("parent")), connection, now)
+    idle, cap = household.session_limits()
     connection.subscriptions[("planavista_session", session.token)] = partial(
         household.sessions.end, session.token
     )
@@ -610,7 +621,9 @@ async def ws_pin_unlock(
             "session": session.token,
             "member_id": member_id,
             "parent": session.parent,
-            "expires_in": SESSION_IDLE_SECONDS,
+            "expires_in": _whole_seconds(household.sessions.expires_in(session, now)),
+            "idle_seconds": _whole_seconds(idle),
+            "cap_in": _whole_seconds(cap),
         },
     )
 
@@ -633,7 +646,10 @@ async def ws_pin_set(
         return
     household, token = context
     if not valid_pin(msg["pin"]):
-        connection.send_error(msg["id"], "invalid_pin", INVALID_PIN)
+        send_refusal(connection, msg, "invalid_pin", INVALID_PIN)
+        return
+    if easy_pin(msg["pin"]):
+        send_refusal(connection, msg, "easy_pin", EASY_PIN)
         return
     household.pins[msg["member_id"]] = await hass.async_add_executor_job(hash_pin, msg["pin"])
     household.sessions.end_member(msg["member_id"], keep=token)
@@ -726,10 +742,12 @@ def ws_pin_touch(
     household = household_for(hass, connection, msg)
     if household is None:
         return
-    if household.sessions.get(msg["session"], connection, _monotonic(), touch=True) is None:
-        connection.send_error(msg["id"], "session_ended", "The PIN session ended.")
+    now = _monotonic()
+    session = household.sessions.get(msg["session"], connection, now, touch=True)
+    if session is None:
+        send_refusal(connection, msg, "session_ended", "The PIN session ended.")
         return
-    connection.send_result(msg["id"], {"expires_in": SESSION_IDLE_SECONDS})
+    connection.send_result(msg["id"], {"expires_in": _whole_seconds(household.sessions.expires_in(session, now))})
 
 
 HOUSEHOLD_COMMANDS = (

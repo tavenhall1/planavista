@@ -1,12 +1,15 @@
 import { LitElement, html, css, nothing } from 'lit';
+import { personChipStyles, segmentedStyles } from '../../../styles/controls';
 import { property, state } from 'lit/decorators.js';
+import '../../../core/pv-time-field';
+import '../../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { HouseholdView, Member, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { PAGE_ERROR, POP_PAGE } from '../../../core/page-host';
+import { PAGE_ERROR, POP_PAGE, announceEditor } from '../../../core/page-host';
 import { copyText } from '../../../core/clipboard';
 import { errorCode, errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
@@ -118,6 +121,8 @@ export class PvChoreEditor extends LitElement {
   }
 
   static styles = [
+    personChipStyles,
+    segmentedStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -202,41 +207,16 @@ export class PvChoreEditor extends LitElement {
         font: inherit;
         font-size: 1.0625rem;
         color: inherit;
-        min-height: 44px;
+        min-height: 48px;
       }
 
       .name-row input:focus {
         outline: none;
       }
 
-      .people {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        padding: 12px 14px;
-      }
 
-      .person {
-        position: relative;
-        display: grid;
-        justify-items: center;
-        gap: 4px;
-        min-width: 56px;
-        border: none;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        font-size: 0.8125rem;
-        cursor: pointer;
-      }
 
-      .person[aria-pressed='false'] pv-member-avatar {
-        opacity: 0.4;
-      }
 
-      .person[aria-pressed='true'] .name {
-        font-weight: 700;
-      }
 
       .check {
         position: absolute;
@@ -260,8 +240,8 @@ export class PvChoreEditor extends LitElement {
       }
 
       .day {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         border: 1px solid var(--pv-border-subtle, #E5E7EB);
         background: var(--pv-card-bg, #FFFFFF);
@@ -303,7 +283,7 @@ export class PvChoreEditor extends LitElement {
       }
 
       .copy {
-        min-height: 40px;
+        min-height: 48px;
         margin-left: auto;
       }
 
@@ -314,8 +294,29 @@ export class PvChoreEditor extends LitElement {
       .gone {
         color: var(--pv-text-secondary, #6B7280);
       }
+
+      .who {
+        padding: 12px 14px;
+      }
     `,
   ];
+
+  /** The editor's Cancel and Save, held in the Settings header (milestone 8). */
+  private _announced = '';
+
+  protected updated(): void {
+    const isNew = this._choreId === null;
+    const editor = {
+      label: isNew ? 'Add' : 'Save',
+      ready: !(this._saving || (!isNew && !isDirty(this._record))),
+      save: () => void this._save(),
+      cancel: () => this._cancel(),
+    };
+    const said = `${editor.label}|${editor.ready}`;
+    if (said === this._announced) return;
+    this._announced = said;
+    announceEditor(this, editor);
+  }
 
   render() {
     const board = this._board;
@@ -333,11 +334,6 @@ export class PvChoreEditor extends LitElement {
           @click=${() => { this._pictures = !this._pictures; }}>
           <span class="big" aria-hidden="true">${d.icon || pictureFor(d.name || 'chore')}</span>Change picture
         </button>
-        <div class="actions">
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${this._cancel}>Cancel</button>
-          <button class="pv-btn pv-btn-primary" type="button" ?disabled=${this._saving || (!isNew && !isDirty(this._record))}
-            @click=${this._save}>${isNew ? 'Add' : 'Save'}</button>
-        </div>
       </div>
       ${this._pictures ? this._renderPictures() : nothing}
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
@@ -348,7 +344,7 @@ export class PvChoreEditor extends LitElement {
             @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })} />
         </label>
       </div>
-      <div class="segmented" role="group" aria-label="Schedule" style="margin-top: 14px">
+      <div class="pv-seg stretch" role="group" aria-label="Schedule" style="margin-top: 14px">
         ${(['plan', 'once', 'repeats'] as Schedule[]).map(schedule => html`
           <button type="button" aria-pressed=${d.schedule === schedule ? 'true' : 'false'}
             @click=${() => this._change({ schedule })}>${schedule === 'plan' ? 'Plan' : schedule === 'once' ? 'Once' : 'Repeats'}</button>
@@ -360,7 +356,7 @@ export class PvChoreEditor extends LitElement {
       ${this._renderBoard(board, members)}
       ${this._activity ? this._renderAutomations(this._activity, members) : nothing}
       ${this._activity ? html`
-        <button class="destructive" type="button" @click=${() => { this._notice = 'delete'; }}>Delete ${this._activity.name}…</button>
+        <button class="pv-btn pv-btn-secondary danger apart end-delete" type="button" @click=${() => { this._notice = 'delete'; }}>Delete chore</button>
       ` : nothing}
       ${this._renderNotice()}
     `;
@@ -398,21 +394,20 @@ export class PvChoreEditor extends LitElement {
     return html`
       <h2 class="section-label">Who</h2>
       <div class="group">
-        <div class="people" role="group" aria-label="Who">
+        <div class="pv-person-chips who" role="group" aria-label="Who">
           ${members.map(member => {
             const on = d.assignees.includes(member.id);
             return html`
-              <button class="person" type="button" aria-pressed=${on ? 'true' : 'false'} @click=${() => this._toggleMember(member.id)}>
-                <pv-member-avatar .member=${member} .hass=${this.hass} size="44"></pv-member-avatar>
-                ${on ? html`<span class="check" aria-hidden="true">✓</span>` : nothing}
-                <span class="name">${member.name}</span>
+              <button class="pv-person-chip" type="button" aria-pressed=${on ? 'true' : 'false'} style="--member:${member.color}"
+                @click=${() => this._toggleMember(member.id)}>
+                <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>${member.name}
               </button>
             `;
           })}
         </div>
         ${shared ? html`
           <div class="row">
-            <div class="segmented" role="group" aria-label="How the time is shared">
+            <div class="pv-seg stretch" role="group" aria-label="How the time is shared">
               <button type="button" aria-pressed=${d.split === 'shared' ? 'true' : 'false'}
                 @click=${() => this._change({ split: 'shared', shares: evenShares(d.assignees, d.minutes) })}>Split the time</button>
               <button type="button" aria-pressed=${d.split === 'each' ? 'true' : 'false'}
@@ -466,7 +461,7 @@ export class PvChoreEditor extends LitElement {
           ${this._stepper(d.minutes, minutes => this._setMinutes(minutes), 'time')}
         </div>
         <div class="row">
-          <div class="segmented" role="group" aria-label="Each day or each week">
+          <div class="pv-seg stretch" role="group" aria-label="Each day or each week">
             <button type="button" aria-pressed=${d.per === 'day' ? 'true' : 'false'} @click=${() => this._change({ per: 'day' })}>Each day</button>
             <button type="button" aria-pressed=${d.per === 'week' ? 'true' : 'false'} @click=${() => this._change({ per: 'week' })}>Each week</button>
           </div>
@@ -527,7 +522,7 @@ export class PvChoreEditor extends LitElement {
                   @click=${() => { this._otherEstimate = false; this._change({ estimate: minutes }); }}>${durationText(minutes)}</button>
               `)}
               <button class="chip chip--plain" type="button" aria-pressed=${other ? 'true' : 'false'}
-                @click=${() => { this._otherEstimate = true; }}>Other…</button>
+                @click=${() => { this._otherEstimate = true; }}>Other</button>
             </div>
             ${other ? html`
               <label class="row" style="padding: 0">
@@ -549,7 +544,7 @@ export class PvChoreEditor extends LitElement {
       <h2 class="section-label">When</h2>
       <div class="group">
         <div class="row">
-          <div class="segmented" role="group" aria-label="When">
+          <div class="pv-seg stretch" role="group" aria-label="When">
             ${(['on', 'by', 'any'] as const).map(when => html`
               <button type="button" aria-pressed=${d.once_when === when ? 'true' : 'false'} @click=${() => this._change({ once_when: when })}>
                 ${when === 'on' ? 'On a day' : when === 'by' ? 'By a date' : 'Any time'}
@@ -560,15 +555,15 @@ export class PvChoreEditor extends LitElement {
         ${d.once_when !== 'any' ? html`
           <label class="row">
             <span class="row-text">Date</span>
-            <input class="pv-input" type="date" min=${board.today} .value=${d.date}
-              @change=${(e: Event) => this._change({ date: (e.target as HTMLInputElement).value })} />
+            <pv-date-field  min=${board.today} .value=${d.date}
+              @change=${(e: Event) => this._change({ date: (e.target as HTMLInputElement).value })}></pv-date-field>
           </label>
         ` : nothing}
         ${d.once_when === 'by' ? html`
           <label class="row">
             <span class="row-text">By<span class="row-sub">Leave it empty for the end of the day.</span></span>
-            <input class="pv-input" type="time" .value=${d.by_time ?? ''}
-              @change=${(e: Event) => this._change({ by_time: (e.target as HTMLInputElement).value || null })} />
+            <pv-time-field  clearable .format=${this.data?.display?.time_format === '24h' ? '24h' : '12h'} .value=${d.by_time ?? ''}
+              @change=${(e: Event) => this._change({ by_time: (e.target as HTMLInputElement).value || null })}></pv-time-field>
           </label>
         ` : nothing}
         <div class="row">
@@ -590,7 +585,7 @@ export class PvChoreEditor extends LitElement {
         @pv-recurrence-change=${(e: CustomEvent) => this._change({ recurrence: e.detail })}></pv-recurrence-picker>
       ${freq !== 'DAILY' ? html`
         <h2 class="section-label">Each time</h2>
-        <div class="segmented" role="group" aria-label="Each time">
+        <div class="pv-seg stretch" role="group" aria-label="Each time">
           <button type="button" aria-pressed=${d.window === 'day' ? 'true' : 'false'} @click=${() => this._change({ window: 'day' })}>On the day</button>
           <button type="button" aria-pressed=${d.window === 'period' ? 'true' : 'false'} @click=${() => this._change({ window: 'period' })}>
             ${freq === 'MONTHLY' ? 'Any time that month' : 'Any time that week'}
@@ -631,7 +626,7 @@ export class PvChoreEditor extends LitElement {
           okText(d, members) || undefined)}
         <div class="row">
           <span class="row-text">Stars<span class="row-sub">${d.stars === null ? `★ ${automatic} each, from the time` : `★ ${d.stars} each`}</span></span>
-          <div class="segmented" role="group" aria-label="Stars" style="flex: 0 1 260px">
+          <div class="pv-seg stretch" role="group" aria-label="Stars" style="flex: 0 1 260px">
             <button type="button" aria-pressed=${d.stars === null ? 'true' : 'false'} @click=${() => this._change({ stars: null })}>Automatic</button>
             <button type="button" aria-pressed=${d.stars !== null ? 'true' : 'false'}
               @click=${() => this._change({ stars: d.stars ?? automatic })}>Set</button>
@@ -692,7 +687,7 @@ export class PvChoreEditor extends LitElement {
     if (this._notice === 'discard') {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Discard changes?"
-          .actions=${[{ id: 'keep', label: 'Keep editing', kind: 'secondary' }, { id: 'discard', label: 'Discard', kind: 'destructive' }]}
+          .actions=${[{ id: 'discard', label: 'Discard changes', kind: 'destructive' }, { id: 'keep', label: 'Keep editing', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDiscardChoice}></pv-notice-sheet>
       `;
     }
@@ -700,7 +695,7 @@ export class PvChoreEditor extends LitElement {
       return html`
         <pv-notice-sheet .layout=${this.layout} heading="Delete ${this._activity.name}?"
           body="It leaves the board at once. Past weeks still show what was done, and stars stay earned."
-          .actions=${[{ id: 'cancel', label: 'Cancel', kind: 'secondary' }, { id: 'delete', label: 'Delete', kind: 'destructive' }]}
+          .actions=${[{ id: 'delete', label: `Delete ${this._activity.name}`, kind: 'destructive' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
           @pv-sheet-action=${this._onDeleteChoice}></pv-notice-sheet>
       `;
     }

@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { personChipStyles, tagStyles } from '../../../styles/controls';
 import { property, state, query } from 'lit/decorators.js';
 import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
@@ -6,18 +7,21 @@ import { CalendarConfig, CalendarEvent, CreateEventData } from '../../../types';
 import { CalendarStore, StoreSubscriber } from '../calendar-store';
 import { createEvent, createEventWithAttendees, deleteEvent, updateEvent, refreshPlanaVista, getEventOrganizer } from '../../../utils/ha-utils';
 import {
-  EditRestoreError,
-  EventFormDates,
   buildDeleteData,
   buildEventBase,
   buildRestoreData,
   defaultFormDates,
+  defaultWho,
+  EditRestoreError,
+  EventFormDates,
   formDatesFromEvent,
   formEndDate,
   planEdit,
   runEditWithRestore,
   validateFormDates,
   withEndTime,
+  withAllDayEnd,
+  withAllDayStart,
   withStartTime,
 } from '../utils/event-form';
 import { baseStyles, buttonStyles, formStyles, animationStyles } from '../../../styles/shared';
@@ -27,13 +31,16 @@ import { SheetController } from '../../../shell/sheet-controller';
 import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
 import { LocationSearch } from '../utils/location-search';
+import { monthGrid, timeList } from '../../../core/picker-views';
+import { dateLabel, timeSlots } from '../../../core/pickers';
+import { pickerStyles } from '../../../styles/pickers';
 import { contrastText } from '../../../core/color';
 import { calendarCan, formSignature, saveFailedText } from '../event-words';
+import type { EventGate } from '../event-gate';
 
-const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const DISCARD_ACTIONS: NoticeAction[] = [
-  { id: 'discard', label: 'Discard', kind: 'destructive' },
+  { id: 'discard', label: 'Discard changes', kind: 'destructive' },
   { id: 'keep', label: 'Keep editing', kind: 'secondary' },
 ];
 
@@ -49,6 +56,8 @@ const DISCARD_ACTIONS: NoticeAction[] = [
 export class PVEventCreateDialog extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) calendars: CalendarConfig[] = [];
+  /** Who may change events here (D1): Save asks for a PIN first when this screen needs one. */
+  @property({ attribute: false }) gate?: EventGate;
   @property({ type: Boolean }) open = false;
   @property({ type: String }) mode: 'create' | 'edit' = 'create';
   @property({ type: Object }) prefill: Partial<CalendarEvent> | null = null;
@@ -61,6 +70,8 @@ export class PVEventCreateDialog extends LitElement {
 
   @state() private _title = '';
   @state() private _selectedCalendars: Set<string> = new Set();
+  /** Save is waiting on a PIN (D1). */
+  private _gating = false;
   @state() private _originalCalendars: Set<string> = new Set();
   @state() private _organizerEntityId = '';
   @state() private _date = '';
@@ -83,6 +94,8 @@ export class PVEventCreateDialog extends LitElement {
 
   // Date picker state
   @state() private _datePickerOpen = false;
+  /** Which date the month grid is picking: the start, or an all-day event's last day (spec 3.4). */
+  @state() private _dateTarget: 'start' | 'end' = 'start';
   @state() private _pickerMonth = 0;
   @state() private _pickerYear = 0;
 
@@ -111,10 +124,14 @@ export class PVEventCreateDialog extends LitElement {
   @query('#title-input') private _titleInput?: HTMLInputElement;
   @query('.location-input') private _locationInput?: HTMLInputElement;
   @query('.date-display') private _dateDisplay?: HTMLElement;
+  @query('.end-date-display') private _endDateDisplay?: HTMLElement;
   @query('.start-time-display') private _startTimeEl?: HTMLElement;
   @query('.end-time-display') private _endTimeEl?: HTMLElement;
 
   static styles = [
+    pickerStyles,
+    personChipStyles,
+    tagStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -161,13 +178,7 @@ export class PVEventCreateDialog extends LitElement {
       }
 
       :host([layout='landscape']) .footer {
-        justify-content: flex-end;
         padding-bottom: 20px;
-      }
-
-      :host([layout='landscape']) .footer .pv-btn {
-        flex: 0 0 auto;
-        min-width: 120px;
       }
 
       :host([layout='phone']) .form-row {
@@ -236,55 +247,16 @@ export class PVEventCreateDialog extends LitElement {
         padding-top: 12px;
       }
 
-      .cal-option {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.375rem 0.875rem;
-        border: 2px solid transparent;
-        border-radius: 9999px;
-        cursor: pointer;
-        transition: all var(--pv-transition);
-        font-size: 0.875rem;
-        font-weight: 600;
-        background: transparent;
-        font-family: inherit;
-        min-height: 48px;
-      }
 
-      .cal-option.selected {
-        color: white;
-        box-shadow: 0 2px 6px color-mix(in srgb, var(--cal-bg) 30%, transparent);
-      }
 
-      .cal-option:not(.selected) {
-        border-color: var(--pv-border);
-        color: var(--pv-text-secondary);
-      }
 
-      .cal-option:hover:not(.selected) {
-        border-color: var(--pv-text-muted);
-      }
 
-      .cal-option-wrap {
+      .who-wrap {
         position: relative;
         display: inline-flex;
       }
 
-      .organizer-badge {
-        position: absolute;
-        top: -10px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 0.6875rem;
-        font-weight: 700;
-        color: var(--pv-accent-ink, var(--pv-accent));
-        line-height: 1;
-        white-space: nowrap;
-        pointer-events: none;
-      }
-
-      .cal-option.locked {
+      .pv-person-chip.locked {
         cursor: default;
         opacity: 0.9;
       }
@@ -295,11 +267,6 @@ export class PVEventCreateDialog extends LitElement {
         opacity: 0.7;
       }
 
-      .cal-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-      }
 
       .show-more-btn {
         display: inline-flex;
@@ -394,121 +361,6 @@ export class PVEventCreateDialog extends LitElement {
         animation: pv-fadeIn 150ms ease;
       }
 
-      .picker-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-      }
-
-      .picker-month-label {
-        font-size: 0.9375rem;
-        font-weight: 600;
-        color: var(--pv-text);
-      }
-
-      .picker-nav {
-        display: flex;
-        gap: 2px;
-      }
-
-      .picker-nav-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 48px;
-        height: 48px;
-        border: none;
-        border-radius: 50%;
-        background: transparent;
-        color: var(--pv-text-secondary);
-        cursor: pointer;
-        font-family: inherit;
-        transition: background 150ms;
-      }
-
-      .picker-nav-btn:hover {
-        background: var(--pv-event-hover, rgba(0,0,0,0.05));
-      }
-
-      .picker-nav-btn ha-icon {
-        --mdc-icon-size: 18px;
-      }
-
-      .picker-weekdays {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        text-align: center;
-        margin-bottom: 4px;
-      }
-
-      .picker-weekday {
-        font-size: 0.6875rem;
-        font-weight: 600;
-        color: var(--pv-text-muted);
-        padding: 4px 0;
-      }
-
-      .picker-days {
-        display: grid;
-        grid-template-columns: repeat(7, 48px);
-      }
-
-      /* A 48 px target with the day drawn smaller inside (spec 11.8). */
-      .picker-day {
-        display: grid;
-        place-items: center;
-        width: 48px;
-        height: 48px;
-        padding: 0;
-        border: none;
-        background: transparent;
-        color: var(--pv-text);
-        font-family: var(--pv-font-heading, inherit);
-        font-size: 0.875rem;
-        font-variant-numeric: tabular-nums;
-        cursor: pointer;
-      }
-
-      .picker-day span {
-        display: grid;
-        place-items: center;
-        box-sizing: border-box;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        transition: background 150ms;
-      }
-
-      .picker-day:hover span {
-        background: var(--pv-event-hover, rgba(0,0,0,0.05));
-      }
-
-      .picker-day:focus-visible {
-        outline: none;
-      }
-
-      .picker-day:focus-visible span {
-        outline: 2px solid var(--pv-accent-ink, #5B5BD6);
-        outline-offset: 1px;
-      }
-
-      .picker-day.other-month {
-        color: var(--pv-text-muted);
-        opacity: 0.4;
-      }
-
-      .picker-day.today span {
-        border: 2px solid var(--pv-accent);
-        font-weight: 700;
-      }
-
-      .picker-day.selected span {
-        background: var(--pv-accent);
-        color: var(--pv-accent-text, #fff);
-        font-weight: 700;
-      }
-
       /* ============================================
          CUSTOM TIME PICKER
          ============================================ */
@@ -559,32 +411,6 @@ export class PVEventCreateDialog extends LitElement {
       .time-picker-dropdown::-webkit-scrollbar-thumb {
         background: var(--pv-border);
         border-radius: 4px;
-      }
-
-      .time-slot {
-        display: block;
-        width: 100%;
-        min-height: 48px;
-        padding: 0 16px;
-        border: none;
-        background: transparent;
-        text-align: left;
-        font-family: inherit;
-        font-size: 0.9375rem;
-        font-variant-numeric: tabular-nums;
-        color: var(--pv-text);
-        cursor: pointer;
-        transition: background 120ms ease;
-      }
-
-      .time-slot:hover {
-        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
-      }
-
-      .time-slot.selected {
-        background: var(--pv-accent);
-        color: var(--pv-accent-text, #fff);
-        font-weight: 600;
       }
 
       /* ============================================
@@ -694,7 +520,7 @@ export class PVEventCreateDialog extends LitElement {
       } else if (this.prefill.calendar_entity_id) {
         this._selectedCalendars = new Set([this.prefill.calendar_entity_id]);
       } else {
-        this._selectedCalendars = new Set([this.calendars[0]?.entity_id].filter(Boolean));
+        this._selectedCalendars = new Set(defaultWho(this._offered().map(c => c.entity_id)));
       }
       this._originalCalendars = new Set(this._selectedCalendars);
 
@@ -729,9 +555,15 @@ export class PVEventCreateDialog extends LitElement {
     }
   }
 
+  /** The calendars Who offers: a read-only calendar can't take a new event; the event's own calendars stay in an edit. */
+  private _offered(): CalendarConfig[] {
+    return this.calendars.filter(c =>
+      c.visible !== false && (calendarCan(c.attributes).create || this._originalCalendars.has(c.entity_id)));
+  }
+
   private _setDefaults() {
     this._title = '';
-    this._selectedCalendars = new Set();
+    this._selectedCalendars = new Set(defaultWho(this._offered().map(c => c.entity_id)));
     this._originalCalendars = new Set();
     this._organizerEntityId = '';
     this._applyDates(defaultFormDates(new Date()));
@@ -767,34 +599,23 @@ export class PVEventCreateDialog extends LitElement {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  /** "Through Mon, Oct 12 (3 days)" / "Ends Sat, Oct 10" for events that run past the start date. */
+  /** "Ends Sat, Oct 10" for a timed event that runs past midnight (an all-day event shows its Ends date). */
   private _renderEndsHint() {
     const f = this._formDates;
-    const multiDay = f.allDay ? f.spanDays > 1 : f.endDayOffset > 0;
-    if (!multiDay) return nothing;
+    if (f.allDay || f.endDayOffset <= 0) return nothing;
     const [y, m, d] = formEndDate(f).split('-').map(Number);
     const label = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    return html`<div class="ends-hint">${f.allDay ? `Through ${label} (${f.spanDays} days)` : `Ends ${label}`}</div>`;
+    return html`<div class="ends-hint">Ends ${label}</div>`;
   }
 
   private _formatDateDisplay(): string {
-    if (!this._date) return 'Pick a date';
-    const [y, m, d] = this._date.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return this._date ? dateLabel(this._date) : 'Pick a date';
   }
 
   render() {
     if (!this.open) return nothing;
 
-    // A read-only calendar can't take a new event; the event's own calendars stay in an edit.
-    const visibleCalendars = this.calendars.filter(c =>
-      c.visible !== false && (calendarCan(c.attributes).create || this._originalCalendars.has(c.entity_id)));
+    const visibleCalendars = this._offered();
     const isEdit = this.mode === 'edit';
     const heading = isEdit ? 'Edit event' : 'New event';
 
@@ -828,27 +649,23 @@ export class PVEventCreateDialog extends LitElement {
                   Tap someone to take them off this event.
                 </div>
               ` : nothing}
-              <div class="calendar-select" role="group" aria-labelledby="who-label">
+              <div class="calendar-select pv-person-chips" role="group" aria-labelledby="who-label">
                 ${visibleCalendars.map(cal => {
                   const selected = this._selectedCalendars.has(cal.entity_id);
                   const isOrganizer = cal.entity_id === this._organizerEntityId;
                   const isLockedOrganizer = isEdit && isOrganizer;
                   return html`
-                    <div class="cal-option-wrap">
-                      ${isOrganizer && selected
-                        ? html`<span class="organizer-badge">Organizer</span>`
-                        : nothing}
+                    <div class="who-wrap">
                       <button
                         type="button"
-                        class="cal-option ${selected ? 'selected' : ''} ${isLockedOrganizer ? 'locked' : ''}"
+                        class="pv-person-chip ${isLockedOrganizer ? 'locked' : ''}"
                         aria-pressed=${selected ? 'true' : 'false'}
-                        style="${selected
-                          ? `background: ${cal.color}; --cal-bg: ${cal.color}; color: ${contrastText(cal.color)}`
-                          : `--cal-bg: ${cal.color}`}"
+                        style="--member: ${cal.color}"
                         @click=${() => this._toggleCalendar(cal.entity_id)}
                       >
-                        <span class="cal-dot" style="background: ${cal.color}"></span>
+                        <span class="dot" aria-hidden="true"></span>
                         ${cal.display_name}
+                        ${isOrganizer && selected ? html`<span class="pv-tag muted">Organizer</span>` : nothing}
                         ${isLockedOrganizer
                           ? html`<ha-icon class="lock-icon" icon="mdi:lock-outline"></ha-icon>`
                           : nothing}
@@ -859,11 +676,24 @@ export class PVEventCreateDialog extends LitElement {
               </div>
             </div>
 
-            <div class="form-field">
-              <label class="pv-label" for="date-button">Date</label>
-              ${this._renderDatePicker()}
-              ${this._renderEndsHint()}
-            </div>
+            ${this._allDay ? html`
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="pv-label" for="date-button">Starts</label>
+                  ${this._renderDatePicker()}
+                </div>
+                <div class="form-field">
+                  <label class="pv-label" for="end-date-button">Ends</label>
+                  ${this._renderEndDatePicker()}
+                </div>
+              </div>
+            ` : html`
+              <div class="form-field">
+                <label class="pv-label" for="date-button">Date</label>
+                ${this._renderDatePicker()}
+                ${this._renderEndsHint()}
+              </div>
+            `}
 
             <div class="all-day-row" @click=${this._toggleAllDay}>
               <span class="all-day-label" id="all-day-label">All day</span>
@@ -968,7 +798,7 @@ export class PVEventCreateDialog extends LitElement {
   private _closePickers(refocus = true): boolean {
     const open = this._datePickerOpen || this._activeTimePicker !== null || this._locationSuggestions.length > 0;
     if (!open) return false;
-    const field = this._datePickerOpen ? this._dateDisplay
+    const field = this._datePickerOpen ? (this._dateTarget === 'end' ? this._endDateDisplay : this._dateDisplay)
       : this._activeTimePicker === 'start' ? this._startTimeEl
         : this._activeTimePicker === 'end' ? this._endTimeEl
           : this._locationInput;
@@ -1018,9 +848,22 @@ export class PVEventCreateDialog extends LitElement {
     return html`
       <div class="date-picker-wrap">
         <button type="button" id="date-button" class="date-display"
-          aria-expanded=${this._datePickerOpen ? 'true' : 'false'} @click=${this._toggleDatePicker}>
+          aria-expanded=${this._datePickerOpen && this._dateTarget === 'start' ? 'true' : 'false'} @click=${() => this._toggleDatePicker('start')}>
           <ha-icon icon="mdi:calendar"></ha-icon>
           ${this._formatDateDisplay()}
+        </button>
+      </div>
+    `;
+  }
+
+  /** An all-day event's last day (Home Assistant stores the day after). */
+  private _renderEndDatePicker() {
+    return html`
+      <div class="date-picker-wrap">
+        <button type="button" id="end-date-button" class="date-display end-date-display"
+          aria-expanded=${this._datePickerOpen && this._dateTarget === 'end' ? 'true' : 'false'} @click=${() => this._toggleDatePicker('end')}>
+          <ha-icon icon="mdi:calendar"></ha-icon>
+          ${this._date ? dateLabel(formEndDate(this._formDates)) : 'Pick a date'}
         </button>
       </div>
     `;
@@ -1029,7 +872,8 @@ export class PVEventCreateDialog extends LitElement {
   private _renderDatePickerDropdown() {
     if (!this._datePickerOpen) return nothing;
 
-    const el = this._dateDisplay;
+    const end = this._dateTarget === 'end';
+    const el = end ? this._endDateDisplay : this._dateDisplay;
     if (!el) return nothing;
     const rect = el.getBoundingClientRect();
 
@@ -1046,46 +890,25 @@ export class PVEventCreateDialog extends LitElement {
         style="top: ${top}px; left: ${rect.left}px;"
         @keydown=${this._sheet.onKeydown}
       >
-        <div class="picker-header">
-          <span class="picker-month-label">
-            ${new Date(this._pickerYear, this._pickerMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </span>
-          <div class="picker-nav">
-            <button class="picker-nav-btn" type="button" aria-label="Previous month" @click=${this._pickerPrevMonth}>
-              <ha-icon icon="mdi:chevron-left"></ha-icon>
-            </button>
-            <button class="picker-nav-btn" type="button" aria-label="Next month" @click=${this._pickerNextMonth}>
-              <ha-icon icon="mdi:chevron-right"></ha-icon>
-            </button>
-          </div>
-        </div>
-        <div class="picker-weekdays">
-          ${WEEKDAY_LABELS.map(d => html`<span class="picker-weekday">${d}</span>`)}
-        </div>
-        <div class="picker-days">
-          ${this._getPickerDays().map(day => {
-            const isOther = day.getMonth() !== this._pickerMonth;
-            const isToday = this._toDateStr(day) === this._toDateStr(new Date());
-            const isSelected = this._toDateStr(day) === this._date;
-            return html`
-              <button
-                type="button"
-                class="picker-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
-                aria-pressed=${isSelected ? 'true' : 'false'}
-                @click=${() => this._selectPickerDay(day)}
-              ><span>${day.getDate()}</span></button>
-            `;
-          })}
-        </div>
+        ${monthGrid({
+          year: this._pickerYear, month: this._pickerMonth,
+          selected: end ? formEndDate(this._formDates) : this._date,
+          min: end ? this._date : undefined,
+          onPick: day => this._selectPickerDay(day),
+          onPrev: () => this._pickerPrevMonth(),
+          onNext: () => this._pickerNextMonth(),
+        })}
       </div>
     `;
   }
 
-  private _toggleDatePicker() {
+  private _toggleDatePicker(target: 'start' | 'end' = 'start') {
     this._activeTimePicker = null;
-    this._datePickerOpen = !this._datePickerOpen;
-    if (this._datePickerOpen && this._date) {
-      const [y, m] = this._date.split('-').map(Number);
+    this._datePickerOpen = !(this._datePickerOpen && this._dateTarget === target);
+    this._dateTarget = target;
+    const shown = target === 'end' ? formEndDate(this._formDates) : this._date;
+    if (this._datePickerOpen && shown) {
+      const [y, m] = shown.split('-').map(Number);
       this._pickerYear = y;
       this._pickerMonth = m - 1;
     }
@@ -1113,25 +936,13 @@ export class PVEventCreateDialog extends LitElement {
     }
   }
 
-  private _getPickerDays(): Date[] {
-    const firstOfMonth = new Date(this._pickerYear, this._pickerMonth, 1);
-    const startDay = firstOfMonth.getDay(); // 0=Sun
-    const start = new Date(firstOfMonth);
-    start.setDate(start.getDate() - startDay);
-
-    const days: Date[] = [];
-    for (let i = 0; i < 42; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      days.push(d);
-    }
-    return days;
-  }
-
-  private _selectPickerDay(day: Date) {
-    this._date = this._toDateStr(day);
+  private _selectPickerDay(day: string) {
+    const end = this._dateTarget === 'end';
+    // A new start keeps the event's length; a new last day changes it (spec 3.4).
+    if (end) this._spanDays = withAllDayEnd(this._formDates, day).spanDays;
+    else this._date = withAllDayStart(this._formDates, day).date;
     this._datePickerOpen = false;
-    this._focusAfterUpdate(() => this._dateDisplay ?? null);
+    this._focusAfterUpdate(() => (end ? this._endDateDisplay : this._dateDisplay) ?? null);
   }
 
   // ==================================================================
@@ -1149,15 +960,6 @@ export class PVEventCreateDialog extends LitElement {
     return `${h12}:${String(m).padStart(2, '0')} ${period}`;
   }
 
-  private _getTimeSlots(): string[] {
-    const slots: string[] = [];
-    for (let h = 0; h < 24; h++) {
-      for (let m = 0; m < 60; m += 15) {
-        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-      }
-    }
-    return slots;
-  }
 
   private _openTimePicker(which: 'start' | 'end') {
     this._datePickerOpen = false;
@@ -1199,7 +1001,7 @@ export class PVEventCreateDialog extends LitElement {
     if (!el) return nothing;
     const rect = el.getBoundingClientRect();
     const currentTime = this._activeTimePicker === 'start' ? this._startTime : this._endTime;
-    const slots = this._getTimeSlots();
+    const slots = timeSlots();
 
     const dropdownHeight = 280;
     const spaceBelow = window.innerHeight - rect.bottom - 8;
@@ -1212,14 +1014,7 @@ export class PVEventCreateDialog extends LitElement {
         style="top: ${top}px; left: ${rect.left}px; width: ${rect.width}px;"
         @keydown=${this._sheet.onKeydown}
       >
-        ${slots.map(slot => html`
-          <button
-            type="button"
-            class="time-slot ${slot === currentTime ? 'selected' : ''}"
-            aria-pressed=${slot === currentTime ? 'true' : 'false'}
-            @click=${() => this._selectTime(slot)}
-          >${this._formatTimeForDisplay(slot)}</button>
-        `)}
+        ${timeList({ slots, selected: currentTime, format: this.timeFormat === '24h' ? '24h' : '12h', onPick: slot => this._selectTime(slot) })}
       </div>
     `;
   }
@@ -1415,6 +1210,19 @@ export class PVEventCreateDialog extends LitElement {
       this._showError(dateError);
       return;
     }
+
+    // An edit changes the calendars it leaves as well as the ones it joins (D1).
+    if (this._gating) return;
+    const touched = this.mode === 'edit' ? new Set([...this._originalCalendars, ...this._selectedCalendars]) : this._selectedCalendars;
+    // Never silent: when no PIN on this screen could allow it, say who can (review).
+    if (this.gate && !this.gate.allowed([...touched])) {
+      this._showError(this.gate.note([...touched]));
+      return;
+    }
+    this._gating = true;
+    const allowed = this.gate ? await this.gate.ask([...touched], this._title) : true;
+    this._gating = false;
+    if (!allowed) return;
 
     this._error = '';
     this._saving = true;

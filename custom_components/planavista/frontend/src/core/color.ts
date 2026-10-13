@@ -127,6 +127,17 @@ export function matchedSurface(hex: string): string {
   return fromOklch({ l: 0.19, c: Math.min(c, 0.02), h });
 }
 
+/**
+ * The pale fill behind someone's events in light mode: their color 65% of the
+ * way to white, as every swatch's own tint is made.
+ */
+export function lightTint(hex: string): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  const channel = (n: number) => Math.round(n + (255 - n) * 0.65).toString(16).padStart(2, '0');
+  return `#${rgb.map(channel).join('')}`;
+}
+
 /** The pale fill behind a person's events in dark mode: their hue, low and quiet. */
 export function darkTint(hex: string): string {
   const { c, h } = toOklch(hex);

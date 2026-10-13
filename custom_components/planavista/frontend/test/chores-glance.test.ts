@@ -46,13 +46,13 @@ describe('choresBarActions', () => {
   const waiting = { ...today, requests: [{ id: 'r1', kind: 'completion' as const, member: 'dana', name: 'Feed the fish', at: '' }] };
   const parentMode: Session = { token: 't', memberId: 'blair', parent: true, lastTouch: 0 };
 
-  it('shows Waiting for OK and Add chore on a shared screen', () => {
-    expect(choresBarActions(waiting, view('shared'), null).map(a => a.label)).toEqual(['1 waiting for OK', 'Add chore']);
+  it('shows Waiting for OK and New chore on a shared screen', () => {
+    expect(choresBarActions(waiting, view('shared'), null).map(a => a.label)).toEqual(['1 waiting for OK', 'New chore']);
   });
 
-  it('moves Add chore to the strip in parent mode', () => {
-    expect(choresBarActions(waiting, view('shared'), parentMode).map(a => a.id)).toEqual(['inbox']);
-    expect(choresStripActions(waiting).map(a => a.id)).toEqual(['add']);
+  it('keeps New chore in the bar in parent mode; the strip holds who, the countdown, and Lock (milestone 8, D2)', () => {
+    expect(choresBarActions(waiting, view('shared'), parentMode).map(a => a.id)).toEqual(['inbox', 'add']);
+    expect(choresStripActions(waiting)).toEqual([]);
   });
 
   it('shows a child\'s own login neither', () => {
@@ -78,5 +78,9 @@ describe('refusalText (spec 15.1)', () => {
     expect(refusalText(entry, 'period_closed')).toBe('Couldn\'t save "Take out the trash": the day had ended.');
     expect(refusalText(entry, 'pin_required')).toBe('Couldn\'t save "Take out the trash". The PIN timed out, so hold it again.');
     expect(refusalText(entry, 'not_open')).toBe('Couldn\'t save "Take out the trash". Try again.');
+    // An Undo says what it couldn't do; someone else's open session needs this item's own PIN (review).
+    expect(refusalText({ ...entry, op: 'undo' }, 'period_closed')).toBe('Couldn\'t uncheck "Take out the trash": the day had ended.');
+    expect(refusalText({ ...entry, op: 'undo' }, 'not_open')).toBe('Couldn\'t uncheck "Take out the trash". Try again.');
+    expect(refusalText(entry, 'other_pin_required')).toBe('Couldn\'t save "Take out the trash". It needs its owner\'s PIN or a parent\'s.');
   });
 });

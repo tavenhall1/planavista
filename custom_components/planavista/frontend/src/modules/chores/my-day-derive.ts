@@ -1,5 +1,6 @@
 import type { Member } from '../../core/household';
 import { minutesText } from '../../core/status-map';
+import { FairShare, fairnessShares } from './fairness';
 import type { Band, Board, BoardMember, Reward } from './chores-types';
 import type { ColumnModel, RowModel } from './board-derive';
 import { BANDS, BAND_NAMES, bandAt, bandState } from './board-derive';
@@ -28,7 +29,7 @@ export interface DayContext {
 }
 
 function range(event: DayEvent, format: '12h' | '24h'): string {
-  return `${clockTime(event.start, format, format === '12h')} to ${clockTime(event.end, format, format === '12h')}`;
+  return `${clockTime(event.start, format, format === '12h')} – ${clockTime(event.end, format, format === '12h')}`;
 }
 
 /** The person's bedtime tonight (spec 7.2: weeknights, and Friday and Saturday nights). */
@@ -69,12 +70,15 @@ export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry
   const current = bandAt(now, ctx.dayStarts);
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
   const bandOf = (row: RowModel): Band => row.item.band ?? current;
+  // A check-off waiting for OK happened already: it sits at its time, like a done one (milestone 8).
+  const checkedOff = (row: RowModel) => row.state === 'pending' && !!row.item.completion;
   // Overdue ones and ones left from an earlier band are due now.
   const dueNow = rows
-    .filter(r => r.zone === 'overdue' || (r.zone === 'past'))
+    .filter(r => (r.zone === 'overdue' || r.zone === 'past') && !checkedOff(r.row))
     .map(r => r.row);
-  const open = rows.filter(r => r.zone === 'now' || r.zone === 'later').map(r => r.row);
-  const done = column.doneToday;
+  const open = rows.filter(r => (r.zone === 'now' || r.zone === 'later') && !checkedOff(r.row)).map(r => r.row);
+  const waiting = rows.filter(r => r.zone !== 'week' && r.zone !== 'done' && checkedOff(r.row)).map(r => r.row);
+  const done = [...column.doneToday, ...waiting];
   const week = rows.filter(r => r.zone === 'week').map(r => r.row);
   const events = ctx.events.filter(e => e.member === column.member.id);
   const entries: TimelineEntry[] = [];
@@ -96,7 +100,8 @@ export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry
     }
     for (const r of doneHere) {
       const at = new Date(r.item.completion!.at);
-      items.push({ at: at.getTime(), entry: { kind: 'chore', key: r.key, time: clockTime(at, ctx.timeFormat), row: r } });
+      // The time shows once, at the left; the row doesn't repeat it.
+      items.push({ at: at.getTime(), entry: { kind: 'chore', key: r.key, time: clockTime(at, ctx.timeFormat), row: { ...r, doneAt: undefined } } });
     }
     if (state === 'now') {
       const nowAt = now.getTime();
@@ -155,18 +160,11 @@ export function goalFor(member: Member, entry: BoardMember, rewards: Reward[]): 
   return { reward, have, need: Math.max(0, reward.cost - have), progress: reward.cost > 0 ? Math.min(1, have / reward.cost) : 1 };
 }
 
-export interface FairShare {
-  member: Member;
-  minutes: number;
-  percent: number;
-}
+export type { FairShare };
 
-/** Shared chores this week, by time done (spec 13.4, 13.5): everyone's share of the minutes. */
+/** Shared chores this week, by time done (spec 13.4, 13.5): everyone's share of the minutes, as Week says it. */
 export function fairShares(board: Board, members: Member[]): FairShare[] {
-  const shares = members.map(member => ({ member, minutes: board.members[member.id]?.contribution.shared_minutes ?? 0 }));
-  const total = shares.reduce((sum, s) => sum + s.minutes, 0);
-  if (total <= 0) return [];
-  return shares.filter(s => s.minutes > 0).map(s => ({ ...s, percent: Math.round((100 * s.minutes) / total) }));
+  return fairnessShares(members.map(member => ({ member, minutes: board.members[member.id]?.contribution.shared_minutes ?? 0 })));
 }
 
 export interface PicturesModel {
@@ -196,4 +194,14 @@ export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, 
     done: column.doneToday,
     later: others.slice(1),
   };
+}
+
+/** A goal's progress in words, the same in My day and Rewards: "Goal: 🍦 Ice cream trip · 18 more ★" (milestone 8). */
+export function goalWords(goal: Pick<GoalModel, 'need'>): string {
+  return goal.need > 0 ? `${goal.need} more ★` : 'Enough stars!';
+}
+
+/** The week's stickers, the same on the board and in My day. */
+export function stickersLabel(stars: number): string {
+  return `This week: ${stars} ★`;
 }

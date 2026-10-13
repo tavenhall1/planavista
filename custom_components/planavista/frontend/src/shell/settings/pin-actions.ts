@@ -62,7 +62,7 @@ export class PvPinActions extends LitElement {
       }
 
       .buttons button {
-        min-height: 44px;
+        min-height: 48px;
       }
 
       .message {
@@ -96,7 +96,7 @@ export class PvPinActions extends LitElement {
             ${this.member.has_pin ? 'Change PIN' : 'Set PIN'}
           </button>
           ${this.member.has_pin ? html`
-            <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy}
+            <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${this._busy}
               @click=${() => { this._message = ''; this._confirmingRemove = true; }}>Remove PIN</button>
           ` : nothing}
           ${this._paused() ? html`
@@ -125,8 +125,8 @@ export class PvPinActions extends LitElement {
             ? `On a shared screen, ${this.member.name} will need a new PIN to start parent mode.`
             : 'You can set a new one any time.'}
           .actions=${[
+            { id: 'remove', label: `Remove ${this.member.name}'s PIN`, kind: 'destructive' },
             { id: 'cancel', label: 'Cancel', kind: 'secondary' },
-            { id: 'remove', label: 'Remove PIN', kind: 'destructive' },
           ]}
           @pv-sheet-action=${this._onRemoveChoice}
         ></pv-notice-sheet>

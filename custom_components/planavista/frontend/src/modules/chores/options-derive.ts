@@ -23,7 +23,7 @@ export interface OptionModel {
   id: OptionId;
   label: string;
   hint?: string;
-  /** Says what unlocks it ("🔒 parent", "🔒 Casey's PIN"), or that it asks the parents ("needs OK"). */
+  /** Says what unlocks it ("🔒 Parent", "🔒 Casey's PIN"), or that it asks the parents ("Needs OK"). */
   tag?: string;
   chips?: DayChip[];
   /** A date picker for anything the chips don't offer. */
@@ -144,8 +144,8 @@ function names(people: Member[]): string {
 function addedLine(activity: Activity | undefined, members: Member[], today: string): string | null {
   const created = activity?.created;
   if (!created?.at) return null;
-  const who = members.find(m => m.id === created.by)?.name ??
-    (created.by === 'automation' ? 'an automation' : created.by === 'admin' ? 'an admin' : null);
+  // A person, or an automation; an admin account isn't a person, so it goes unnamed (milestone 8).
+  const who = members.find(m => m.id === created.by)?.name ?? (created.by === 'automation' ? 'an automation' : null);
   const day = created.at.slice(0, 10);
   const when = daysBetween(day, today) === 0 ? 'today' : `on ${dayWords(day, today)}`;
   return who ? `Added by ${who} ${when}` : `Added ${when}`;
@@ -157,7 +157,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   const parents = members.filter(m => m.parent && m.id !== owner.id);
   const ownerIsParent = owner.parent;
   const memberTag = ctx.member === 'pin' ? `🔒 ${owner.name}'s PIN` : undefined;
-  const parentTag = ctx.parent === 'pin' ? '🔒 parent' : ctx.parent === 'no_pin' ? 'needs a parent\'s PIN' : undefined;
+  const parentTag = ctx.parent === 'pin' ? '🔒 Parent' : ctx.parent === 'no_pin' ? 'Needs a parent\'s PIN' : undefined;
   const status = item.status;
   const open = status === 'open' || status === 'sent_back';
   const member: OptionModel[] = [];
@@ -175,11 +175,11 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
     }
     if (!ownerIsParent && due && !item.request) {
       member.push({
-        id: 'more_time', label: 'Ask for more time', tag: 'needs OK', chips: moreTimeChips(item, today),
+        id: 'more_time', label: 'Ask for more time', tag: 'Needs an OK', chips: moreTimeChips(item, today),
         pick: { min: addDays(due, 1), max: addDays(today, 60) },
         hint: parents.length ? `Sends a request to ${names(parents)}.` : 'Sends a request to the parents.',
       });
-      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'needs OK', hint: 'Sick, away, rained out…' });
+      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs an OK', hint: 'Sick, away, rained out…' });
     }
     member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
   }
@@ -202,8 +202,8 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       parent.push({ id: 'hand_off', label: 'Hand it to someone else', tag: parentTag, hint: 'Just this time.' });
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }
-    parent.push({ id: 'edit', label: 'Edit the chore', tag: parentTag, hint: 'Opens it in Settings.' });
-    parent.push({ id: 'delete', label: 'Delete the chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
+    parent.push({ id: 'edit', label: 'Edit', tag: parentTag, hint: 'Opens it in Settings.' });
+    parent.push({ id: 'delete', label: 'Delete chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
   }
 
   const minutes = item.window === 'once' && activity?.once ? activity.once.estimate_minutes : item.credit_minutes;
@@ -253,4 +253,14 @@ export function historyLines(history: ChoreHistory, today: string, members: Memb
   if (day && band) lines.push(`Usually ${PLURAL[day]} ${BAND_WORDS[band]}`);
   else if (band) lines.push(`Usually ${BAND_WORDS[band]}`);
   return lines;
+}
+
+/** "Who did it?" before anyone is picked, the same on the options sheet and after a check-off (milestone 8). */
+export function whoDidItBody(name: string): string {
+  return `They get the credit for ${name}.`;
+}
+
+/** After the pick: the stars only when the person picked earns them and the chore gives some. */
+export function creditedText(doer: { name: string; stars: boolean }, stars: number): string {
+  return doer.stars && stars > 0 ? `${doer.name} gets the credit and the stars.` : `${doer.name} gets the credit.`;
 }

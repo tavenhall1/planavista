@@ -8,12 +8,15 @@ import { trapTab } from '../core/focus';
 import { Member } from '../core/household';
 import { HouseholdApi, errorCode } from '../core/household-client';
 import {
+  EASY_PIN_MESSAGE,
   MAX_PIN,
   PinEntry,
   canFinishChoosing,
+  easyPin,
   isComplete,
   keypadDigits,
   pressDelete,
+  pinHint,
   pressDigit,
   startEntry,
 } from '../core/keypad';
@@ -51,6 +54,8 @@ export class PvPinSheet extends LitElement {
   @property({ attribute: false }) members: Member[] = [];
   /** Unlock mode: the picker's question, such as "Who's opening Settings?". */
   @property({ type: String }) heading = '';
+  /** Unlock mode: why it is asking, under "Blair, enter your PIN" ("To change Team standup"). */
+  @property({ type: String }) reason = '';
   /** Choose mode: whose PIN this is. */
   @property({ attribute: false }) target?: Member;
   @property({ type: Boolean }) shuffle = false;
@@ -177,9 +182,9 @@ export class PvPinSheet extends LitElement {
         cursor: pointer;
       }
 
+      /* The why line belongs to the title, so it sits on the left under it (review). */
       .hint {
         margin: 0;
-        text-align: center;
         color: var(--pv-text-secondary, #6B7280);
       }
 
@@ -316,7 +321,8 @@ export class PvPinSheet extends LitElement {
         ? html`<button class="back" type="button" @click=${this._backToPicker}>‹ Someone else</button>`
         : nothing}
       <h2 class="heading" id="pin-heading">${heading}</h2>
-      ${this._step === 'choose' ? html`<p class="hint">4 to 6 digits.</p>` : nothing}
+      ${this._step === 'choose' ? html`<p class="hint">${pinHint(!!this.target?.parent)}</p>` : nothing}
+      ${this._step === 'enter' && this.reason ? html`<p class="hint">${this.reason}</p>` : nothing}
       <div class="boxes ${this._shake ? 'shake' : ''}" aria-hidden="true">
         ${Array.from({ length: this._entry.length }, (_, i) => html`
           <span class="box ${i < this._entry.digits.length ? 'filled' : ''}"></span>
@@ -396,6 +402,11 @@ export class PvPinSheet extends LitElement {
   private _next(): void {
     if (this._step === 'choose') {
       if (!canFinishChoosing(this._entry)) return;
+      // Turned away before asking twice; the backend refuses the same PINs (D4).
+      if (easyPin(this._entry.digits)) {
+        this._restartChoosing(EASY_PIN_MESSAGE);
+        return;
+      }
       this._first = this._entry.digits;
       this._entry = startEntry(this._first.length);
       this._step = 'confirm';
@@ -453,7 +464,7 @@ export class PvPinSheet extends LitElement {
       await this.api.setPin(target.id, pin);
       void this._leave('pv-pin-set', { memberId: target.id });
     } catch (err) {
-      this._restartChoosing(saveErrorMessage(errorCode(err)));
+      this._restartChoosing(errorCode(err) === 'easy_pin' ? EASY_PIN_MESSAGE : saveErrorMessage(errorCode(err)));
     } finally {
       this._busy = false;
     }

@@ -26,13 +26,16 @@ const SESSION_GONE = new Set(['parent_mode_required', 'pin_required']);
  * PlanaVista commands with this card's PIN session token added when it has
  * one. A command refused for want of a PIN although it carried a session
  * means the backend already ended that session (after a reconnect or a
- * restart); `onSessionEnded` hears about it.
+ * restart); `onSessionEnded` hears about it. A command the backend accepted
+ * with the session also counted as a touch there; `onSessionUsed` hears about
+ * that, so the card's countdown matches.
  */
 export class WsApi {
   constructor(
     private readonly _ws: WsCaller,
     private readonly _session: () => string | null,
     private readonly _onSessionEnded?: (token: string) => void,
+    private readonly _onSessionUsed?: (token: string) => void,
   ) {}
 
   protected call<T>(type: string, fields: Record<string, unknown>, withSession = true): Promise<T> {
@@ -40,9 +43,15 @@ export class WsApi {
     const token = withSession ? this._session() : null;
     if (!token) return this._ws.callWS<T>(message);
     message.session = token;
-    return this._ws.callWS<T>(message).catch((err: unknown) => {
-      if (SESSION_GONE.has(errorCode(err))) this._onSessionEnded?.(token);
-      throw err;
-    });
+    return this._ws.callWS<T>(message).then(
+      result => {
+        this._onSessionUsed?.(token);
+        return result;
+      },
+      (err: unknown) => {
+        if (SESSION_GONE.has(errorCode(err))) this._onSessionEnded?.(token);
+        throw err;
+      },
+    );
   }
 }

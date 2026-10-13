@@ -19,13 +19,15 @@ import { contrastText } from '../../core/color';
 import type { ModuleService } from '../../core/module-registry';
 import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
 import { deepActiveElement } from '../../core/focus';
-import type { HouseholdView } from '../../core/household';
+import type { HouseholdView, Member } from '../../core/household';
 import type { Session } from '../../core/session';
+import type { PinGate } from '../../core/pin-gate';
+import { eventGate } from './event-gate';
 import { parentAccess } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { CalendarScreen, bannersOf, screenOf } from './calendar-states';
 import { calendarSkeleton, skeletonStyles } from './components/calendar-skeleton';
-import { navLabels } from './view-words';
+import { navLabels , showsToday } from './view-words';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
 import { motionOf, supportsLinearEasing } from '../../core/motion';
 
@@ -43,6 +45,9 @@ interface EditorWant {
   mode: 'create' | 'edit';
   prefill: Partial<CalendarEvent> | null;
 }
+
+/** Nobody linked yet: one array, so the cached colors aren't worked out again on every render. */
+const NO_PEOPLE: readonly Member[] = [];
 
 /**
  * pv-calendar-module: the calendar's toolbar, its four views, and the event
@@ -74,6 +79,8 @@ export class PvCalendarModule extends LitElement {
   /** The household and parent mode, for what the empty states offer (a parent adds calendars). */
   @property({ attribute: false }) household: HouseholdView | null = null;
   @property({ attribute: false }) session: Session | null = null;
+  /** The card's PIN sheet, for changes that need someone's PIN on a shared screen (D1). */
+  @property({ attribute: false }) pinGate?: PinGate;
 
   /** Minutes since the epoch; bumped each minute so views move the now-line and fade past events. */
   @state() private _tick = Math.floor(Date.now() / 60000);
@@ -346,13 +353,14 @@ export class PvCalendarModule extends LitElement {
         color: var(--pv-text);
       }
 
+      /* Today reads as chores' This week does: the secondary button's type (review). */
       .pvc-today-btn {
         padding: 6px 16px;
         border: 1px solid var(--pv-border);
         border-radius: var(--pv-radius, 12px);
         background: transparent;
-        color: var(--pv-text-secondary);
-        font-size: 0.875rem;
+        color: var(--pv-text, #1A1B1E);
+        font-size: 0.9375rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 200ms ease;
@@ -361,7 +369,12 @@ export class PvCalendarModule extends LitElement {
         -webkit-tap-highlight-color: transparent;
       }
 
-      .pvc-today-btn:hover {
+      .pvc-today-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      .pvc-today-btn:hover:not(:disabled) {
         background: var(--pv-accent);
         color: var(--pv-accent-text);
         border-color: var(--pv-accent);
@@ -660,16 +673,17 @@ export class PvCalendarModule extends LitElement {
     });
   };
 
-  /** Cached until the data, the card config, the calendar filter, or the mode changes. */
+  /** Cached until the data, the card config, the calendar filter, the mode, or the people change. */
   private _derive = memoizeOne((
     data: PlanaVistaData | null,
     config: PlanaVistaCardConfig | undefined,
     hidden: Set<string>,
     mode: Mode,
-  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode), config, hidden));
+    members: readonly Member[],
+  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode, members), config, hidden));
 
   private _derived(): CalendarDerived {
-    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode);
+    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode, this.household?.members ?? NO_PEOPLE);
   }
 
   render() {
@@ -719,6 +733,7 @@ export class PvCalendarModule extends LitElement {
           .event=${this._details.value}
           .leaving=${this._details.leaving}
           .calendars=${calendars}
+          .gate=${this._gate}
           .now=${this._now(this._tick)}
           .timeFormat=${display?.time_format || '12h'}
           @pv-sheet-close=${this._onDetailsClosed}
@@ -730,7 +745,8 @@ export class PvCalendarModule extends LitElement {
           layout=${this.layout}
           .store=${store}
           .hass=${this.hass}
-          .calendars=${calendars}
+          .calendars=${this._mine(calendars)}
+          .gate=${this._gate}
           .open=${true}
           .mode=${this._editor.value.mode}
           .prefill=${this._editor.value.prefill}
@@ -799,6 +815,7 @@ export class PvCalendarModule extends LitElement {
   private _renderToolbar(calendars: CalendarConfig[]) {
     const hiddenCount = calendars.filter(c => this._pv.store.hiddenCalendars.has(c.entity_id)).length;
     const arrows = navLabels(this._pv.store.currentView);
+    const onToday = showsToday(this._pv.store.currentView, this._pv.store.currentDate, new Date(), this.display?.first_day || 'sunday');
 
     return html`
       <div class="pvc-toolbar">
@@ -878,17 +895,19 @@ export class PvCalendarModule extends LitElement {
         </div>
 
         <div class="pvc-controls">
-          <button class="pvc-new-btn" type="button" @click=${() => this._pv.store.openCreateDialog()}>
-            <ha-icon icon="mdi:plus"></ha-icon>
-            New event
-          </button>
+          ${this._mine(calendars).length ? html`
+            <button class="pvc-new-btn" type="button" @click=${() => this._pv.store.openCreateDialog()}>
+              <ha-icon icon="mdi:plus"></ha-icon>
+              New event
+            </button>
+          ` : nothing}
 
           <div class="pvc-nav">
             <button class="pvc-nav-btn" type="button" aria-label=${arrows.prev} title=${arrows.prev}
               @click=${() => this._navigate('prev')}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
-            <button class="pvc-today-btn" type="button" @click=${() => this._navigate('today')}>
+            <button class="pvc-today-btn" type="button" ?disabled=${onToday} @click=${() => this._navigate('today')}>
               Today
             </button>
             <button class="pvc-nav-btn" type="button" aria-label=${arrows.next} title=${arrows.next}
@@ -1013,11 +1032,22 @@ export class PvCalendarModule extends LitElement {
   private _onEventClick(e: CustomEvent) {
     const clicked: CalendarEvent = e.detail.event;
     // The mode's colors, so the popup's people match the views.
-    const allEvents = withModeColors(this.data, this.mode)?.events || [];
+    const allEvents = withModeColors(this.data, this.mode, this.household?.members ?? NO_PEOPLE)?.events || [];
     this._pv.store.selectEvent(eventForPopup(clicked, allEvents));
   }
 
+  /** Who may change events here (D1): the household's rule, read when asked. */
+  private readonly _gate = eventGate(() => ({
+    view: this.household, session: this.session, pinGate: this.pinGate, rows: this.data?.calendars ?? [],
+  }));
+
+  /** The calendars this screen may ever put an event on: a child's own login offers only their own (D1). */
+  private _mine(calendars: CalendarConfig[]): CalendarConfig[] {
+    return calendars.filter(c => this._gate.allowed([c.entity_id]));
+  }
+
   private _onCreateEvent(e: CustomEvent) {
+    if (!this._mine(this._derived().calendars).length) return;
     const date = e.detail?.date as Date | undefined;
     const prefill: Partial<any> = {};
     if (date) {

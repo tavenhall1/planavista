@@ -43,11 +43,11 @@ export function choresBarActions(board: Board | null, view: HouseholdView | null
     actions.push({ id: 'inbox', label: `${waiting} waiting for OK`, short: String(waiting), glyph: '⏳', tone: 'act' });
   }
   const access = parentAccess(view, session);
-  if (access !== 'no' && !session?.parent) actions.push({ id: 'add', label: 'Add chore', short: '', glyph: '+' });
+  if (access !== 'no') actions.push({ id: 'add', label: 'New chore', short: '', glyph: '+' });
   return actions;
 }
 
-/** The parent-mode strip's button (spec 9.4). */
-export function choresStripActions(board: Board | null): ModuleAction[] {
-  return board ? [{ id: 'add', label: 'Add chore', glyph: '+' }] : [];
+/** The parent-mode strip holds who, the countdown, and Lock; New chore stays in the bar (milestone 8, D2). */
+export function choresStripActions(_board: Board | null): ModuleAction[] {
+  return [];
 }

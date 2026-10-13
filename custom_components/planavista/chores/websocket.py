@@ -32,6 +32,7 @@ from ..household.websocket import (
     refuse,
     session_for,
 )
+from ..refusals import send_refusal
 from .access import MESSAGES, message, source_of
 from .engine import ChoresEngine, Item, Outcome
 from .importer import FORMAT_HOUSEHOLD, ImportProblem, export_household, plan_import, preview, read_file
@@ -53,11 +54,11 @@ def _runtime(
     """The runtime, or None after saying why chores can't be used now."""
     runtime = hass.data.get(DATA_CHORES)
     if runtime is None:
-        connection.send_error(msg["id"], "not_loaded", "PlanaVista is not set up yet.")
+        send_refusal(connection, msg, "not_loaded", "PlanaVista is not set up yet.")
         return None
     if ready and not runtime.available:
         code, text = STATE_MESSAGES[runtime.state]
-        connection.send_error(msg["id"], code, text)
+        send_refusal(connection, msg, code, text)
         return None
     return runtime
 
@@ -68,12 +69,15 @@ def _member_by(
 ) -> str | None:
     """Who a member-level change to `target`'s items is attributed to, or None after refusing."""
     account = account_for(hass, household, connection.user)
-    by = member_level(account, session_for(household, connection, msg), target, target in household.pins)
+    session = session_for(household, connection, msg)
+    by = member_level(account, session, target, target in household.pins)
     if by is not None:
         return by
     if account.screen_rules:
         member = household.member(target) or {}
-        connection.send_error(msg["id"], "pin_required", f"{member.get('name', target)}'s PIN or a parent's is needed.")
+        # A live session that is someone else's gets its own code, so the card doesn't take it for an ended one.
+        code = "other_pin_required" if session is not None else "pin_required"
+        send_refusal(connection, msg, code, f"{member.get('name', target)}'s PIN or a parent's is needed.")
     else:
         refuse(connection, msg, account)
     return None
@@ -89,10 +93,10 @@ async def _apply(
     try:
         return await runtime.async_run(action)
     except ChoreError as err:
-        connection.send_error(msg["id"], err.code, message(err))
+        send_refusal(connection, msg, err.code, message(err))
     except ChoresUnavailable:
         code, text = STATE_MESSAGES.get(runtime.state, ("chores_off", "Turn on chores first."))
-        connection.send_error(msg["id"], code, text)
+        send_refusal(connection, msg, code, text)
     return None
 
 
@@ -103,7 +107,7 @@ def _item(
     """Today's occurrence named by the command, or None after saying it can't change now."""
     item = runtime.engine.find_item(msg["occurrence"], runtime.now())
     if item is None:
-        connection.send_error(msg["id"], "period_closed", "The day had ended.")
+        send_refusal(connection, msg, "period_closed", "The day had ended.")
     return item
 
 
@@ -162,7 +166,7 @@ def ws_chores_history(hass: HomeAssistant, connection: websocket_api.ActiveConne
     try:
         result = runtime.engine.history(runtime.now(), msg["chore"], msg["member"])
     except ChoreError as err:
-        connection.send_error(msg["id"], err.code, message(err))
+        send_refusal(connection, msg, err.code, message(err))
         return
     connection.send_result(msg["id"], result)
 
@@ -375,7 +379,7 @@ async def ws_chores_enable(hass: HomeAssistant, connection: websocket_api.Active
         await runtime.async_set_enabled(msg["enabled"])
     except ChoresUnavailable:
         code, text = STATE_MESSAGES[STATE_NEWER]
-        connection.send_error(msg["id"], code, text)
+        send_refusal(connection, msg, code, text)
         return
     connection.send_result(msg["id"], {"state": runtime.state})
 
@@ -390,7 +394,7 @@ async def ws_chores_start_over(hass: HomeAssistant, connection: websocket_api.Ac
     try:
         await runtime.async_start_over()
     except ChoresUnavailable:
-        connection.send_error(msg["id"], "nothing_to_fix", "Chores don't need a look.")
+        send_refusal(connection, msg, "nothing_to_fix", "Chores don't need a look.")
         return
     connection.send_result(msg["id"], {"state": runtime.state})
 
@@ -480,7 +484,7 @@ def ws_stars_history(hass: HomeAssistant, connection: websocket_api.ActiveConnec
     try:
         history = runtime.engine.star_history(msg["member"])
     except ChoreError as err:
-        connection.send_error(msg["id"], err.code, message(err))
+        send_refusal(connection, msg, err.code, message(err))
         return
     connection.send_result(msg["id"], {"balance": runtime.engine.balance(msg["member"]), "history": history})
 
@@ -550,7 +554,7 @@ async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveC
     household, by = context
     if runtime.state == STATE_NEWER:
         code, text = STATE_MESSAGES[STATE_NEWER]
-        connection.send_error(msg["id"], code, text)
+        send_refusal(connection, msg, code, text)
         return
     try:
         parsed = read_file(msg["text"])
@@ -559,8 +563,7 @@ async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveC
         return
     fills_in = runtime.state == STATE_NEEDS_A_LOOK
     if fills_in and parsed["format"] != FORMAT_HOUSEHOLD:
-        connection.send_error(
-            msg["id"], "chores_need_a_look", "Restore from a PlanaVista file, or start over, before importing a plan."
+        send_refusal(connection, msg, "chores_need_a_look", "Restore from a PlanaVista file, or start over, before importing a plan."
         )
         return
     # Everything is checked first, against what's here now (files that couldn't be read are empty), and nothing
@@ -620,7 +623,7 @@ def ws_export(hass: HomeAssistant, connection: websocket_api.ActiveConnection, m
     household, _by = context
     if runtime.state in (STATE_NEEDS_A_LOOK, STATE_NEWER):
         code, text = STATE_MESSAGES[runtime.state]
-        connection.send_error(msg["id"], code, text)
+        send_refusal(connection, msg, code, text)
         return
     rows = runtime.entry.data.get(CONF_CALENDARS, []) if runtime.entry is not None else []
     now = dt_util.now()

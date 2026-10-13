@@ -80,10 +80,8 @@ export class PvSetupBoardPreview extends LitElement {
 
     .week {
       margin: 8px 0 4px;
-      font-size: 0.6875rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
+      font-size: 0.8125rem;
+      font-weight: 750;
       color: var(--pv-text-secondary, #6B7280);
     }
   `;

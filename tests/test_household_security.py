@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import json
+from pathlib import Path
 
 import pytest
 
@@ -13,6 +15,7 @@ from custom_components.planavista.household.security import (
     SessionManager,
     after_failure,
     after_success,
+    easy_pin,
     hash_pin,
     pause_remaining,
     tries_left,
@@ -104,7 +107,7 @@ def test_touch_keeps_a_session_alive() -> None:
     session = sessions.start("blair", parent=True, connection=screen, now=0.0)
     for now in (100.0, 200.0, 300.0):
         assert sessions.get(session.token, screen, now, touch=True) is session
-    assert session.expires_in(300.0) == SESSION_IDLE_SECONDS
+    assert sessions.expires_in(session, 300.0) == SESSION_IDLE_SECONDS
     assert sessions.get(session.token, screen, 300.0 + SESSION_IDLE_SECONDS + 1) is None
 
 
@@ -144,3 +147,46 @@ def test_end_parent_mode_only_ends_parent_sessions() -> None:
     sessions.end_parent_mode("blair")
     assert sessions.get(parent.token, screen, 1.0) is None
     assert sessions.get(own.token, screen, 1.0) is own
+
+
+EASY = json.loads((Path(__file__).parent / "fixtures" / "easy_pins.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("pin", EASY["easy"])
+def test_easy_pins_are_turned_away_when_chosen(pin: str) -> None:
+    assert easy_pin(pin)
+
+
+@pytest.mark.parametrize("pin", EASY["fine"])
+def test_other_pins_are_fine(pin: str) -> None:
+    assert not easy_pin(pin)
+
+
+def test_the_household_sets_how_long_a_quiet_session_lasts() -> None:
+    sessions = SessionManager(lambda: (30, 600))
+    screen = object()
+    session = sessions.start("blair", parent=True, connection=screen, now=0.0)
+    assert sessions.get(session.token, screen, 29.0) is session
+    assert sessions.get(session.token, screen, 30.0) is None
+
+
+def test_parent_mode_ends_at_its_cap_however_much_the_screen_is_touched() -> None:
+    sessions = SessionManager(lambda: (120, 300))
+    screen = object()
+    session = sessions.start("blair", parent=True, connection=screen, now=0.0)
+    for now in (60.0, 120.0, 180.0, 240.0):
+        assert sessions.get(session.token, screen, now, touch=True) is session
+    assert sessions.expires_in(session, 280.0) == 20.0
+    assert sessions.get(session.token, screen, 300.0, touch=True) is None
+
+
+def test_a_childs_pin_window_has_the_same_limits() -> None:
+    sessions = SessionManager(lambda: (60, 300))
+    screen = object()
+    window = sessions.start("casey", parent=False, connection=screen, now=0.0)
+    assert sessions.get(window.token, screen, 59.0, touch=True) is window
+    assert sessions.get(window.token, screen, 119.0) is None
+    again = sessions.start("casey", parent=False, connection=screen, now=200.0)
+    for now in (250.0, 300.0, 350.0, 400.0, 450.0):
+        assert sessions.get(again.token, screen, now, touch=True) is again
+    assert sessions.get(again.token, screen, 500.0, touch=True) is None

@@ -30,6 +30,27 @@ export const POP_PAGE = 'pv-pop-page';
 /** A page reports a failed save; the host shows the message. */
 export const PAGE_ERROR = 'pv-page-error';
 
+/**
+ * An editor page (a person, a chore, a reward) gives the host its Cancel and
+ * Save, so Settings holds them in its header, in view however long the page
+ * is (milestone 8). Sent when what it says changes; null when it leaves.
+ */
+export const PAGE_EDITOR = 'pv-page-editor';
+
+export interface PageEditor {
+  /** "Save", or "Add" for something new. */
+  label: string;
+  /** Something changed and nothing is saving. */
+  ready: boolean;
+  save(): void;
+  cancel(): void;
+}
+
+/** Tell the Settings host about this editor, or (null) that it left. */
+export function announceEditor(page: HTMLElement, editor: PageEditor | null): void {
+  page.dispatchEvent(new CustomEvent<PageEditor | null>(PAGE_EDITOR, { detail: editor, bubbles: true, composed: true }));
+}
+
 /** A page asks for a module's view (Open Dana's day): Settings closes and the card goes there. */
 export const OPEN_TARGET = 'pv-page-open';
 
