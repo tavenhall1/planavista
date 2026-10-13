@@ -39,6 +39,25 @@ describe('the goal surprise against the controls beside it', () => {
     expect(reveal).toMatch(/if \(this\._opener\?\.isConnected\) this\._opener\.focus\(\{ preventScroll: true \}\);/);
   });
 
+  // Review B10: a present row was a 75 px card with an 18 px radius among 52 px rows with 12 px.
+  it("a present row takes the list rows' shape and type, keeping its gold as its mark", () => {
+    const present = read('modules/chores/pv-surprise-present.ts');
+    expect(block(present, "    :host([shape='row']) .surprise")).toMatch(/border-radius: 12px;/);
+    const hold = block(present, "    :host([shape='row']) .hold");
+    expect(hold).toMatch(/min-height: 52px;/);
+    const title = block(present, "    :host([shape='row']) .title");
+    expect(title).toMatch(/font-family: var\(--pv-font-family, inherit\);/);
+    expect(title).toMatch(/font-weight: 600;/);
+  });
+
+  // Review B11: beside Home Assistant's sidebar a goal column of 120 px wrapped the present to four lines.
+  it("a narrow Rewards card puts the goal under the stars, at the card's full width", () => {
+    const rewards = read('modules/chores/pv-chores-rewards.ts');
+    expect(block(rewards, '      .balance')).toMatch(/flex-wrap: wrap;/);
+    expect(block(rewards, '      .balance .goal')).toMatch(/flex: 1 1 200px;/);
+    expect(rewards.match(/      \.balance \.goal \{/g)).toHaveLength(1);
+  });
+
   it("the present's tint is worked out where the person's color is set, so it shows in Rewards too", () => {
     const present = read('modules/chores/pv-surprise-present.ts');
     expect(block(present, '    :host')).not.toMatch(/--tint/);

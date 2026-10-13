@@ -101,12 +101,18 @@ export class PvSurprisePresent extends LitElement {
       gap: 10px;
     }
 
+    /* In a list it is a row like the rows beside it (review B10); its gold border and ring mark it. */
+    :host([shape='row']) .surprise {
+      border-radius: 12px;
+    }
+
     :host([shape='row']) .hold {
-      min-height: 64px;
+      min-height: 52px;
       flex-direction: row;
       justify-content: flex-start;
       gap: 12px;
-      padding: 8px 12px;
+      padding: 4px 12px;
+      border-radius: 10px;
     }
 
     .hold:focus-visible {
@@ -175,6 +181,12 @@ export class PvSurprisePresent extends LitElement {
     :host([shape='row']) .words {
       align-items: flex-start;
       text-align: left;
+    }
+
+    :host([shape='row']) .title {
+      font-family: var(--pv-font-family, inherit);
+      font-weight: 600;
+      font-size: 1rem;
     }
 
     .title {

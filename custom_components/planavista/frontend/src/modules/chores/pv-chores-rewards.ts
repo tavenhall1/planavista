@@ -67,6 +67,7 @@ export class PvChoresRewards extends LitElement {
 
       .balance {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 12px;
         padding: 12px 14px;
@@ -83,8 +84,9 @@ export class PvChoresRewards extends LitElement {
         white-space: nowrap;
       }
 
+      /* A narrow card puts the goal (and a present) under the stars, at its full width (review B11). */
       .balance .goal {
-        flex: 1 1 auto;
+        flex: 1 1 200px;
         min-width: 0;
         font-size: 0.8125rem;
         color: var(--pv-text-secondary, #5F6670);
