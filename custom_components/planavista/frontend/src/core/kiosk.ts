@@ -60,6 +60,16 @@ export function kioskStripAction(
 }
 
 /**
+ * The way back once the strip is gone (review): a parent who stepped out and
+ * used Home Assistant's pages comes back to a card whose own session ended,
+ * so the card says the menus are showing and offers Back to kiosk mode,
+ * which anyone may tap (bringing kiosk mode back is harmless).
+ */
+export function showsKioskReturn(steppedOut: boolean, session: unknown): boolean {
+  return steppedOut && !session;
+}
+
+/**
  * Who may change kiosk mode in Settings (review, the owner's rule): a parent
  * who is an admin, in parent mode, or an admin's own login; a shared screen
  * signed in as an admin still needs an admin parent. The backend checks too.

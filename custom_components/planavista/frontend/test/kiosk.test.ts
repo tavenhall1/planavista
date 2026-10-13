@@ -7,6 +7,7 @@ import {
   kioskLook,
   kioskStripAction,
   mayChangeKiosk,
+  showsKioskReturn,
   startStepOut,
   stepOutEndsAt,
   stepOutOver,
@@ -197,5 +198,20 @@ describe("the card's own toast sits above the bar, as the chores toasts do (revi
 describe("the strip's kiosk button has an edge on the strip's tint (review)", () => {
   it("mixes its border from the person's color, as the strip's own line is", () => {
     expect(read('shell/pv-parent-strip.ts')).toMatch(/\.kiosk \{\s*border-color: color-mix\(in srgb, var\(--strip-color\) 55%, var\(--pv-border, #E7E7E3\)\);/);
+  });
+});
+
+describe('the way back to kiosk mode once the strip is gone (review)', () => {
+  it('shows only while stepped out with no PIN session on the card', () => {
+    expect(showsKioskReturn(true, null)).toBe(true);
+    expect(showsKioskReturn(true, { parent: true })).toBe(false);
+    expect(showsKioskReturn(false, null)).toBe(false);
+  });
+
+  it('is a quiet banner with Back to kiosk mode, which anyone at the screen may tap', () => {
+    const card = read('shell/planavista-card.ts');
+    expect(card).toMatch(/\$\{showsKioskReturn\(kiosk\.steppedOut, this\._session\.session\) \? html`\s*<div class="banner info kiosk-out" role="status">/);
+    expect(card).toMatch(/<span class="text">Home Assistant's menus are showing for now\.<\/span>/);
+    expect(card).toMatch(/<button class="pv-btn pv-btn-secondary" type="button" @click=\$\{\(\) => kiosk\.restore\(\)\}>Back to kiosk mode<\/button>/);
   });
 });

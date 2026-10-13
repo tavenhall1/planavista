@@ -52,7 +52,7 @@ import './setup/pv-setup';
 import { ContentScrollDetail, HeaderHeights, compactHeader } from '../core/content-scroll';
 import { PLACE_STORAGE, Place, placeKey, readPlace, usablePlace, writePlace } from '../core/place';
 import { SCREEN_AS_SHOWN, composedAncestor, fitView } from '../core/panel-fit';
-import { kioskStripAction } from '../core/kiosk';
+import { kioskStripAction, showsKioskReturn } from '../core/kiosk';
 import { errorMessage } from '../core/ws-api';
 import type { Toast } from '../core/pv-toast';
 import '../core/pv-toast';
@@ -864,6 +864,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return html`
       <ha-card>
         ${this._renderParentStrip()}
+        ${showsKioskReturn(kiosk.steppedOut, this._session.session) ? html`
+          <div class="banner info kiosk-out" role="status">
+            <span class="text">Home Assistant's menus are showing for now.</span>
+            <button class="pv-btn pv-btn-secondary" type="button" @click=${() => kiosk.restore()}>Back to kiosk mode</button>
+          </div>
+        ` : nothing}
         ${this._config.hide_header ? nothing : this._renderHeader(display)}
         ${active ? this._renderModule(active, data, display) : nothing}
         ${active ? this._renderBar(active) : nothing}
