@@ -229,7 +229,7 @@ actions:
 
 ## Layouts
 
-The card lays itself out for its own size, not the device's, so the same card works full screen on a wall tablet, in a dashboard column, or on a phone. In landscape the views and Settings sit in a bar under the clock; in portrait and on phones the bar runs along the bottom, where hands already are, under a big lock-screen clock. Turning a tablet keeps your place.
+The card lays itself out for its own size, not the device's, so the same card works full screen on a wall tablet, in a dashboard column, or on a phone. In landscape the views and Settings sit in a bar under the clock; in portrait and on phones the bar runs along the bottom, where hands already are, under a big lock-screen clock. On a phone the bar keeps one row: the views fold into a button that shows the current one and opens a menu of the rest. Only the content scrolls, never the page around it, in a browser and in the Home Assistant app. Turning a tablet keeps your place.
 
 ---
 

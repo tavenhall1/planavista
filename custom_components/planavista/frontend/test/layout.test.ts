@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LayoutTracker, barFits, classifyLayout } from '../src/core/layout';
+import { LayoutTracker, barFits, barShape, classifyLayout } from '../src/core/layout';
 
 describe('barFits (the bar keeps one row while everything fits, spec 12.2)', () => {
   it('fits a portrait tablet\'s bar, and not a phone\'s with two modules', () => {
@@ -9,6 +9,26 @@ describe('barFits (the bar keeps one row while everything fits, spec 12.2)', () 
     expect(barFits(portrait, 12, 800 - 24)).toBe(true);
     expect(barFits(portrait, 12, 768 - 24)).toBe(false);
     expect(barFits([], 12, 100)).toBe(true);
+  });
+});
+
+describe("barShape (one row on a phone: the views fold into a pop-up button)", () => {
+  // Widths measured on the dev HA at 390 px: the switcher 156, the gear 48, Chores' + 48.
+  it("keeps the views' segments when everything fits, as on a portrait tablet", () => {
+    expect(barShape([146, 145, 100, 48], 287, 96, 12, 800 - 24)).toBe('row');
+  });
+
+  it("folds the views into the pop-up button when the segments don't fit but it does", () => {
+    expect(barShape([156, 48], 366, 104, 12, 390 - 24)).toBe('picker');
+    expect(barShape([156, 48, 48], 268, 108, 8, 440 - 24)).toBe('picker');
+  });
+
+  it('takes a second row only when even the pop-up button leaves no room', () => {
+    expect(barShape([156, 62, 48, 48], 268, 108, 12, 320 - 24)).toBe('wrapped');
+  });
+
+  it('needs no pop-up button for a module without views', () => {
+    expect(barShape([156, 48], 0, 0, 12, 390 - 24)).toBe('row');
   });
 });
 

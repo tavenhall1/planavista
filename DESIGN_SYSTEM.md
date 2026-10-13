@@ -28,6 +28,7 @@ The shell watches the card's own box, not the window or the device, and sets a `
 - **Dead band:** while the aspect ratio is between 0.95 and 1.05, the previous layout is kept (the first measurement picks landscape), so split-screen sizes don't flip back and forth.
 - **Keyboards:** while a text field in the card has focus, height-only shrinks are ignored. Kiosk browsers shrink the page when the keyboard opens, which would otherwise flip portrait to landscape mid-word.
 - **Rotating keeps your place:** the view, the person, and the time at the top of the Day view stay put. The header, the module, and the bar are the same elements in every layout; only their order changes.
+- **One scroll area:** the card takes only the space Home Assistant leaves, so the page itself never scrolls; only the content between the header and the bar does. On a phone Home Assistant runs under the status bar and the home indicator: the card measures against the screen as shown (`dvh`) less Home Assistant's header and its `--safe-area-inset-top` and `--safe-area-inset-bottom`. With the bar at the bottom, the card runs under the home indicator and the bar pads itself by the same inset, as iOS's own bars do. Home Assistant's view is at least `100vh` tall, which in Safari is the screen with its toolbars hidden, so as a panel view's one card (`isPanel`) the card sets that view's minimum height to the screen as shown while it is there, and puts it back when it leaves (`core/panel-fit.ts`). Check a phone with those two variables set (62 px and 34 px on an iPhone 17 Pro Max), not only at its width.
 - **Reference sizes:** 1280 × 800 (landscape), 800 × 1280 (portrait, a typical 10-inch tablet), and 390 × 844 (phone).
 - The calendar's sizes for type, padding, and avatars measure the card too, with container queries on one frame that its sheets sit outside of, so a narrow card on a wide screen gets narrow sizes and a wall display's card gets the large ones.
 
@@ -296,6 +297,8 @@ Motion is part of the product, Apple style, in every module.
 
 `pv-nav-bar`: the module switcher (when there is more than one module), the module's views, and the gear. Every control is at least 48 px to the touch, with a smaller pill drawn inside. The gear fires from itself, so focus returns to it when a sheet it opened closes.
 
+The bar is one row. When the views' segments don't fit beside the rest (a phone), they fold into a pop-up button: the switcher's track with one chip showing the current view and an up and down chevron, which opens a menu of the views above the bar (below it in landscape) with a check on the current one. Arrows move in the menu, Enter chooses, Escape closes and returns focus to the button, and a tap outside closes it. On a phone the bar's gaps are 8 px and the switcher's segments 11 px each side, so Chores' buttons fit beside it from 390 px wide. Only when even the button leaves no room (a narrow card with a waiting count) do the views take a second row (`barShape`).
+
 ### 11.3 Sheets
 
 `pv-pin-sheet` (the keypad: tap your face, then your PIN; digits never reach the page) and `pv-notice-sheet` (a short message with buttons). Both move per section 2.4 and section 7, and fire their events after they've left.
@@ -344,6 +347,7 @@ The shared styles live in `styles/controls.ts`; each site keeps its own buttons,
 | Job | Control | Where |
 |---|---|---|
 | Pick one of a few | Segmented: a grey track, the chosen choice on a white chip, 48 px tall, choices keep their width | The module switcher and views, My day's style, quick add's When, Motion, every Settings segment, the repeat picker, a person's Picture, Lock after no touches |
+| Pick a view where the bar is short of room | A pop-up button: the segmented track with one chip, the current view and an up and down chevron, opening a menu with a check on the current view (section 11.2) | The bar on phones |
 | Pick from a row that may wrap | Chips: 48 px pills, the chosen one on the accent tint (`chipStyles`) | Quick add's When, repeat, and minutes, the chore editor's estimate, setup's rhythms, the options sheet's days, the inbox's reasons |
 | Pick from named choices with a line each | Choice rows around real radios, a check on the chosen row | Age group, the missed rule, Automatic's rules |
 | Pick a look | Picture cards that preview | Light, Dark, Automatic, and the themes |
@@ -381,6 +385,11 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-12: Changed: phones (1.5.1)
+
+- One scroll area on phones: the card fits under the status bar and above the home indicator, measured against the screen as shown, and a panel view is only as tall as that screen, so the page never scrolls too.
+- A phone's bar is one row: the views fold into a pop-up button with a menu.
 
 ### 2026-10-12: Changed: one product (1.5.0)
 

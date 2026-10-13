@@ -17,6 +17,20 @@ export function barFits(widths: number[], gap: number, available: number): boole
   const used = widths.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, widths.length - 1);
   return used <= available;
 }
+
+/**
+ * How the bar holds the active module's views: as segments when the row has
+ * room for them; folded into a pop-up button (the current view and a menu)
+ * when it doesn't, so a phone keeps one row; on a second row only when even
+ * the button leaves no room. `others` are the switcher, buttons, and gear.
+ */
+export type BarShape = 'row' | 'picker' | 'wrapped';
+
+export function barShape(others: number[], viewsWidth: number, pickerWidth: number, gap: number, available: number): BarShape {
+  if (barFits([...others, viewsWidth], gap, available)) return 'row';
+  if (barFits([...others, pickerWidth], gap, available)) return 'picker';
+  return 'wrapped';
+}
 const SQUARE_LOW = 0.95;
 const SQUARE_HIGH = 1.05;
 
