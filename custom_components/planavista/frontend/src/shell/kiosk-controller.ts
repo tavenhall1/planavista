@@ -29,6 +29,17 @@ export interface KioskEnv {
   /** The page's path, and going to another, as Home Assistant navigates. */
   path(): string;
   navigate(path: string): void;
+  /** Where the card last showed on this screen, kept across reloads (round 2). */
+  remembered(): string | null;
+  remember(path: string): void;
+}
+
+/** How long a kiosk screen may show no card off the card's dashboard before it goes back (round 2). */
+export const AWAY_MS = 3000;
+
+/** A path's dashboard: /wall-calendar/planavista and /wall-calendar/photos are one. */
+function dashboardOf(path: string): string {
+  return path.split('/')[1] ?? '';
 }
 
 /** Home Assistant 2026.10's dashboard tabs; absent when a dashboard has one view. */
@@ -43,6 +54,9 @@ export class KioskController {
   /** We turned Home Assistant's switch on, so we may turn it off; someone else's we leave alone. */
   private _haOn = false;
   private _last: { look: KioskLook; out: boolean } = { look: 'off', out: false };
+  /** Cards on screen now, and since when the page has been away from the card's dashboard with none. */
+  private _cards = 0;
+  private _awaySince: number | null = null;
   private readonly _listeners = new Set<() => void>();
 
   constructor(private readonly _env: KioskEnv) {}
@@ -91,14 +105,38 @@ export class KioskController {
     this.sync();
   }
 
+  /** A card shows on this page: kiosk mode keeps the screen on its dashboard (round 2). */
+  cardShown(path: string): void {
+    this._cards += 1;
+    if (this._env.remembered() !== path) this._env.remember(path);
+  }
+
+  cardGone(): void {
+    this._cards = Math.max(0, this._cards - 1);
+  }
+
   /** A touch anywhere on the page keeps a step out going. */
   touch(now: number): void {
     if (this._stepOut) this._stepOut = stepOutTouched(this._stepOut, now);
   }
 
-  /** Ends a step out whose time is up. */
+  /** Ends a step out whose time is up, and brings a kiosk screen that wandered off back to the card. */
   tick(now: number): void {
     if (this._stepOut && stepOutOver(this._stepOut, now)) this.restore();
+    // The browser's Back, or a reload on another page, left a kiosk screen with no sidebar, no
+    // menu button, and no card (round 2). A moment's grace lets a card on a new page show first.
+    const home = this._env.remembered();
+    const away = this.look !== 'off' && !this._stepOut && this._cards === 0 && home !== null
+      && dashboardOf(this._env.path()) !== dashboardOf(home);
+    if (!away) {
+      this._awaySince = null;
+      return;
+    }
+    if (this._awaySince === null) this._awaySince = now;
+    else if (now - this._awaySince >= AWAY_MS) {
+      this._awaySince = null;
+      this._env.navigate(home);
+    }
   }
 
   /** Makes the page match: the current dashboard root styled, Home Assistant's switch on, or neither. */
@@ -147,6 +185,9 @@ function dashboardRoot(): ShadowRoot | null {
   return lovelace?.shadowRoot?.querySelector('hui-root')?.shadowRoot ?? null;
 }
 
+/** This screen's card page, so a reload on another page can come back to it. */
+const HOME_KEY = 'planavista.kioskHome';
+
 const browserEnv: KioskEnv = {
   root: () => dashboardRoot(),
   has: (root, selector) => (root as ShadowRoot).querySelector(selector) !== null,
@@ -165,6 +206,20 @@ const browserEnv: KioskEnv = {
   setHaKiosk: enable => window.dispatchEvent(new CustomEvent('hass-kiosk-mode', { detail: { enable } })),
   haKiosk: () => (document.querySelector('home-assistant') as HassElement | null)?.hass?.kioskMode === true,
   path: () => location.pathname,
+  remembered: () => {
+    try {
+      return localStorage.getItem(HOME_KEY);
+    } catch {
+      return null;
+    }
+  },
+  remember: path => {
+    try {
+      localStorage.setItem(HOME_KEY, path);
+    } catch {
+      // A private window: kiosk mode still brings the screen back until the next reload.
+    }
+  },
   navigate: path => {
     // Home Assistant's own navigate: a new history entry, then location-changed.
     history.pushState(null, '', path);

@@ -561,6 +561,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     }, 60_000);
     void this.updateComplete.then(() => this._fitView());
     this._unhearKiosk = kiosk.onChange(() => this.requestUpdate());
+    kiosk.cardShown(location.pathname);
   }
 
   disconnectedCallback(): void {
@@ -571,6 +572,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._unfitView = undefined;
     this._unhearKiosk?.();
     this._unhearKiosk = undefined;
+    kiosk.cardGone();
   }
 
   updated(changedProps: PropertyValues) {

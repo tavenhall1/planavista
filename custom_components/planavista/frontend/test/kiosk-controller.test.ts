@@ -39,6 +39,11 @@ function fakeEnv() {
       env.at = path;
       env.navigated.push(path);
     },
+    saved: null as string | null,
+    remembered: () => env.saved,
+    remember: (path: string) => {
+      env.saved = path;
+    },
   };
   return env;
 }
@@ -205,6 +210,80 @@ describe('a step out that ends away from the card goes back to it', () => {
     env.at = '/config/dashboard';
     kiosk.restore();
     expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+  });
+});
+
+
+// Round 2: after a step out ended, the browser's Back took the shared screen to Home Assistant's
+// Overview with kiosk mode on: no sidebar, no menu button, no card, and a reload kept it there.
+describe("kiosk mode keeps the screen on the card's dashboard", () => {
+  const onHome = (env: ReturnType<typeof fakeEnv>) => {
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true));
+    kiosk.cardShown('/wall-calendar/planavista');
+    return kiosk;
+  };
+
+  it('goes back when the page has shown no card for 3 seconds on another dashboard', () => {
+    const env = fakeEnv();
+    const kiosk = onHome(env);
+    kiosk.cardGone();
+    env.at = '/home/overview';
+    env.current = null;
+    kiosk.tick(10_000);
+    kiosk.tick(12_000);
+    expect(env.navigated).toEqual([]);
+    kiosk.tick(13_000);
+    expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+  });
+
+  it('remembers the card across a reload', () => {
+    const env = fakeEnv();
+    env.saved = '/wall-calendar/planavista';
+    env.at = '/home/overview';
+    const kiosk = new KioskController(env as KioskEnv);
+    kiosk.setView(view(true, true));
+    kiosk.tick(0);
+    kiosk.tick(3_000);
+    expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+  });
+
+  it("stays on another view of the card's dashboard, while a card shows, during a step out, and with kiosk mode off", () => {
+    const tabs = fakeEnv();
+    const kiosk = onHome(tabs);
+    kiosk.cardGone();
+    tabs.at = '/wall-calendar/photos';
+    kiosk.tick(0);
+    kiosk.tick(5_000);
+    expect(tabs.navigated).toEqual([]);
+
+    const moved = fakeEnv();
+    const card = onHome(moved);
+    card.cardGone();
+    moved.at = '/kitchen/board';
+    card.cardShown('/kitchen/board');
+    card.tick(0);
+    card.tick(5_000);
+    expect(moved.saved).toBe('/kitchen/board');
+    expect(moved.navigated).toEqual([]);
+
+    const out = fakeEnv();
+    const stepped = onHome(out);
+    stepped.cardGone();
+    stepped.lift(0, 60_000, 600_000);
+    out.at = '/config/dashboard';
+    stepped.tick(1_000);
+    stepped.tick(5_000);
+    expect(out.navigated).toEqual([]);
+
+    const off = fakeEnv();
+    off.saved = '/wall-calendar/planavista';
+    off.at = '/home/overview';
+    const plain = new KioskController(off as KioskEnv);
+    plain.setView(view(true, false));
+    plain.tick(0);
+    plain.tick(5_000);
+    expect(off.navigated).toEqual([]);
   });
 });
 
