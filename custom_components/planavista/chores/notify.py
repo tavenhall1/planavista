@@ -112,6 +112,7 @@ class ChoresNotifier:
             return
         self._known = {r["id"] for r in self._open_requests()}
         self._unsubs.append(self.runtime.async_listen(self._on_change))
+        self._unsubs.append(self.runtime.async_listen_events(self._on_event))
         self._unsubs.append(self.hass.bus.async_listen(EVENT_ACTION, self._on_action))
         self._schedule_reminder()
 
@@ -206,6 +207,28 @@ class ChoresNotifier:
                 sent.phones.add(phone)
         if sent.phones:
             self._sent[request["id"]] = sent
+
+    @callback
+    def _on_event(self, event: Any) -> None:
+        """A goal reached: tell the parents a surprise is waiting (milestone 10)."""
+        if event.type == "goal_reached":
+            self.hass.async_create_task(self._async_send_goal(event.member, event.data), eager_start=False)
+
+    async def _async_send_goal(self, member_id: str, data: dict[str, Any]) -> None:
+        member = self.runtime.household.member(member_id) or {}
+        name = member.get("name", member_id)
+        reward = self.runtime.engine.reward(data["reward"]) or {}
+        icon = reward.get("icon")
+        message = {
+            "title": f"{name} reached a goal",
+            "message": f"{icon + ' ' if icon else ''}{data['reward_name']}. There's a surprise waiting on {name}'s screen.",
+            "data": {"tag": f"{TAG_PREFIX}goal-{member_id}", "group": "planavista"},
+        }
+        for parent in self._parents_to_ask():
+            for phone in parent["phones"]:
+                service = self._reachable(phone, parent["id"])
+                if service is not None:
+                    await self.hass.services.async_call("notify", service, message)
 
     async def _async_clear(self, request_id: str, phones: set[str] | None = None) -> None:
         """Take a request's notifications off every phone that got them."""

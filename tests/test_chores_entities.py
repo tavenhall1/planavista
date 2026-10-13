@@ -81,7 +81,7 @@ async def test_casey_at_tuesday_afternoon(hass: HomeAssistant, chores: Any) -> N
     assert hass.states.get("sensor.household_chores_left").state == "8"
     assert hass.states.get("sensor.household_approvals_waiting").state == "0"
     event = hass.states.get("event.casey_chores")
-    assert event.attributes["event_types"] == ["completed", "approved", "sent_back", "undone", "missed", "redeemed"]
+    assert event.attributes["event_types"] == ["completed", "approved", "sent_back", "undone", "missed", "redeemed", "goal_reached"]
 
 
 async def test_a_check_off_updates_every_projection(hass: HomeAssistant, chores: Any) -> None:

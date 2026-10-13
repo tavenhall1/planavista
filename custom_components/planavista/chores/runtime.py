@@ -235,6 +235,9 @@ class ChoresRuntime:
 
     async def async_apply(self, outcome: Outcome) -> None:
         """Save what changed, fire the events, and tell everyone."""
+        if self.available:
+            # Whatever changed may have reached someone's goal, or taken it out of reach (milestone 10).
+            outcome.merge(self.engine.settle_surprises(self.now()))
         for name in ("plan", "rewards"):
             if name in outcome.changed:
                 await self.stores.async_save(name, getattr(self.engine, name))
@@ -379,6 +382,8 @@ class ChoresRuntime:
         for member_id in known - set(members):
             if self.available:
                 await self.async_apply(self.engine.unassign_member(member_id))
+        if self.available:
+            await self.async_apply(Outcome())  # a goal picked or changed settles the surprises
         if self.entry is None or not self.enabled:
             self.async_notify()
             return

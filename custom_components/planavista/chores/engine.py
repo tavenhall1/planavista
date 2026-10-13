@@ -50,7 +50,7 @@ SECTIONS = ("overdue", "today", "week")
 HISTORY_WEEKS = 6
 RECENT_REDEMPTIONS = 5
 MAX_UNTIL_DAYS = 60
-EVENT_TYPES = ("completed", "approved", "sent_back", "undone", "missed", "redeemed")
+EVENT_TYPES = ("completed", "approved", "sent_back", "undone", "missed", "redeemed", "goal_reached")
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 
@@ -834,6 +834,7 @@ class ChoresEngine:
                 "week_stars": week_stars.get(member_id, 0),
                 "chore_minutes": self.chore_minutes(member_id),
                 "away": dict(away) if away else None,
+                "surprise": self._surprise_view(member_id),
             }
         return {
             "date": day.isoformat(),
@@ -1753,6 +1754,65 @@ class ChoresEngine:
             raise ChoreError("not_enough_stars")
         self._ledger(member, stars, reason, now, by=by)
         return Outcome("awarded", {"balance": self.balance(member)}, changed={"rewards"})
+
+    # Goal surprises (milestone 10) -------------------------------------------------------
+
+    def _goal_reward(self, member: Mapping[str, Any]) -> dict[str, Any] | None:
+        """The reward a member is saving for, when it exists and is one they can get."""
+        goal = member.get("goal")
+        reward = self.reward(goal) if isinstance(goal, str) else None
+        if reward is None or (reward.get("who") and member["id"] not in reward["who"]):
+            return None
+        return reward
+
+    def settle_surprises(self, now: datetime) -> Outcome:
+        """Wrap a surprise for each member whose stars reach their goal; take away the rest.
+
+        A surprise for the current goal stays as it is; one whose goal is out of
+        reach (spent, changed, gone) goes, opened or not, so saving up again
+        wraps a new one. Each wrap fires `goal_reached` once.
+        """
+        surprises: dict[str, dict[str, Any]] = self.rewards.setdefault("surprises", {})
+        out = Outcome()
+        for member in self.members:
+            member_id = member["id"]
+            reward = self._goal_reward(member)
+            have = surprises.get(member_id)
+            if reward is not None and self.balance(member_id) >= int(reward["cost"]):
+                if have is not None and have["reward"] == reward["id"]:
+                    continue
+                surprises[member_id] = {
+                    "reward": reward["id"], "cost": int(reward["cost"]), "wrapped": self._stamp(now), "opened": None,
+                }
+                out.events.append(ChoreEvent("goal_reached", member_id, {
+                    "member": member_id, "reward": reward["id"], "reward_name": reward["name"], "stars": int(reward["cost"]),
+                }))
+                out.changed.add("rewards")
+            elif have is not None:
+                del surprises[member_id]
+                out.changed.add("rewards")
+        for member_id in set(surprises) - {m["id"] for m in self.members}:
+            del surprises[member_id]
+            out.changed.add("rewards")
+        return out
+
+    def open_surprise(self, now: datetime, *, member: str, by: str) -> Outcome:
+        """Open a member's waiting surprise; opening it again answers the same and changes nothing."""
+        surprise = self.rewards.setdefault("surprises", {}).get(member)
+        if surprise is None:
+            raise ChoreError("no_surprise")
+        if surprise.get("opened"):
+            return Outcome("opened")
+        surprise["opened"] = self._stamp(now)
+        surprise["opened_by"] = by
+        return Outcome("opened", changed={"rewards"})
+
+    def _surprise_view(self, member_id: str) -> dict[str, Any] | None:
+        """What the board shows of a member's surprise."""
+        surprise = self.rewards.get("surprises", {}).get(member_id)
+        if surprise is None:
+            return None
+        return {"reward": surprise["reward"], "opened": bool(surprise.get("opened"))}
 
     # Rollover (spec 8.9) ----------------------------------------------------------------
 
