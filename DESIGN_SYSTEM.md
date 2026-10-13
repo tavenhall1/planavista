@@ -386,6 +386,10 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-10-12: Changed: My day's Timeline (1.5.2)
+
+- This week under the Timeline keeps the timeline's left edge, and the Timeline's bands (Evening) are section heads like every other.
+
 ### 2026-10-12: Changed: phones (1.5.1)
 
 - One scroll area on phones: the card fits under the status bar and above the home indicator, measured against the screen as shown, and a panel view is only as tall as that screen, so the page never scrolls too.
