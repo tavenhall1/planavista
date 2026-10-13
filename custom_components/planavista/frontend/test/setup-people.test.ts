@@ -40,3 +40,19 @@ describe('who lives here', () => {
     expect(setupPlan(rows, [casey]).remove).toEqual(['casey']);
   });
 });
+
+// Round 1 of the adversarial review: running setup again offered an unlinked Home Assistant person
+// with a member's name as a second, checked row, and Next failed with "Someone already has that name."
+describe('a Home Assistant person already here by name', () => {
+  it('is not offered again', () => {
+    const blair = ({ id: 'blair', name: 'Blair', person: null, age_group: 'adult', parent: true } as Member);
+    const rows = setupRows([blair], [{ entity_id: 'person.blair', name: 'Blair' }, { entity_id: 'person.eve', name: 'Eve' }], null);
+    expect(rows.map(r => r.name)).toEqual(['Blair', 'Eve']);
+    expect(setupPlan(rows, [blair]).add).toEqual([expect.objectContaining({ name: 'Eve', person: 'person.eve' })]);
+  });
+
+  it('matches names the way the household does, ignoring case and spaces at the ends', () => {
+    const rows = setupRows([({ id: 'blair', name: 'Blair', person: null, age_group: 'adult', parent: true } as Member)], [{ entity_id: 'person.b', name: ' blair ' }], null);
+    expect(rows).toHaveLength(1);
+  });
+});

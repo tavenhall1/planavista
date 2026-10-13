@@ -20,8 +20,11 @@ export function setupRows(members: Member[], persons: HaPerson[], currentUserId:
   const rows: PersonRow[] = members.map(m => ({
     key: m.id, name: m.name, person: m.person, memberId: m.id, role: roleOf(m), checked: true,
   }));
+  // Names compare as the backend's do (casefold); a person already here by name isn't offered again (round 1).
+  const named = new Set(members.map(m => m.name.trim().toLowerCase()));
   for (const person of persons) {
     if (members.some(m => m.person === person.entity_id)) continue;
+    if (named.has(person.name.trim().toLowerCase())) continue;
     const isYou = !!currentUserId && person.user_id === currentUserId;
     rows.push({
       key: person.entity_id, name: person.name, person: person.entity_id, memberId: null,
