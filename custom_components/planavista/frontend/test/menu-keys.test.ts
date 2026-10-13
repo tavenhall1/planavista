@@ -50,3 +50,15 @@ describe("the bar's pop-up button for views", () => {
     expect(bar).toMatch(/class="views pv-seg measure"[^\n]*aria-hidden="true"[^\n]*inert/);
   });
 });
+
+// Round 1 of the adversarial review: on an iPhone the bar took one row on Board and Week but two on
+// My day and Rewards, because the pop-up button was measured with the current view's name.
+describe('the pop-up button is as wide as its widest view', () => {
+  const bar = readFileSync(new URL('../src/shell/pv-nav-bar.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+
+  it('stacks every name in one spot and shows the current one, in the button and its hidden copy', () => {
+    expect(bar.match(/<span class="label">\$\{this\._labels\(\)\}<\/span>/g)).toHaveLength(2);
+    expect(bar).toMatch(/\.picker \.label > span \{\s*grid-area: 1 \/ 1;/);
+    expect(bar).toMatch(/\.picker \.label > span:not\(\.on\) \{\s*visibility: hidden;/);
+  });
+});
