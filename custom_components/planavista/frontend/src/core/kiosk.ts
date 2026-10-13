@@ -32,6 +32,21 @@ export const KIOSK_SHEETS: Record<Exclude<KioskLook, 'off'>, string> = {
   tabs: '.action-items { display: none !important; }',
 };
 
+/**
+ * The strip's kiosk button: Exit kiosk mode for a parent the backend said may
+ * (D3); Back to kiosk mode, for whoever is at the screen, while a step out
+ * runs (D4); none otherwise.
+ */
+export function kioskStripAction(
+  look: KioskLook,
+  steppedOut: boolean,
+  session: { parent: boolean; mayExitKiosk?: boolean },
+): 'exit' | 'back' | null {
+  if (look === 'off') return null;
+  if (steppedOut) return 'back';
+  return session.parent && session.mayExitKiosk ? 'exit' : null;
+}
+
 /** A step out of kiosk mode, by parent mode's own clock (D4). */
 export interface StepOut {
   /** The last touch anywhere on the page (ms). */

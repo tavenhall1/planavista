@@ -28,6 +28,8 @@ export class PvParentStrip extends LitElement {
   @property({ type: Boolean }) parent = true;
   /** The module's buttons, such as + Add chore. */
   @property({ attribute: false }) actions: ModuleAction[] = [];
+  /** Kiosk mode's button (milestone 9): Exit kiosk mode, Back to kiosk mode, or none. */
+  @property({ attribute: false }) kiosk: 'exit' | 'back' | null = null;
 
   static styles = [
     buttonStyles,
@@ -88,6 +90,9 @@ export class PvParentStrip extends LitElement {
             ${action.glyph ? `${action.glyph} ` : ''}${action.label}
           </button>
         `)}
+        ${this.kiosk ? html`
+          <button class="pv-btn pv-btn-secondary kiosk" type="button" @click=${this._kiosk}>${this.kiosk === 'back' ? 'Back to kiosk mode' : 'Exit kiosk mode'}</button>
+        ` : nothing}
         <button class="pv-btn pv-btn-ghost lock" type="button" @click=${this._lock}>Lock</button>
       </div>
     `;
@@ -95,6 +100,10 @@ export class PvParentStrip extends LitElement {
 
   private _action(id: string): void {
     this.dispatchEvent(new CustomEvent('pv-strip-action', { detail: { id }, bubbles: true, composed: true }));
+  }
+
+  private _kiosk(): void {
+    this.dispatchEvent(new CustomEvent('pv-kiosk', { detail: { action: this.kiosk }, bubbles: true, composed: true }));
   }
 
   private _lock(): void {

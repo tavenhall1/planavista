@@ -16,13 +16,18 @@ import './pin-actions';
  * pv-settings-pins: PINs and parent mode (spec 14.5). Whether this screen is
  * a shared family screen, everyone's PIN, Shuffle the keypad, and how long a
  * PIN's session lasts (milestone 8, D3: like a phone's Auto-Lock, with no
- * Never).
+ * Never). Once a shared screen exists, Kiosk mode and its Top bar
+ * (milestone 9).
  */
 const IDLE_CHOICES = [
   { value: 30, label: '30 sec', spoken: '30 seconds' },
   { value: 60, label: '1 min', spoken: '1 minute' },
   { value: 120, label: '2 min', spoken: '2 minutes' },
   { value: 300, label: '5 min', spoken: '5 minutes' },
+] as const;
+const TOP_BAR_CHOICES = [
+  { value: 'hidden', label: 'Hidden', spoken: 'Hidden' },
+  { value: 'tabs', label: 'Tabs only', spoken: 'Tabs only' },
 ] as const;
 const CAP_CHOICES = [
   { value: 5, label: '5 min', spoken: '5 minutes' },
@@ -142,6 +147,7 @@ export class PvSettingsPins extends LitElement {
     if (!household) return nothing;
     const account = household.account;
     const sharedScreens = household.security.shared_screens > 0;
+    const kiosk = household.security.kiosk ?? { enabled: false, top_bar: 'hidden' as const };
     return html`
       <section>
         <h2>This screen</h2>
@@ -156,6 +162,24 @@ export class PvSettingsPins extends LitElement {
           </p>
         ` : nothing}
       </section>
+
+      ${sharedScreens ? html`
+        <section>
+          <h2>Shared screens</h2>
+          ${this._switch('Kiosk mode', 'kiosk-label', kiosk.enabled, this._toggleKiosk)}
+          <p class="hint">
+            On shared family screens, PlanaVista hides Home Assistant's menus so the screen stays on
+            PlanaVista. A parent who is a Home Assistant admin can exit it in parent mode, and it comes
+            back when parent mode ends. It tidies the screen, but it isn't a lock: for that, use
+            Guided Access on an iPad or a kiosk browser on Android.
+          </p>
+          ${kiosk.enabled ? this._choices('Top bar', 'top-bar-label', TOP_BAR_CHOICES, kiosk.top_bar,
+            value => this.api.saveSecurity({ kiosk_top_bar: value })) : nothing}
+          ${kiosk.enabled ? html`
+            <p class="hint">Hidden: PlanaVista fills the screen. Tabs only: the dashboard's tabs stay, for other screens the family uses.</p>
+          ` : nothing}
+        </section>
+      ` : nothing}
 
       <section>
         <h2>PINs</h2>
@@ -221,14 +245,14 @@ export class PvSettingsPins extends LitElement {
   }
 
   /** One of a few: the segmented control, as everywhere (arrows move the choice). */
-  private _choices(
+  private _choices<V extends number | string>(
     label: string,
     id: string,
-    choices: readonly { value: number; label: string; spoken: string }[],
-    chosen: number,
-    save: (value: number) => Promise<void>,
+    choices: readonly { value: V; label: string; spoken: string }[],
+    chosen: V,
+    save: (value: V) => Promise<void>,
   ) {
-    const choose = (value: number, group?: HTMLElement): void => {
+    const choose = (value: V, group?: HTMLElement): void => {
       if (value !== chosen) void this._run(() => save(value));
       void this.updateComplete.then(() => group?.querySelector<HTMLElement>(`[data-value='${value}']`)?.focus());
     };
@@ -258,6 +282,12 @@ export class PvSettingsPins extends LitElement {
   private _toggleShared = (): void => {
     if (!this.household) return;
     void this._run(() => this.api.setSharedScreen(!this.household!.account.shared));
+  };
+
+  private _toggleKiosk = (): void => {
+    const kiosk = this.household?.security.kiosk;
+    if (!this.household) return;
+    void this._run(() => this.api.saveSecurity({ kiosk_enabled: !kiosk?.enabled }));
   };
 
   private _toggleShuffle = (): void => {
