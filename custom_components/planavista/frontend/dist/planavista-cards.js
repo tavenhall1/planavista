@@ -11447,7 +11447,7 @@ function e(e,t,s,i){var a,n=arguments.length,o=n<3?t:null===i?i=Object.getOwnPro
     }
 
     :host(:not([layout='landscape'])) nav {
-      padding: 0 12px env(safe-area-inset-bottom, 0px);
+      padding: 0 12px var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     }
 
     button {
@@ -13826,12 +13826,25 @@ function e(e,t,s,i){var a,n=arguments.length,o=n<3?t:null===i?i=Object.getOwnPro
         @pv-open-settings=${this._openSettings}
       ></pv-nav-bar>
     `}static getConfigElement(){return document.createElement("planavista-calendar-card-editor")}static getStubConfig(){return{entity:Gh}}getCardSize(){return 10}}var Xh;Jh.styles=[lt,ct,dt,mt,vt,o`
+      /* Only the space Home Assistant leaves, so the page itself never scrolls:
+         on an iPhone its header grows by the status bar and its view pads the
+         home indicator, and Safari's 100vh is the screen with its toolbars
+         hidden (dvh is the screen as shown). */
       :host {
         display: block;
-        height: calc(100vh - var(--header-height, 56px));
+        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px));
+        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) - var(--safe-area-inset-bottom, 0px));
         overflow: hidden;
         font-family: var(--pv-font-family);
         color: var(--pv-text);
+      }
+
+      /* With the bar at the bottom, the card runs under the home indicator,
+         as iOS's own bars do; the bar pads itself by the same inset. */
+      :host(:not([layout='landscape'])) {
+        height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px));
+        height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px));
+        margin-bottom: calc(-1 * var(--safe-area-inset-bottom, 0px));
       }
 
       ha-card {
