@@ -40,3 +40,14 @@ describe('whatever comes first in the card makes room for the status bar, once',
     expect(block(card, '      .pvc-settings-overlay')).toMatch(/padding-top: var\(--pv-under-status-bar, 0px\);/);
   });
 });
+
+// Round 1: cancelling a PIN a sheet asked for left focus on the page, since the card
+// remembered its own shadow root's active element (the module's host), so Escape no
+// longer stepped back out of the sheet underneath.
+describe("the card's PIN sheet gives focus back to the control that asked", () => {
+  it('remembers the deep active element, inside the module', () => {
+    const card = read('shell/planavista-card.ts');
+    const gate = card.slice(card.indexOf('private readonly _pinGate: PinGate = {'), card.indexOf('constructor() {'));
+    expect(gate).toMatch(/this\._sheetOpener = deepActiveElement\(this\.renderRoot as ShadowRoot\);/);
+  });
+});

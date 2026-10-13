@@ -5,6 +5,7 @@ import { ref } from 'lit/directives/ref.js';
 import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
 import { nextSheetLayer } from '../core/sheet-layer';
+import { deepActiveElement } from '../core/focus';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { statusStyles } from '../styles/status';
@@ -160,7 +161,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         resolve(false);
         return;
       }
-      this._sheetOpener = (this.renderRoot as ShadowRoot | undefined)?.activeElement as HTMLElement | null ?? null;
+      // The control inside the module that asked, not the module's host (round 1).
+      this._sheetOpener = deepActiveElement(this.renderRoot as ShadowRoot);
       this._sheet = { kind: 'pin', purpose: 'module', heading, reason, members, resolve };
     }),
   };
