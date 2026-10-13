@@ -1740,8 +1740,13 @@ class ChoresEngine:
         }
         self.rewards["redemptions"].append(redemption)
         out = Outcome("requested", {"request": redemption["id"]}, changed={"rewards"})
+        doer = self.member(by)
         if not found.get("needs_ok", True):
             self._give(redemption, now, AUTO, source, out)
+            out.result = "given"
+        elif doer is not None and doer.get("parent"):
+            # A parent's own ask is their answer too (round 2: they approved it in the inbox afterwards).
+            self._give(redemption, now, by, source, out)
             out.result = "given"
         return out
 
