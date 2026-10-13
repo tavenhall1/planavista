@@ -39,6 +39,7 @@ import { calendarCan, formSignature, saveFailedText } from '../event-words';
 import type { EventGate } from '../event-gate';
 import { backdropTap } from '../../../core/backdrop';
 import { SheetLayer } from '../../../core/sheet-layer';
+import { PressGuard } from '../../../core/press-guard';
 
 
 const DISCARD_ACTIONS: NoticeAction[] = [
@@ -59,6 +60,7 @@ export class PVEventCreateDialog extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._sheet.dismiss());
   private readonly _layer = new SheetLayer(this);
+  private readonly _pressGuard = new PressGuard(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ type: Array }) calendars: CalendarConfig[] = [];
   /** Who may change events here (D1): Save asks for a PIN first when this screen needs one. */

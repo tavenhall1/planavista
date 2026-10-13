@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
+import { PressGuard } from './press-guard';
 import { defineElement } from '../utils/define';
 import { SMOOTH, motionOf, springEasing } from './motion';
 
@@ -29,6 +30,8 @@ export interface Toast {
  */
 export class PvToast extends LitElement {
   @property({ attribute: false }) toast: Toast | null = null;
+  /** A toast that appears under a finger ignores that finger's click (round 1). */
+  private readonly _pressGuard = new PressGuard(this);
   private _timer: ReturnType<typeof setTimeout> | undefined;
 
   static styles = css`
@@ -110,6 +113,7 @@ export class PvToast extends LitElement {
     clearTimeout(this._timer);
     const toast = this.toast;
     if (!toast) return;
+    this._pressGuard.arm();
     const box = this.renderRoot.querySelector<HTMLElement>('.toast');
     if (box) {
       if (motionOf(this) === 'reduced') box.animate({ opacity: [0, 1] }, { duration: 150 });

@@ -15,6 +15,7 @@ import { REWARD_PICTURES, RewardCard, RewardDraft, rewardDraft, rewardProblem } 
 import { pictureOf } from './pv-chore-tile';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
+import { PressGuard } from '../../core/press-guard';
 
 /**
  * pv-chores-reward-sheet: one reward (spec 13.6, 14.5). Anyone sees who can
@@ -31,6 +32,7 @@ export class PvChoresRewardSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => void this.close());
   private readonly _layer = new SheetLayer(this);
+  private readonly _pressGuard = new PressGuard(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) card: RewardCard | null = null;
   @property({ attribute: false }) people: Member[] = [];

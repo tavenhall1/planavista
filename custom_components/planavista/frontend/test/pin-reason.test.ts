@@ -14,6 +14,7 @@ describe('the PIN sheet always says why it is asking (milestone 8, spec 3.12)', 
     expect(pinReason("Enter a parent's PIN to keep changing settings")).toBe('To keep changing settings');
     expect(pinReason('Whose day is this?')).toBe('To change their My day');
     expect(pinReason('Whose goal is this?')).toBe('To set their goal');
+    expect(pinReason("Who's giving Alex the credit?")).toBe('To give Alex the credit');
   });
 
   it('has a reason for every question the card asks', () => {
