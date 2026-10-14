@@ -15,6 +15,31 @@ export interface SheetLike {
  * close fired through the reused element); the same sheet changing (busy, its
  * history loading) keeps its element and whatever was typed in it.
  */
+/** What the board had open when Home Assistant made its card again after a reconnect (round 4). */
+export interface BoardHandoff {
+  /** A sheet that closed, by name. */
+  closed?: string;
+  /** Whose reveal was playing: the new card plays it again. */
+  reveal?: string;
+  /** The toast that was showing (its buttons answered to the old card). */
+  toast?: string;
+}
+
+export function boardHandoff(open: { sheet: SheetLike | null; reveal: string | null; toast: string | null }): BoardHandoff | undefined {
+  const note: BoardHandoff = {
+    ...(open.sheet ? { closed: sheetName(open.sheet) } : {}),
+    ...(open.reveal ? { reveal: open.reveal } : {}),
+    ...(open.toast ? { toast: open.toast } : {}),
+  };
+  return Object.keys(note).length ? note : undefined;
+}
+
+/** What the new card says: what closed, else the toast that was showing. */
+export function handoffWords(note: BoardHandoff | null): string | null {
+  if (note?.closed) return `The connection dropped, so ${note.closed} closed. Try again.`;
+  return note?.toast ?? null;
+}
+
 /** What a sheet is called in "The connection dropped, so ... closed." (round 4). */
 export function sheetName(sheet: SheetLike): string {
   switch (sheet.kind) {

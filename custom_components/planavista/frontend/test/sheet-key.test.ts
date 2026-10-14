@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { sheetKey, sheetName } from '../src/modules/chores/sheet-key';
+import { boardHandoff, handoffWords, sheetKey, sheetName } from '../src/modules/chores/sheet-key';
 
 // Round 3 (r3a A8): tapping another chore while the last one's options were leaving
 // opened its options in the same element, and the old one's close shut the new one.
@@ -25,10 +25,24 @@ describe("each of the board's sheets gets its own element", () => {
     expect(sheetName({ kind: 'start_over' })).toBe('that');
   });
 
-  it('the board says so on the new card', () => {
+  // Round 4 (r4b B2, B4): a reconnect took the reveal mid-celebration, and a check-off's toast.
+  it("hands the new card what the board had open: a sheet, the reveal, the toast showing", () => {
+    expect(boardHandoff({ sheet: null, reveal: null, toast: null })).toBeUndefined();
+    expect(boardHandoff({ sheet: { kind: 'quick_add' }, reveal: 'dana', toast: 'Done.' })).toEqual({ closed: 'New chore', reveal: 'dana', toast: 'Done.' });
+    expect(boardHandoff({ sheet: null, reveal: 'dana', toast: null })).toEqual({ reveal: 'dana' });
+  });
+
+  it('says what closed first, else the toast that was showing', () => {
+    expect(handoffWords({ closed: 'New chore', toast: 'Done.' })).toBe('The connection dropped, so New chore closed. Try again.');
+    expect(handoffWords({ toast: 'Feed the fish: waiting for approval.' })).toBe('Feed the fish: waiting for approval.');
+    expect(handoffWords({ reveal: 'dana' })).toBeNull();
+    expect(handoffWords(null)).toBeNull();
+  });
+
+  it('the board takes its note back on the new card', () => {
     const module = readFileSync(fileURLToPath(new URL('../src/modules/chores/pv-chores-module.ts', import.meta.url)), 'utf-8');
-    expect(module).toMatch(/handoff\(\): \{ closed: string \} \| undefined \{/);
-    expect(module).toMatch(/text: `The connection dropped, so \$\{closed\} closed\. Try again\.`/);
+    expect(module).toMatch(/handoff\(\): BoardHandoff \| undefined \{\s*return boardHandoff\(/);
+    expect(module).toMatch(/const words = handoffWords\(n\);/);
   });
 
   it('the same sheet changing (busy, its history loading) keeps its element, so nothing typed is lost', () => {

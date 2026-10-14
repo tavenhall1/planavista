@@ -10,7 +10,7 @@ import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { keyed } from 'lit/directives/keyed.js';
-import { sheetKey, sheetName } from './sheet-key';
+import { BoardHandoff, boardHandoff, handoffWords, sheetKey } from './sheet-key';
 import { actingParent, creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
@@ -277,6 +277,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
     if (changed.has('session') || changed.has('household')) this._refreshReveal();
+    this._replayCutShort();
     if (this.view === 'week') this._loadWeek();
     if (changed.has('_sheet') && changed.get('_sheet') && !this._sheet) {
       const opener = this._opener;
@@ -594,14 +595,35 @@ export class PvChoresModule extends LitElement implements ModuleElement {
    * (core/handoff.ts). A sheet isn't reopened: parent mode went with the connection,
    * so it would ask for a PIN nobody asked for; the new card says what closed (round 4).
    */
-  handoff(): { closed: string } | undefined {
-    return this._sheet ? { closed: sheetName(this._sheet) } : undefined;
+  handoff(): BoardHandoff | undefined {
+    return boardHandoff({
+      sheet: this._sheet, reveal: this._openReveal?.detail.model.memberId ?? null, toast: this._toast?.text ?? null,
+    });
   }
 
   resume(note: unknown): void {
-    const closed = (note as { closed?: unknown } | null)?.closed;
-    if (typeof closed !== 'string') return;
-    this.showToast({ id: `handoff-${Date.now()}`, text: `The connection dropped, so ${closed} closed. Try again.` });
+    const n = note && typeof note === 'object' ? (note as BoardHandoff) : null;
+    const words = handoffWords(n);
+    if (words) this.showToast({ id: `handoff-${Date.now()}`, text: words });
+    if (typeof n?.reveal === 'string') this._replayAfter = { member: n.reveal, until: Date.now() + 15_000 };
+    this.requestUpdate();
+  }
+
+  /** A reveal a reconnect cut short, played again once the board is here (round 4). */
+  private _replayAfter: { member: string; until: number } | null = null;
+
+  private _replayCutShort(): void {
+    const want = this._replayAfter;
+    if (!want) return;
+    if (Date.now() > want.until) {
+      this._replayAfter = null;
+      return;
+    }
+    const board = this.service?.board();
+    if (!board) return;
+    this._replayAfter = null;
+    // Opened before the drop: play it again. Not opened: its present still waits on the board.
+    if (board.members[want.member]?.surprise?.opened) this._replaySurprise(want.member);
   }
 
   /** The reveal on screen, whose button follows this screen's session (round 4). */
