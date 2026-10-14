@@ -14,13 +14,14 @@ import type { ChoresService } from '../chores-service';
 import type { Reward } from '../chores-types';
 import { pictureFor } from '../picture-words';
 import {
-  RewardDraft, RewardRecord, beginRewardDraft, nextCost, rewardChanges, rewardDirty, rewardProblem, whoText,
+  RewardDraft, RewardRecord, beginRewardDraft, nextCost, rebaseReward, rewardChanges, rewardDirty, rewardProblem,
+  rewardStale, whoText,
 } from './reward-draft';
 import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
 import '../../../shell/pv-notice-sheet';
 
-type Notice = 'discard' | 'delete';
+type Notice = 'discard' | 'delete' | 'changed';
 const PICTURES = ['🎬', '🎮', '📺', '🍦', '🍕', '🌙', '💵', '🍽️', '🎨', '📚', '⚽', '🎁', '🛝', '🧁', '🎟️', '🏊'];
 
 /**
@@ -62,8 +63,11 @@ export class PvRewardEditor extends LitElement {
 
   protected willUpdate(): void {
     if (!this._loaded && this._chores?.board() && (this._rewardId === null || this._reward)) {
-      this._record = (this.drafts.get(this._key) as RewardRecord | undefined) ?? beginRewardDraft(this._reward);
+      const kept = this.drafts.get(this._key) as RewardRecord | undefined;
+      this._record = kept ?? beginRewardDraft(this._reward);
       this._loaded = true;
+      // Kept while parent mode was off, and the reward changed meanwhile (round 4).
+      if (kept && this._reward && rewardStale(kept, this._reward)) this._notice = 'changed';
     }
   }
 
@@ -268,8 +272,27 @@ export class PvRewardEditor extends LitElement {
           @pv-sheet-action=${this._onDelete}></pv-notice-sheet>
       `;
     }
+    if (this._notice === 'changed') {
+      return html`
+        <pv-notice-sheet .layout=${this.layout} heading="This changed on another screen."
+          .actions=${[{ id: 'keep', label: 'Keep editing', kind: 'secondary' }, { id: 'load', label: 'Load the new version', kind: 'primary' }]}
+          @pv-sheet-action=${this._onChanged}></pv-notice-sheet>
+      `;
+    }
     return nothing;
   }
+
+  private _onChanged = (event: CustomEvent<{ id: string }>): void => {
+    event.stopPropagation();
+    this._notice = null;
+    if (event.detail.id === 'load') {
+      this._record = beginRewardDraft(this._reward);
+      this.drafts.delete(this._key);
+    } else {
+      this._record = rebaseReward(this._record, this._reward);
+      this.drafts.set(this._key, this._record);
+    }
+  };
 
   private _change(patch: Partial<RewardDraft>): void {
     this._record = { ...this._record, draft: { ...this._record.draft, ...patch } };
@@ -299,6 +322,11 @@ export class PvRewardEditor extends LitElement {
     }
     const chores = this._chores;
     if (!chores) return;
+    // Changed on another screen while open: ask, as the chore editor does, instead of writing over it.
+    if (this._reward && rewardStale(this._record, this._reward)) {
+      this._notice = 'changed';
+      return;
+    }
     this._saving = true;
     try {
       await chores.api.saveReward(rewardChanges(this._record.draft), this._rewardId ?? undefined);
