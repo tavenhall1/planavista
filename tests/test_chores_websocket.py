@@ -97,6 +97,19 @@ async def test_a_closed_day_says_so(hass: HomeAssistant, chores: Any, hass_ws_cl
     assert reply["error"] == {"code": "period_closed", "message": "The day had ended."}
 
 
+async def test_a_chore_taken_off_the_plan_says_so(hass: HomeAssistant, chores: Any, hass_ws_client: Any) -> None:
+    """Round 3 (r3c C1): a check-off of a chore deleted on another screen said "The day had ended." at 4 PM."""
+    admin = await hass_ws_client(hass)
+    assert (await ws_command(admin, {"type": "planavista/chores/activity/save", "activity_id": "take_out_the_trash",
+                                     "activity": {"assignees": ["blair"]}}))["success"]
+    moved = await ws_command(admin, {"type": "planavista/chores/complete", "occurrence": TRASH})
+    assert moved["error"] == {"code": "not_assigned", "message": "Take out the trash isn't on Casey's list anymore."}
+    assert (await ws_command(admin, {"type": "planavista/chores/activity/delete", "activity_id": "take_out_the_trash"}))["success"]
+    for command in ("complete", "undo"):
+        gone = await ws_command(admin, {"type": f"planavista/chores/{command}", "occurrence": TRASH})
+        assert gone["error"] == {"code": "unknown_chore", "message": "That chore isn't in the plan."}
+
+
 async def test_reviews_need_parent_mode_on_a_shared_screen(hass: HomeAssistant, kitchen: Any, chores: Any) -> None:
     await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH})
     [request] = chores.engine.open_requests()

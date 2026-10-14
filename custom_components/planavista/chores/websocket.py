@@ -153,12 +153,18 @@ def _item(
     engine, now = runtime.engine, runtime.now()
     item = engine.find_item(msg["occurrence"], now)
     if item is None:
+        parsed = parse_key(msg["occurrence"])
+        activity = engine.activity(parsed[0]) if parsed else None
+        member = engine.member(parsed[1]) if parsed else None
         later = engine.planned_later(msg["occurrence"], now)
         if later is not None:
-            parsed = parse_key(msg["occurrence"])
-            activity = engine.activity(parsed[0]) if parsed else None
             name = activity["name"] if activity else "That chore"
             send_refusal(connection, msg, "planned_later", f"{name} is planned for {later.strftime('%A')}.")
+        # Changed on another screen (round 3, r3c C1): say what happened, not that the day ended.
+        elif parsed and activity is None:
+            send_refusal(connection, msg, "unknown_chore", MESSAGES["unknown_chore"])
+        elif activity is not None and member is not None and member["id"] not in activity.get("assignees", []):
+            send_refusal(connection, msg, "not_assigned", f"{activity['name']} isn't on {member['name']}'s list anymore.")
         else:
             send_refusal(connection, msg, "period_closed", "The day had ended.")
     return item

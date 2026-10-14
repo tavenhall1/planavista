@@ -82,5 +82,8 @@ describe('refusalText (spec 15.1)', () => {
     expect(refusalText({ ...entry, op: 'undo' }, 'period_closed')).toBe('Couldn\'t uncheck "Take out the trash": the day had ended.');
     expect(refusalText({ ...entry, op: 'undo' }, 'not_open')).toBe('Couldn\'t uncheck "Take out the trash". Try again.');
     expect(refusalText(entry, 'other_pin_required')).toBe('Couldn\'t save "Take out the trash". It needs its owner\'s PIN or a parent\'s.');
+    // Round 3 (r3c C1): a chore changed on another screen says what happened, not that the day ended.
+    expect(refusalText(entry, 'unknown_chore')).toBe('Couldn\'t save "Take out the trash": it was taken off the plan.');
+    expect(refusalText(entry, 'not_assigned')).toBe('Couldn\'t save "Take out the trash": it was taken off their list.');
   });
 });

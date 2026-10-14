@@ -33,6 +33,9 @@ export function choresEnabled(ctx: Pick<ModuleContext, 'household'>): boolean {
 export function refusalText(entry: QueuedCheckoff, code: string): string {
   const did = entry.op === 'undo' ? `Couldn't uncheck "${entry.name}"` : `Couldn't save "${entry.name}"`;
   if (code === 'period_closed') return `${did}: the day had ended.`;
+  // Changed on another screen (round 3).
+  if (code === 'unknown_chore') return `${did}: it was taken off the plan.`;
+  if (code === 'not_assigned') return `${did}: it was taken off their list.`;
   if (code === 'pin_required' || code === 'parent_mode_required') return `${did}. The PIN timed out, so hold it again.`;
   // Someone else's PIN is open on this screen (review).
   if (code === 'other_pin_required') return `${did}. It needs its owner's PIN or a parent's.`;
