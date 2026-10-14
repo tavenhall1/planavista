@@ -81,6 +81,12 @@ export function inboxGroups(requests: ChoreRequest[], members: Member[], today: 
 }
 
 /** What the toast says once a parent answered. */
+/** The PIN sheet's question for an answer from the inbox (round 3: Send back and Decline asked "To approve"). */
+export function reviewQuestion(row: Pick<InboxRow, 'kind'>, allow: boolean): string {
+  if (allow) return "Who's approving?";
+  return row.kind === 'completion' ? "Who's sending it back?" : "Who's declining?";
+}
+
 export function answeredText(row: InboxRow, allowed: boolean, note?: string | null): string {
   if (row.kind === 'completion') return allowed ? `${row.what}: looks good.` : `${row.what} went back${note ? `: ${note}` : ''}.`;
   if (row.kind === 'redemption') return allowed ? `${row.what} is ${row.member?.name ?? 'theirs'}'s.` : `${row.what}: declined.`;

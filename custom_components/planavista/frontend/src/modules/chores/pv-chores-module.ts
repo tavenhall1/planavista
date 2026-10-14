@@ -34,7 +34,7 @@ import { needsOk } from './overlay';
 import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
-import { InboxRow, answeredText, inboxGroups } from './inbox-derive';
+import { InboxRow, answeredText, inboxGroups, reviewQuestion } from './inbox-derive';
 import type { ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorMessage } from '../../core/ws-api';
@@ -210,7 +210,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private async _review(detail: ReviewDetail): Promise<boolean> {
     const { row, allow, note } = detail;
     const api = this.service?.api;
-    if (!api || !(await this.asParent("Who's approving?"))) return false;
+    if (!api || !(await this.asParent(reviewQuestion(row, allow)))) return false;
     this._reviewing = new Set([...this._reviewing, row.id]);
     try {
       await api.review(row.id, allow ? 'allow' : 'decline', note ?? null);
