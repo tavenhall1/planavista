@@ -163,7 +163,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   /** How a module asks for a PIN: the card's PIN sheet, then the card's session. */
   private readonly _pinGate: PinGate = {
     ask: (members, heading, reason) => new Promise<boolean>(resolve => {
-      if (members.length === 0 || this._sheet) {
+      if (this._sheet) {
+        this._toast = { id: `pin-busy-${Date.now()}`, text: "Finish the PIN that's open first." };
+        resolve(false);
+        return;
+      }
+      if (members.length === 0) {
         resolve(false);
         return;
       }
