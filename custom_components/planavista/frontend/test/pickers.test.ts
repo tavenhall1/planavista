@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { dateKey, dateLabel, monthDays, shiftMonth, timeLabel, timeSlots } from '../src/core/pickers';
+import { dateKey, dateLabel, monthDays, scrollForPicker, shiftMonth, timeLabel, timeSlots } from '../src/core/pickers';
 
 describe('the shared date and time pickers (milestone 8, spec 3.11)', () => {
   it('a month grid is six weeks from the Sunday on or before the 1st', () => {
@@ -43,5 +43,23 @@ describe('the shared date and time pickers (milestone 8, spec 3.11)', () => {
       const text = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf-8');
       expect(text, path).not.toMatch(/type="(date|time)"/);
     }
+  });
+});
+
+
+// Round 1, left for later: with little room below, the date picker opened above its field
+// and covered the sheet's title; it stayed put while the sheet scrolled.
+describe('scrollForPicker', () => {
+  it('scrolls the sheet just enough for the picker to open below its field', () => {
+    expect(scrollForPicker(400, 900, 384, 500)).toBe(0); // room below already
+    expect(scrollForPicker(700, 900, 384, 500)).toBe(196); // 200 below, wants 396
+    expect(scrollForPicker(700, 900, 384, 100)).toBe(100); // as far as the sheet scrolls
+    expect(scrollForPicker(700, 900, 384, 0)).toBe(0);
+  });
+
+  it('the editor scrolls first and follows the sheet as it scrolls', () => {
+    const editor = readFileSync(new URL('../src/modules/calendar/components/event-create-dialog.ts', import.meta.url), 'utf-8');
+    expect(editor).toMatch(/scrollForPicker\(/);
+    expect(editor).toMatch(/@scroll=\$\{this\._onPanelScroll\}/);
   });
 });

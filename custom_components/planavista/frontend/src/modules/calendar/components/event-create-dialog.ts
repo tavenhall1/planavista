@@ -32,7 +32,7 @@ import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
 import { LocationSearch } from '../utils/location-search';
 import { monthGrid, timeList } from '../../../core/picker-views';
-import { dateLabel, timeSlots } from '../../../core/pickers';
+import { dateLabel, scrollForPicker, timeSlots } from '../../../core/pickers';
 import { pickerStyles } from '../../../styles/pickers';
 import { contrastText } from '../../../core/color';
 import { calendarCan, formSignature, saveFailedText } from '../event-words';
@@ -628,7 +628,7 @@ export class PVEventCreateDialog extends LitElement {
 
     return html`
       <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
-      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="editor-title" @keydown=${this._sheet.onKeydown}>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="editor-title" @keydown=${this._sheet.onKeydown} @scroll=${this._onPanelScroll}>
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <h2 class="heading" id="editor-title">${heading}</h2>
 
@@ -909,6 +909,11 @@ export class PVEventCreateDialog extends LitElement {
     `;
   }
 
+  /** An open picker follows its field as the sheet scrolls (it is placed against the screen). */
+  private _onPanelScroll = (): void => {
+    if (this._datePickerOpen || this._activeTimePicker) this.requestUpdate();
+  };
+
   private _toggleDatePicker(target: 'start' | 'end' = 'start') {
     this._activeTimePicker = null;
     this._datePickerOpen = !(this._datePickerOpen && this._dateTarget === target);
@@ -920,6 +925,13 @@ export class PVEventCreateDialog extends LitElement {
       this._pickerMonth = m - 1;
     }
     if (this._datePickerOpen) {
+      // Make room below the field first, so the picker doesn't open over the sheet's title (round 1).
+      const field = target === 'end' ? this._endDateDisplay : this._dateDisplay;
+      const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
+      if (field && panel) {
+        const by = scrollForPicker(field.getBoundingClientRect().bottom, window.innerHeight, 384, panel.scrollHeight - panel.clientHeight - panel.scrollTop);
+        if (by > 0) panel.scrollBy({ top: by });
+      }
       this._focusAfterUpdate(() =>
         this.renderRoot.querySelector<HTMLElement>('.picker-day.selected')
         ?? this.renderRoot.querySelector<HTMLElement>('.picker-day.today')
