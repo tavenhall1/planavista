@@ -41,6 +41,16 @@ describe("the reveal's buttons take only presses meant for them (round 3)", () =
   });
 });
 
+describe("the reward's button follows the screen while the reveal is open (round 4, r4a A6)", () => {
+  it('works out again whether a parent acts when the session changes', () => {
+    // Parent mode lapsed under an open reveal: it still said Get it, and pressing it only asked.
+    const module = source('modules/chores/pv-chores-module.ts').replace(/\r\n/g, '\n');
+    const updated = module.slice(module.indexOf('  protected updated(changed: PropertyValues): void {'));
+    expect(updated.slice(0, updated.indexOf('\n  }\n'))).toMatch(/changed\.has\('session'\) \|\| changed\.has\('household'\)\) this\._refreshReveal\(\);/);
+    expect(module).toMatch(/private _refreshReveal\(\): void \{[\s\S]*actingParent\(this\.household, this\.session\)\?\.parent === true/);
+  });
+});
+
 describe("the reward's button says what it does on this screen (r3b I4)", () => {
   it('a parent acting gets it at once, so it says Get it', () => {
     expect(revealWords('Dana', ICE_CREAM, false, true).button).toBe('🎉 Get it');

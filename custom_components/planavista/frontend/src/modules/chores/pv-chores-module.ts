@@ -276,6 +276,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
+    if (changed.has('session') || changed.has('household')) this._refreshReveal();
     if (this.view === 'week') this._loadWeek();
     if (changed.has('_sheet') && changed.get('_sheet') && !this._sheet) {
       const opener = this._opener;
@@ -588,17 +589,35 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._reveal({ model, name: member.name, color: this._colorOf(member), from: null });
   }
 
+  /** The reveal on screen, whose button follows this screen's session (round 4). */
+  private _openReveal: (HTMLElement & { detail: RevealDetail }) | null = null;
+
+  private _parentActs(): boolean {
+    return actingParent(this.household, this.session)?.parent === true;
+  }
+
+  /** Parent mode began or lapsed under an open reveal: its button says what a press would do now. */
+  private _refreshReveal(): void {
+    const reveal = this._openReveal;
+    if (!reveal) return;
+    const parent = actingParent(this.household, this.session)?.parent === true;
+    if (reveal.detail.parent !== parent) reveal.detail = { ...reveal.detail, parent };
+  }
+
   /** Asks the card to show the reveal over everything; its button asks for the reward. */
   private _reveal(detail: Omit<RevealDetail, 'sound'>): HTMLElement {
-    const reveal = document.createElement('pv-surprise-reveal');
+    const reveal = document.createElement('pv-surprise-reveal') as HTMLElement & { detail: RevealDetail };
     const board = this.service?.board();
     const { memberId, reward } = detail.model;
     // An ask already waiting (or on its way) shows as waiting, not a second Ask for it (review B3).
     const asked = !!board?.requests.some(r => r.kind === 'redemption' && r.member === memberId && r.reward === reward.id)
       || this._asking.some(a => a.member === memberId && a.reward === reward.id);
     // A parent's own ask is their answer: the button says it gives it at once (round 3, r3b I4).
-    const parent = actingParent(this.household, this.session)?.parent === true;
-    reveal.detail = { ...detail, sound: !!board?.settings.sound, asked, parent };
+    reveal.detail = { ...detail, sound: !!board?.settings.sound, asked, parent: this._parentActs() };
+    this._openReveal = reveal;
+    reveal.addEventListener('pv-fullscreen-done', () => {
+      if (this._openReveal === reveal) this._openReveal = null;
+    });
     reveal.addEventListener('pv-reveal-choice', event => {
       if ((event as CustomEvent<{ choice: string }>).detail.choice !== 'ask') return;
       const member = this.household?.members.find(m => m.id === detail.model.memberId);
