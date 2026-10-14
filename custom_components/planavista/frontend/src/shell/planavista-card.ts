@@ -58,7 +58,7 @@ import { SCREEN_AS_SHOWN, composedAncestor, fitView } from '../core/panel-fit';
 import { kioskStripAction, showsKioskReturn } from '../core/kiosk';
 import { errorMessage } from '../core/ws-api';
 import type { Toast } from '../core/pv-toast';
-import { PAGE_HANDOFFS, handoffToast } from '../core/handoff';
+import { PAGE_HANDOFFS, TAKE_MS, handoffToast } from '../core/handoff';
 import '../core/pv-toast';
 import { kiosk } from './kiosk-controller';
 
@@ -612,19 +612,39 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     this._unhearKiosk = kiosk.onChange(() => this.requestUpdate());
     kiosk.cardShown(location.pathname);
     // After the swap: Home Assistant may put this card in before it takes the old one out.
-    window.setTimeout(() => void this._takeHandoff(), 0);
+    window.setTimeout(() => this._takeHandoff(), 0);
   }
 
+  /** Module notes from the old card, kept until each module shows (round 4: chores waits for the household). */
+  private _resumes: Record<string, unknown> | null = null;
+  private _resumesUntil = 0;
+
   /** What the old card for this place had open when Home Assistant made this one (round 3). */
-  private async _takeHandoff(): Promise<void> {
+  private _takeHandoff(): void {
     const note = this._placeKey ? PAGE_HANDOFFS.take(this._placeKey, Date.now()) : null;
     if (!note) return;
     const toast = handoffToast(note);
     if (toast) this._toast = toast;
-    await this.updateComplete;
+    if (Object.keys(note.modules).length === 0) return;
+    this._resumes = { ...note.modules };
+    this._resumesUntil = Date.now() + TAKE_MS;
+    this.requestUpdate();
+  }
+
+  /** Gives the module now showing the old card's note for it, once. */
+  private _resumeModule(): void {
+    const resumes = this._resumes;
+    if (!resumes) return;
+    if (Date.now() > this._resumesUntil) {
+      this._resumes = null;
+      return;
+    }
     const module = this.renderRoot.querySelector('.pv-module') as ModuleElement | null;
-    const mine = module ? note.modules[module.localName] : undefined;
-    if (module && mine !== undefined) module.resume?.(mine);
+    if (!module || !(module.localName in resumes)) return;
+    const mine = resumes[module.localName];
+    delete resumes[module.localName];
+    if (Object.keys(resumes).length === 0) this._resumes = null;
+    module.resume?.(mine);
   }
 
   /** What this card has open, left for the card Home Assistant makes again after a reconnect. */
@@ -653,6 +673,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    this._resumeModule();
     if (changedProps.has('isPanel')) this._fitView();
     if (changedProps.has('_moduleId') || changedProps.has('_views')) this._savePlace();
     this._guardSettings();
