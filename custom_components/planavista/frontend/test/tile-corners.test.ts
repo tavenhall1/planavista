@@ -28,6 +28,14 @@ describe("a picture tile's corner controls clear its ring", () => {
     expect(tile.indexOf('@container (max-width: 160px)')).toBeGreaterThan(tile.indexOf('      padding: 14px 8px 12px;'));
   });
 
+  // Round 3 (r3c C5): beside a phone's narrow tiles the present's ring sat 22 px higher and its row grew.
+  it("starts a narrow present's ring where the tiles beside it start theirs", () => {
+    const present = readFileSync(new URL('../src/modules/chores/pv-surprise-present.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    expect(present).toMatch(/\.surprise \{[^}]*container-type: inline-size;/);
+    expect(present).toMatch(/@container \(max-width: 160px\) \{\n\s+:host\(:not\(\[shape='row'\]\)\) \.hold \{\n\s+padding-top: 36px;/);
+    expect(present.indexOf('@container (max-width: 160px)')).toBeGreaterThan(present.indexOf('      padding: 14px 8px 12px;'));
+  });
+
   it('clears both corners from the narrowest tile up, and the wider tiles keep their spacing', () => {
     // The query measures the tile inside its 2 px border: up to 160 px there is a tile up to 164 px.
     for (let width = 118; width <= 164; width += 2) {

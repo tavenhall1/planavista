@@ -72,6 +72,7 @@ export class PvSurprisePresent extends LitElement {
       position: relative;
       box-sizing: border-box;
       width: 100%;
+      container-type: inline-size;
       border-radius: 18px;
       border: 2px solid color-mix(in srgb, var(--gold) 70%, transparent);
       background: linear-gradient(160deg, color-mix(in srgb, var(--gold) 16%, var(--pv-card-bg, #FFFFFF)), var(--tint));
@@ -99,6 +100,13 @@ export class PvSurprisePresent extends LitElement {
     :host([large]) .hold {
       min-height: 300px;
       gap: 10px;
+    }
+
+    /* Like the picture tiles beside it on a phone: the ring starts where theirs do (round 3). */
+    @container (max-width: 160px) {
+      :host(:not([shape='row'])) .hold {
+        padding-top: 36px;
+      }
     }
 
     /* In a list it is a row like the rows beside it (review B10); its gold border and ring mark it. */
