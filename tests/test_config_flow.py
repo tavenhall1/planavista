@@ -25,7 +25,7 @@ async def test_user_step_creates_entry(hass: HomeAssistant) -> None:
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "PlanaVista"
-    assert result["data"] == DEFAULT_ENTRY_DATA
+    assert result["data"] == DEFAULT_ENTRY_DATA | {"dashboard_offer": True}
     assert hass.states.get("sensor.planavista_config") is not None
     assert hass.states.get("sensor.planavista_upcoming_events") is not None
 

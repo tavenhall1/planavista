@@ -176,6 +176,8 @@ class PlanaVistaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_THEME: DEFAULT_THEME,
                     },
                     "onboarding_complete": False,
+                    # Its first setup adds PlanaVista's own dashboard to the sidebar (2026-10-14).
+                    "dashboard_offer": True,
                 },
             )
 

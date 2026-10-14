@@ -1,7 +1,7 @@
 {
   "domain": "planavista",
   "name": "PlanaVista",
-  "after_dependencies": ["calendar", "google"],
+  "after_dependencies": ["calendar", "google", "lovelace"],
   "codeowners": ["@tavenhall1"],
   "config_flow": true,
   "dependencies": ["frontend", "http"],
