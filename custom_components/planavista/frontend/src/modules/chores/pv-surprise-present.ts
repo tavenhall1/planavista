@@ -72,6 +72,7 @@ export class PvSurprisePresent extends LitElement {
       position: relative;
       box-sizing: border-box;
       width: 100%;
+      height: 100%;
       container-type: inline-size;
       border-radius: 18px;
       border: 2px solid color-mix(in srgb, var(--gold) 70%, transparent);
@@ -82,11 +83,12 @@ export class PvSurprisePresent extends LitElement {
     .hold {
       box-sizing: border-box;
       width: 100%;
+      height: 100%;
       min-height: 132px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 6px;
       padding: 14px 8px 12px;
       border-radius: 16px;
@@ -100,6 +102,7 @@ export class PvSurprisePresent extends LitElement {
     :host([large]) .hold {
       min-height: 300px;
       gap: 10px;
+      justify-content: center;
     }
 
     /* Like the picture tiles beside it on a phone: the ring starts where theirs do (round 3). */

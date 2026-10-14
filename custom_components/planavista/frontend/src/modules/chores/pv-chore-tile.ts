@@ -67,10 +67,12 @@ export class PvChoreTile extends LitElement {
       --tint: color-mix(in srgb, var(--member) 12%, var(--pv-card-bg, #FFFFFF));
     }
 
+    /* It fills its row, so a tile beside a taller one is as tall (round 4). */
     .tile {
       position: relative;
       box-sizing: border-box;
       width: 100%;
+      height: 100%;
       border-radius: 18px;
       border: 2px solid transparent;
       background: var(--tint);
@@ -81,11 +83,12 @@ export class PvChoreTile extends LitElement {
     .hold {
       box-sizing: border-box;
       width: 100%;
+      height: 100%;
       min-height: 132px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 6px;
       padding: 14px 8px 12px;
       border-radius: 16px;

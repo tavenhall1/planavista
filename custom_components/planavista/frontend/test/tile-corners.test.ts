@@ -36,6 +36,19 @@ describe("a picture tile's corner controls clear its ring", () => {
     expect(present.indexOf('@container (max-width: 160px)')).toBeGreaterThan(present.indexOf('      padding: 14px 8px 12px;'));
   });
 
+  // Round 4 (r4b B6): beside a present the row grew, and the tiles drew 179 and 192 px in a 197 px row.
+  it('fills its row like the present beside it, rings level at the top', () => {
+    const present = readFileSync(new URL('../src/modules/chores/pv-surprise-present.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    for (const [source, box] of [[tile, '.tile'], [present, '.surprise']] as const) {
+      expect(source.slice(source.indexOf(`    ${box} {`), source.indexOf('}', source.indexOf(`    ${box} {`)))).toMatch(/height: 100%;/);
+      const hold = source.slice(source.indexOf('    .hold {'), source.indexOf('}', source.indexOf('    .hold {')));
+      expect(hold).toMatch(/height: 100%;/);
+      expect(hold).toMatch(/justify-content: flex-start;/);
+    }
+    // The large present on My day keeps its content in the middle.
+    expect(present).toMatch(/:host\(\[large\]\) \.hold \{[^}]*justify-content: center;/);
+  });
+
   it('clears both corners from the narrowest tile up, and the wider tiles keep their spacing', () => {
     // The query measures the tile inside its 2 px border: up to 160 px there is a tile up to 164 px.
     for (let width = 118; width <= 164; width += 2) {
