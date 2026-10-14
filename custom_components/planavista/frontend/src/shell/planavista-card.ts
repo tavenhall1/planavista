@@ -6,6 +6,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
 import { nextSheetLayer } from '../core/sheet-layer';
 import { deepActiveElement } from '../core/focus';
+import { CardDrafts } from '../core/page-drafts';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { statusStyles } from '../styles/status';
@@ -102,7 +103,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _sheet: CardSheet | null = null;
   private _sheetOpener: HTMLElement | null = null;
   /** Drafts of person edits; they outlive Settings until the page reloads (spec 9.4). */
-  private _drafts = new Map<string, unknown>();
+  /** Editors' drafts outlive the card (Home Assistant rebuilds it after a restart); its appearance edits stay its own. */
+  private _drafts = new CardDrafts();
   /** How Settings was opened: by this account's own rights, or through parent mode. */
   private _settingsVia: 'access' | 'session' | null = null;
   /** The view each module shows; the bar and the module both change it (data down, events up). */
