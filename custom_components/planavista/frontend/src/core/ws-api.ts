@@ -11,8 +11,15 @@ export function errorCode(err: unknown): string {
   return 'unknown';
 }
 
+/**
+ * Home Assistant's own errors: technical words, and a schema error repeats what
+ * was sent (a PIN session's token, round 3). Callers say their own sentence.
+ */
+const TECHNICAL = new Set(['invalid_format', 'unknown_command', 'unknown_error']);
+
 /** What a failed command said, for a toast (Home Assistant rejects with {code, message}). */
 export function errorMessage(err: unknown): string | null {
+  if (TECHNICAL.has(errorCode(err))) return null;
   if (err && typeof err === 'object' && typeof (err as { message?: unknown }).message === 'string') {
     return (err as { message: string }).message;
   }
