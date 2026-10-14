@@ -1711,17 +1711,26 @@ class ChoresEngine:
         for redemption in self.rewards["redemptions"]:
             if redemption["reward"] == reward_id and redemption.get("state") == "requested":
                 redemption["state"] = "declined"
+        # Its surprises go for good, so a reward added again under the same id starts fresh (round 4).
+        surprises = self.rewards.setdefault("surprises", {})
+        for member_id, surprise in list(surprises.items()):
+            earlier = surprise.get("earlier", {})
+            earlier.pop(reward_id, None)
+            if not earlier:
+                surprise.pop("earlier", None)
+            if surprise["reward"] == reward_id:
+                del surprises[member_id]
         return Outcome("deleted", {"reward": reward_id}, changed={"rewards"})
 
     def _give(self, redemption: dict[str, Any], at: datetime, by: str, source: str | None, out: Outcome) -> None:
         redemption["state"] = "given"
         redemption["review"] = {"by": by, "at": self._stamp(at), "note": None, "source": source}
         self._ledger(redemption["member"], -int(redemption["cost"]), "redeemed", at, ref=redemption["id"], by=by)
-        # Stars spent: once the goal is out of reach, reaching it again is a new surprise (r3b I3).
+        # Stars spent: if that takes the goal out of reach, reaching it again is a new surprise (r3b I3);
+        # the next settle forgets it when the goal is still in reach (round 4).
         surprise = self.rewards.setdefault("surprises", {}).get(redemption["member"])
         if surprise is not None:
             surprise["spent"] = True
-            surprise.pop("earlier", None)
         reward = self.reward(redemption["reward"])
         out.events.append(ChoreEvent("redeemed", redemption["member"], {
             "reward": redemption["reward"], "reward_name": reward["name"] if reward else redemption["reward"],
@@ -1815,7 +1824,9 @@ class ChoresEngine:
                     out.changed.add("rewards")
                 continue
             if have is not None and have["reward"] == reward["id"]:
-                if have.pop("away", None):
+                # Still in reach after a reward was given: that spend took nothing away (round 4).
+                away, spent = have.pop("away", None), have.pop("spent", None)
+                if away or spent:
                     out.changed.add("rewards")
                 continue
             earlier: dict[str, dict[str, Any]] = {}

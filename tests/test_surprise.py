@@ -183,6 +183,41 @@ def test_spending_stars_clears_the_slate_for_every_goal() -> None:
     assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
 
 
+def test_a_reward_given_while_the_goal_stays_in_reach_changes_nothing() -> None:
+    """Round 4 (r4a A3): a cheaper reward given in reach marked the surprise spent, so a later
+    uncheck and re-check wrapped the same goal again and told the parents twice."""
+    engine = _engine()
+    engine.save_reward({"name": "Sticker", "icon": "⭐", "cost": 2, "needs_ok": False})
+    engine.award_stars(SCENE, member="dana", stars=5, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    engine.redeem(SCENE, member="dana", reward="sticker", by="alex", source="tablet")
+    assert engine.settle_surprises(SCENE).events == []
+    assert "spent" not in engine.rewards["surprises"]["dana"]
+    engine.award_stars(SCENE, member="dana", stars=-1, reason="Oops", by="alex")
+    assert engine.settle_surprises(SCENE).events == []
+    engine.award_stars(SCENE, member="dana", stars=1, reason="Sorry", by="alex")
+    out = engine.settle_surprises(SCENE)
+    assert (out.events, _view(engine)) == ([], {"reward": "ice_cream_trip", "opened": True})
+
+
+def test_a_deleted_reward_leaves_no_surprise_to_come_back() -> None:
+    """Round 4 (r4a A5): a reward deleted and added again (the same id) brought back the old one's surprise."""
+    engine = _engine()
+    engine.save_reward({"name": "Sticker", "icon": "⭐", "cost": 2})
+    engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    engine.set_members(_with_goal("sticker"))
+    engine.settle_surprises(SCENE)
+    engine.delete_reward("ice_cream_trip")
+    assert "ice_cream_trip" not in engine.rewards["surprises"]["dana"].get("earlier", {})
+    engine.save_reward({"name": "Ice cream trip", "icon": "🍦", "cost": 3})
+    engine.set_members(_with_goal("ice_cream_trip"))
+    assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
+    assert _view(engine) == {"reward": "ice_cream_trip", "opened": False}
+
+
 def test_a_surprise_out_of_reach_cant_be_opened() -> None:
     engine = _engine()
     engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")
