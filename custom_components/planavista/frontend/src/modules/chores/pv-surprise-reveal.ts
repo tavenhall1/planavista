@@ -3,10 +3,11 @@ import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
 import { BOUNCY, GENTLE, motionOf, springEasing } from '../../core/motion';
 import { deepActiveElement, trapTab } from '../../core/focus';
+import { PressGuard } from '../../core/press-guard';
 import { chime, haptic } from './effects';
 import { pictureOf } from './pv-chore-tile';
 import { presentArt } from './surprise-art';
-import { REVEAL, confettiPieces, revealWords, type SurpriseModel } from './surprise-derive';
+import { REVEAL, confettiPieces, revealKey, revealWords, type SurpriseModel } from './surprise-derive';
 
 export interface RevealDetail {
   model: SurpriseModel;
@@ -18,6 +19,8 @@ export interface RevealDetail {
   sound: boolean;
   /** Its ask is already waiting for a parent. */
   asked?: boolean;
+  /** A parent acts on this screen: the reward's button gives it at once (round 3). */
+  parent?: boolean;
 }
 
 /**
@@ -28,6 +31,8 @@ export interface RevealDetail {
  * child's name. Then the reward's own button and Later. A tap skips to the
  * end, but only a press that began on this layer: the finger that finished
  * the hold lifts here, and Safari sends its click to whatever is under it.
+ * The buttons take the sheets' press guard, started over as they arrive, so
+ * neither that finger nor a skipping tap's second tap presses them (round 3).
  * The card shows it outside ha-card (whose container query would hold a fixed
  * layer inside the card), so it covers Home Assistant's own bars too. It
  * fires `pv-reveal-choice` (ask or later) and then `pv-fullscreen-done`.
@@ -39,6 +44,9 @@ export class PvSurpriseReveal extends LitElement {
   private _timers: number[] = [];
   private _pressed = false;
   private _closing = false;
+  /** The key that skipped to the end, until it comes up (round 3). */
+  private _held: string | null = null;
+  private readonly _pressGuard = new PressGuard(this);
 
   static styles = css`
     :host {
@@ -177,6 +185,14 @@ export class PvSurpriseReveal extends LitElement {
       color: #FFFFFF;
     }
 
+    /* Waiting for approval: quiet, so a child doesn't keep pressing it (round 3). */
+    .ask:disabled {
+      background: rgba(255, 255, 255, 0.22);
+      color: rgba(255, 255, 255, 0.86);
+      box-shadow: none;
+      cursor: default;
+    }
+
     button:focus-visible {
       outline: 3px solid #FFFFFF;
       outline-offset: 3px;
@@ -202,12 +218,12 @@ export class PvSurpriseReveal extends LitElement {
   render() {
     const d = this.detail;
     if (!d) return nothing;
-    const words = revealWords(d.name, d.model.reward, !!d.asked);
+    const words = revealWords(d.name, d.model.reward, !!d.asked, !!d.parent);
     const reduced = motionOf(this) === 'reduced';
     const pieces = reduced ? [] : confettiPieces(80, d.model.memberId.length * 7919 + d.model.reward.cost, d.color);
     return html`
       <div class="layer ${this._ready ? 'ready' : ''}" tabindex="-1" style="--member:${d.color}" role="dialog" aria-modal="true"
-        aria-label=${words.title} @pointerdown=${this._down} @click=${this._click} @keydown=${this._key}>
+        aria-label=${words.title} @pointerdown=${this._down} @click=${this._click} @keydown=${this._key} @keyup=${this._keyUp}>
         ${pieces.map(p => html`<span class="piece ${p.star ? 'star' : ''}" data-dx=${p.dx} data-dy=${p.dy} data-spin=${p.spin}
           data-delay=${p.delay} style="width:${p.size}px;height:${p.star ? p.size : Math.round(p.size * 0.6)}px;margin:${-p.size / 2}px 0 0 ${-p.size / 2}px;background:${p.color};font-size:${p.size + 6}px"
           aria-hidden="true">${p.star ? '★' : ''}</span>`)}
@@ -339,6 +355,7 @@ export class PvSurpriseReveal extends LitElement {
   private _arrive(): void {
     if (this._ready) return;
     this._ready = true;
+    this._pressGuard.arm();
     void this.updateComplete.then(() => this._q<HTMLButtonElement>('.ask')?.focus());
   }
 
@@ -369,16 +386,25 @@ export class PvSurpriseReveal extends LitElement {
   }
 
   private _key = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') {
+    const does = revealKey(event.key, 'down', this._ready, this._held, event.repeat);
+    if (does === 'later') {
       event.preventDefault();
       this._choose('later');
-    } else if (!this._ready && (event.key === ' ' || event.key === 'Enter')) {
+    } else if (does === 'skip') {
       event.preventDefault();
+      this._held = event.key;
       this._skip();
+    } else if (does === 'swallow') {
+      event.preventDefault();
     } else if (event.key === 'Tab') {
       if (this._ready) trapTab(this.renderRoot as ShadowRoot, event);
       else event.preventDefault();
     }
+  };
+
+  private _keyUp = (event: KeyboardEvent): void => {
+    if (revealKey(event.key, 'up', this._ready, this._held) === 'swallow') event.preventDefault();
+    if (event.key === this._held) this._held = null;
   };
 
   private _choose(choice: 'ask' | 'later'): void {

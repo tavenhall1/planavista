@@ -9,7 +9,7 @@ import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
-import { creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
+import { actingParent, creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
@@ -594,7 +594,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     // An ask already waiting (or on its way) shows as waiting, not a second Ask for it (review B3).
     const asked = !!board?.requests.some(r => r.kind === 'redemption' && r.member === memberId && r.reward === reward.id)
       || this._asking.some(a => a.member === memberId && a.reward === reward.id);
-    reveal.detail = { ...detail, sound: !!board?.settings.sound, asked };
+    // A parent's own ask is their answer: the button says it gives it at once (round 3, r3b I4).
+    const parent = actingParent(this.household, this.session)?.parent === true;
+    reveal.detail = { ...detail, sound: !!board?.settings.sound, asked, parent };
     reveal.addEventListener('pv-reveal-choice', event => {
       if ((event as CustomEvent<{ choice: string }>).detail.choice !== 'ask') return;
       const member = this.household?.members.find(m => m.id === detail.model.memberId);

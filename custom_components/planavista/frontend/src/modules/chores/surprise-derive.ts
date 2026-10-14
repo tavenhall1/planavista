@@ -42,9 +42,30 @@ export function surpriseWords(name: string, may: boolean, young: boolean): { tit
 }
 
 /** The reveal's words and the reward's own button; while an ask waits, it says so and can't be pressed (review B3). */
-export function revealWords(name: string, reward: Reward, asked = false): { title: string; reward: string; button: string; asked: boolean } {
-  const button = asked ? '⏳ Waiting for approval' : reward.needs_ok ? '🙋 Ask for it' : '🎉 Get it';
+export function revealWords(
+  name: string, reward: Reward, asked = false, parent = false,
+): { title: string; reward: string; button: string; asked: boolean } {
+  // A parent's own ask is their answer, so on a parent's screen the button gives it at once (round 3, r3b I4).
+  const button = asked ? '⏳ Waiting for approval' : reward.needs_ok && !parent ? '🙋 Ask for it' : '🎉 Get it';
   return { title: `${name}, you did it!`, reward: reward.name, button, asked };
+}
+
+/**
+ * What a key does on the reveal (round 3, r3b I2): Escape is Later at any
+ * time; Space or Enter skips to the end while it plays. The key that skipped
+ * (`held`) presses nothing once the buttons are there: Ask for it takes focus
+ * as they arrive, so the same key's keyup (Space) or its repeats (Enter)
+ * would press it.
+ */
+export function revealKey(
+  key: string, phase: 'down' | 'up', ready: boolean, held: string | null, repeat = false,
+): 'later' | 'skip' | 'swallow' | null {
+  const press = key === ' ' || key === 'Enter';
+  if (phase === 'up') return press && key === held ? 'swallow' : null;
+  if (key === 'Escape') return 'later';
+  if (!press) return null;
+  if (!ready) return 'skip';
+  return repeat || key === held ? 'swallow' : null;
 }
 
 /**

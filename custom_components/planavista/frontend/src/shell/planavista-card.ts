@@ -143,7 +143,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       cardTheme: this._config?.theme,
       sun: sunOf(this.hass?.states as never),
       haDark: !!(this.hass as unknown as { themes?: { darkMode?: boolean } } | undefined)?.themes?.darkMode,
-      overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || !!this._flow || this._moduleOverlay,
+      // The goal's reveal too: an automatic switch would play its view transition over it (round 3).
+      overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || !!this._flow || this._moduleOverlay || !!this._fullscreen,
     }),
     async () => {
       await this.updateComplete;
