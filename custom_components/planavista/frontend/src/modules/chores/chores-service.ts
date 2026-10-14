@@ -36,6 +36,9 @@ export function refusalText(entry: QueuedCheckoff, code: string): string {
   // Changed on another screen (round 3).
   if (code === 'unknown_chore') return `${did}: it was taken off the plan.`;
   if (code === 'not_assigned') return `${did}: it was taken off their list.`;
+  if (code === 'chore_changed') return `${did}: it changed on another screen.`;
+  if (code === 'unknown_member') return `${did}: that person left the household.`;
+  if (code === 'planned_later') return `${did}: it's planned for a later day.`;
   if (code === 'pin_required' || code === 'parent_mode_required') return `${did}. The PIN timed out, so hold it again.`;
   // Someone else's PIN is open on this screen (review).
   if (code === 'other_pin_required') return `${did}. It needs its owner's PIN or a parent's.`;

@@ -163,10 +163,15 @@ def _item(
         # Changed on another screen (round 3, r3c C1): say what happened, not that the day ended.
         elif parsed and activity is None:
             send_refusal(connection, msg, "unknown_chore", MESSAGES["unknown_chore"])
+        elif parsed and member is None:
+            send_refusal(connection, msg, "unknown_member", MESSAGES["unknown_member"])
         elif activity is not None and member is not None and member["id"] not in activity.get("assignees", []):
             send_refusal(connection, msg, "not_assigned", f"{activity['name']} isn't on {member['name']}'s list anymore.")
-        else:
+        elif not parsed or engine.period_over(msg["occurrence"], now):
             send_refusal(connection, msg, "period_closed", "The day had ended.")
+        else:
+            # Its day or week still runs: the chore changed (off the board, other days, finished) (round 4).
+            send_refusal(connection, msg, "chore_changed", "That chore changed on another screen.")
     return item
 
 

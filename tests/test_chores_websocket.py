@@ -110,6 +110,18 @@ async def test_a_chore_taken_off_the_plan_says_so(hass: HomeAssistant, chores: A
         assert gone["error"] == {"code": "unknown_chore", "message": "That chore isn't in the plan."}
 
 
+@pytest.mark.parametrize("change", [{"on_board": False}, {"minimum": {"hours": 0.5, "per": "week"}, "days": ["fri"]}])
+async def test_a_chore_changed_elsewhere_says_so_while_its_week_lasts(
+    hass: HomeAssistant, chores: Any, hass_ws_client: Any, change: dict
+) -> None:
+    """Round 4 (r4a A1): Show on the board turned off, or its days changed, said "The day had ended." midweek."""
+    admin = await hass_ws_client(hass)
+    assert (await ws_command(admin, {"type": "planavista/chores/activity/save", "activity_id": "take_out_the_trash",
+                                     "activity": change}))["success"]
+    reply = await ws_command(admin, {"type": "planavista/chores/complete", "occurrence": TRASH})
+    assert reply["error"] == {"code": "chore_changed", "message": "That chore changed on another screen."}
+
+
 async def test_reviews_need_parent_mode_on_a_shared_screen(hass: HomeAssistant, kitchen: Any, chores: Any) -> None:
     await ws_command(kitchen, {"type": "planavista/chores/complete", "occurrence": FISH})
     [request] = chores.engine.open_requests()

@@ -681,6 +681,29 @@ class ChoresEngine:
                     return item
         return None
 
+    def period_over(self, key: str, now: datetime) -> bool:
+        """Whether an occurrence's time has run out: its day, its week, or its repeat's due (round 4).
+
+        A Once chore's time never runs out by itself.
+        """
+        parsed = parse_key(key)
+        if parsed is None:
+            return True
+        kind, _, value = parsed[2].partition(":")
+        try:
+            day = date.fromisoformat(value)
+        except ValueError:
+            return kind != "once"
+        today = self.today(now)
+        if kind == "day":
+            return day < today
+        if kind == "week":
+            return self.clock.week_end(day) <= today
+        activity = self.activity(parsed[0])
+        if kind == "rep" and activity is not None and activity.get("schedule") == "repeats":
+            return self.generator()._repeat(activity, parsed[1], day).due <= now
+        return kind == "rep" and day < today
+
     def planned_later(self, key: str, now: datetime) -> date | None:
         """The later day an occurrence is planned for, when it doesn't show today (round 1)."""
         planned = self._index().overrides.get(key, {}).get("planned_day")

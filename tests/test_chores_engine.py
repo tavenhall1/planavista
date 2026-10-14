@@ -512,3 +512,13 @@ def test_a_chore_someone_who_isnt_a_parent_added_waits_for_a_parent() -> None:
     assert engine.balance("casey") == 0
     engine.review(at(10, 14, 9), request_id=out.data["completion"], allow=True, by="alex")
     assert engine.balance("casey") == 1
+
+def test_an_occurrences_time_runs_out_with_its_day_its_week_or_its_repeat() -> None:
+    """Round 4 (r4a A1): only then does a check-off that finds nothing say "The day had ended."."""
+    engine = sample_engine()
+    assert engine.period_over("feed_the_fish|dana|day:2026-10-12|0", SCENE) is True
+    assert engine.period_over("feed_the_fish|dana|day:2026-10-13|0", SCENE) is False
+    assert engine.period_over("take_out_the_trash|casey|week:2026-10-12|0", SCENE) is False
+    assert engine.period_over("take_out_the_trash|casey|week:2026-10-05|0", SCENE) is True
+    assert engine.period_over("pack_for_camp|casey|once|0", SCENE) is False
+    assert engine.period_over("not a key", SCENE) is True
