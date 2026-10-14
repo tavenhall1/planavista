@@ -116,7 +116,18 @@ def _surprises(value: object) -> dict[str, dict[str, Any]]:
         opened = entry.get("opened")
         if opened is not None and not isinstance(opened, str):
             continue
-        kept[member] = dict(entry)
+        kept[member] = surprise = dict(entry)
+        for flag in ("away", "spent"):
+            if surprise.get(flag) is not True:
+                surprise.pop(flag, None)
+        earlier = {
+            rid: dict(seen) for rid, seen in (entry.get("earlier") or {}).items()
+            if isinstance(rid, str) and isinstance(seen, Mapping) and isinstance(seen.get("wrapped"), str)
+            and (seen.get("opened") is None or isinstance(seen.get("opened"), str))
+        } if isinstance(entry.get("earlier"), Mapping) else {}
+        surprise.pop("earlier", None)
+        if earlier:
+            surprise["earlier"] = earlier
     return kept
 
 

@@ -1717,6 +1717,11 @@ class ChoresEngine:
         redemption["state"] = "given"
         redemption["review"] = {"by": by, "at": self._stamp(at), "note": None, "source": source}
         self._ledger(redemption["member"], -int(redemption["cost"]), "redeemed", at, ref=redemption["id"], by=by)
+        # Stars spent: once the goal is out of reach, reaching it again is a new surprise (r3b I3).
+        surprise = self.rewards.setdefault("surprises", {}).get(redemption["member"])
+        if surprise is not None:
+            surprise["spent"] = True
+            surprise.pop("earlier", None)
         reward = self.reward(redemption["reward"])
         out.events.append(ChoreEvent("redeemed", redemption["member"], {
             "reward": redemption["reward"], "reward_name": reward["name"] if reward else redemption["reward"],
@@ -1783,11 +1788,15 @@ class ChoresEngine:
         return reward
 
     def settle_surprises(self, now: datetime) -> Outcome:
-        """Wrap a surprise for each member whose stars reach their goal; take away the rest.
+        """Wrap a surprise for each member whose stars reach their goal; set the rest aside.
 
-        A surprise for the current goal stays as it is; one whose goal is out of
-        reach (spent, changed, gone) goes, opened or not, so saving up again
-        wraps a new one. Each wrap fires `goal_reached` once.
+        A goal reached is celebrated once until stars are spent (round 3, r3b I3):
+        a surprise whose goal slips out of reach (an uncheck, a price raised, the
+        goal changed) is set aside (`away`) and comes back as it was, opened or
+        not, with no new `goal_reached`; switching goals keeps the earlier goals'
+        surprises (`earlier`) for the same reason. Stars spent (`spent`, see
+        `_give`) clear the slate once the goal is out of reach, so saving up again
+        wraps a new one. A deleted reward's surprise goes for good.
         """
         surprises: dict[str, dict[str, Any]] = self.rewards.setdefault("surprises", {})
         out = Outcome()
@@ -1795,19 +1804,39 @@ class ChoresEngine:
             member_id = member["id"]
             reward = self._goal_reward(member)
             have = surprises.get(member_id)
-            if reward is not None and self.balance(member_id) >= int(reward["cost"]):
-                if have is not None and have["reward"] == reward["id"]:
+            if reward is None or self.balance(member_id) < int(reward["cost"]):
+                if have is None:
                     continue
-                surprises[member_id] = {
-                    "reward": reward["id"], "cost": int(reward["cost"]), "wrapped": self._stamp(now), "opened": None,
+                if have.get("spent") or self.reward(have["reward"]) is None:
+                    del surprises[member_id]
+                    out.changed.add("rewards")
+                elif not have.get("away"):
+                    have["away"] = True
+                    out.changed.add("rewards")
+                continue
+            if have is not None and have["reward"] == reward["id"]:
+                if have.pop("away", None):
+                    out.changed.add("rewards")
+                continue
+            earlier: dict[str, dict[str, Any]] = {}
+            if have is not None and not have.get("spent"):
+                earlier = {
+                    rid: seen for rid, seen in have.get("earlier", {}).items() if self.reward(rid) is not None
                 }
+                earlier[have["reward"]] = {"wrapped": have["wrapped"], "opened": have.get("opened")}
+            back = earlier.pop(reward["id"], None)
+            record: dict[str, Any] = {
+                "reward": reward["id"], "cost": int(reward["cost"]),
+                "wrapped": back["wrapped"] if back else self._stamp(now), "opened": back["opened"] if back else None,
+            }
+            if earlier:
+                record["earlier"] = earlier
+            surprises[member_id] = record
+            out.changed.add("rewards")
+            if back is None:
                 out.events.append(ChoreEvent("goal_reached", member_id, {
                     "member": member_id, "reward": reward["id"], "reward_name": reward["name"], "stars": int(reward["cost"]),
                 }))
-                out.changed.add("rewards")
-            elif have is not None:
-                del surprises[member_id]
-                out.changed.add("rewards")
         for member_id in set(surprises) - {m["id"] for m in self.members}:
             del surprises[member_id]
             out.changed.add("rewards")
@@ -1816,7 +1845,7 @@ class ChoresEngine:
     def open_surprise(self, now: datetime, *, member: str, by: str) -> Outcome:
         """Open a member's waiting surprise; opening it again answers the same and changes nothing."""
         surprise = self.rewards.setdefault("surprises", {}).get(member)
-        if surprise is None:
+        if surprise is None or surprise.get("away"):
             raise ChoreError("no_surprise")
         if surprise.get("opened"):
             return Outcome("opened")
@@ -1827,7 +1856,7 @@ class ChoresEngine:
     def _surprise_view(self, member_id: str) -> dict[str, Any] | None:
         """What the board shows of a member's surprise."""
         surprise = self.rewards.get("surprises", {}).get(member_id)
-        if surprise is None:
+        if surprise is None or surprise.get("away"):
             return None
         return {"reward": surprise["reward"], "opened": bool(surprise.get("opened"))}
 

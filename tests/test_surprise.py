@@ -88,6 +88,112 @@ def test_it_goes_away_when_the_goal_is_out_of_reach_and_comes_back_when_saved_ag
     assert engine.rewards["surprises"]["dana"]["opened"] is None
 
 
+def _view(engine, member: str = "dana"):
+    return engine.board(SCENE)["members"][member]["surprise"]
+
+
+def _dip_and_recover(engine, how: str) -> None:
+    """Take Dana's goal out of reach and give it back, the ways round 3 found (r3b I3)."""
+    if how == "uncheck":
+        engine.undo(SCENE, key=FISH, by="alex", source="tablet")
+        assert engine.settle_surprises(SCENE).events == []
+        assert _view(engine) is None
+        engine.complete(SCENE, key=FISH, by="alex", source="tablet", done_by="dana", approve=True)
+    elif how == "price":
+        engine.save_reward({"cost": 9}, reward_id="ice_cream_trip")
+        assert engine.settle_surprises(SCENE).events == []
+        assert _view(engine) is None
+        engine.save_reward({"cost": 3}, reward_id="ice_cream_trip")
+    elif how == "stars":
+        engine.award_stars(SCENE, member="dana", stars=-1, reason="Oops", by="alex")
+        assert engine.settle_surprises(SCENE).events == []
+        assert _view(engine) is None
+        engine.award_stars(SCENE, member="dana", stars=1, reason="Sorry", by="alex")
+    else:  # the goal changed to one out of reach, then back
+        engine.set_members(_with_goal("zoo_day"))
+        assert engine.settle_surprises(SCENE).events == []
+        assert _view(engine) is None
+        engine.set_members(_with_goal("ice_cream_trip"))
+
+
+@pytest.mark.parametrize("how", ["uncheck", "price", "stars", "goal"])
+def test_an_opened_surprise_stays_opened_through_a_dip(how: str) -> None:
+    engine = _engine()
+    engine.save_reward({"name": "Zoo day", "icon": "🦁", "cost": 30})
+    engine.award_stars(SCENE, member="dana", stars=2, reason="Bonus", by="alex")
+    engine.complete(SCENE, key=FISH, by="alex", source="tablet", done_by="dana", approve=True)
+    assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    _dip_and_recover(engine, how)
+    out = engine.settle_surprises(SCENE)
+    assert (out.events, _view(engine)) == ([], {"reward": "ice_cream_trip", "opened": True})
+
+
+@pytest.mark.parametrize("how", ["uncheck", "price", "stars", "goal"])
+def test_an_unopened_surprise_comes_back_without_telling_the_parents_again(how: str) -> None:
+    engine = _engine()
+    engine.save_reward({"name": "Zoo day", "icon": "🦁", "cost": 30})
+    engine.award_stars(SCENE, member="dana", stars=2, reason="Bonus", by="alex")
+    engine.complete(SCENE, key=FISH, by="alex", source="tablet", done_by="dana", approve=True)
+    engine.settle_surprises(SCENE)
+    _dip_and_recover(engine, how)
+    out = engine.settle_surprises(SCENE)
+    assert (out.events, _view(engine)) == ([], {"reward": "ice_cream_trip", "opened": False})
+    assert engine.rewards["surprises"]["dana"]["wrapped"] == "2026-10-13T16:10:00-05:00"
+
+
+def test_switching_between_goals_in_reach_wraps_each_once() -> None:
+    engine = _engine()
+    engine.save_reward({"name": "Sticker", "icon": "⭐", "cost": 2})
+    engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")
+    assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    engine.set_members(_with_goal("sticker"))
+    assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
+    assert _view(engine) == {"reward": "sticker", "opened": False}
+    engine.set_members(_with_goal("ice_cream_trip"))
+    assert engine.settle_surprises(SCENE).events == []
+    assert _view(engine) == {"reward": "ice_cream_trip", "opened": True}
+    engine.set_members(_with_goal("sticker"))
+    assert engine.settle_surprises(SCENE).events == []
+    assert _view(engine) == {"reward": "sticker", "opened": False}
+
+
+def test_spending_stars_clears_the_slate_for_every_goal() -> None:
+    engine = _engine()
+    engine.save_reward({"name": "Sticker", "icon": "⭐", "cost": 2})
+    engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    engine.set_members(_with_goal("sticker"))
+    engine.settle_surprises(SCENE)
+    engine.set_members(_with_goal("ice_cream_trip"))
+    engine.settle_surprises(SCENE)
+    # Spending something else that leaves the goal covered keeps the surprise as it is.
+    engine.award_stars(SCENE, member="dana", stars=2, reason="Bonus", by="alex")
+    engine.redeem(SCENE, member="dana", reward="sticker", by="alex", source="tablet")
+    assert engine.settle_surprises(SCENE).events == []
+    assert _view(engine) == {"reward": "ice_cream_trip", "opened": True}
+    # Spending that takes the goal out of reach: the next time it's reached is a new surprise, for either goal.
+    engine.redeem(SCENE, member="dana", reward="ice_cream_trip", by="alex", source="tablet")
+    assert engine.settle_surprises(SCENE).events == []
+    assert ("dana" in engine.rewards["surprises"], _view(engine)) == (False, None)
+    engine.award_stars(SCENE, member="dana", stars=2, reason="Bonus", by="alex")
+    engine.set_members(_with_goal("sticker"))
+    assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
+
+
+def test_a_surprise_out_of_reach_cant_be_opened() -> None:
+    engine = _engine()
+    engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.award_stars(SCENE, member="dana", stars=-1, reason="Oops", by="alex")
+    engine.settle_surprises(SCENE)
+    with pytest.raises(ChoreError) as err:
+        engine.open_surprise(SCENE, member="dana", by="dana")
+    assert err.value.code == "no_surprise"
+
+
 @pytest.mark.parametrize("change", ["goal_cleared", "goal_changed", "reward_deleted", "not_for_them", "stars_taken", "stars_off"])
 def test_an_unopened_surprise_goes_away_quietly(change: str) -> None:
     engine = _engine()
@@ -107,7 +213,9 @@ def test_an_unopened_surprise_goes_away_quietly(change: str) -> None:
     else:
         engine.award_stars(SCENE, member="dana", stars=-1, reason="Oops", by="alex")
     out = engine.settle_surprises(SCENE)
-    assert (out.events, "dana" in engine.rewards["surprises"]) == ([], False)
+    assert (out.events, _view(engine)) == ([], None)
+    # A deleted reward can't come back, so its surprise goes for good.
+    assert ("dana" in engine.rewards["surprises"]) is (change != "reward_deleted")
 
 
 def test_a_raised_price_still_covered_keeps_it() -> None:
@@ -148,6 +256,12 @@ def test_the_store_keeps_good_surprises_and_drops_bad_ones() -> None:
     good = {"reward": "ice_cream_trip", "cost": 3, "wrapped": "2026-10-13T16:10:00-05:00", "opened": None}
     doc = normalize_rewards({"surprises": {"dana": good, "casey": "nope", "alex": {"reward": 4}, 7: good}, "future": 1})
     assert doc["surprises"] == {"dana": good}
+    # Set aside and earlier goals (r3b I3): bad parts are dropped, the surprise kept.
+    earlier = {"sticker": {"wrapped": "2026-10-12T09:00:00-05:00", "opened": None}}
+    mixed = dict(good, away="yes", spent=1, earlier={**earlier, "zoo": "nope", "kite": {"opened": None}})
+    assert normalize_rewards({"surprises": {"dana": mixed}})["surprises"]["dana"] == dict(good, earlier=earlier)
+    kept = dict(good, away=True, spent=True, earlier=earlier)
+    assert normalize_rewards({"surprises": {"dana": kept}})["surprises"]["dana"] == kept
     assert doc["future"] == 1
     assert normalize_rewards({})["surprises"] == {}
 
@@ -300,4 +414,4 @@ async def test_diagnostics_count_the_surprises(hass, chores, mock_config_entry) 
     await _goal(hass, chores)
     await _bonus(hass, chores)
     found = await async_get_config_entry_diagnostics(hass, mock_config_entry)
-    assert found["chores"]["surprises"] == {"waiting": 1, "opened": 0}
+    assert found["chores"]["surprises"] == {"waiting": 1, "opened": 0, "set_aside": 0}
