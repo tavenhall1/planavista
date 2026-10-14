@@ -20,29 +20,60 @@ interface Preset {
  * @fires color-change - { color: string, colorLight: string }
  */
 export class PvColorSwatchPicker extends LitElement {
+  /**
+   * People's and the theme's colors: 24 standard colors in color-wheel order,
+   * then neutrals (the owner, 2026-10-14). tests/fixtures/palette.json holds the
+   * same table for the backend (const.py COLOR_PRESETS).
+   */
   static readonly PRESETS: Preset[] = [
-    // Palette 1: Earth & Ocean tones
-    { name: 'Ink Black',        color: '#001219', light: '#A6ACAF' },
-    { name: 'Dark Teal',        color: '#005F73', light: '#A6C7CE' },
-    { name: 'Dark Cyan',        color: '#0A9396', light: '#A9D9DA' },
-    { name: 'Pearl Aqua',       color: '#94D2BD', light: '#DAEFE8' },
-    { name: 'Wheat',            color: '#E9D8A6', light: '#F7F1E0' },
-    { name: 'Golden Orange',    color: '#EE9B00', light: '#F9DCA6' },
-    { name: 'Burnt Caramel',    color: '#CA6702', light: '#ECCAA6' },
-    { name: 'Rusty Spice',      color: '#BB3E03', light: '#E7BBA7' },
-    { name: 'Oxidized Iron',    color: '#AE2012', light: '#E3B1AC' },
-    { name: 'Brown Red',        color: '#9B2226', light: '#DCB2B3' },
-    // Palette 2: Warm & Vivid tones
-    { name: 'Strawberry Red',   color: '#F94144', light: '#FDBDBE' },
-    { name: 'Pumpkin Spice',    color: '#F3722C', light: '#FBCEB5' },
-    { name: 'Carrot Orange',    color: '#F8961E', light: '#FDDAB0' },
-    { name: 'Atomic Tangerine', color: '#F9844A', light: '#FDD4C0' },
-    { name: 'Tuscan Sun',       color: '#F9C74F', light: '#FDEBC1' },
-    { name: 'Willow Green',     color: '#90BE6D', light: '#D8E8CC' },
-    { name: 'Seaweed',          color: '#43AA8B', light: '#BDE1D6' },
-    { name: 'Ocean Cyan',       color: '#4D908E', light: '#C1D8D7' },
-    { name: 'Blue Slate',       color: '#577590', light: '#C4CFD8' },
-    { name: 'Cerulean',         color: '#277DA1', light: '#B3D2DE' },
+    { name: 'Red',       color: '#D93A40', light: '#F2BABC' },
+    { name: 'Coral',     color: '#FF7B6E', light: '#FFD1CC' },
+    { name: 'Orange',    color: '#F26A10', light: '#FACBAB' },
+    { name: 'Amber',     color: '#FFB224', light: '#FFE4B2' },
+    { name: 'Yellow',    color: '#F5D90A', light: '#FCF2A9' },
+    { name: 'Lime',      color: '#99D52A', light: '#DBF0B4' },
+    { name: 'Green',     color: '#2E9E52', light: '#B6DDC2' },
+    { name: 'Mint',      color: '#3CCB9A', light: '#BBEDDC' },
+    { name: 'Teal',      color: '#0D9EA8', light: '#AADDE1' },
+    { name: 'Cyan',      color: '#00A6D6', light: '#A6E0F1' },
+    { name: 'Sky',       color: '#5BBDF0', light: '#C6E8FA' },
+    { name: 'Blue',      color: '#1A72E0', light: '#AFCEF4' },
+    { name: 'Indigo',    color: '#3E5BD6', light: '#BBC6F1' },
+    { name: 'Violet',    color: '#6B4FD8', light: '#CBC1F1' },
+    { name: 'Purple',    color: '#9B48C2', light: '#DCBFEA' },
+    { name: 'Magenta',   color: '#B837B5', light: '#E6B9E5' },
+    { name: 'Pink',      color: '#EC5BAE', light: '#F8C6E3' },
+    { name: 'Rose',      color: '#C9286E', light: '#ECB4CC' },
+    { name: 'Brown',     color: '#9A6B47', light: '#DCCBBF' },
+    { name: 'Sand',      color: '#C8A57A', light: '#ECE0D0' },
+    { name: 'Slate',     color: '#5E7189', light: '#C7CDD6' },
+    { name: 'Gray',      color: '#8B8D98', light: '#D6D7DB' },
+    { name: 'Charcoal',  color: '#3A3D44', light: '#BABBBE' },
+    { name: 'Black',     color: '#17181A', light: '#AEAEAF' },
+  ];
+
+  /** The first 20 colors: still valid for people who have one, not offered. */
+  static readonly LEGACY: Preset[] = [
+    { name: 'Ink Black',         color: '#001219', light: '#A6ACAF' },
+    { name: 'Dark Teal',         color: '#005F73', light: '#A6C7CE' },
+    { name: 'Dark Cyan',         color: '#0A9396', light: '#A9D9DA' },
+    { name: 'Pearl Aqua',        color: '#94D2BD', light: '#DAEFE8' },
+    { name: 'Wheat',             color: '#E9D8A6', light: '#F7F1E0' },
+    { name: 'Golden Orange',     color: '#EE9B00', light: '#F9DCA6' },
+    { name: 'Burnt Caramel',     color: '#CA6702', light: '#ECCAA6' },
+    { name: 'Rusty Spice',       color: '#BB3E03', light: '#E7BBA7' },
+    { name: 'Oxidized Iron',     color: '#AE2012', light: '#E3B1AC' },
+    { name: 'Brown Red',         color: '#9B2226', light: '#DCB2B3' },
+    { name: 'Strawberry Red',    color: '#F94144', light: '#FDBDBE' },
+    { name: 'Pumpkin Spice',     color: '#F3722C', light: '#FBCEB5' },
+    { name: 'Carrot Orange',     color: '#F8961E', light: '#FDDAB0' },
+    { name: 'Atomic Tangerine',  color: '#F9844A', light: '#FDD4C0' },
+    { name: 'Tuscan Sun',        color: '#F9C74F', light: '#FDEBC1' },
+    { name: 'Willow Green',      color: '#90BE6D', light: '#D8E8CC' },
+    { name: 'Seaweed',           color: '#43AA8B', light: '#BDE1D6' },
+    { name: 'Ocean Cyan',        color: '#4D908E', light: '#C1D8D7' },
+    { name: 'Blue Slate',        color: '#577590', light: '#C4CFD8' },
+    { name: 'Cerulean',          color: '#277DA1', light: '#B3D2DE' },
   ];
 
   /** The currently selected primary color hex (e.g. "#4A90D9"). */

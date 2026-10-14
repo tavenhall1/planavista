@@ -6,7 +6,7 @@ import type { HouseholdApi } from '../../core/household-client';
 import type { SetupPatch } from '../../core/settings-registry';
 
 /** Four people's rings, three quarters closed: a hint of what's coming. */
-const RING_COLORS = ['#F94144', '#277DA1', '#43AA8B', '#F9C74F'];
+const RING_COLORS = ['#D93A40', '#1A72E0', '#2E9E52', '#FFB224'];
 
 const FEATURES: Array<[string, string, string]> = [
   ['👥', 'Everyone who lives here', 'Each person gets a color, even kids without a Home Assistant account.'],

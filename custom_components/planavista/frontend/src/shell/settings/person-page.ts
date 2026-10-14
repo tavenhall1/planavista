@@ -322,10 +322,17 @@ export class PvSettingsPerson extends LitElement {
 
   private _renderColor() {
     const taken = takenColors(this.household!.members, this._memberId ?? undefined);
+    // A color from before the palette grew (or from a file) stays shown, chosen, first (2026-10-14).
+    const current = PvColorSwatchPicker.PRESETS.some(p => p.color.toUpperCase() === this._draft.color.toUpperCase())
+      || !this._draft.color;
     return html`
       <fieldset class="field">
         <legend>Color</legend>
         <div class="swatches">
+          ${current ? nothing : html`
+            <button class="swatch" type="button" style="background:${this._draft.color}" aria-pressed="true"
+              aria-label="Current color"></button>
+          `}
           ${PvColorSwatchPicker.PRESETS.map(preset => {
             const owner = taken.get(preset.color.toUpperCase());
             const selected = this._draft.color.toUpperCase() === preset.color.toUpperCase();

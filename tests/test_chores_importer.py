@@ -186,7 +186,7 @@ def test_a_new_person_needs_an_age_group_before_anything_is_saved() -> None:
 def test_an_import_adds_people_and_updates_bedtimes_and_sleep() -> None:
     result = _plan()
     (dana,) = result["members_add"]
-    assert (dana["id"], dana["age_group"], dana["parent"], dana["color"]) == ("dana", "young_child", False, "#F94144")
+    assert (dana["id"], dana["age_group"], dana["parent"], dana["color"]) == ("dana", "young_child", False, "#C9286E")
     assert (dana["bedtime"], dana["sleep_hours"], dana["my_day"]) == ({"weeknight": "19:30", "weekend": "20:00"}, 10.5, "pictures")
     assert result["members_update"]["casey"] == {"bedtime": {"weeknight": "22:00", "weekend": "23:00"}, "sleep_hours": 9.0}
     assert result["summary"]["people_added"] == ["Dana"]
@@ -361,7 +361,7 @@ def test_plan_colors_come_in_as_the_nearest_free_palette_colors() -> None:
     parsed = read_file(json.dumps(plan))
     members = _household("Alex", "Blair", "Casey", "Dana")
     colors = {p["name"]: p["color"] for p in preview(parsed, members, [], [])["people"]}
-    assert (colors["Alex"], colors["Jordan"], colors["Sam"]) == (members[0]["color"], "#277DA1", "#4D908E")
+    assert (colors["Alex"], colors["Jordan"], colors["Sam"]) == (members[0]["color"], "#0D9EA8", "#5E7189")
     choices = {"people": {"p_jordan": {"age_group": "teen"}, "p_sam": {"age_group": "teen"}}}
     added = {m["name"]: m["color"] for m in plan_import(parsed, choices, members, [], [], {})["members_add"]}
-    assert added == {"Jordan": "#277DA1", "Sam": "#4D908E"}
+    assert added == {"Jordan": "#0D9EA8", "Sam": "#5E7189"}
