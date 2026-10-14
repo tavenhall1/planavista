@@ -61,6 +61,17 @@ export function announceEditor(page: HTMLElement, editor: PageEditor | null): vo
 }
 
 /** A page asks for a module's view (Open Dana's day): Settings closes and the card goes there. */
+/**
+ * How an editor's Cancel (or Settings leaving it) goes: at once without
+ * changes, after asking with them, and once what it edits was deleted on
+ * another screen, at once with the draft dropped, since nothing is left to
+ * keep it for (round 3: Cancel asked a question the deleted state never drew).
+ */
+export function editorExit(dirty: boolean, gone: boolean): 'leave' | 'ask' | 'drop' {
+  if (gone) return 'drop';
+  return dirty ? 'ask' : 'leave';
+}
+
 export const OPEN_TARGET = 'pv-page-open';
 
 /**

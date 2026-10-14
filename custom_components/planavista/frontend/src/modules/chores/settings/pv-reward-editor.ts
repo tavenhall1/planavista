@@ -7,7 +7,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { HouseholdView, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { POP_PAGE, announceEditor } from '../../../core/page-host';
+import { POP_PAGE, announceEditor, editorExit } from '../../../core/page-host';
 import { errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
@@ -67,8 +67,15 @@ export class PvRewardEditor extends LitElement {
     }
   }
 
+  /** Removed on another screen while open. */
+  private get _gone(): boolean {
+    return this._rewardId !== null && !!this._chores?.board() && !this._reward;
+  }
+
   confirmLeave(): Promise<boolean> {
-    if (!this._loaded || !rewardDirty(this._record)) return Promise.resolve(true);
+    const exit = editorExit(this._loaded && rewardDirty(this._record), this._gone);
+    if (exit === 'drop') this.drafts.delete(this._key);
+    if (exit !== 'ask') return Promise.resolve(true);
     this._notice = 'discard';
     return new Promise(resolve => {
       this._leave = resolve;
@@ -168,7 +175,7 @@ export class PvRewardEditor extends LitElement {
     const isNew = this._rewardId === null;
     const editor = {
       label: isNew ? 'Add' : 'Save',
-      ready: !(this._saving || (!isNew && !rewardDirty(this._record))),
+      ready: !(this._gone || this._saving || (!isNew && !rewardDirty(this._record))),
       save: () => void this._save(),
       cancel: () => this._cancel(),
     };
@@ -275,8 +282,13 @@ export class PvRewardEditor extends LitElement {
   }
 
   private _cancel(): void {
-    if (rewardDirty(this._record)) this._notice = 'discard';
-    else this._pop();
+    const exit = editorExit(rewardDirty(this._record), this._gone);
+    if (exit === 'ask') {
+      this._notice = 'discard';
+      return;
+    }
+    if (exit === 'drop') this.drafts.delete(this._key);
+    this._pop();
   }
 
   private async _save(): Promise<void> {

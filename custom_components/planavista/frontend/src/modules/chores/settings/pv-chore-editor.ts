@@ -9,7 +9,7 @@ import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { HouseholdView, Member, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
-import { PAGE_ERROR, POP_PAGE, announceEditor } from '../../../core/page-host';
+import { PAGE_ERROR, POP_PAGE, announceEditor, editorExit } from '../../../core/page-host';
 import { copyText } from '../../../core/clipboard';
 import { errorCode, errorMessage } from '../../../core/ws-api';
 import type { PlanaVistaData } from '../../../types';
@@ -111,9 +111,16 @@ export class PvChoreEditor extends LitElement {
     }
   }
 
+  /** Deleted on another screen while open. */
+  private get _gone(): boolean {
+    return this._choreId !== null && !!this._board && !this._activity;
+  }
+
   /** Settings asks before leaving a page with changes (spec 14.1). */
   confirmLeave(): Promise<boolean> {
-    if (!this._loaded || !isDirty(this._record)) return Promise.resolve(true);
+    const exit = editorExit(this._loaded && isDirty(this._record), this._gone);
+    if (exit === 'drop') this.drafts.delete(this._draftKey);
+    if (exit !== 'ask') return Promise.resolve(true);
     this._notice = 'discard';
     return new Promise(resolve => {
       this._leave = resolve;
@@ -308,7 +315,7 @@ export class PvChoreEditor extends LitElement {
     const isNew = this._choreId === null;
     const editor = {
       label: isNew ? 'Add' : 'Save',
-      ready: !(this._saving || (!isNew && !isDirty(this._record))),
+      ready: !(this._gone || this._saving || (!isNew && !isDirty(this._record))),
       save: () => void this._save(),
       cancel: () => this._cancel(),
     };
@@ -735,10 +742,12 @@ export class PvChoreEditor extends LitElement {
   }
 
   private _cancel(): void {
-    if (isDirty(this._record)) {
+    const exit = editorExit(isDirty(this._record), this._gone);
+    if (exit === 'ask') {
       this._notice = 'discard';
       return;
     }
+    if (exit === 'drop') this.drafts.delete(this._draftKey);
     this._pop();
   }
 
