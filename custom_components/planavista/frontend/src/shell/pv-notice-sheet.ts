@@ -25,7 +25,7 @@ export interface NoticeAction {
 export class PvNoticeSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._choose('cancel'));
-  private readonly _layer = new SheetLayer(this);
+  private readonly _layer = new SheetLayer(this, true);
   private readonly _pressGuard = new PressGuard(this);
   @property({ type: String }) heading = '';
   @property({ type: String }) body = '';
