@@ -217,9 +217,9 @@ describe('a step out that ends away from the card goes back to it', () => {
 // Round 2: after a step out ended, the browser's Back took the shared screen to Home Assistant's
 // Overview with kiosk mode on: no sidebar, no menu button, no card, and a reload kept it there.
 describe("kiosk mode keeps the screen on the card's dashboard", () => {
-  const onHome = (env: ReturnType<typeof fakeEnv>) => {
+  const onHome = (env: ReturnType<typeof fakeEnv>, topBar: 'hidden' | 'tabs' = 'hidden') => {
     const kiosk = new KioskController(env as KioskEnv);
-    kiosk.setView(view(true, true));
+    kiosk.setView(view(true, true, topBar));
     kiosk.cardShown('/wall-calendar/planavista');
     return kiosk;
   };
@@ -248,9 +248,21 @@ describe("kiosk mode keeps the screen on the card's dashboard", () => {
     expect(env.navigated).toEqual(['/wall-calendar/planavista']);
   });
 
-  it("stays on another view of the card's dashboard, while a card shows, during a step out, and with kiosk mode off", () => {
+  // Round 3 (r3a A6): with the top bar Hidden there are no tabs to leave a view by, so a
+  // screen on the card's dashboard's other view (Safari's edge swipe back) stayed stuck.
+  it("goes back from another view of the card's dashboard when the top bar is hidden", () => {
+    const env = fakeEnv();
+    const kiosk = onHome(env);
+    kiosk.cardGone();
+    env.at = '/wall-calendar/photos';
+    kiosk.tick(0);
+    kiosk.tick(3_000);
+    expect(env.navigated).toEqual(['/wall-calendar/planavista']);
+  });
+
+  it("stays on another view of the card's dashboard with tabs, while a card shows, during a step out, and with kiosk mode off", () => {
     const tabs = fakeEnv();
-    const kiosk = onHome(tabs);
+    const kiosk = onHome(tabs, 'tabs');
     kiosk.cardGone();
     tabs.at = '/wall-calendar/photos';
     kiosk.tick(0);
