@@ -51,6 +51,16 @@ describe('rewardCards', () => {
     expect(cards[2].canRedeem).toBe(false);
   });
 
+  // Round 4 (r4a A4): the catalog tagged "Dana's goal" while her balance said "No goal yet".
+  it("tags a goal only where it counts as one, as My day does", () => {
+    const goalOf = (who: string[], stars = true) => rewardCards(
+      { ...B, rewards: [reward('x', 5, who)] }, PEOPLE.map(m => ({ ...m, goal: 'x', stars: m.id === 'dana' ? stars : m.stars })),
+    )[0].goals.map(m => m.id);
+    expect(goalOf([])).toEqual(PEOPLE.filter(m => m.stars).map(m => m.id));
+    expect(goalOf(['casey'])).not.toContain('dana');
+    expect(goalOf([], false)).not.toContain('dana');
+  });
+
   it('keeps a reward to the people named on it', () => {
     expect(eligible(reward('x', 5, ['dana']), PEOPLE).map(m => m.id)).toEqual(['dana']);
     expect(eligible(reward('x', 5), PEOPLE).map(m => m.id)).toEqual(['casey', 'dana']);

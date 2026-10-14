@@ -156,11 +156,15 @@ export interface GoalModel {
  * The engine's rule (_goal_reward): only a reward that is theirs, for someone who earns stars.
  */
 export function goalFor(member: Member, entry: BoardMember, rewards: Reward[]): GoalModel | null {
-  const goal = typeof member.goal === 'string' ? member.goal : null;
-  const reward = goal && member.stars ? rewards.find(r => r.id === goal) : undefined;
-  if (!reward || (reward.who.length > 0 && !reward.who.includes(member.id))) return null;
+  const reward = rewards.find(r => isGoalOf(member, r));
+  if (!reward) return null;
   const have = entry.stars;
   return { reward, have, need: Math.max(0, reward.cost - have), progress: reward.cost > 0 ? Math.min(1, have / reward.cost) : 1 };
+}
+
+/** Whether `reward` is `member`'s goal: theirs to get, and they earn stars (the engine's _goal_reward). */
+export function isGoalOf(member: Member, reward: Reward): boolean {
+  return member.goal === reward.id && !!member.stars && (reward.who.length === 0 || reward.who.includes(member.id));
 }
 
 export type { FairShare };
