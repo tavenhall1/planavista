@@ -10,7 +10,7 @@ import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { keyed } from 'lit/directives/keyed.js';
-import { sheetKey } from './sheet-key';
+import { sheetKey, sheetName } from './sheet-key';
 import { actingParent, creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
@@ -587,6 +587,21 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const model = board && member ? surpriseOf(memberId, board.members[memberId], board.rewards) : null;
     if (!model || !member) return;
     this._reveal({ model, name: member.name, color: this._colorOf(member), from: null });
+  }
+
+  /**
+   * What it has open, for the card Home Assistant makes again after a reconnect
+   * (core/handoff.ts). A sheet isn't reopened: parent mode went with the connection,
+   * so it would ask for a PIN nobody asked for; the new card says what closed (round 4).
+   */
+  handoff(): { closed: string } | undefined {
+    return this._sheet ? { closed: sheetName(this._sheet) } : undefined;
+  }
+
+  resume(note: unknown): void {
+    const closed = (note as { closed?: unknown } | null)?.closed;
+    if (typeof closed !== 'string') return;
+    this.showToast({ id: `handoff-${Date.now()}`, text: `The connection dropped, so ${closed} closed. Try again.` });
   }
 
   /** The reveal on screen, whose button follows this screen's session (round 4). */

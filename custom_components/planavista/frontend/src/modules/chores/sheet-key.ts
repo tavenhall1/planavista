@@ -15,6 +15,29 @@ export interface SheetLike {
  * close fired through the reused element); the same sheet changing (busy, its
  * history loading) keeps its element and whatever was typed in it.
  */
+/** What a sheet is called in "The connection dropped, so ... closed." (round 4). */
+export function sheetName(sheet: SheetLike): string {
+  switch (sheet.kind) {
+    case 'quick_add':
+      return 'New chore';
+    case 'inbox':
+      return 'the approvals';
+    case 'options':
+      return "the chore's options";
+    case 'reward':
+      return 'the reward';
+    case 'day':
+      return "the day's chores";
+    case 'people':
+      return 'the list of people';
+    case 'delete':
+    case 'delete_reward':
+      return 'the question';
+    default:
+      return 'that';
+  }
+}
+
 export function sheetKey(sheet: SheetLike | null): string {
   if (!sheet) return '';
   switch (sheet.kind) {

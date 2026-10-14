@@ -555,7 +555,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     super.willUpdate(changed);
     if (changed.has('layout')) this.toggleAttribute('grid', this.layout === 'grid');
     // Home Assistant makes the card again when the connection comes back (round 3).
-    if (changed.has('hass') && this.hass && this.hass.connected === false) PAGE_HANDOFFS.dropped(Date.now());
+    if (changed.has('hass') && this.hass) {
+      if (this.hass.connected === false) PAGE_HANDOFFS.dropped(Date.now());
+      else PAGE_HANDOFFS.reconnected(Date.now());
+    }
     const opened = changed as Map<string, unknown>;
     if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
       this._overlayLayer = nextSheetLayer();

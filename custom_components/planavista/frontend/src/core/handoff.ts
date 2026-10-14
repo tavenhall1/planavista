@@ -8,9 +8,10 @@ import type { Toast } from './pv-toast';
  * card that leaves the page soon after the connection dropped leaves a note
  * by its place (core/place.ts placeKey); the new card for the same place
  * takes it as it starts. A card that leaves with the connection never having
- * dropped (a dashboard edited, a page left) leaves nothing.
+ * dropped (a dashboard edited, a page left) leaves nothing, nor does one that
+ * leaves long after the connection came back (round 4).
  */
-export const DROP_MS = 10 * 60_000;
+export const REBUILD_MS = 30_000;
 export const TAKE_MS = 15_000;
 
 export interface Handoff {
@@ -23,18 +24,27 @@ export interface Handoff {
 }
 
 export class Handoffs {
-  private _dropped: number | null = null;
+  private _down = false;
+  private _back: number | null = null;
   private _notes = new Map<string, { note: Handoff; at: number }>();
 
   /** The connection dropped. */
-  dropped(now: number): void {
-    this._dropped = now;
+  dropped(_now: number): void {
+    this._down = true;
+  }
+
+  /** The connection is back: Home Assistant makes its cards again within moments. */
+  reconnected(now: number): void {
+    if (!this._down) return;
+    this._down = false;
+    this._back = now;
   }
 
   /** A card leaves the page with `note` open. */
   leave(key: string, note: Handoff, now: number): void {
     const open = note.pin || note.toast !== null || Object.keys(note.modules).length > 0;
-    if (!open || this._dropped === null || now - this._dropped > DROP_MS) return;
+    const rebuild = this._down || (this._back !== null && now - this._back <= REBUILD_MS);
+    if (!open || !rebuild) return;
     this._notes.set(key, { note, at: now });
   }
 
