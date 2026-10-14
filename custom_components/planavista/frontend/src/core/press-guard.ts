@@ -10,6 +10,8 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit';
  *
  * A real tap (a click with `detail` 1 or more) counts only when a pointerdown
  * began inside after it appeared, and not within `PRESS_GRACE_MS` of that.
+ * A tap inside that window starts it over, so a burst of taps (a child's
+ * triple tap) counts only once it pauses (round 4).
  * Keyboard and programmatic clicks (`detail` 0) always count. The backdrop's
  * own rule (core/backdrop.ts) still decides whether a tap outside closes it.
  */
@@ -45,7 +47,9 @@ export class PressGuard implements ReactiveController {
   }
 
   private _down = (): void => {
-    this._pressed = this.now() - this._since >= PRESS_GRACE_MS;
+    const now = this.now();
+    this._pressed = now - this._since >= PRESS_GRACE_MS;
+    if (!this._pressed) this._since = now;
   };
 
   private _click = (event: Event): void => {

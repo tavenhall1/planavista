@@ -58,6 +58,23 @@ describe('a sheet or toast ignores the tap of a finger that went down before it 
     expect(clicks).toEqual([]);
   });
 
+  // Round 4 (r4b B1): a child's triple tap (one tap every 190 ms) skipped the reveal, then its
+  // third tap, 380 ms after the buttons came, pressed Get it and spent the stars.
+  it('a burst of taps keeps starting it over, so only a tap after a pause counts', () => {
+    const { host, guard, clicks, advance } = setup();
+    guard.arm();
+    for (let i = 0; i < 4; i++) {
+      advance(190);
+      tap(host, 'pointerdown');
+      tap(host, 'click');
+    }
+    expect(clicks).toEqual([]);
+    advance(PRESS_GRACE_MS);
+    tap(host, 'pointerdown');
+    tap(host, 'click');
+    expect(clicks).toHaveLength(1);
+  });
+
   it('lets keyboard and programmatic clicks through (no pointer, detail 0)', () => {
     const { host, clicks } = setup();
     tap(host, 'click', 0);
