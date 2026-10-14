@@ -56,6 +56,21 @@ const DISCARD_ACTIONS: NoticeAction[] = [
  *
  * @fires pv-sheet-close - once it has left (Cancel, a dismiss or discard, or `leaving`)
  */
+/** The editor's fields as typed (round 3: kept for the card Home Assistant makes again after a reconnect). */
+export interface EditorFields {
+  title: string;
+  calendars: string[];
+  date: string;
+  allDay: boolean;
+  startTime: string;
+  endTime: string;
+  spanDays: number;
+  endDayOffset: number;
+  description: string;
+  location: string;
+  showMore: boolean;
+}
+
 export class PVEventCreateDialog extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._sheet.dismiss());
@@ -68,6 +83,8 @@ export class PVEventCreateDialog extends LitElement {
   @property({ type: Boolean }) open = false;
   @property({ type: String }) mode: 'create' | 'edit' = 'create';
   @property({ type: Object }) prefill: Partial<CalendarEvent> | null = null;
+  /** What the old card's editor held: filled in over the prefill as it opens (round 3). */
+  @property({ attribute: false }) resume: EditorFields | null = null;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   /** Display setting `location_autocomplete`: when false the Location field never touches the network. */
   @property({ attribute: false }) locationAutocomplete = false;
@@ -504,7 +521,39 @@ export class PVEventCreateDialog extends LitElement {
       this._initForm();
       this._datePickerOpen = false;
       this._baseline = this._signature();
+      if (this.resume) this._fill(this.resume);
     }
+  }
+
+  /** What's typed, for the card Home Assistant makes again after a reconnect (round 3). */
+  fields(): EditorFields {
+    return {
+      title: this._title,
+      calendars: [...this._selectedCalendars],
+      date: this._date,
+      allDay: this._allDay,
+      startTime: this._startTime,
+      endTime: this._endTime,
+      spanDays: this._spanDays,
+      endDayOffset: this._endDayOffset,
+      description: this._description,
+      location: this._location,
+      showMore: this._showMore,
+    };
+  }
+
+  private _fill(fields: EditorFields): void {
+    this._title = fields.title;
+    this._selectedCalendars = new Set(fields.calendars);
+    this._date = fields.date;
+    this._allDay = fields.allDay;
+    this._startTime = fields.startTime;
+    this._endTime = fields.endTime;
+    this._spanDays = fields.spanDays;
+    this._endDayOffset = fields.endDayOffset;
+    this._description = fields.description;
+    this._location = fields.location;
+    this._showMore = fields.showMore;
   }
 
   private _initForm() {

@@ -58,6 +58,7 @@ import { SCREEN_AS_SHOWN, composedAncestor, fitView } from '../core/panel-fit';
 import { kioskStripAction, showsKioskReturn } from '../core/kiosk';
 import { errorMessage } from '../core/ws-api';
 import type { Toast } from '../core/pv-toast';
+import { PAGE_HANDOFFS, handoffToast } from '../core/handoff';
 import '../core/pv-toast';
 import { kiosk } from './kiosk-controller';
 
@@ -553,6 +554,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
     if (changed.has('layout')) this.toggleAttribute('grid', this.layout === 'grid');
+    // Home Assistant makes the card again when the connection comes back (round 3).
+    if (changed.has('hass') && this.hass && this.hass.connected === false) PAGE_HANDOFFS.dropped(Date.now());
     const opened = changed as Map<string, unknown>;
     if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
       this._overlayLayer = nextSheetLayer();
@@ -605,10 +608,37 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     void this.updateComplete.then(() => this._fitView());
     this._unhearKiosk = kiosk.onChange(() => this.requestUpdate());
     kiosk.cardShown(location.pathname);
+    // After the swap: Home Assistant may put this card in before it takes the old one out.
+    window.setTimeout(() => void this._takeHandoff(), 0);
+  }
+
+  /** What the old card for this place had open when Home Assistant made this one (round 3). */
+  private async _takeHandoff(): Promise<void> {
+    const note = this._placeKey ? PAGE_HANDOFFS.take(this._placeKey, Date.now()) : null;
+    if (!note) return;
+    const toast = handoffToast(note);
+    if (toast) this._toast = toast;
+    await this.updateComplete;
+    const module = this.renderRoot.querySelector('.pv-module') as ModuleElement | null;
+    const mine = module ? note.modules[module.localName] : undefined;
+    if (module && mine !== undefined) module.resume?.(mine);
+  }
+
+  /** What this card has open, left for the card Home Assistant makes again after a reconnect. */
+  private _leaveHandoff(): void {
+    if (!this._placeKey) return;
+    const module = this.renderRoot.querySelector('.pv-module') as ModuleElement | null;
+    const mine = module?.handoff?.();
+    PAGE_HANDOFFS.leave(this._placeKey, {
+      pin: this._sheet?.kind === 'pin',
+      toast: this._toast,
+      modules: module && mine !== undefined ? { [module.localName]: mine } : {},
+    }, Date.now());
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._leaveHandoff();
     window.clearInterval(this._placeTimer);
     this._savePlace();
     this._unfitView?.();
