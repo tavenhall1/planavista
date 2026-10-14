@@ -1,4 +1,4 @@
-import type { HouseholdView } from './household';
+import type { HouseholdView, SettingsAccess } from './household';
 import type { SetupPatch } from './settings-registry';
 
 /**
@@ -9,6 +9,15 @@ import type { SetupPatch } from './settings-registry';
  */
 
 /** Two patches as one, the later one winning. */
+/**
+ * First-run setup opens by itself, with no "Tap to begin setup", on a screen
+ * that may set up without a PIN (an admin), once a page (the owner, 2026-10-14:
+ * PlanaVista's own dashboard opens straight into setup).
+ */
+export function opensSetupByItself(firstRun: boolean, access: SettingsAccess, opened: boolean): boolean {
+  return firstRun && access === 'open' && !opened;
+}
+
 export function mergePatch(earlier: SetupPatch, later: SetupPatch | undefined): SetupPatch {
   if (!later) return earlier;
   const modules: Record<string, Record<string, unknown>> = { ...(earlier.modules ?? {}) };

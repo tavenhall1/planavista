@@ -7,6 +7,7 @@ import { defineElement, defineElementAlias } from '../utils/define';
 import { nextSheetLayer } from '../core/sheet-layer';
 import { deepActiveElement } from '../core/focus';
 import { CardDrafts } from '../core/page-drafts';
+import { opensSetupByItself } from '../core/setup-flow';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { statusStyles } from '../styles/status';
@@ -69,6 +70,9 @@ type CardSheet =
   | { kind: 'no_pin' };
 
 const DEFAULT_ENTITY = 'sensor.planavista_config';
+
+/** First-run setup has opened by itself on this page, so closing it leaves "Tap to begin setup" (2026-10-14). */
+let setupOpenedOnPage = false;
 
 /**
  * The PlanaVista card: a shell that shows the header, runs setup and
@@ -558,6 +562,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (changed.has('hass') && this.hass) {
       if (this.hass.connected === false) PAGE_HANDOFFS.dropped(Date.now());
       else PAGE_HANDOFFS.reconnected(Date.now());
+    }
+    // An admin on first run goes straight into setup (PlanaVista's own dashboard, 2026-10-14).
+    const firstRun = this._data()?.onboarding_complete === false && !this._onboardingDone;
+    if (opensSetupByItself(firstRun, this._access(), setupOpenedOnPage) && !this._wizardOpen) {
+      setupOpenedOnPage = true;
+      this._wizardOpen = true;
     }
     const opened = changed as Map<string, unknown>;
     if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
