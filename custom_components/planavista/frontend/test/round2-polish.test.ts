@@ -6,9 +6,16 @@ const read = (path: string) =>
 
 // The second adversarial review's smaller findings.
 describe('round 2 polish', () => {
-  it("a column's stats line never ends in a dot: the separator leads the part after it", () => {
+  // Round 3 (r3c C4) found the opposite: with the dot leading the part after it, a wrapped line
+  // started "· 🔥 3 days". Each part draws its dot before it, and the line clips the dot that
+  // leads each wrapped line, so neither end of a line shows one.
+  it("a column's stats line neither ends nor starts with a dot when it wraps", () => {
     const column = read('modules/chores/pv-chores-column.ts');
-    expect(column).toMatch(/model\.parts\.map\(\(part, i\) => html`\$\{i \? ' ' : ''\}<span class=\$\{part\.kind\}>\$\{i \? '· ' : ''\}\$\{part\.text\}<\/span>`\)/);
+    expect(column).toMatch(/<span class="line"><span class="parts">\$\{model\.parts\.map\(part => html`<span class=\$\{part\.kind\}>\$\{part\.text\}<\/span>`\)\}<\/span><\/span>/);
+    const rule = (selector: string) => column.slice(column.indexOf(`${selector} {`), column.indexOf('}', column.indexOf(`${selector} {`)));
+    expect(rule('      .line')).toMatch(/overflow: hidden;/);
+    expect(rule('      .parts')).toMatch(/flex-wrap: wrap;[\s\S]*margin-left: -1em;/);
+    expect(rule('      .parts > span::before')).toMatch(/content: '·';[\s\S]*width: 1em;/);
   });
 
   it("a chore deleted on another screen while its options are open is named in the toast", () => {

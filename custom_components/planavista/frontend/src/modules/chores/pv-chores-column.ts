@@ -103,15 +103,31 @@ export class PvChoresColumn extends LitElement {
         line-height: 1.15;
       }
 
+      /* It clips the dot that leads each wrapped line, so neither end of a line shows one (round 3). */
       .line {
+        display: block;
+        overflow: hidden;
         color: var(--pv-text-secondary, #5F6670);
         font-size: 0.875rem;
         font-variant-numeric: tabular-nums;
       }
 
+      .parts {
+        display: flex;
+        flex-wrap: wrap;
+        margin-left: -1em;
+      }
+
       /* The line breaks between its parts, never inside one ("🔥 2 days", round 1). */
-      .line > span {
+      .parts > span {
         white-space: nowrap;
+      }
+
+      .parts > span::before {
+        content: '·';
+        display: inline-block;
+        width: 1em;
+        text-align: center;
       }
 
       .stars {
@@ -287,7 +303,7 @@ export class PvChoresColumn extends LitElement {
         </pv-ring>
         <span class="who">
           <span class="name">${member.name}</span>
-          <span class="line">${model.parts.map((part, i) => html`${i ? ' ' : ''}<span class=${part.kind}>${i ? '· ' : ''}${part.text}</span>`)}</span>
+          <span class="line"><span class="parts">${model.parts.map(part => html`<span class=${part.kind}>${part.text}</span>`)}</span></span>
         </span>
       </button>
       ${model.next ? html`<div class="next">${this._next(model.next)}</div>` : nothing}
