@@ -263,10 +263,21 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
       /* A panel view's one card meets the edges of the screen, as Home Assistant's
          own cards do there: the screen's corners are the only rounded ones. */
-      /* A sections view gives the card a cell of its own size: fill it, and nothing more (round 2). */
+      /* A sections view gives the card a cell of its own size: fill it, and nothing more (round 2).
+         The cell scrolls with the page, away from the screen's edges: no room for the status bar or
+         the home indicator (round 3). The sheets stay on the screen, so they keep theirs. */
       :host([grid]) {
         height: 100%;
         margin: 0;
+        --pv-under-status-bar: 0px;
+      }
+
+      :host([grid]) pv-nav-bar {
+        --safe-area-inset-bottom: 0px;
+      }
+
+      :host([grid][layout='landscape']) ha-card {
+        padding-bottom: 0;
       }
 
       :host([panel]) ha-card {
@@ -391,6 +402,9 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         inset: 0;
         z-index: 50;
         padding-top: var(--pv-under-status-bar, 0px);
+        /* Over ha-card's padding too, so it keeps a sideways phone's side insets itself (round 3). */
+        padding-left: var(--pv-inset-left, 0px);
+        padding-right: var(--pv-inset-right, 0px);
         box-sizing: border-box;
         background: var(--pv-card-bg, #FFFFFF);
         animation: pv-fadeIn 200ms ease forwards;
