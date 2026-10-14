@@ -151,11 +151,14 @@ export interface GoalModel {
   progress: number;
 }
 
-/** Someone's goal (spec 8.15): the reward they're saving up for, and how close they are. */
+/**
+ * Someone's goal (spec 8.15): the reward they're saving up for, and how close they are.
+ * The engine's rule (_goal_reward): only a reward that is theirs, for someone who earns stars.
+ */
 export function goalFor(member: Member, entry: BoardMember, rewards: Reward[]): GoalModel | null {
   const goal = typeof member.goal === 'string' ? member.goal : null;
-  const reward = goal ? rewards.find(r => r.id === goal) : undefined;
-  if (!reward) return null;
+  const reward = goal && member.stars ? rewards.find(r => r.id === goal) : undefined;
+  if (!reward || (reward.who.length > 0 && !reward.who.includes(member.id))) return null;
   const have = entry.stars;
   return { reward, have, need: Math.max(0, reward.cost - have), progress: reward.cost > 0 ? Math.min(1, have / reward.cost) : 1 };
 }
