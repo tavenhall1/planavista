@@ -9,6 +9,8 @@ import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
+import { keyed } from 'lit/directives/keyed.js';
+import { sheetKey } from './sheet-key';
 import { actingParent, creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
@@ -323,7 +325,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       ${this._renderContent(service)}
       <pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}
         @pv-toast-action=${this._onToastAction}></pv-toast>
-      ${this._renderSheet()}
+      ${keyed(sheetKey(this._sheet), this._renderSheet())}
     `;
   }
 

@@ -24,6 +24,13 @@ describe('round 2 polish', () => {
     expect(module).toMatch(/text: `\$\{this\._optionNames\.get\(sheet\) \?\? this\._choreName\(sheet\.key\)\} changed on another screen\.`/);
   });
 
+  // Round 3 (r3a A8): tapping another chore while the last one's options were leaving opened
+  // its options in the same element, and the old one's close then shut the new one.
+  it("each of the board's sheets gets its own element, so one leaving can't close the next", () => {
+    const module = read('modules/chores/pv-chores-module.ts');
+    expect(module).toMatch(/\$\{keyed\(sheetKey\(this\._sheet\), this\._renderSheet\(\)\)\}/);
+  });
+
   // A tap on the board just after Done went to the leaving sheet's faded backdrop (240 ms).
   it('a sheet on its way out takes no taps, and one that opens again does', () => {
     const motion = read('shell/sheet-motion.ts');
