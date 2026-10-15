@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { PRESS_GRACE_MS, PressGuard } from '../src/core/press-guard';
+import { PRESS_GRACE_MS, PressGuard, watchPagePresses } from '../src/core/press-guard';
 import { keepOrder } from '../src/modules/chores/week-derive';
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(`../src/${path}`, import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
@@ -81,6 +81,36 @@ describe('round 6: screens', () => {
       click();
     }
     expect(clicks).toEqual([]);
+  });
+
+  // Round 8 (r8b F1): the page's presses were heard only from the first keypad on, which the card
+  // draws after tap 1, so a page's first keypad still typed tap 3. The page listens from the start.
+  it('the page hears presses before any keypad is built', () => {
+    let now = 1000;
+    const page = new EventTarget();
+    watchPagePresses(page, () => now);
+    const down = (x: number, y: number) => {
+      const event = new Event('pointerdown');
+      Object.defineProperties(event, { clientX: { value: x }, clientY: { value: y } });
+      return event;
+    };
+    page.dispatchEvent(down(516, 1080)); // tap 1: Looks good, which builds and opens the keypad
+    const host = new Host();
+    const guard = new PressGuard(host as never, { now: () => now, restart: 'same-spot', page });
+    guard.hostConnected();
+    const clicks: number[] = [];
+    host.addEventListener('click', () => clicks.push(now));
+    for (let i = 0; i < 2; i++) {
+      now += 200;
+      const event = down(516, 1080);
+      page.dispatchEvent(event);
+      host.dispatchEvent(event);
+      const click = new Event('click', { cancelable: true });
+      Object.defineProperty(click, 'detail', { value: 1 });
+      host.dispatchEvent(click);
+    }
+    expect(clicks).toEqual([]);
+    expect(src('main.ts')).toMatch(/\nwatchPagePresses\(\);\n/);
   });
 
   // B4: excusing the first of two missed chores sorted it below the second, which slid under the finger.

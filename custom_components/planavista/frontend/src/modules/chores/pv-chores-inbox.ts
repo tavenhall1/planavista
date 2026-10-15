@@ -13,7 +13,7 @@ import { SMOOTH, motionOf, springEasing } from '../../core/motion';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import {
-  ANSWERED_MS, answeredWords, heldArrivals, withAnswered, type Answered, type InboxGroups, type InboxRow, type ShownRow,
+  ANSWERED_MS, answeredWords, heldArrivals, isHeld, withAnswered, type Answered, type InboxGroups, type InboxRow, type ShownRow,
 } from './inbox-derive';
 import { SEND_BACK_REASONS } from './pv-chore-options';
 import { backdropTap } from '../../core/backdrop';
@@ -104,7 +104,7 @@ export class PvChoresInbox extends LitElement {
         border-radius: 0;
         border-left: 1px solid var(--pv-border, #E7E7E3);
         box-shadow: -12px 0 32px rgba(0, 0, 0, 0.12);
-        padding: 0 0 20px;
+        padding: 0;
         overflow-y: auto;
       }
 
@@ -128,16 +128,37 @@ export class PvChoresInbox extends LitElement {
         font-weight: 800;
       }
 
+      /*
+       * Done, and the word about rows that came in, side by side and pinned to the sheet's
+       * bottom (round 8: in a column the word pushed Done off the screen, and rows growing
+       * after it opened pushed both past the held height). The panel's bottom padding
+       * moves here, so the pinned row sits at the very bottom.
+       */
+      .panel {
+        padding-bottom: 0;
+      }
+
       .actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
         display: flex;
+        flex-direction: row;
         align-items: center;
         gap: 12px;
         margin-top: 16px;
+        padding: 12px 0 calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+        background: var(--pv-card-bg, #FFFFFF);
+      }
+
+      :host([layout='landscape']) .actions {
+        padding: 12px 16px 20px;
       }
 
       /* Rows that came in after it opened: shown on the parent's word (round 7). */
       .actions .more {
         flex: none;
+        width: auto;
       }
 
       /* Approve all keeps its place when it has nothing to approve, so rows don't move as it comes and goes. */
@@ -283,6 +304,13 @@ export class PvChoresInbox extends LitElement {
     const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
     const rows = this.renderRoot.querySelector<HTMLElement>('.rows');
     if (!panel || !rows) return;
+    // Turned: the heights held for the other shape no longer fit (round 8: a gap above Done, docked).
+    if (changed.has('layout') && changed.get('layout') !== undefined) {
+      rows.style.minHeight = '';
+      this._rowsHeight = 0;
+      panel.style.height = '';
+      this._heldHeight = 0;
+    }
     // The rows keep the most height they have had, so one leaving at the end never pulls the scroll back (round 7).
     if (rows.offsetHeight > this._rowsHeight) {
       this._rowsHeight = rows.offsetHeight;
@@ -369,7 +397,10 @@ export class PvChoresInbox extends LitElement {
     const g = this.groups;
     if (!g) return nothing;
     this._known ??= new Set(this._all().map(row => row.id));
-    const held = heldArrivals(g, this._known);
+    const now = performance.now();
+    const drawn = new Set([...this._shown.chores, ...this._shown.requests, ...this._shown.rewards]
+      .filter(row => isHeld(this._answered.get(row.id), now)).map(row => row.id));
+    const held = heldArrivals(g, this._known, drawn);
     for (const group of [held.groups.chores, held.groups.requests, held.groups.rewards]) for (const row of group) this._known.add(row.id);
     const chores = this._rows('chores', held.groups);
     const requests = this._rows('requests', held.groups);
@@ -384,7 +415,7 @@ export class PvChoresInbox extends LitElement {
         <div class="top">
           <h2 id="inbox-title" tabindex="-1">To approve${g.count ? ` · ${g.count}` : ''}</h2>
         </div>
-        ${g.count === 0 ? html`
+        ${this._shownCount === 0 ? html`
           <div class="state">
             <div class="art" aria-hidden="true">✅</div>
             <h2>Nothing is waiting</h2>

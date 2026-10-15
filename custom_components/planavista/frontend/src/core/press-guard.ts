@@ -101,6 +101,15 @@ class PagePresses {
 
 const pages = new WeakMap<EventTarget, PagePresses>();
 
+/**
+ * Listen to the page's presses from the start (round 8): heard only from the first
+ * keypad on, which the card builds after a burst's first tap, a page's first keypad
+ * still typed tap 3. Started once from main.ts; a stand-in page in tests.
+ */
+export function watchPagePresses(target: EventTarget = window, now: () => number = () => performance.now()): void {
+  pagePresses(target, now);
+}
+
 function pagePresses(target: EventTarget | undefined, now: () => number): PagePresses | null {
   if (!target) return null;
   let found = pages.get(target);

@@ -118,12 +118,16 @@ export function withAnswered(
     const live = fresh.get(row.id);
     fresh.delete(row.id);
     const answer = answered.get(row.id);
-    const held = answer && now - answer.at < (answer.state === 'pending' ? PENDING_MS : ANSWERED_MS);
-    if (answer && held) {
+    if (answer && isHeld(answer, now)) {
       shown.push({ ...(live ?? row), answered: answer.state === 'pending' ? 'pending' : answer.allow ? 'allowed' : 'declined' });
     } else if (live) shown.push(live);
   }
   return [...shown, ...rows.filter(row => fresh.has(row.id))];
+}
+
+/** Whether a row answered here is still drawn in its place (on its way, or a moment after). */
+export function isHeld(answer: Answered | undefined, now: number): boolean {
+  return !!answer && now - answer.at < (answer.state === 'pending' ? PENDING_MS : ANSWERED_MS);
 }
 
 /** What an answered row says in place of its buttons. */
@@ -144,7 +148,9 @@ export function approveAllSummary(
 ): { text: string; tone: 'plain' | 'bad' } | null {
   if (notSaved > 0) {
     const why = reason ? `: ${reason}` : '. Check the connection and try again.';
-    return { text: `${approved > 0 ? `Approved ${approved}. ` : ''}${notSaved} didn't save${why}`, tone: 'bad' };
+    // Every row accounted for (round 8: the ones not waiting anymore went unsaid).
+    const goneWords = gone > 0 ? `${gone} ${gone === 1 ? "wasn't" : "weren't"} waiting anymore. ` : '';
+    return { text: `${approved > 0 ? `Approved ${approved}. ` : ''}${goneWords}${notSaved} didn't save${why}`, tone: 'bad' };
   }
   // Answered on another screen, unchecked by the child, or its chore deleted: not waiting anymore (round 7).
   if (approved > 0 && gone > 0) return { text: `Approved ${approved}. ${gone} ${gone === 1 ? "wasn't" : "weren't"} waiting anymore.`, tone: 'plain' };
@@ -158,9 +164,12 @@ export function approveAllSummary(
  * so nothing shown moves under a finger (round 7: an arrival in an earlier group
  * pushed the later groups down). With nothing shown, they show at once.
  */
-export function heldArrivals(groups: InboxGroups, known: ReadonlySet<string>): { groups: InboxGroups; arrived: number } {
+export function heldArrivals(
+  groups: InboxGroups, known: ReadonlySet<string>, drawn: ReadonlySet<string> = new Set(),
+): { groups: InboxGroups; arrived: number } {
   const all = [...groups.chores, ...groups.requests, ...groups.rewards];
-  if (!all.some(row => known.has(row.id))) return { groups, arrived: 0 };
+  // An answered row still drawn counts as shown (round 8: arrivals slid into its place under the finger).
+  if (!all.some(row => known.has(row.id)) && drawn.size === 0) return { groups, arrived: 0 };
   const keep = (rows: InboxRow[]) => rows.filter(row => known.has(row.id));
   const shown: InboxGroups = { chores: keep(groups.chores), requests: keep(groups.requests), rewards: keep(groups.rewards), count: groups.count };
   return { groups: shown, arrived: all.length - shown.chores.length - shown.requests.length - shown.rewards.length };
