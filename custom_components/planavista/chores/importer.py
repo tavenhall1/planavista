@@ -157,6 +157,9 @@ def _read_plan(data: Mapping[str, Any]) -> dict[str, Any]:
                 "weeknight": _clock(raw.get("bedWk")) or DEFAULT_BEDTIME["weeknight"],
                 "weekend": _clock(raw.get("bedWe")) or DEFAULT_BEDTIME["weekend"],
             },
+            "bedtime_given": {
+                k: v for k, v in (("weeknight", _clock(raw.get("bedWk"))), ("weekend", _clock(raw.get("bedWe")))) if v
+            },
             "sleep_hours": None, "age_group": None, "parent": None, "record": None,
         })
     by_ref = {p["ref"]: p for p in people}
@@ -442,6 +445,7 @@ def plan_import(
     *,
     persons: Collection[str] = (),
     calendars: Collection[str] = (),
+    used_ids: Collection[str] = (),
 ) -> dict[str, Any]:
     """The records an import saves, all checked first: ImportProblem lists what stops it.
 
@@ -482,6 +486,10 @@ def plan_import(
                 changes["phones"] = links.get("phones") or []
         else:
             changes = {"bedtime": person["bedtime"]}
+            given = person.get("bedtime_given")
+            if member_id and given is not None:
+                # Someone already here keeps the bedtimes the file doesn't name (round 9).
+                changes = {"bedtime": {**(by_id[member_id].get("bedtime") or DEFAULT_BEDTIME), **given}} if given else {}
             if person["sleep_hours"] is not None:
                 changes["sleep_hours"] = person["sleep_hours"]
         if member_id:
@@ -530,7 +538,9 @@ def plan_import(
     # Chores, with the plan's people named by member id now.
     existing = {a["id"]: a for a in activities}
     activity_taken: set[str] = set()
-    activity_ids = set(existing)
+    # A plan's new chores never take an id the log still names (a deleted chore's records would be theirs,
+    # round 9); a restore keeps its own ids, which bring their history back.
+    activity_ids = set(existing) | (set() if restoring else set(used_ids))
     activities_add: list[dict[str, Any]] = []
     activities_update: dict[str, dict[str, Any]] = {}
     on_board_picks = choices.get("on_board") or {}

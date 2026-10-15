@@ -10,6 +10,7 @@ so tests can run months in milliseconds. Nothing here imports Home Assistant.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
@@ -414,6 +415,9 @@ class ChoresEngine:
             if key in present or record["member"] not in members or self.activity(record["chore"]) is None:
                 continue
             completion = index.latest.get(key)
+            handed = index.overrides.get(key, {}).get("assignee")
+            if completion is not None and completion.get("member") != (handed if handed in members else record["member"]):
+                completion = None
             done_earlier = (
                 completion is not None
                 and completion.get("state") in CREDITED
@@ -425,6 +429,11 @@ class ChoresEngine:
             overrides = index.overrides.get(key, {})
             if overrides.get("excused"):
                 occ = replace(occ, excused=True)
+            # Handed to someone else while overdue (round 9: it stayed with the first person).
+            if overrides.get("assignee") in members:
+                occ = replace(occ, member=overrides["assignee"])
+            if completion is not None and completion.get("member") != occ.member:
+                completion = None
             items[occ.member].append(
                 Item(
                     occ,
@@ -649,17 +658,27 @@ class ChoresEngine:
         """Every minute ever credited to a member as the doer (sensor.<member>_chore_time)."""
         return round(float((self.log.get("totals") or {}).get(member_id, 0)), 2)
 
-    def open_requests(self) -> list[dict[str, Any]]:
-        """Everything waiting for a parent, all four kinds in one list (spec 8.7)."""
+    def open_requests(self, now: datetime | None = None) -> list[dict[str, Any]]:
+        """Everything waiting for a parent, all four kinds in one list (spec 8.7).
+
+        With `now`, a check-off whose time has run out says whether sending it back counts
+        it as missed (round 9: it said "went back" and the child never saw it).
+        """
         members = set(self.member_ids())
         found: list[dict[str, Any]] = []
         for c in self.log["completions"]:
             if c.get("state") == "pending" and c["member"] in members:
                 activity = self.activity(c["chore"])
+                missed = False
+                if now is not None and self.period_over(c["occurrence"], now):
+                    occ = self._past_occurrence(c["occurrence"])
+                    due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
+                    missed = due_day is not None and self.policy_on(due_day) != "carry_over"
                 found.append({
                     "id": c["id"], "kind": "completion", "member": c["member"], "done_by": c["done_by"],
                     "chore": c["chore"], "name": activity["name"] if activity else c["chore"],
                     "occurrence": c["occurrence"], "at": c["at"], "stars": c["stars"],
+                    "missed_if_sent_back": missed,
                 })
         for r in self.log["requests"]:
             activity = self.activity(r["chore"])
@@ -893,7 +912,7 @@ class ChoresEngine:
             },
             "members": members,
             "household": household,
-            "requests": self.open_requests(),
+            "requests": self.open_requests(now),
             "settings": dict(self.settings),
             "chores": [dict(a) for a in self.plan["activities"]],
             "rewards": [dict(r) for r in self.rewards["rewards"]],
@@ -1106,8 +1125,16 @@ class ChoresEngine:
         parsed = parse_key(key)
         chore = parsed[0] if parsed else key
         activity = self.activity(chore)
+        # A deleted chore's name from its id, in words (round 9: "wipe_the_counters").
+        name = activity["name"] if activity else re.sub(r"_\d+$", "", chore).replace("_", " ").capitalize()
+        if status in ("missed", "open") and "note" not in extra:
+            # Sent back after its day: the parent's note reaches the day's sheet (round 9).
+            sent = next((c for c in reversed(self.log["completions"])
+                         if c["occurrence"] == key and c.get("state") == "sent_back"), None)
+            if sent is not None and (sent.get("review") or {}).get("note"):
+                extra["note"] = sent["review"]["note"]
         return {
-            "key": key, "chore": chore, "name": activity["name"] if activity else chore,
+            "key": key, "chore": chore, "name": name,
             "icon": activity.get("icon") if activity else None, "status": status, **extra,
         }
 
@@ -1330,6 +1357,8 @@ class ChoresEngine:
         request = next((r for r in self.log["requests"] if r["id"] == request_id), None)
         if request is not None and request.get("state") == "lapsed":
             raise ChoreError("request_closed")
+        if request is not None and request.get("state") == "withdrawn":
+            raise ChoreError("request_withdrawn")  # its chore was handed to someone else (round 9)
         if request is not None and request.get("state") == "open":
             request["state"] = "allowed" if allow else "declined"
             request["review"] = {"by": by, "at": self._stamp(now), "note": note, "source": source}
@@ -1368,6 +1397,8 @@ class ChoresEngine:
         item = self.find_item(key, now)
         if item is None or item.status not in OPEN or not self._still_open(item, now):
             raise ChoreError("not_open")
+        if kind == "more_time" and item.section == "overdue":
+            raise ChoreError("overdue_stays")
         if kind == "more_time":
             due_day = self.clock.due_day(item.occ.due) if item.occ.due else None
             if until is None or due_day is None or until <= due_day or until > self.today(now) + timedelta(days=MAX_UNTIL_DAYS):
@@ -1407,6 +1438,11 @@ class ChoresEngine:
         clock = self.clock
         today = self.today(now)
         record: dict[str, Any] = {"occurrence": key, "by": by, "at": self._stamp(now)}
+        # Overdue, it stays on the board until it's done: no new day or date (round 9: they changed nothing).
+        if item.section == "overdue" and (planned_day is not self._MISSING or due is not self._MISSING):
+            raise ChoreError("overdue_stays")
+        if assignee is not self._MISSING and item.status in CREDITED:
+            raise ChoreError("not_open")  # done or waiting: handing it on would lose it (round 9)
         if planned_day is not self._MISSING:
             if planned_day is not None:
                 last = clock.due_day(item.occ.due) if item.occ.due else today + timedelta(days=MAX_UNTIL_DAYS)
@@ -1429,6 +1465,12 @@ class ChoresEngine:
             record["note"] = note
         if len(record) == 3:
             raise ChoreError("nothing_to_change")
+        if "assignee" in record:
+            # The first person's requests were theirs; the new person asks for themselves (round 9).
+            for request in self.log["requests"]:
+                if request["occurrence"] == key and request.get("state") == "open":
+                    request["state"] = "withdrawn"
+                    request["review"] = {"by": by, "at": self._stamp(now), "note": None, "source": None}
         self.log["overrides"].append(record)
         out = Outcome("changed", {"occurrence": key}, changed={"log"})
         if record.get("excused"):
@@ -1473,6 +1515,7 @@ class ChoresEngine:
         # History from before the chore began (its created time, an assignee added later, chores
         # turned off and on) can't be worked out again; a day's own occurrence counted on that day.
         own_period = parsed[2] if parsed else None
+        touched: list[dict[str, Any]] = []
         for summary in self.log["summaries"]:
             missed = summary.get("missed") or []
             still_open = summary.get("open") or []
@@ -1491,10 +1534,14 @@ class ChoresEngine:
             summary["excused"] = [*(summary.get("excused") or []), key]
             if counted:
                 self._uncount(summary, chore, occ.credit_minutes if occ else None)
+                if period.startswith("day:"):
+                    touched.append(summary)
         self.log["overrides"].append(
             {"occurrence": key, "excused": True, "note": note, "late": True, "by": by, "at": self._stamp(now)}
         )
-        return Outcome("excused", {"occurrence": key}, changed={"log"})
+        # The streak holds only when every day it was counted on now closes (round 9).
+        holds = bool(touched) and all(s.get("closed") for s in touched)
+        return Outcome("excused", {"occurrence": key, "streak_holds": holds}, changed={"log"})
 
     def _sent_back_late(self, completion: Mapping[str, Any], now: datetime, out: Outcome) -> None:
         """A check-off sent back after its day ended (round 8, r8a A2).
@@ -1505,33 +1552,57 @@ class ChoresEngine:
         the ring, the week, the doer's minutes, and the streak say so.
         """
         key = completion["occurrence"]
-        if not self.period_over(key, now):
-            return
+        today = self.today(now)
+        done_day = self._day_of(completion["at"])
+        if done_day >= today:
+            return  # its day is still going: the board shows it again
         occ = self._past_occurrence(key)
         if occ is None or occ.due is None:
             return
+        over = self.period_over(key, now)
         due_day = self.clock.due_day(occ.due)
         carry = self.policy_on(due_day) == "carry_over"
         late = "carried" if carry else "missed"
         minutes = float(completion.get("credit_minutes", 0))
-        week = f"week:{self.clock.week_start(due_day).isoformat()}"
+        member = completion["member"]
         counted = False
-        for summary in self.log["summaries"]:
-            period = str(summary.get("period", ""))
-            if summary.get("member") != occ.member or key in (summary.get(late) or []):
-                continue
-            if period == f"day:{due_day.isoformat()}" and not counted_on(occ, due_day, self.clock):
-                continue
-            if period != f"day:{due_day.isoformat()}" and period != week:
-                continue
-            counted = True
+
+        def revise(summary: dict[str, Any], listed: str) -> None:
             summary["pending"] = max(0, int(summary.get("pending", 0)) - 1)
             summary["minutes_pending"] = round(max(0.0, float(summary.get("minutes_pending", 0)) - minutes), 2)
-            summary[late] = [*(summary.get(late) or []), key]
+            summary[listed] = [*(summary.get(listed) or []), key]
             tally = (summary.get("chores") or {}).get(occ.chore)
             if tally:
                 tally["done"] = max(0, tally["done"] - 1)
             summary["closed"] = False
+
+        # Under Carry it over it's back on the board as overdue, from its due day (its record went once
+        # it was checked off), and the days it showed as overdue count it again below.
+        if over and carry and not any(c.get("key") == key for c in self.log["carried"]):
+            self.log["carried"].append(self._carry(occ, due_day))
+        # Every ended day from the check-off on whose ring counted it (round 9: a set day, a Repeats
+        # window, an overdue copy checked off later): it wasn't done that day. Its due day, once its
+        # time ran out, counts it as the missed rule says; any other day lists it as not done then.
+        index = self._index()
+        days = self._summaries(member, "day")
+        day = done_day
+        while day < today:
+            summary = days.get(day)
+            listed_already = summary is not None and any(
+                key in (summary.get(name) or []) for name in ("missed", "carried", "open")
+            )
+            if summary is not None and not listed_already:
+                found = next((i for i in self._items_on(day, index).get(member, []) if i.occ.key == key), None)
+                if found is not None and found.counted:
+                    final = over and day == due_day
+                    revise(summary, late if final else "open")
+                    counted = counted or final
+            day += timedelta(days=1)
+        # Its week, once that ended.
+        week = self._summaries(member, "week").get(self.clock.week_start(due_day))
+        if over and week is not None and key not in (week.get(late) or []):
+            revise(week, late)
+            counted = True
         # The doer's minutes for the week it was checked off in, once that week ended.
         done_week = f"week:{self.clock.week_start(self._day_of(completion['at'])).isoformat()}"
         for summary in self.log["summaries"]:
@@ -1542,10 +1613,7 @@ class ChoresEngine:
             activity = self.activity(occ.chore)
             if activity is not None and len(activity.get("assignees", [])) >= 2:
                 contribution["shared_minutes"] = round(max(0.0, float(contribution.get("shared_minutes", 0)) - minutes), 2)
-        if carry:
-            if not any(c.get("key") == key for c in self.log["carried"]):
-                self.log["carried"].append(self._carry(occ, due_day))
-        elif counted:
+        if over and counted and not carry:
             out.events.append(ChoreEvent("missed", occ.member, self._missed_data(occ)))
 
     @staticmethod
@@ -1604,7 +1672,8 @@ class ChoresEngine:
             # An edit that leaves something owed (more sessions, a later end) puts a finished chore back (round 8).
             if activity.get("finished_at") and activity.get("schedule") in ("once", "repeats"):
                 probe = {**activity, "finished_at": None}
-                if self._has_open(probe):
+                last = self.log.get("last_day")
+                if self._has_open(probe, rolled_over=_day(last) if last else None):
                     activity["finished_at"] = None
         else:
             if len(activities) >= MAX_ACTIVITIES:
@@ -1612,13 +1681,13 @@ class ChoresEngine:
             activity = build_activity(None, changes, members)
             self._check_dates(activity, None, today)
             # Never a deleted chore's id: its check-offs, notes, excuses, and requests would be its own (round 8).
-            activity["id"] = make_id(activity["name"], {a["id"] for a in activities} | self._ids_in_log())
+            activity["id"] = make_id(activity["name"], {a["id"] for a in activities} | self.ids_in_log())
             activity["rev"] = 1
             activity["created"] = {"by": by, "source": source, "at": self._stamp(now)}
             activities.append(activity)
         return Outcome("saved", {"activity": dict(activity)}, changed={"plan"})
 
-    def _ids_in_log(self) -> set[str]:
+    def ids_in_log(self) -> set[str]:
         """Every chore id the log still names: check-offs, requests, overrides, carried, and day summaries."""
         used = {c["chore"] for c in self.log["completions"]}
         used |= {r["chore"] for r in self.log["requests"]}
@@ -1804,7 +1873,8 @@ class ChoresEngine:
             for kind, period_start in periods:
                 for occ in gen.period_occurrences(activity, owner, kind, period_start):
                     occ = with_overrides(occ, index.overrides.get(occ.key, {}), members, gen.clock)
-                    if occ.excused or index.latest.get(occ.key, {}).get("state") in CREDITED:
+                    latest = index.latest.get(occ.key, {})
+                    if occ.excused or (latest.get("state") in CREDITED and latest.get("member") == occ.member):
                         continue
                     if rolled_over is not None and occ.due is not None and gen.clock.due_day(occ.due) <= rolled_over:
                         continue
@@ -1813,9 +1883,12 @@ class ChoresEngine:
 
     @staticmethod
     def _open_carried(record: Mapping[str, Any], index: _Index) -> bool:
-        if index.overrides.get(record["key"], {}).get("excused"):
+        overrides = index.overrides.get(record["key"], {})
+        if overrides.get("excused"):
             return False
-        return index.latest.get(record["key"], {}).get("state") not in CREDITED
+        latest = index.latest.get(record["key"], {})
+        member = overrides.get("assignee") or record["member"]
+        return latest.get("state") not in CREDITED or latest.get("member") != member
 
     # Writing: rewards and stars ---------------------------------------------------------
 

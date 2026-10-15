@@ -665,7 +665,7 @@ async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveC
         changes = plan_import(
             parsed, msg["choices"], household.members, engine.plan["activities"], engine.rewards["rewards"],
             engine.settings, persons={s.entity_id for s in hass.states.async_all("person")},
-            calendars={row["entity_id"] for row in rows},
+            calendars={row["entity_id"] for row in rows}, used_ids=engine.ids_in_log(),
         )
     except ImportProblem as err:
         connection.send_result(msg["id"], {"problem": _problem(err)})

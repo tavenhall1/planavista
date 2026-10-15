@@ -31,6 +31,7 @@ MESSAGES: dict[str, str] = {
     "unknown_chore": "That chore isn't in the plan.",
     "unknown_request": "That request was already answered.",
     "request_closed": "That request closed when the chore's time ran out.",
+    "overdue_stays": "It's overdue, so it stays on the board until it's done.",
     "request_withdrawn": "That check-off isn't waiting anymore: it was unchecked, or its chore was deleted.",
     "unknown_reward": "That reward isn't in the catalog.",
     "invalid_on_board": "Show on the board is on or off.",
