@@ -1322,6 +1322,7 @@ class ChoresEngine:
                 if activity is not None and activity.get("finished_at"):
                     activity["finished_at"] = None
                     out.changed.add("plan")
+                self._sent_back_late(completion, now, out)
             out.data = {"occurrence": completion["occurrence"]}
             return out
         if completion is not None and completion.get("state") in VOID:
@@ -1494,6 +1495,58 @@ class ChoresEngine:
             {"occurrence": key, "excused": True, "note": note, "late": True, "by": by, "at": self._stamp(now)}
         )
         return Outcome("excused", {"occurrence": key}, changed={"log"})
+
+    def _sent_back_late(self, completion: Mapping[str, Any], now: datetime, out: Outcome) -> None:
+        """A check-off sent back after its day ended (round 8, r8a A2).
+
+        Its day (and its week, once that ended) counted it as waiting for approval; it
+        wasn't done. It now counts as the household's missed rule said on its due day:
+        carried over, to do now, or missed. The summaries that counted it are revised, so
+        the ring, the week, the doer's minutes, and the streak say so.
+        """
+        key = completion["occurrence"]
+        if not self.period_over(key, now):
+            return
+        occ = self._past_occurrence(key)
+        if occ is None or occ.due is None:
+            return
+        due_day = self.clock.due_day(occ.due)
+        carry = self.policy_on(due_day) == "carry_over"
+        late = "carried" if carry else "missed"
+        minutes = float(completion.get("credit_minutes", 0))
+        week = f"week:{self.clock.week_start(due_day).isoformat()}"
+        counted = False
+        for summary in self.log["summaries"]:
+            period = str(summary.get("period", ""))
+            if summary.get("member") != occ.member or key in (summary.get(late) or []):
+                continue
+            if period == f"day:{due_day.isoformat()}" and not counted_on(occ, due_day, self.clock):
+                continue
+            if period != f"day:{due_day.isoformat()}" and period != week:
+                continue
+            counted = True
+            summary["pending"] = max(0, int(summary.get("pending", 0)) - 1)
+            summary["minutes_pending"] = round(max(0.0, float(summary.get("minutes_pending", 0)) - minutes), 2)
+            summary[late] = [*(summary.get(late) or []), key]
+            tally = (summary.get("chores") or {}).get(occ.chore)
+            if tally:
+                tally["done"] = max(0, tally["done"] - 1)
+            summary["closed"] = False
+        # The doer's minutes for the week it was checked off in, once that week ended.
+        done_week = f"week:{self.clock.week_start(self._day_of(completion['at'])).isoformat()}"
+        for summary in self.log["summaries"]:
+            contribution = summary.get("contribution")
+            if summary.get("member") != completion.get("done_by") or summary.get("period") != done_week or not contribution:
+                continue
+            contribution["minutes"] = round(max(0.0, float(contribution.get("minutes", 0)) - minutes), 2)
+            activity = self.activity(occ.chore)
+            if activity is not None and len(activity.get("assignees", [])) >= 2:
+                contribution["shared_minutes"] = round(max(0.0, float(contribution.get("shared_minutes", 0)) - minutes), 2)
+        if carry:
+            if not any(c.get("key") == key for c in self.log["carried"]):
+                self.log["carried"].append(self._carry(occ, due_day))
+        elif counted:
+            out.events.append(ChoreEvent("missed", occ.member, self._missed_data(occ)))
 
     @staticmethod
     def _uncount(summary: dict[str, Any], chore: str | None, minutes: float | None) -> None:

@@ -251,6 +251,53 @@ def test_a_sent_back_chore_handed_to_someone_else_is_theirs_to_do_fresh() -> Non
     assert engine.item_view(item, SCENE.date()).get("note") is None
 
 
+def _summary(engine: ChoresEngine, member: str, period: str) -> dict:
+    return next(s for s in engine.log["summaries"] if s["member"] == member and s["period"] == period)
+
+
+@pytest.mark.parametrize("policy", ["make_up", "strict", "carry_over"])
+def test_a_check_off_sent_back_after_its_day_counts_as_the_missed_rule_says(policy: str) -> None:
+    """Round 8 (r8a A2): sent back the next morning, it never came back, and its day kept
+    counting it as done ("Ring closed: 5 of 5" over 3 rows)."""
+    engine = sample_engine(settings={"auto_approve": "never", "missed": policy})
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    [request] = engine.open_requests()
+    engine.catch_up(at(10, 14, 9))
+    day = _summary(engine, "dana", "day:2026-10-13")
+    pending = day["pending"]
+    out = engine.review(at(10, 14, 10), request_id=request["id"], allow=False, by="blair", note="The lid")
+    assert out.result == "sent_back"
+    assert day["pending"] == pending - 1
+    assert day["closed"] is False
+    assert day["chores"]["feed_the_fish"]["done"] == 0
+    if policy == "carry_over":
+        assert FISH in day["carried"] and FISH not in day["missed"]
+        item = _item(engine, FISH, at(10, 14, 10))
+        assert (item.section, item.status) == ("overdue", "sent_back")
+    else:
+        assert FISH in day["missed"]
+        assert [e.data["occurrence"] for e in out.events if e.type == "missed"] == [FISH]
+
+
+def test_a_check_off_sent_back_after_its_week_revises_the_week() -> None:
+    """Round 8 (r8a A2): the week's summary counted it too, and the doer's minutes."""
+    engine = sample_engine(settings={"auto_approve": "never", "missed": "strict"})
+    sunday = "feed_the_fish|dana|day:2026-10-18|0"
+    engine.complete(at(10, 18, 19), key=sunday, by="dana", source="tablet")
+    request = next(r for r in engine.open_requests() if r["occurrence"] == sunday)
+    engine.catch_up(at(10, 19, 9))
+    week = _summary(engine, "dana", "week:2026-10-12")
+    pending, minutes = week["pending"], week["contribution"]["minutes"]
+    credit = next(c for c in engine.log["completions"] if c["id"] == request["id"])["credit_minutes"]
+    engine.review(at(10, 19, 10), request_id=request["id"], allow=False, by="blair")
+    assert week["pending"] == pending - 1
+    assert sunday in week["missed"]
+    assert week["closed"] is False
+    assert week["contribution"]["minutes"] == round(minutes - credit, 2)
+    # Listed once, not once per summary.
+    assert week["missed"].count(sunday) == 1
+
+
 def test_undo_reverses_only_what_that_check_off_earned() -> None:
     engine = sample_engine()
     engine.complete(SCENE, key=TRASH, by="casey", source="tablet")
