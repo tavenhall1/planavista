@@ -37,7 +37,7 @@ import { needsOk } from './overlay';
 import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
-import { InboxRow, answeredText, approveAllSummary, inboxGroups, reviewQuestion } from './inbox-derive';
+import { InboxRow, answeredText, approveAllSummary, inboxGroups, lateRequest, reviewQuestion } from './inbox-derive';
 import type { ApproveAllAsk, ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorCode, errorMessage } from '../../core/ws-api';
@@ -197,7 +197,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** The bar's and the parent-mode strip's buttons: Waiting for approval and Add chore. */
   moduleAction(id: string): void {
-    if (id === 'inbox') void this._openInbox();
+    if (id === 'inbox') {
+      // Pressed again, it closes To approve (round 10: sideways on a phone, Done was out of reach).
+      if (this._sheet?.kind === 'inbox') void this.renderRoot.querySelector<HTMLElement & { close(): Promise<void> }>('pv-chores-inbox')?.close();
+      else void this._openInbox();
+    }
     if (id === 'add') void this._openQuickAdd();
   }
 
@@ -229,7 +233,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       this.showToast({ id: `review-${row.id}`, text: answeredText(row, allow, note) });
       return 'done';
     } catch (err) {
-      const gone = ['unknown_request', 'request_closed', 'request_withdrawn'].includes(errorCode(err));
+      const gone = ['unknown_request', 'request_closed', 'request_withdrawn', 'request_handed_on'].includes(errorCode(err));
       this._lastRefusal = errorMessage(err);
       if (!(gone && quietGone)) {
         this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
@@ -953,6 +957,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         member: memberAccess(this.household, this.session, owner.id),
         parent: parentAccess(this.household, this.session),
         credit: this._creditable(owner.id).length > 0,
+        late: lateRequest(board, row.item.completion?.id),
       }),
     };
   }
@@ -1072,11 +1077,13 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       case 'approve':
       case 'send_back': {
         const request = item.completion?.id;
-        if (!request || !(await this.asParent(choice.id === 'approve' ? "Who's approving?" : "Who's sending it back?"))) return;
+        const late = lateRequest(board, request);
+        if (!request || !(await this.asParent(reviewQuestion({ kind: 'completion', late }, choice.id === 'approve')))) return;
         const allow = choice.id === 'approve';
+        const note = choice.value ? `: ${choice.value}` : '';
         await this._run(
           () => api.review(request, allow ? 'allow' : 'decline', allow ? null : choice.value ?? null),
-          allow ? `${name}: looks good.` : `${name} went back${choice.value ? `: ${choice.value}` : ''}.`,
+          allow ? `${name}: looks good.` : late ? `${name} counts as missed that day${note}.` : `${name} went back${note}.`,
         );
         return;
       }
@@ -1263,7 +1270,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (sheet.kind === 'inbox') {
       const board = this.service?.board();
       if (!board) return nothing;
-      const groups = inboxGroups(board.requests, inOrder(this.household?.members ?? []), board.today, this.display?.time_format ?? '12h');
+      const groups = inboxGroups(board.requests, inOrder(this.household?.members ?? []), board.today, this.display?.time_format ?? '12h', board.settings?.day_starts);
       return html`
         <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
           @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}

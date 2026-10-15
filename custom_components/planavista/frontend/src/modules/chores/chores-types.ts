@@ -227,6 +227,8 @@ export interface PastItem {
   icon: string | null;
   /** `open`: counted that day and not done by its end, without being missed then (a make-up chore). */
   status: 'done' | 'pending' | 'missed' | 'carried' | 'excused' | 'open';
+  /** A parent's note: why it was excused, or counted as missed after its day. */
+  note?: string | null;
   done_by?: string;
   at?: string;
 }

@@ -133,7 +133,7 @@ export class PvChoresDaySheet extends LitElement {
 
   private _badge(item: ItemView | PastItem): StatusBadge | null {
     if (isPast(item)) {
-      const badge = pastBadge(item.status);
+      const badge = pastBadge(item.status, item.note);
       if (item.status === 'done' && item.done_by && item.done_by !== this.member.id) return { ...badge, words: `Done by ${this.names(item.done_by)}` };
       return badge;
     }

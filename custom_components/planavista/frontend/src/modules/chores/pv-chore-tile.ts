@@ -7,7 +7,7 @@ import { contrastText } from '../../core/color';
 import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
-import { rowChange, tileLine, tileRingFill } from './hold-state';
+import { rowChange, tileLabel, tileLine, tileRingFill } from './hold-state';
 import { chorePicture } from './picture-words';
 
 /** The picture for a chore: its emoji, or a star when it has none (spec 7.3: the icon is also the picture tile). */
@@ -338,8 +338,7 @@ export class PvChoreTile extends LitElement {
     return html`
       <div class="tile ${pending ? 'pending' : ''} ${done ? 'done' : ''}" style="--member:${this.color}">
         <div class="hold" role="button" tabindex=${this.locked ? -1 : 0} aria-disabled=${this.locked ? 'true' : 'false'}
-          aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for approval`
-            : state === 'sent_back' ? `${row.name}, ${row.badge?.words ?? 'sent back'}. Hold to complete` : `Hold to complete ${row.name}`}
+          aria-label=${tileLabel(row)}
           @pointerdown=${this._down} @pointermove=${(e: PointerEvent) => this._gesture.move(e.clientX, e.clientY)}
           @pointerup=${this._up} @pointercancel=${() => { this._hintPress = null; this._gesture.cancel(); }} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>

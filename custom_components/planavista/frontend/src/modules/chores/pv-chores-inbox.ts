@@ -13,9 +13,9 @@ import { SMOOTH, motionOf, springEasing } from '../../core/motion';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import {
-  ANSWERED_MS, answeredWords, heldArrivals, isHeld, withAnswered, type Answered, type InboxGroups, type InboxRow, type ShownRow,
+  ANSWERED_MS, answeredWords, heldArrivals, isHeld, sendBackReasons, withAnswered,
+  type Answered, type InboxGroups, type InboxRow, type ShownRow,
 } from './inbox-derive';
-import { SEND_BACK_REASONS } from './pv-chore-options';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
 import { PressGuard, guardPageTaps } from '../../core/press-guard';
@@ -179,6 +179,17 @@ export class PvChoresInbox extends LitElement {
         .actions {
           position: static;
         }
+        .head-done {
+          display: inline-flex;
+        }
+        .actions .done {
+          display: none;
+        }
+      }
+
+      /* Done in the head on a short screen, where the list's end is out of reach (round 10). */
+      .head-done {
+        display: none;
       }
 
       /* Rows that came in after it opened: shown on the parent's word (round 7). */
@@ -445,6 +456,7 @@ export class PvChoresInbox extends LitElement {
           <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
           <div class="top">
             <h2 id="inbox-title" tabindex="-1">To approve${g.count ? ` · ${g.count}` : ''}</h2>
+            <button class="pv-btn pv-btn-secondary head-done" type="button" @click=${() => void this.close()}>Done</button>
           </div>
         </div>
         ${this._shownCount === 0 ? html`
@@ -468,7 +480,7 @@ export class PvChoresInbox extends LitElement {
         </div>
         <div class="actions">
           ${held.arrived ? html`<button class="link more" type="button" @click=${() => this._showArrived()}>${held.arrived} more came in · Show</button>` : nothing}
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
+          <button class="pv-btn pv-btn-secondary done" type="button" @click=${() => void this.close()}>Done</button>
         </div>
       </div>
     `;
@@ -520,7 +532,7 @@ export class PvChoresInbox extends LitElement {
       ${this._sendingBack === row.id ? html`
         <div class="reasons">
           <span class="lead">${row.late ? 'It counts as missed that day. Add a note for them?' : 'Sending back: what should change?'}</span>
-          ${SEND_BACK_REASONS.map(reason => html`<button class="chip" type="button" @click=${() => this._review(row, false, reason)}>${reason}</button>`)}
+          ${sendBackReasons(!!row.late).map(reason => html`<button class="chip" type="button" @click=${() => this._review(row, false, reason)}>${reason}</button>`)}
           <input type="text" maxlength="60" placeholder="Write a note…" aria-label="Write a note" .value=${this._note}
             @input=${(e: Event) => { this._note = (e.target as HTMLInputElement).value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this._review(row, false, this._note.trim() || null); }} />

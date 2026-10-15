@@ -70,8 +70,12 @@ export interface PressGuardOptions {
   page?: EventTarget;
 }
 
-/** How near a press is to the last one to count as the same spot, a burst on one place (round 6). */
-export const SAME_SPOT_PX = 24;
+/**
+ * How near a press is to the last one to count as the same spot, a burst on one place (round 6):
+ * a finger's width, since a child's burst scatters past 24 px (round 10), while the keypad's keys
+ * sit 60 to 94 px apart.
+ */
+export const SAME_SPOT_PX = 44;
 
 interface Press {
   at: number;

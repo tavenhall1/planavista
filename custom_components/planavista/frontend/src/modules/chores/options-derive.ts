@@ -1,6 +1,6 @@
 import type { Member } from '../../core/household';
 import type { Access, ParentAccess } from '../../core/access';
-import { dayDate, daysBetween, minutesText } from '../../core/status-map';
+import { dayDate, daysBetween, minutesText, shortDay } from '../../core/status-map';
 import type { Activity, Band, ChoreHistory, ItemView } from './chores-types';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -30,6 +30,8 @@ export interface OptionModel {
   pick?: { min: string; max?: string };
   destructive?: boolean;
   disabled?: boolean;
+  /** Send back for a check-off whose day is over: it counts as missed (round 10). */
+  late?: boolean;
 }
 
 export interface OptionsContext {
@@ -43,6 +45,8 @@ export interface OptionsContext {
   parent: ParentAccess;
   /** False when this screen can't credit anyone else (`creditable` is empty): no Done by someone else. */
   credit?: boolean;
+  /** Its check-off waits past its day: sending it back counts it as missed (round 10). */
+  late?: boolean;
 }
 
 export interface OptionsModel {
@@ -198,7 +202,9 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   if (ctx.parent !== 'no') {
     if (status === 'pending') {
       parent.push({ id: 'approve', label: 'Looks good', tag: parentTag, hint: 'Approves it, and the stars are earned.' });
-      parent.push({ id: 'send_back', label: 'Send back', tag: parentTag, hint: 'It goes back on the list with a note.' });
+      parent.push(ctx.late
+        ? { id: 'send_back', label: 'Not done', tag: parentTag, hint: 'It counts as missed that day.', late: true }
+        : { id: 'send_back', label: 'Send back', tag: parentTag, hint: 'It goes back on the list with a note.' });
     }
     if (open && !overdue) {
       parent.push({
@@ -226,7 +232,11 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
     title: item.name,
     meta: metaParts.filter(Boolean).join(' · '),
     added: addedLine(activity, members, today),
-    note: status === 'sent_back' ? (item.note ? `Sent back: ${item.note}` : 'Sent back') : request,
+    note: [
+      status === 'sent_back' ? (item.note ? `Sent back: ${item.note}` : 'Sent back') : request,
+      // Overdue from an earlier day (round 10: the sheet didn't say so).
+      overdue && open ? `Overdue since ${shortDay(item.overdue_since!, today)}` : null,
+    ].filter(Boolean).join(' · ') || null,
     member,
     parent,
   };

@@ -32,21 +32,30 @@ export interface InboxGroups {
   count: number;
 }
 
-/** "Today at 3:58 PM", "Yesterday at 7:10 PM", "Monday at 9:00 AM". */
-export function whenText(at: string, today: string, format: '12h' | '24h'): string {
+/**
+ * "Today at 3:58 PM", "Yesterday at 7:10 PM", "Monday at 9:00 AM", by the chore day
+ * (round 10: 12:01 AM read "Tomorrow" before 3 AM, and "Today" once its day was over).
+ * A time after midnight, before the day starts, is "Tonight" or "Last night".
+ */
+export function whenText(at: string, today: string, format: '12h' | '24h', dayStarts = '03:00'): string {
   const date = new Date(at);
   const pad = (v: number) => String(v).padStart(2, '0');
-  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const [h, m] = dayStarts.split(':').map(Number);
+  const early = date.getHours() * 60 + date.getMinutes() < (Number.isFinite(h) ? h : 3) * 60 + (Number.isFinite(m) ? m : 0);
+  const choreDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() - (early ? 1 : 0));
+  const day = `${choreDay.getFullYear()}-${pad(choreDay.getMonth() + 1)}-${pad(choreDay.getDate())}`;
   const time = clockTime(date, format, format === '12h');
   const ago = daysBetween(day, today);
-  if (ago === 0) return `Today at ${time}`;
-  if (ago === 1) return `Yesterday at ${time}`;
+  if (ago === 0) return `${early ? 'Tonight' : 'Today'} at ${time}`;
+  if (ago === 1) return `${early ? 'Last night' : 'Yesterday'} at ${time}`;
   const words = dayWords(day, today);
   return `${words[0].toUpperCase()}${words.slice(1)} at ${time}`;
 }
 
 /** The inbox in its three groups: Chores to check, Requests, and Rewards (spec 13.7). */
-export function inboxGroups(requests: ChoreRequest[], members: Member[], today: string, format: '12h' | '24h'): InboxGroups {
+export function inboxGroups(
+  requests: ChoreRequest[], members: Member[], today: string, format: '12h' | '24h', dayStarts = '03:00',
+): InboxGroups {
   const byId = new Map(members.map(m => [m.id, m]));
   const groups: InboxGroups = { chores: [], requests: [], rewards: [], count: requests.length };
   for (const r of requests) {
@@ -58,7 +67,7 @@ export function inboxGroups(requests: ChoreRequest[], members: Member[], today: 
       const late = r.missed_if_sent_back === true;
       groups.chores.push({
         id: r.id, kind: r.kind, member, lead: doer ? `${doer} finished` : `${name} finished`, what: r.name,
-        tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format)}${stars}${late ? ' · Its day is over' : ''}`,
+        tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format, dayStarts)}${stars}${late ? ' · Its day is over' : ''}`,
         allow: 'Looks good', decline: late ? 'Not done' : 'Send back', blocked: false, late,
       });
     } else if (r.kind === 'more_time' || r.kind === 'skip') {
@@ -85,9 +94,20 @@ export function inboxGroups(requests: ChoreRequest[], members: Member[], today: 
 
 /** What the toast says once a parent answered. */
 /** The PIN sheet's question for an answer from the inbox (round 3: Send back and Decline asked "To approve"). */
-export function reviewQuestion(row: Pick<InboxRow, 'kind'>, allow: boolean): string {
+export function reviewQuestion(row: Pick<InboxRow, 'kind' | 'late'>, allow: boolean): string {
   if (allow) return "Who's approving?";
+  if (row.kind === 'completion' && row.late) return "Who's counting it as missed?"; // round 10
   return row.kind === 'completion' ? "Who's sending it back?" : "Who's declining?";
+}
+
+/** Whether a check-off waiting for approval is past its day, so sending it back counts it as missed (round 10). */
+export function lateRequest(board: { requests: ChoreRequest[] } | null | undefined, id: string | null | undefined): boolean {
+  return !!id && !!board?.requests.some(r => r.id === id && r.missed_if_sent_back === true);
+}
+
+/** Quick reasons for Send back (spec 13.7); one whose day is over can't be done again (round 10). */
+export function sendBackReasons(late: boolean): string[] {
+  return late ? ['Not finished', 'Missed a spot'] : ['Not finished', 'Missed a spot', 'Do it again'];
 }
 
 /** How long a row answered here stays where it was, so nothing slides under the finger (round 5). */

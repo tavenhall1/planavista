@@ -147,7 +147,7 @@ export function weekHighlights(view: WeekView, members: Member[], limit = 3): Hi
       for (const missed of day.missed_items ?? []) {
         found.push({
           key: `missed:${missed.key}`, member,
-          text: `${member.name} missed ${missed.name} on ${dayWords(day.date, view.today)}.`,
+          text: `${member.name} missed ${missed.name} on ${dayWords(day.date, view.today)}${missed.note ? `: ${missed.note}` : ''}.`,
           excuse: { occurrence: missed.key, name: missed.name, day: day.date },
         });
       }

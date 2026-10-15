@@ -66,7 +66,7 @@ describe('Approve all and Excuse it follow what happened', () => {
     const all = module.slice(module.indexOf('  private async _approveAll('));
     expect(all.slice(0, all.indexOf('\n  }\n'))).toMatch(/else if \(result === 'gone'\) gone \+= 1;/);
     // A check-off unchecked or deleted meanwhile is gone too (round 7), and a refused excuse reloads the day.
-    expect(module).toMatch(/\['unknown_request', 'request_closed', 'request_withdrawn'\]\.includes\(errorCode\(err\)\)/);
+    expect(module).toMatch(/\['unknown_request', 'request_closed', 'request_withdrawn', 'request_handed_on'\]\.includes\(errorCode\(err\)\)/);
     const excuse = module.slice(module.indexOf('  private async _excuseMissed('));
     expect(excuse.slice(0, excuse.indexOf('\n  }\n'))).toMatch(/errorCode\(err\) === 'not_missed'/);
   });

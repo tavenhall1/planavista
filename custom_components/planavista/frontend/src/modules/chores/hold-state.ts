@@ -44,11 +44,26 @@ export function tileLine(row: RowModel, fill: number, large: boolean, stars: num
   const done = row.state === 'done';
   if (row.state === 'pending') return { kind: 'waiting', text: '⏳ Waiting for approval' };
   if (fill > 0 && !done) return { kind: 'hint', text: `Keep holding… ${stars > 0 ? `⭐ +${stars}` : ''}`.trim() };
-  if (row.state === 'sent_back') {
-    // Overdue from an earlier day, it says so beside today's copy (round 9: two tiles looked the same).
-    const since = row.item.overdue_since;
-    const day = since ? new Date(`${since}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short' }) : null;
-    return { kind: 'bad', text: `↩ ${row.badge?.words ?? 'Sent back'}${day ? ` · from ${day}` : ''}` };
-  }
+  // Overdue from an earlier day, it says so beside today's copy (round 9: two tiles looked the same;
+  // round 10: one never done looked like today's too).
+  const day = overdueDay(row);
+  if (row.state === 'sent_back') return { kind: 'bad', text: `↩ ${row.badge?.words ?? 'Sent back'}${day ? ` · from ${day}` : ''}` };
+  if (day && !done) return { kind: 'bad', text: `Overdue since ${day}` };
   return { kind: 'hint', text: large && !done ? 'Hold me' : '' };
+}
+
+function overdueDay(row: RowModel): string | null {
+  const since = row.item.overdue_since;
+  if (!since) return null;
+  return row.overdueDay ?? new Date(`${since}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+/** What a picture tile says to a screen reader, overdue included (round 10). */
+export function tileLabel(row: RowModel): string {
+  if (row.state === 'done') return `${row.name}, done. Hold to uncheck`;
+  if (row.state === 'pending') return `${row.name}, waiting for approval`;
+  const day = overdueDay(row);
+  const since = day ? `, overdue since ${day}` : '';
+  if (row.state === 'sent_back') return `${row.name}, ${row.badge?.words ?? 'sent back'}${since}. Hold to complete`;
+  return since ? `${row.name}${since}. Hold to complete` : `Hold to complete ${row.name}`;
 }
