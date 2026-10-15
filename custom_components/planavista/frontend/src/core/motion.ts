@@ -47,6 +47,18 @@ export function springEasing(s: Spring, linear = supportsLinearEasing()): Spring
   return linear ? s : { easing: FALLBACK_EASING, duration: s.duration };
 }
 
+/**
+ * How a ring fills, which the card paints for every ring inside it with the
+ * Motion setting (--pv-ring-ms, --pv-ring-ease), so no ring reads the setting
+ * itself: on the kitchen screen (a Pi 4) each ring's read came after the last
+ * ring's write and forced a style recalc, about 300 ms whenever the board drew.
+ */
+export function ringTokens(motion: Motion, linear = supportsLinearEasing()): Record<'--pv-ring-ms' | '--pv-ring-ease', string> {
+  if (motion === 'reduced') return { '--pv-ring-ms': '180ms', '--pv-ring-ease': 'linear' };
+  const fill = springEasing(GENTLE, linear);
+  return { '--pv-ring-ms': `${fill.duration}ms`, '--pv-ring-ease': fill.easing };
+}
+
 export type MotionSetting = 'device' | 'full' | 'reduced';
 export type Motion = 'full' | 'reduced';
 

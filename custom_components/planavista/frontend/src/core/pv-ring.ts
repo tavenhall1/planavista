@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing, svg, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
 import { contrastText } from './color';
-import { BOUNCY, GENTLE, motionOf, springEasing } from './motion';
+import { BOUNCY, motionOf, springEasing } from './motion';
 
 /**
  * pv-ring: the signature (spec 11.1). A person's ring fills as their day gets
@@ -58,6 +58,7 @@ export class PvRing extends LitElement {
       stroke-dasharray: 3 4;
     }
 
+    /* How it fills comes from the card (ringTokens, with the Motion setting): no ring reads it. */
     .fill {
       transition: stroke-dashoffset var(--pv-ring-ms, 700ms) var(--pv-ring-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
     }
@@ -112,28 +113,8 @@ export class PvRing extends LitElement {
     return this.size >= 100 ? 8 : this.size >= 50 ? 4 : 3;
   }
 
-  protected firstUpdated(): void {
-    this._setEasing();
-  }
-
-  protected willUpdate(changed: PropertyValues): void {
-    // Motion changed in Settings since the first draw: the next fill follows it (round 1).
-    if (changed.has('progress')) this._setEasing();
-  }
-
   protected updated(changed: PropertyValues): void {
     if (changed.has('celebrate') && this.celebrate && changed.get('celebrate') !== undefined) this._play();
-  }
-
-  private _setEasing(): void {
-    if (motionOf(this) === 'reduced') {
-      this.style.setProperty('--pv-ring-ms', '180ms');
-      this.style.setProperty('--pv-ring-ease', 'linear');
-      return;
-    }
-    const spring = springEasing(GENTLE);
-    this.style.setProperty('--pv-ring-ms', `${spring.duration}ms`);
-    this.style.setProperty('--pv-ring-ease', spring.easing);
   }
 
   /** The glow and burst, once. Only opacity and transform animate (spec 11.5: cheap to run). */

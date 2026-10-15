@@ -28,9 +28,9 @@ describe('round 1 polish', () => {
 });
 
 describe('rings follow the Motion setting at once', () => {
-  it('work out their easing again whenever their progress changes, not only on first draw', () => {
-    const ring = read('core/pv-ring.ts');
-    expect(ring).toMatch(/protected willUpdate\(changed: PropertyValues\): void \{\s*\/\/[^\n]*\n\s*if \(changed\.has\('progress'\)\) this\._setEasing\(\);/);
+  it('take how they fill from the card, which paints it again whenever the setting changes (test/ring-motion.test.ts)', () => {
+    expect(read('shell/appearance-controller.ts')).toMatch(/\.\.\.ringTokens\(this\.motion\)/);
+    expect(read('core/pv-ring.ts')).toMatch(/transition: stroke-dashoffset var\(--pv-ring-ms, 700ms\) var\(--pv-ring-ease,/);
   });
 });
 
