@@ -336,6 +336,7 @@ export class PvChoresMyDay extends LitElement {
       }
 
       .step .picture {
+        filter: var(--pv-media-filter, none); /* a dimmed shared screen (0.12.0) */
         font-size: 44px;
       }
 

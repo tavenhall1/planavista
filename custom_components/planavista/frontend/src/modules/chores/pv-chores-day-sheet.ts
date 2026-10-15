@@ -111,6 +111,7 @@ export class PvChoresDaySheet extends LitElement {
       }
 
       li .pic {
+        filter: var(--pv-media-filter, none); /* a dimmed shared screen (0.12.0) */
         flex: none;
         width: 28px;
         text-align: center;

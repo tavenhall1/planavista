@@ -12,7 +12,7 @@ describe('rings take their motion from the card, never reading it themselves', (
     expect(ringTokens('full', true)).toEqual({ '--pv-ring-ms': `${GENTLE.duration}ms`, '--pv-ring-ease': GENTLE.easing });
     expect(ringTokens('full', false)['--pv-ring-ease']).not.toMatch(/^linear\(/);
     expect(ringTokens('reduced', true)).toEqual({ '--pv-ring-ms': '180ms', '--pv-ring-ease': 'linear' });
-    expect(src('shell/appearance-controller.ts')).toMatch(/'--pv-motion': this\.motion, \.\.\.ringTokens\(this\.motion\) \}\);/);
+    expect(src('shell/appearance-controller.ts')).toMatch(/'--pv-motion': this\.motion,\s+\.\.\.ringTokens\(this\.motion\),/);
   });
 
   it('pv-ring reads no style and writes none to draw or fill; only a celebration asks', () => {

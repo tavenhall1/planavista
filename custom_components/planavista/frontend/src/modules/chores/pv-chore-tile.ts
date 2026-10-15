@@ -135,6 +135,7 @@ export class PvChoreTile extends LitElement {
     }
 
     .picture {
+      filter: var(--pv-media-filter, none); /* a dimmed shared screen (0.12.0) */
       font-size: 44px;
       line-height: 1;
     }

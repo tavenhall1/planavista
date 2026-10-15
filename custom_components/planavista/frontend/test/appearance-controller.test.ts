@@ -178,3 +178,77 @@ describe('AppearanceController', () => {
     controller.hostDisconnected();
   });
 });
+
+describe('AppearanceController dimming (0.12.0)', () => {
+  let page: Page;
+  let source: AppearanceSource;
+  const dimming = { settings: { day: 100, night: 30 }, members: [], night: null };
+
+  beforeEach(() => {
+    page = fakePage();
+    vi.stubGlobal('document', page);
+    source = { display: { appearance: 'dark' }, cardTheme: undefined, sun: null, haDark: false, overlayOpen: false };
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  function painted(card: { style: { setProperty: (n: string, v: string) => void } }) {
+    const tokens: Record<string, string> = {};
+    card.style.setProperty = (n: string, v: string) => { tokens[n] = v; };
+    return tokens;
+  }
+
+  it('draws a shared screen at the night level at night, and other screens at full', () => {
+    vi.setSystemTime(new Date(2026, 9, 14, 23, 0));
+    const shared = fakeCard({ ...source, dimming });
+    const tokens = painted(shared.card);
+    shared.controller.hostUpdate();
+    expect(shared.controller.dim).toBe(0.3);
+    expect(tokens['--pv-bg']).not.toBe('#111214');
+    expect(tokens['--pv-dim']).toBe('0.3');
+    expect(tokens['--pv-media-filter']).toMatch(/^brightness\(0\.\d+\)$/);
+    shared.controller.hostDisconnected();
+
+    const phone = fakeCard({ ...source, dimming: null });
+    const full = painted(phone.card);
+    phone.controller.hostUpdate();
+    expect(phone.controller.dim).toBe(1);
+    expect(full['--pv-bg']).toBe('#111214');
+    expect(full['--pv-media-filter']).toBe('none');
+    phone.controller.hostDisconnected();
+  });
+
+  it('steps through the evening fade every 15 seconds, not on every update', () => {
+    vi.setSystemTime(new Date(2026, 9, 14, 21, 45, 1));
+    const { card, controller } = fakeCard({ ...source, dimming });
+    controller.hostUpdate();
+    const first = controller.dim;
+    expect(first).toBeLessThan(1);
+    expect(first).toBeGreaterThan(0.3);
+    vi.setSystemTime(new Date(2026, 9, 14, 21, 45, 9));
+    controller.hostUpdate();
+    expect(controller.dim).toBe(first);
+    card.renders = 0;
+    vi.advanceTimersByTime(15_000);
+    expect(card.renders).toBeGreaterThan(0);
+    controller.hostDisconnected();
+  });
+
+  it('shows a previewed level for a while, then the real one', () => {
+    vi.setSystemTime(new Date(2026, 9, 14, 14, 0));
+    const { controller } = fakeCard({ ...source, dimming });
+    controller.hostUpdate();
+    expect(controller.dim).toBe(1);
+    controller.preview(0.15, 3500);
+    controller.hostUpdate();
+    expect(controller.dim).toBe(0.15);
+    vi.advanceTimersByTime(3600);
+    controller.hostUpdate();
+    expect(controller.dim).toBe(1);
+    controller.hostDisconnected();
+  });
+});

@@ -98,6 +98,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @property({ attribute: false }) cardConfig?: PlanaVistaCardConfig;
   @property({ attribute: false }) display!: DisplayConfig;
   @property({ attribute: false }) mode: Mode = 'light';
+  /** A dimmed shared screen's level (0.12.0): people's colors are drawn at it. */
+  @property({ attribute: false }) dim = 1;
   @property({ attribute: false }) view: string | undefined;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -801,7 +803,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return html`
       <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
         .cardConfig=${this.cardConfig}
-        .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} layout=${this.layout}
+        .hass=${this.hass} .timeFormat=${this.display?.time_format ?? '12h'} .mode=${this.mode} .dim=${this.dim} layout=${this.layout}
         .minute=${this._minute}
         @pv-hold-done=${(e: CustomEvent<HoldDetail>) => this._complete(e.detail)}
         @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
@@ -833,7 +835,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return this.household?.members.find(m => m.id === id);
   }
 
-  private _colorOf = (member: Member): string => memberColor(member, this.mode);
+  /** A new function when the mode or a dimmed screen's level changes, so the screens given it draw again. */
+  private _colorFor = memoizeOne((mode: Mode, dim: number) => (member: Member): string => memberColor(member, mode, dim));
+  private get _colorOf(): (member: Member) => string {
+    return this._colorFor(this.mode, this.dim);
+  }
 
   /**
    * Whether this screen may change `memberId`'s items now: straight away, or
@@ -1309,7 +1315,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       }
       this._optionNames.set(sheet, found.model.title);
       return html`
-        <pv-chore-options .layout=${this.layout} .model=${found.model} color=${memberColor(found.owner, this.mode)}
+        <pv-chore-options .layout=${this.layout} .model=${found.model} color=${memberColor(found.owner, this.mode, this.dim)}
           .history=${sheet.history} ?busy=${sheet.busy}
           @pv-option=${(e: CustomEvent<OptionChoice>) => void this._option(sheet.key, e.detail)}
           @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chore-options>

@@ -14,6 +14,8 @@ export interface ScreensaverSettings {
   after_minutes: number;
   night: { from: string; to: string } | null;
   screens: ScreenEntities[];
+  /** Brightness by day and at night on shared screens, in whole percents (0.12.0; missing before it). */
+  dim?: { day: number; night: number };
 }
 
 export const AFTER_CHOICES = [1, 2, 5, 10, 15, 30] as const;

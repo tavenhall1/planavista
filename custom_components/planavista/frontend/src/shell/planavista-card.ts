@@ -29,13 +29,14 @@ import {
   moduleRegistry,
   resolveModules,
 } from '../core/module-registry';
-import { HouseholdView, Member, SettingsAccess, parentsWithPins, settingsAccess, setupNeedsPin } from '../core/household';
+import { HouseholdView, Member, SettingsAccess, memberColor, parentsWithPins, settingsAccess, setupNeedsPin } from '../core/household';
 import { PinGate, pinReason } from '../core/pin-gate';
 import type { Session } from '../core/session';
 import { HouseholdApi, UnlockResult } from '../core/household-client';
 import { AppearanceEdits } from '../core/appearance-edits';
 import { appearanceDependencies, sunOf } from '../core/appearance-deps';
 import { AppearanceController } from './appearance-controller';
+import { DIM_DEFAULT, DIM_PREVIEW_EVENT, DimPreview } from '../core/dimming';
 import { registerShellSettings } from './definition';
 import type { RunSetupDetail, SettingsTarget } from '../core/settings-registry';
 import { HouseholdController } from './household-controller';
@@ -150,6 +151,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       haDark: !!(this.hass as unknown as { themes?: { darkMode?: boolean } } | undefined)?.themes?.darkMode,
       // The goal's reveal too: an automatic switch would play its view transition over it (round 3).
       overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || !!this._flow || this._moduleOverlay || !!this._fullscreen,
+      dimming: this._dimming(),
     }),
     async () => {
       await this.updateComplete;
@@ -190,6 +192,19 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     for (const mod of moduleRegistry.list()) {
       if (mod.service) this._services[mod.id] = mod.service(this);
     }
+    // Settings shows a brightness level on this card for a moment (0.12.0).
+    this.addEventListener(DIM_PREVIEW_EVENT, (e: Event) => {
+      const { level, ms } = (e as CustomEvent<DimPreview>).detail;
+      this._appearance.preview(level, ms);
+    });
+  }
+
+  /** On a shared screen, what its dimming follows (0.12.0); elsewhere nothing dims. */
+  private _dimming() {
+    const view = this._household.view;
+    if (!view?.account.shared) return null;
+    const saver = view.security.screensaver;
+    return { settings: saver?.dim ?? DIM_DEFAULT, members: view.members, night: saver?.night ?? null };
   }
 
   /** ServiceHost: the household, once it has answered. */
@@ -911,7 +926,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return html`
       <pv-parent-strip
         class="under"
-        .member=${member}
+        .member=${{ ...member, color: memberColor(member, 'light', this._appearance.dim) }}
         .hass=${this.hass}
         .endsAt=${this._session.endsAt ?? 0}
         .span=${this._session.spanMs}
@@ -1149,6 +1164,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         .display=${display}
         .view=${this._views[mod.id]}
         .mode=${this._appearance.mode}
+        .dim=${this._appearance.dim}
         .shape=${this._appearance.look.shape}
         .forecast=${this._forecast.forecast}
         .household=${this._household.view}

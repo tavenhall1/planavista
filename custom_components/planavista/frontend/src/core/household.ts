@@ -2,6 +2,7 @@
 
 import type { ScreensaverSettings } from './screensaver';
 import { matchedInk } from './color';
+import { dimColor } from './dimming';
 
 export type AgeGroup = 'young_child' | 'older_child' | 'teen' | 'adult';
 export type Role = 'parent' | AgeGroup;
@@ -248,8 +249,9 @@ export function pictureOf(
 /**
  * Someone's color for the mode (spec 12.4): as chosen in light; in dark,
  * the dark color they picked, or one Matched from it (brighter, same hue).
+ * On a dimmed shared screen it is drawn at the level (0.12.0).
  */
-export function memberColor(member: Pick<Member, 'color' | 'color_dark'>, mode: 'light' | 'dark'): string {
-  if (mode === 'light') return member.color;
-  return member.color_dark || matchedInk(member.color);
+export function memberColor(member: Pick<Member, 'color' | 'color_dark'>, mode: 'light' | 'dark', dim = 1): string {
+  const color = mode === 'light' ? member.color : member.color_dark || matchedInk(member.color);
+  return dimColor(color, dim);
 }
