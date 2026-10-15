@@ -218,6 +218,57 @@ def test_a_deleted_reward_leaves_no_surprise_to_come_back() -> None:
     assert _view(engine) == {"reward": "ice_cream_trip", "opened": False}
 
 
+def test_a_spend_that_takes_an_earlier_goal_out_of_reach_clears_it() -> None:
+    """Round 5 (r5a A1): a spend that kept the current goal covered but took an earlier one below
+    its price brought the earlier one back opened, with no new present."""
+    engine = _engine()
+    engine.save_reward({"name": "Sticker", "icon": "⭐", "cost": 1, "needs_ok": False})
+    engine.award_stars(SCENE, member="dana", stars=4, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")  # Ice cream trip (3), opened
+    engine.set_members(_with_goal("sticker"))
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")  # Sticker (1), opened
+    engine.redeem(SCENE, member="dana", reward="sticker", by="alex", source="tablet")
+    engine.award_stars(SCENE, member="dana", stars=-1, reason="Spent elsewhere", by="alex")  # 2 left: under 3
+    engine.redeem(SCENE, member="dana", reward="sticker", by="alex", source="tablet")  # 1 left, sticker covered
+    assert engine.settle_surprises(SCENE).events == []
+    engine.set_members(_with_goal("ice_cream_trip"))
+    engine.settle_surprises(SCENE)
+    engine.award_stars(SCENE, member="dana", stars=2, reason="Saved again", by="alex")
+    assert _types(engine.settle_surprises(SCENE)) == [("goal_reached", "dana")]
+    assert _view(engine) == {"reward": "ice_cream_trip", "opened": False}
+
+
+def test_deleting_the_current_goal_keeps_the_others_surprises() -> None:
+    """Round 5 (r5a A2): deleting the current goal dropped the opened Ice cream trip too, so it wrapped again."""
+    engine = _engine()
+    engine.save_reward({"name": "Sticker", "icon": "⭐", "cost": 2})
+    engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    engine.set_members(_with_goal("sticker"))
+    engine.settle_surprises(SCENE)
+    engine.open_surprise(SCENE, member="dana", by="dana")
+    engine.delete_reward("sticker")
+    assert (engine.settle_surprises(SCENE).events, _view(engine)) == ([], None)
+    engine.set_members(_with_goal("ice_cream_trip"))
+    assert engine.settle_surprises(SCENE).events == []
+    assert _view(engine) == {"reward": "ice_cream_trip", "opened": True}
+
+
+def test_the_goal_reward_given_with_stars_to_spare_opens_its_present() -> None:
+    """Round 5 (r5a A5): the child would open a present that reveals the reward she just got."""
+    engine = _engine()
+    engine.award_stars(SCENE, member="dana", stars=6, reason="Bonus", by="alex")
+    engine.settle_surprises(SCENE)
+    engine.redeem(SCENE, member="dana", reward="ice_cream_trip", by="dana", source="tablet")
+    [request] = engine.open_requests()
+    engine.review(SCENE, request_id=request["id"], allow=True, by="alex")
+    assert engine.settle_surprises(SCENE).events == []
+    assert _view(engine) == {"reward": "ice_cream_trip", "opened": True}
+
+
 def test_a_surprise_out_of_reach_cant_be_opened() -> None:
     engine = _engine()
     engine.award_stars(SCENE, member="dana", stars=3, reason="Bonus", by="alex")

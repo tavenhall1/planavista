@@ -77,12 +77,17 @@ def test_nothing_open_is_not_an_error() -> None:
     assert engine.complete(SCENE, key=yesterday, by="casey", source="tablet").result == "nothing_open"
 
 
-def test_a_check_off_after_its_due_time_is_too_late() -> None:
-    engine = sample_engine(activities=[
-        once("forms", "Sign the school forms", ["alex"], by="2026-10-14", by_time="08:00", estimate_minutes=10),
-    ])
-    out = engine.complete(at(10, 14, 9), key="forms|alex|once|0", by="alex", source="tablet")
-    assert out.result == "nothing_open"
+def test_a_check_off_after_its_due_time_counts_while_it_shows() -> None:
+    """Round 5 (r5a A4): the board shows it, "Due today", until its day ends, so a check-off counts
+    until then (it said Done and changed nothing); the next chore day it's gone."""
+    def engine() -> object:
+        return sample_engine(activities=[
+            once("forms", "Sign the school forms", ["alex"], by="2026-10-14", by_time="08:00", estimate_minutes=10),
+        ])
+    late = engine().complete(at(10, 14, 9), key="forms|alex|once|0", by="alex", source="tablet")
+    assert late.result == "done"
+    next_day = engine().complete(at(10, 15, 9), key="forms|alex|once|0", by="alex", source="tablet")
+    assert next_day.result == "nothing_open"
 
 
 def test_who_needs_an_ok() -> None:
@@ -522,3 +527,32 @@ def test_an_occurrences_time_runs_out_with_its_day_its_week_or_its_repeat() -> N
     assert engine.period_over("take_out_the_trash|casey|week:2026-10-05|0", SCENE) is True
     assert engine.period_over("pack_for_camp|casey|once|0", SCENE) is False
     assert engine.period_over("not a key", SCENE) is True
+
+
+def test_an_occurrences_time_follows_its_own_due() -> None:
+    """Round 5 (r5a A3): a strict pinned day and a dated Once chore said "changed on another screen" after their day."""
+    tuesday = at(10, 13, 9)
+    strict = sample_engine(at(10, 12, 9), settings={"missed": "strict"})
+    assert strict.period_over("laundry|blair|week:2026-10-12|0", tuesday) is True
+    make_up = sample_engine(at(10, 12, 9))
+    assert make_up.period_over("laundry|blair|week:2026-10-12|0", tuesday) is False
+    dated = sample_engine(activities=[
+        once("water_the_garden", "Water the garden", ["dana"], on="2026-10-12"),
+        once("sweep_the_porch", "Sweep the porch", ["casey"], by="2026-10-13"),
+        once("sort_the_shed", "Sort the shed", ["casey"]),
+    ])
+    assert dated.period_over("water_the_garden|dana|once|0", tuesday) is True
+    assert dated.period_over("sweep_the_porch|casey|once|0", tuesday) is False
+    assert dated.period_over("sweep_the_porch|casey|once|0", at(10, 14, 9)) is True
+    assert dated.period_over("sort_the_shed|casey|once|0", at(10, 30, 9)) is False
+
+
+def test_a_once_chore_past_its_time_can_still_be_checked_off_while_it_shows() -> None:
+    """Round 5 (r5a A4): "Return library books, by 6 PM", held at 6:34 PM, said Done and stayed open."""
+    engine = sample_engine(activities=[once("library_books", "Return library books", ["casey"], by="2026-10-13", by_time="15:00")])
+    key = "library_books|casey|once|0"
+    assert engine.find_item(key, SCENE) is not None  # 4:10 PM: still on the board, "Due today"
+    out = engine.complete(SCENE, key=key, by="casey", source="tablet")
+    assert out.result in ("done", "waiting")
+    assert engine.undo(SCENE, key=key, by="casey", source="tablet").result == "undone"
+    assert engine.complete(SCENE, key=key, by="casey", source="tablet").result in ("done", "waiting")

@@ -682,26 +682,30 @@ class ChoresEngine:
         return None
 
     def period_over(self, key: str, now: datetime) -> bool:
-        """Whether an occurrence's time has run out: its day, its week, or its repeat's due (round 4).
+        """Whether an occurrence's time has run out: the chore day it was due has ended (rounds 4 and 5).
 
-        A Once chore's time never runs out by itself.
+        The plan rebuilds it with its overrides (a strict pinned day, a dated Once
+        chore, more time), as the board does; a key the plan no longer makes is
+        judged by its period's dates. A Once chore with no date never runs out.
         """
         parsed = parse_key(key)
         if parsed is None:
             return True
+        today = self.today(now)
+        activity = self.activity(parsed[0])
+        occ = self.generator().from_key(activity, key) if activity is not None else None
+        if occ is not None:
+            occ = with_overrides(occ, self._index().overrides.get(key, {}), set(self.member_ids()), self.clock)
+            return occ.due is not None and self.clock.due_day(occ.due) < today
         kind, _, value = parsed[2].partition(":")
         try:
             day = date.fromisoformat(value)
         except ValueError:
             return kind != "once"
-        today = self.today(now)
         if kind == "day":
             return day < today
         if kind == "week":
             return self.clock.week_end(day) <= today
-        activity = self.activity(parsed[0])
-        if kind == "rep" and activity is not None and activity.get("schedule") == "repeats":
-            return self.generator()._repeat(activity, parsed[1], day).due <= now
         return kind == "rep" and day < today
 
     def planned_later(self, key: str, now: datetime) -> date | None:
@@ -734,10 +738,15 @@ class ChoresEngine:
 
         return min(candidates, key=rank, default=None)
 
-    @staticmethod
-    def _still_open(item: Item, now: datetime) -> bool:
+    def _still_open(self, item: Item, now: datetime) -> bool:
+        """Whether a check-off still counts: while the item shows on the board (round 5).
+
+        A Once chore due by a time stays on the board, "Due today", until its day
+        ends, so it can still be checked off (and unchecked and checked off again)
+        after that time; before, the board kept it open while a hold said Done.
+        """
         due = item.occ.due
-        return item.section == "overdue" or due is None or due.astimezone(UTC) > now.astimezone(UTC)
+        return item.section == "overdue" or due is None or self.clock.due_day(due) >= self.today(now)
 
     # Views -----------------------------------------------------------------------
 
@@ -1734,26 +1743,36 @@ class ChoresEngine:
         for redemption in self.rewards["redemptions"]:
             if redemption["reward"] == reward_id and redemption.get("state") == "requested":
                 redemption["state"] = "declined"
-        # Its surprises go for good, so a reward added again under the same id starts fresh (round 4).
+        # Its surprises go for good, so a reward added again under the same id starts fresh (round 4);
+        # the member's other goals stay as they were (round 5).
         surprises = self.rewards.setdefault("surprises", {})
         for member_id, surprise in list(surprises.items()):
-            earlier = surprise.get("earlier", {})
-            earlier.pop(reward_id, None)
-            if not earlier:
-                surprise.pop("earlier", None)
-            if surprise["reward"] == reward_id:
+            goals = self._surprise_goals(surprise)
+            if goals.pop(reward_id, None) is None:
+                continue
+            shown = None if surprise.get("away") or surprise["reward"] == reward_id else surprise["reward"]
+            record = self._surprise_record(goals, shown)
+            if record is None:
                 del surprises[member_id]
+                continue
+            if surprise.get("spent"):
+                record["spent"] = True
+            surprises[member_id] = record
         return Outcome("deleted", {"reward": reward_id}, changed={"rewards"})
 
     def _give(self, redemption: dict[str, Any], at: datetime, by: str, source: str | None, out: Outcome) -> None:
         redemption["state"] = "given"
         redemption["review"] = {"by": by, "at": self._stamp(at), "note": None, "source": source}
         self._ledger(redemption["member"], -int(redemption["cost"]), "redeemed", at, ref=redemption["id"], by=by)
-        # Stars spent: if that takes the goal out of reach, reaching it again is a new surprise (r3b I3);
-        # the next settle forgets it when the goal is still in reach (round 4).
+        # Stars spent: the next settle forgets every goal the balance no longer covers (round 5).
         surprise = self.rewards.setdefault("surprises", {}).get(redemption["member"])
         if surprise is not None:
             surprise["spent"] = True
+            # A goal's own reward given: getting it opens its present (round 5).
+            entry = surprise if surprise["reward"] == redemption["reward"] else surprise.get("earlier", {}).get(redemption["reward"])
+            if entry is not None and not entry.get("opened"):
+                entry["opened"] = self._stamp(at)
+                entry["opened_by"] = by
         reward = self.reward(redemption["reward"])
         out.events.append(ChoreEvent("redeemed", redemption["member"], {
             "reward": redemption["reward"], "reward_name": reward["name"] if reward else redemption["reward"],
@@ -1819,58 +1838,67 @@ class ChoresEngine:
             return None
         return reward
 
-    def settle_surprises(self, now: datetime) -> Outcome:
-        """Wrap a surprise for each member whose stars reach their goal; set the rest aside.
+    def _surprise_goals(self, have: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
+        """Every goal a member's surprise record remembers: the one on top and the `earlier` ones."""
+        if not have:
+            return {}
+        goals = {rid: dict(seen) for rid, seen in have.get("earlier", {}).items()}
+        goals[have["reward"]] = {k: have[k] for k in ("cost", "wrapped", "opened", "opened_by") if k in have}
+        for rid, seen in goals.items():
+            reward = self.reward(rid)
+            if reward is not None:
+                seen.setdefault("cost", int(reward["cost"]))
+        return goals
 
-        A goal reached is celebrated once until stars are spent (round 3, r3b I3):
-        a surprise whose goal slips out of reach (an uncheck, a price raised, the
-        goal changed) is set aside (`away`) and comes back as it was, opened or
-        not, with no new `goal_reached`; switching goals keeps the earlier goals'
-        surprises (`earlier`) for the same reason. Stars spent (`spent`, see
-        `_give`) clear the slate once the goal is out of reach, so saving up again
-        wraps a new one. A deleted reward's surprise goes for good.
+    @staticmethod
+    def _surprise_record(goals: Mapping[str, Mapping[str, Any]], shown: str | None) -> dict[str, Any] | None:
+        """How the Store keeps the goals: the one shown (else the latest) on top, set aside unless shown."""
+        if not goals:
+            return None
+        top = shown if shown in goals else max(goals, key=lambda rid: str(goals[rid].get("wrapped")))
+        record: dict[str, Any] = {"reward": top, **goals[top]}
+        if top != shown:
+            record["away"] = True
+        earlier = {rid: dict(seen) for rid, seen in goals.items() if rid != top}
+        if earlier:
+            record["earlier"] = earlier
+        return record
+
+    def settle_surprises(self, now: datetime) -> Outcome:
+        """Wrap a surprise for each member whose stars reach their goal (round 5's one rule).
+
+        A member remembers each goal they reached, opened or not, so a goal that
+        slips out of reach (an uncheck, a price raised, the goal changed) comes
+        back as it was, with no new `goal_reached`. A deleted reward is forgotten,
+        and after stars are spent (`spent`, see `_give`) so is every goal the
+        balance no longer covers: reaching one of those again wraps a new surprise.
+        The board shows the current goal's surprise while it is in reach.
         """
         surprises: dict[str, dict[str, Any]] = self.rewards.setdefault("surprises", {})
         out = Outcome()
         for member in self.members:
             member_id = member["id"]
-            reward = self._goal_reward(member)
             have = surprises.get(member_id)
-            if reward is None or self.balance(member_id) < int(reward["cost"]):
-                if have is None:
-                    continue
-                if have.get("spent") or self.reward(have["reward"]) is None:
-                    del surprises[member_id]
-                    out.changed.add("rewards")
-                elif not have.get("away"):
-                    have["away"] = True
-                    out.changed.add("rewards")
-                continue
-            if have is not None and have["reward"] == reward["id"]:
-                # Still in reach after a reward was given: that spend took nothing away (round 4).
-                away, spent = have.pop("away", None), have.pop("spent", None)
-                if away or spent:
-                    out.changed.add("rewards")
-                continue
-            earlier: dict[str, dict[str, Any]] = {}
-            if have is not None and not have.get("spent"):
-                earlier = {
-                    rid: seen for rid, seen in have.get("earlier", {}).items() if self.reward(rid) is not None
-                }
-                earlier[have["reward"]] = {"wrapped": have["wrapped"], "opened": have.get("opened")}
-            back = earlier.pop(reward["id"], None)
-            record: dict[str, Any] = {
-                "reward": reward["id"], "cost": int(reward["cost"]),
-                "wrapped": back["wrapped"] if back else self._stamp(now), "opened": back["opened"] if back else None,
+            balance = self.balance(member_id)
+            spent = bool(have and have.get("spent"))
+            goals = {
+                rid: seen for rid, seen in self._surprise_goals(have).items()
+                if (known := self.reward(rid)) is not None and (not spent or balance >= int(known["cost"]))
             }
-            if earlier:
-                record["earlier"] = earlier
-            surprises[member_id] = record
-            out.changed.add("rewards")
-            if back is None:
+            reward = self._goal_reward(member)
+            reached = reward is not None and balance >= int(reward["cost"])
+            if reward is not None and reached and reward["id"] not in goals:
+                goals[reward["id"]] = {"cost": int(reward["cost"]), "wrapped": self._stamp(now), "opened": None}
                 out.events.append(ChoreEvent("goal_reached", member_id, {
                     "member": member_id, "reward": reward["id"], "reward_name": reward["name"], "stars": int(reward["cost"]),
                 }))
+            record = self._surprise_record(goals, reward["id"] if reward is not None and reached else None)
+            if record != have:
+                if record is None:
+                    surprises.pop(member_id, None)
+                else:
+                    surprises[member_id] = record
+                out.changed.add("rewards")
         for member_id in set(surprises) - {m["id"] for m in self.members}:
             del surprises[member_id]
             out.changed.add("rewards")
