@@ -80,5 +80,7 @@ describe('Approve all and Excuse it follow what happened', () => {
     const module = src('modules/chores/pv-chores-module.ts');
     const excuse = module.slice(module.indexOf('  private async _excuseMissed('));
     expect(excuse.slice(0, excuse.indexOf('\n  }\n'))).toMatch(/finally \{[\s\S]*this\._excusing = /);
+    // Round 7 (r7b B2): it gave the link back before the day reloaded, so a double tap excused twice.
+    expect(excuse.slice(0, excuse.indexOf('\n  }\n'))).toMatch(/await Promise\.all\(\[\s*this\._loadWeek\(true\),/);
   });
 });

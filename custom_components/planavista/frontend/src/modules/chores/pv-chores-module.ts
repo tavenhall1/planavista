@@ -478,18 +478,19 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** The week to show, fetched when the view opens, the week changes, or (this week) the board changes. */
-  private _loadWeek(force = false): void {
+  /** Loads the week shown; the promise settles once it has (round 7: Excuse it waits for it). */
+  private _loadWeek(force = false): Promise<void> {
     const board = this.service?.board();
     const api = this.service?.api;
-    if (!board || !api) return;
+    if (!board || !api) return Promise.resolve();
     const date = this._weekOffset === 0 ? board.week.start : addDays(board.week.start, 7 * this._weekOffset);
     const stale = this._weekOffset === 0 && this._weekRevision !== this.revision;
-    if (!force && this._weekAsked === date && !stale) return;
+    if (!force && this._weekAsked === date && !stale) return Promise.resolve();
     this._weekAsked = date;
     this._weekRevision = this.revision;
     if (this._week?.week.start !== date) this._week = null;
     this._weekFailed = false;
-    api.week(date).then(
+    return api.week(date).then(
       view => {
         if (this._weekAsked === date) this._week = view;
       },
@@ -520,13 +521,13 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** `keep`: the day shown stays while it reloads, so rows don't move under the finger (round 5). */
-  private _openDay(member: string, date: string, keep = false): void {
+  private _openDay(member: string, date: string, keep = false): Promise<void> {
     const api = this.service?.api;
-    if (!api) return;
+    if (!api) return Promise.resolve();
     const shown = keep && this._sheet?.kind === 'day' && this._sheet.date === date ? this._sheet.day : null;
     const sheet = { kind: 'day' as const, member, date, day: shown, failed: false };
     this._sheet = sheet;
-    api.day(date).then(
+    return api.day(date).then(
       day => {
         if (this._sheet?.kind === 'day' && this._sheet.date === date) this._sheet = { ...this._sheet, day };
       },
@@ -549,8 +550,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       await api.excuseMissed(occurrence);
       const who = this._member(member)?.name;
       this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${who ? ` ${who}'s streak holds.` : ''}` });
-      this._loadWeek(true);
-      if (this._sheet?.kind === 'day') this._openDay(this._sheet.member, this._sheet.date, true);
+      // Its link stays gone until the day and the week show it excused (round 7: a double tap excused twice).
+      await Promise.all([
+        this._loadWeek(true),
+        this._sheet?.kind === 'day' ? this._openDay(this._sheet.member, this._sheet.date, true) : Promise.resolve(),
+      ]);
     } catch (err) {
       this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
     } finally {
