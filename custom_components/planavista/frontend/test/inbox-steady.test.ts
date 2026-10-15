@@ -31,9 +31,14 @@ describe('the approvals hold still while a parent works', () => {
   it('says when a row of Approve all did not save, instead of only what did', () => {
     expect(approveAllSummary(2, 0, 3)).toEqual({ text: "Approved 2. 3 didn't save. Check the connection and try again.", tone: 'bad' });
     expect(approveAllSummary(0, 0, 2)).toEqual({ text: "2 didn't save. Check the connection and try again.", tone: 'bad' });
-    expect(approveAllSummary(2, 1)).toEqual({ text: 'Approved 2. 1 was already answered.', tone: 'plain' });
+    // Round 7 (r7a A3): stopped by a refusal (parent mode ended mid-way), it says why.
+    expect(approveAllSummary(2, 0, 3, "A parent's PIN is needed on this screen."))
+      .toEqual({ text: "Approved 2. 3 didn't save: A parent's PIN is needed on this screen.", tone: 'bad' });
+    // Round 7 (r7a A4): answered elsewhere, unchecked by the child, or deleted: not waiting anymore.
+    expect(approveAllSummary(2, 1)).toEqual({ text: "Approved 2. 1 wasn't waiting anymore.", tone: 'plain' });
+    expect(approveAllSummary(2, 2)).toEqual({ text: "Approved 2. 2 weren't waiting anymore.", tone: 'plain' });
     expect(approveAllSummary(3, 0)).toEqual({ text: 'Approved 3 chores.', tone: 'plain' });
-    expect(approveAllSummary(0, 2)).toEqual({ text: 'Those were already answered.', tone: 'plain' });
+    expect(approveAllSummary(0, 2)).toEqual({ text: "Those weren't waiting anymore.", tone: 'plain' });
     expect(approveAllSummary(1, 0)).toBeNull();
   });
 

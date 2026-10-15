@@ -216,6 +216,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return result === 'done';
   }
 
+  /** What the last refused answer said, for Approve all's summary (round 7). */
+  private _lastRefusal: string | null = null;
+
   /** One answer, and how it went: answered elsewhere meanwhile is `gone`, not a failure (round 6). */
   private async _answer(row: InboxRow, allow: boolean, note: string | null, quietGone = false): Promise<'done' | 'cancelled' | 'gone' | 'failed'> {
     const api = this.service?.api;
@@ -226,7 +229,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       this.showToast({ id: `review-${row.id}`, text: answeredText(row, allow, note) });
       return 'done';
     } catch (err) {
-      const gone = errorCode(err) === 'unknown_request' || errorCode(err) === 'request_closed';
+      const gone = ['unknown_request', 'request_closed', 'request_withdrawn'].includes(errorCode(err));
+      this._lastRefusal = errorMessage(err);
       if (!(gone && quietGone)) {
         this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
       }
@@ -270,6 +274,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** Each row it named, past any answered elsewhere meanwhile; a cancelled PIN or a failure stops it (round 6). */
   private async _approveAll(rows: InboxRow[], settle?: (id: string, ok: boolean) => void): Promise<void> {
+    this._lastRefusal = null;
     let approved = 0;
     let gone = 0;
     let stopped: 'cancelled' | 'failed' | null = null;
@@ -285,7 +290,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       else stopped = result;
     }
     // A failure stops it and says how many didn't save (round 7: the summary hid the error).
-    const summary = approveAllSummary(approved, gone, stopped === 'failed' ? rows.length - approved - gone : 0);
+    const summary = approveAllSummary(approved, gone, stopped === 'failed' ? rows.length - approved - gone : 0, this._lastRefusal);
     if (summary) this.showToast({ id: `approved-${Date.now()}`, text: summary.text, tone: summary.tone });
   }
 
@@ -559,6 +564,13 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       ]);
     } catch (err) {
       this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+      // Excused on another screen meanwhile: show the day as it is (round 7: the row kept saying Missed).
+      if (errorCode(err) === 'not_missed') {
+        await Promise.all([
+          this._loadWeek(true),
+          this._sheet?.kind === 'day' ? this._openDay(this._sheet.member, this._sheet.date, true) : Promise.resolve(),
+        ]);
+      }
     } finally {
       const next = new Set(this._excusing);
       next.delete(occurrence);

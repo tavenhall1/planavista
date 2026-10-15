@@ -57,14 +57,18 @@ describe('rows answered here stay in place for a moment', () => {
 // Round 6 (r6a A1, A3, A4).
 describe('Approve all and Excuse it follow what happened', () => {
   it('approves past a row answered elsewhere and says so', () => {
-    expect(approveAllSummary(2, 1)?.text).toBe('Approved 2. 1 was already answered.');
+    expect(approveAllSummary(2, 1)?.text).toBe("Approved 2. 1 wasn't waiting anymore.");
     expect(approveAllSummary(3, 0)?.text).toBe('Approved 3 chores.');
-    expect(approveAllSummary(0, 2)?.text).toBe('Those were already answered.');
+    expect(approveAllSummary(0, 2)?.text).toBe("Those weren't waiting anymore.");
     expect(approveAllSummary(1, 0)).toBeNull();
     expect(approveAllSummary(0, 0)).toBeNull();
     const module = src('modules/chores/pv-chores-module.ts');
     const all = module.slice(module.indexOf('  private async _approveAll('));
     expect(all.slice(0, all.indexOf('\n  }\n'))).toMatch(/else if \(result === 'gone'\) gone \+= 1;/);
+    // A check-off unchecked or deleted meanwhile is gone too (round 7), and a refused excuse reloads the day.
+    expect(module).toMatch(/\['unknown_request', 'request_closed', 'request_withdrawn'\]\.includes\(errorCode\(err\)\)/);
+    const excuse = module.slice(module.indexOf('  private async _excuseMissed('));
+    expect(excuse.slice(0, excuse.indexOf('\n  }\n'))).toMatch(/errorCode\(err\) === 'not_missed'/);
   });
 
   it("freezes the rows its question names, and closes the question once they're gone", () => {

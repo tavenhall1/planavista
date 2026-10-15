@@ -139,13 +139,17 @@ export function answeredWords(row: Pick<InboxRow, 'kind'>, answered: 'pending' |
  * not failures (round 6), and rows that didn't save say so (round 7: "Approved 2
  * chores." replaced the error, and the parent thought all five went through).
  */
-export function approveAllSummary(approved: number, gone: number, notSaved = 0): { text: string; tone: 'plain' | 'bad' } | null {
+export function approveAllSummary(
+  approved: number, gone: number, notSaved = 0, reason?: string | null,
+): { text: string; tone: 'plain' | 'bad' } | null {
   if (notSaved > 0) {
-    return { text: `${approved > 0 ? `Approved ${approved}. ` : ''}${notSaved} didn't save. Check the connection and try again.`, tone: 'bad' };
+    const why = reason ? `: ${reason}` : '. Check the connection and try again.';
+    return { text: `${approved > 0 ? `Approved ${approved}. ` : ''}${notSaved} didn't save${why}`, tone: 'bad' };
   }
-  if (approved > 0 && gone > 0) return { text: `Approved ${approved}. ${gone} ${gone === 1 ? 'was' : 'were'} already answered.`, tone: 'plain' };
+  // Answered on another screen, unchecked by the child, or its chore deleted: not waiting anymore (round 7).
+  if (approved > 0 && gone > 0) return { text: `Approved ${approved}. ${gone} ${gone === 1 ? "wasn't" : "weren't"} waiting anymore.`, tone: 'plain' };
   if (approved > 1) return { text: `Approved ${approved} chores.`, tone: 'plain' };
-  if (approved === 0 && gone > 0) return { text: 'Those were already answered.', tone: 'plain' };
+  if (approved === 0 && gone > 0) return { text: "Those weren't waiting anymore.", tone: 'plain' };
   return null;
 }
 
