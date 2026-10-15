@@ -54,6 +54,11 @@ def test_what_a_request_says() -> None:
         "Casey asks for more time on Yard work, until 2026-10-18."
     )
     assert request_text({"kind": "skip", "member": "casey", "name": "Yard work"}, names) == "Casey asks to skip Yard work this week."
+    # Round 15 (r15b M1): the words follow what the skip covers.
+    daily = {"kind": "skip", "member": "casey", "name": "Cat care", "occurrence": "cat_care|casey|day:2026-10-15|0"}
+    assert request_text(daily, names) == "Casey asks to skip Cat care on Thursday."
+    once = {"kind": "skip", "member": "casey", "name": "Clean out the garage", "occurrence": "clean_out_the_garage|casey|once|0"}
+    assert request_text(once, names) == "Casey asks to skip Clean out the garage."
     assert request_text({"kind": "redemption", "member": "casey", "name": "Movie night pick", "cost": 40}, names) == (
         "Casey wants Movie night pick (40 stars)."
     )

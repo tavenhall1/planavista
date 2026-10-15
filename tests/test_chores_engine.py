@@ -796,6 +796,18 @@ def test_overdue_copies_wait_without_counting_on_an_away_day() -> None:
     assert engine.board(at(10, 14, 10))["members"]["dana"]["today"]["due"] == 0
 
 
+def test_a_skip_this_week_covers_every_copy_that_week() -> None:
+    """Round 15 (r15b I3): allowed, it excused Tuesday's trash and left Friday's owed."""
+    trash = plan("take_out_the_trash", "Take out the trash", ["casey"], 0.2, "week", days=["tue", "fri"])
+    engine = sample_engine(activities=[trash])
+    first = sorted(i.occ.key for i in engine.items(SCENE)["casey"] if i.occ.chore == "take_out_the_trash")[0]
+    engine.request(SCENE, kind="skip", key=first, by="casey")
+    [ask] = [r for r in engine.open_requests() if r["kind"] == "skip"]
+    engine.review(SCENE, request_id=ask["id"], allow=True, by="blair")
+    week = first.rsplit("|", 1)[0]
+    assert engine._excused(f"{week}|0") and engine._excused(f"{week}|1")
+
+
 def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
     """Round 10 (r10a M2): it was refused with the words for an unchecked check-off."""
     engine = sample_engine()

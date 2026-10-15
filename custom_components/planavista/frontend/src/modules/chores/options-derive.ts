@@ -67,6 +67,14 @@ export interface OptionsModel {
   parent: OptionModel[];
 }
 
+/** What a skip covers, in words (round 15): a daily chore's day, this week, this time, or the one-time chore itself. */
+export function skipWords(period: string, today: string): string {
+  if (period.startsWith('day:')) return dayWords(period.slice(4), today);
+  if (period.startsWith('week:')) return 'this week';
+  if (period === 'once') return 'it';
+  return 'this time';
+}
+
 /** A day `n` days after `day` (YYYY-MM-DD). */
 export function addDays(day: string, n: number): string {
   const date = dayDate(day);
@@ -193,7 +201,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
         pick: { min: addDays(due, 1), max: addDays(today, 60) },
         hint: parents.length ? `Sends a request to ${names(parents)}.` : 'Sends a request to the parents.',
       });
-      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs approval', hint: 'Sick, away, rained out…' });
+      member.push({ id: 'skip', label: `Ask to skip ${skipWords(item.period, today)}`, tag: 'Needs approval', hint: 'Sick, away, rained out…' });
     }
     if (ctx.credit !== false) member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
   }
@@ -234,7 +242,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   const request = item.request
     ? item.request.kind === 'more_time' && item.request.until
       ? `Waiting for a parent: more time, until ${dayWords(item.request.until, today)}.`
-      : 'Waiting for a parent: skip this week.'
+      : `Waiting for a parent: skip ${skipWords(item.period, today)}.`
     : null;
   return {
     title: item.name,

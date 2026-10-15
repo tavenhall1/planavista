@@ -2,7 +2,7 @@ import type { Member } from '../../core/household';
 import { daysBetween } from '../../core/status-map';
 import type { ChoreRequest } from './chores-types';
 import { clockTime } from './calendar-ties';
-import { dayWords } from './options-derive';
+import { dayWords, skipWords } from './options-derive';
 
 /** One request in the To approve inbox (spec 13.7). */
 export interface InboxRow {
@@ -63,7 +63,8 @@ export function whenText(at: string, today: string, format: '12h' | '24h', daySt
 /** What a skip is for: a daily chore's day ("today"), else this week (round 14: a daily chore said "this week"). */
 function skipWhen(occurrence: string | undefined, today: string): string {
   const period = occurrence?.split('|')[2] ?? '';
-  return period.startsWith('day:') ? ` ${dayWords(period.slice(4), today)}` : ' this week';
+  if (period === 'once') return ''; // a one-time chore: skipping it is the whole of it (round 15)
+  return period ? ` ${skipWords(period, today)}` : ' this week';
 }
 
 /** The inbox in its three groups: Chores to check, Requests, and Rewards (spec 13.7). */

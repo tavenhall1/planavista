@@ -1431,12 +1431,15 @@ class ChoresEngine:
                 change = (
                     {"due": request["until"]} if request["kind"] == "more_time" else {"excused": True}
                 )
-                self.log["overrides"].append(
-                    {"occurrence": request["occurrence"], **change, "by": by, "at": self._stamp(now),
-                     "request": request["id"]}
-                )
-                if change.get("excused"):
-                    self._excuse_counted(request["occurrence"])  # round 10
+                occurrences = [request["occurrence"]]
+                if request["kind"] == "skip":
+                    occurrences += self._week_copies(request["occurrence"], request["member"])
+                for occurrence in occurrences:
+                    self.log["overrides"].append(
+                        {"occurrence": occurrence, **change, "by": by, "at": self._stamp(now), "request": request["id"]}
+                    )
+                    if change.get("excused"):
+                        self._excuse_counted(occurrence)  # round 10
             out.result = request["state"]
             out.data = {"occurrence": request["occurrence"]}
             return out
@@ -1763,6 +1766,16 @@ class ChoresEngine:
             tally = summary["chores"].setdefault(parsed[0], {"due": 0, "done": 0})
             tally["due"] += 1
         summary["closed"] = False
+
+    def _week_copies(self, key: str, member: str) -> list[str]:
+        """A week's other open copies of a chore for its person: a skip this week covers them all (round 15:
+        allowed, it excused Tuesday's and left Friday's owed)."""
+        parsed = parse_key(key)
+        if parsed is None or not parsed[2].startswith("week:"):
+            return []
+        prefix = key.rsplit("|", 1)[0] + "|"
+        week = self._week_items(_day(parsed[2][5:]), self._index())
+        return [k for k, item in week.get(member, {}).items() if k != key and k.startswith(prefix) and item.status in OPEN]
 
     def _owes_nothing(self, key: str, occ: Occurrence | None, day: date) -> bool:
         """Excused (a skip allowed, Excuse it), or its person away when it came due: nothing was owed (round 13)."""

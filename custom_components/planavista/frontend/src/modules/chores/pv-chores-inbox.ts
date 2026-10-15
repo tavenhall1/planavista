@@ -61,6 +61,27 @@ export class PvChoresInbox extends LitElement {
   private _room: ResizeObserver | null = null;
   /** Works out `short` and lets go of held heights for a new room (rounds 12 to 14). */
   private _fit: (() => void) | null = null;
+  /** The panel's height was held with Send back's reasons open: it lets go as they close (round 15). */
+  private _heldForReasons = false;
+  /** A press is down on the panel: a refit waits for it to end, or the press lands somewhere else (round 15). */
+  private _pressing = false;
+  private _fitLater = false;
+  private _pressStart = (): void => {
+    this._pressing = true;
+  };
+
+  private _pressEnd = (): void => {
+    this._pressing = false;
+    if (this._fitLater) {
+      this._fitLater = false;
+      requestAnimationFrame(() => this._fit?.());
+    }
+  };
+
+  /** Focus back on the title (round 15: after Approve all's question, focus fell to the page). */
+  focusTitle(): void {
+    this.renderRoot.querySelector<HTMLElement>('#inbox-title')?.focus();
+  }
   @property({ attribute: false }) groups!: InboxGroups;
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
@@ -356,7 +377,13 @@ export class PvChoresInbox extends LitElement {
     panel.addEventListener('focusin', this._focusIn);
     // Turned while typing, the new room waits for the field to let go (round 14: iOS never resizes after).
     this._fit = fit;
-    panel.addEventListener('focusout', () => requestAnimationFrame(() => this._fit?.()));
+    panel.addEventListener('pointerdown', this._pressStart, true);
+    window.addEventListener('pointerup', this._pressEnd, true);
+    window.addEventListener('pointercancel', this._pressEnd, true);
+    panel.addEventListener('focusout', () => {
+      if (this._pressing) this._fitLater = true;
+      else requestAnimationFrame(() => this._fit?.());
+    });
     this._room = new ResizeObserver(fit);
     this._room.observe(this);
     fit();
@@ -395,10 +422,12 @@ export class PvChoresInbox extends LitElement {
         this._rowsHeight = 0;
       }
       this._heldHeight = 0;
-    } else if (!this._heldHeight && panel.offsetHeight > 0 && !this._sendingBack) {
-      // Not with the reasons open: their height would stay as a band under Done (round 14).
+    } else if (!this._heldHeight && panel.offsetHeight > 0) {
       this._heldHeight = panel.offsetHeight;
       panel.style.height = `${this._heldHeight}px`;
+      // Held with the reasons open, it lets go as they close, or their height stays as a band under Done
+      // (round 14); not held at all, a row leaving moved them under the finger (round 15).
+      this._heldForReasons = !!this._sendingBack;
     }
   }
 
@@ -431,6 +460,8 @@ export class PvChoresInbox extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener('pointerup', this._pressEnd, true);
+    window.removeEventListener('pointercancel', this._pressEnd, true);
     this._room?.disconnect();
     this._detach?.();
     window.clearTimeout(this._settle);
@@ -595,7 +626,7 @@ export class PvChoresInbox extends LitElement {
           <input type="text" maxlength="60" placeholder="Write a note…" aria-label="Write a note" .value=${this._note}
             @input=${(e: Event) => { this._note = (e.target as HTMLInputElement).value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this._review(row, false, this._note.trim() || null); }} />
-          <button class="chip" type="button" @click=${() => this._review(row, false, this._note.trim() || null)}>${row.excused ? 'Not done' : row.late ? 'Count as missed' : 'Send back'}</button>
+          <button class="chip" type="button" @click=${() => this._review(row, false, this._note.trim() || null)}>${row.excused ? 'Keep it excused' : row.late ? 'Count as missed' : 'Send back'}</button>
         </div>
       ` : nothing}
     `;
@@ -621,6 +652,11 @@ export class PvChoresInbox extends LitElement {
     if (id === this._sendingBack) return;
     this._sendingBack = id;
     guardPageTaps();
+    if (!id && this._heldForReasons) {
+      this._heldForReasons = false;
+      this._resetHeld();
+      this.requestUpdate();
+    }
   }
 
   /** The reasons in view, below the sticky head and above a pinned Done, their top first (round 12: no scroll padding). */

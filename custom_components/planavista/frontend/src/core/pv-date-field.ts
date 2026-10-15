@@ -75,7 +75,7 @@ export class PvDateField extends LitElement {
     this._month = m - 1;
     void this.updateComplete.then(() => {
       const root = this.renderRoot;
-      (root.querySelector<HTMLElement>('.picker-day.selected') ?? root.querySelector<HTMLElement>('.picker-day.today')
+      (root.querySelector<HTMLElement>('.picker-day.selected') ?? root.querySelector<HTMLElement>('.picker-day.today:not([disabled])')
         ?? root.querySelector<HTMLElement>('.picker-day:not([disabled])'))?.focus();
     });
   };

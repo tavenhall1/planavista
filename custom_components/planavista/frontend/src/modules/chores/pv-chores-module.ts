@@ -34,7 +34,7 @@ import { RewardDraft, balances, elsewhereText, recentLine, redeemers, rewardCard
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
-import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
+import { creditedText, dayWords, historyLines, itemOptions, skipWords, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
 import { InboxRow, answeredText, approveAllSummary, excusedRequest, inboxGroups, lateRequest, reviewQuestion } from './inbox-derive';
@@ -275,6 +275,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   private _onApproveAsk(event: CustomEvent<{ id: string }>, ask: ApproveAllAsk, rows: InboxRow[]): void {
     event.stopPropagation();
     this._approveAsk = null;
+    // Focus back in To approve, not the page (round 15).
+    void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focusTitle(): void }>('pv-chores-inbox')?.focusTitle());
     if (event.detail.id !== 'approve') return;
     ask.start(rows);
     void this._approveAll(rows, (id, ok) => ask.settle(id, ok));
@@ -1030,7 +1032,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       }
       case 'skip': {
         if (!(await this.asMember(owner.id, `Who's asking to skip ${name}?`))) return;
-        await this._run(() => api.request('skip', key), 'Asked to skip this week. A parent will answer.');
+        await this._run(() => api.request('skip', key), `Asked to skip ${skipWords(row.item.period, board.today)}. A parent will answer.`);
         return;
       }
       case 'undo': {

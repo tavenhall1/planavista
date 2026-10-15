@@ -1128,6 +1128,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return staticHtml`
       <${tag}
         class="pv-module"
+        ?inert=${this._settingsOpen}
         layout=${this._layout.layout}
         .hass=${this.hass}
         .cardConfig=${this._config}
@@ -1161,6 +1162,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${ref(this._headerHeights.attach)}
         layout=${this._layout.layout}
         ?short=${this._layout.short}
+        ?inert=${this._settingsOpen}
         ?compact=${this._layout.layout === 'portrait' && this._compactHeader}
         .timeFormat=${display.time_format || '12h'}
         .weather=${weather ?? null}
@@ -1178,6 +1180,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       <pv-nav-bar
         layout=${this._layout.layout}
         ?short=${this._layout.short}
+        ?inert=${this._settingsOpen}
         .modules=${this._modules().shown.map(m => ({ id: m.id, label: m.label, icon: m.icon }))}
         .activeModule=${active.id}
         .views=${active.views}

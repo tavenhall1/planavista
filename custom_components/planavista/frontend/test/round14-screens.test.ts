@@ -17,14 +17,14 @@ describe('round 14: screens', () => {
     const shown = { getClientRects: () => [{}] } as unknown as HTMLElement;
     const hidden = { getClientRects: () => [] } as unknown as HTMLElement;
     expect(tabbable([hidden, shown, hidden])).toEqual([shown]);
-    expect(src('core/focus.ts')).toMatch(/const items = tabbable\(\[\.\.\.root\.querySelectorAll<HTMLElement>\(FOCUSABLE\)\]\);/);
+    expect(src('core/focus.ts')).toMatch(/const items = tabbable\(focusablesIn\(root\)\);/); // round 15: into fields' own controls
   });
 
   // I2 and M1: turned while typing, the old height stayed for good; turned with the reasons open, their height stayed.
   it('fits its room again once typing ends, and holds no height while the reasons are open', () => {
     const inbox = src('modules/chores/pv-chores-inbox.ts');
-    expect(inbox).toMatch(/panel\.addEventListener\('focusout', \(\) => requestAnimationFrame\(\(\) => this\._fit\?\.\(\)\)\);/);
-    expect(inbox).toMatch(/\} else if \(!this\._heldHeight && panel\.offsetHeight > 0 && !this\._sendingBack\) \{/);
+    expect(inbox).toMatch(/panel\.addEventListener\('focusout', \(\) => \{/); // round 15: waits for a press to end
+    expect(inbox).toMatch(/this\._heldForReasons = !!this\._sendingBack;/); // round 15: held, then let go as they close
   });
 
   // M2: the excused words reached To approve only.
