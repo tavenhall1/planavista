@@ -1127,7 +1127,11 @@ class ChoresEngine:
         parsed = parse_key(key)
         chore = parsed[0] if parsed else key
         activity = self.activity(chore)
-        # A deleted chore's name from its id, in words (round 9: "wipe_the_counters").
+        deleted = self.log.get("deleted")
+        gone = deleted.get(chore) if not activity and isinstance(deleted, Mapping) else None
+        if not activity and isinstance(gone, Mapping) and isinstance(gone.get("name"), str):
+            activity = gone  # a deleted chore keeps its name and picture (round 10)
+        # Deleted before its name was kept: the name from its id, in words (round 9: "wipe_the_counters").
         name = activity["name"] if activity else re.sub(r"_\d+$", "", chore).replace("_", " ").capitalize()
         if status in ("missed", "open") and "note" not in extra:
             # Sent back after its day: the parent's note reaches the day's sheet (round 9).
@@ -1913,8 +1917,14 @@ class ChoresEngine:
         nothing yet, and they stayed in To approve under the chore's id, where approving
         them (or the 3 AM approval) gave their stars.
         """
-        if self.activity(chore_id) is None:
+        activity = self.activity(chore_id)
+        if activity is None:
             raise ChoreError("unknown_chore")
+        # Its past days keep its own name and picture (round 10: "Tv time" from its id).
+        deleted = self.log.get("deleted")
+        if not isinstance(deleted, dict):
+            deleted = self.log["deleted"] = {}
+        deleted[chore_id] = {"name": activity["name"], "icon": activity.get("icon")}
         for completion in self.log["completions"]:
             if completion["chore"] == chore_id and completion.get("state") == "pending":
                 completion["state"] = "withdrawn"
@@ -2396,6 +2406,11 @@ class ChoresEngine:
             period = str(summary.get("period", ""))
             if "keys" in summary and _day(period.split(":", 1)[1]) < keep_from:
                 summary.pop("keys")
+        # A deleted chore's name goes once nothing in the log names it.
+        deleted = log.get("deleted")
+        if isinstance(deleted, dict) and deleted:
+            named = self.ids_in_log()
+            log["deleted"] = {k: v for k, v in deleted.items() if k in named}
         self.rewards["redemptions"] = [
             r for r in self.rewards["redemptions"] if r.get("state") == "requested" or _at(r["at"]) >= cutoff
         ]

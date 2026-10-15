@@ -226,6 +226,18 @@ def test_a_deleted_chore_done_today_leaves_the_board() -> None:
     assert engine.balance("casey") == stars
 
 
+def test_a_deleted_chores_past_days_keep_its_name() -> None:
+    """Round 10 (r10b M5): its past rows rebuilt the name from its id ("Tv time") and lost its picture."""
+    tv = {**plan("tv_time", "TV time", ["casey"], 0.5, "day"), "icon": "📺"}
+    engine = sample_engine(activities=[tv])
+    engine.complete(SCENE, key="tv_time|casey|day:2026-10-13|0", by="casey", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    engine.delete_activity("tv_time", now=at(10, 14, 9))
+    rows = engine.day_view(at(10, 14, 10), date(2026, 10, 13))["members"]["casey"]["items"]
+    [row] = [r for r in rows if r["chore"] == "tv_time"]
+    assert (row["name"], row["icon"]) == ("TV time", "📺")
+
+
 def test_an_edit_that_leaves_something_owed_reopens_a_finished_chore() -> None:
     """Round 8 (r8a A3): a finished Once chore given a second session stayed finished, off the board."""
     engine = sample_engine(activities=[once("fix_the_gate", "Fix the gate", ["alex"], by="2026-10-16")])
