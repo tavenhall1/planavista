@@ -134,12 +134,32 @@ export function answeredWords(row: Pick<InboxRow, 'kind'>, answered: 'pending' |
   return answered === 'allowed' ? 'Allowed' : 'Not this time';
 }
 
-/** What Approve all says when it ends (round 6): rows answered elsewhere meanwhile are named, not failures. */
-export function approveAllSummary(approved: number, gone: number): string | null {
-  if (approved > 0 && gone > 0) return `Approved ${approved}. ${gone} ${gone === 1 ? 'was' : 'were'} already answered.`;
-  if (approved > 1) return `Approved ${approved} chores.`;
-  if (approved === 0 && gone > 0) return 'Those were already answered.';
+/**
+ * What Approve all says when it ends: rows answered elsewhere meanwhile are named,
+ * not failures (round 6), and rows that didn't save say so (round 7: "Approved 2
+ * chores." replaced the error, and the parent thought all five went through).
+ */
+export function approveAllSummary(approved: number, gone: number, notSaved = 0): { text: string; tone: 'plain' | 'bad' } | null {
+  if (notSaved > 0) {
+    return { text: `${approved > 0 ? `Approved ${approved}. ` : ''}${notSaved} didn't save. Check the connection and try again.`, tone: 'bad' };
+  }
+  if (approved > 0 && gone > 0) return { text: `Approved ${approved}. ${gone} ${gone === 1 ? 'was' : 'were'} already answered.`, tone: 'plain' };
+  if (approved > 1) return { text: `Approved ${approved} chores.`, tone: 'plain' };
+  if (approved === 0 && gone > 0) return { text: 'Those were already answered.', tone: 'plain' };
   return null;
+}
+
+/**
+ * Rows that came in after the approvals opened wait behind a word ("2 more came in"),
+ * so nothing shown moves under a finger (round 7: an arrival in an earlier group
+ * pushed the later groups down). With nothing shown, they show at once.
+ */
+export function heldArrivals(groups: InboxGroups, known: ReadonlySet<string>): { groups: InboxGroups; arrived: number } {
+  const all = [...groups.chores, ...groups.requests, ...groups.rewards];
+  if (!all.some(row => known.has(row.id))) return { groups, arrived: 0 };
+  const keep = (rows: InboxRow[]) => rows.filter(row => known.has(row.id));
+  const shown: InboxGroups = { chores: keep(groups.chores), requests: keep(groups.requests), rewards: keep(groups.rewards), count: groups.count };
+  return { groups: shown, arrived: all.length - shown.chores.length - shown.requests.length - shown.rewards.length };
 }
 
 export function answeredText(row: InboxRow, allowed: boolean, note?: string | null): string {

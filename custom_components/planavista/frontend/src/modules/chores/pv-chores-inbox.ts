@@ -12,7 +12,9 @@ import type { Member } from '../../core/household';
 import { SMOOTH, motionOf, springEasing } from '../../core/motion';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
-import { ANSWERED_MS, answeredWords, withAnswered, type Answered, type InboxGroups, type InboxRow, type ShownRow } from './inbox-derive';
+import {
+  ANSWERED_MS, answeredWords, heldArrivals, withAnswered, type Answered, type InboxGroups, type InboxRow, type ShownRow,
+} from './inbox-derive';
 import { SEND_BACK_REASONS } from './pv-chore-options';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
@@ -23,8 +25,8 @@ export interface ApproveAllAsk {
   rows: InboxRow[];
   /** The rows being approved now: held in place, "Saving...". */
   start: (rows: readonly InboxRow[]) => void;
-  /** How it went: the ids it tried, and those approved. */
-  settled: (ids: readonly string[], answered: readonly string[]) => void;
+  /** How one row went, as each is answered (round 7: all of them said Saving until the last). */
+  settle: (id: string, ok: boolean) => void;
 }
 
 export interface ReviewDetail {
@@ -62,6 +64,12 @@ export class PvChoresInbox extends LitElement {
   @state() private _answered = new Map<string, Answered>();
   /** The panel's height in portrait, held while open so rows don't move under the finger (round 6). */
   private _heldHeight = 0;
+  /** The rows' height, kept while open so a row leaving never pulls the scroll back (round 7). */
+  private _rowsHeight = 0;
+  /** The rows shown so far; later ones wait behind "N more came in" (round 7). */
+  private _known: Set<string> | null = null;
+  /** Rows shown now (answered ones held in place included), for the held heights. */
+  private _shownCount = 0;
   /** What each group drew last, so answered rows keep their places. */
   private _shown: Record<'chores' | 'requests' | 'rewards', ShownRow[]> = { chores: [], requests: [], rewards: [] };
   private _settle?: number;
@@ -122,7 +130,19 @@ export class PvChoresInbox extends LitElement {
 
       .actions {
         display: flex;
+        align-items: center;
+        gap: 12px;
         margin-top: 16px;
+      }
+
+      /* Rows that came in after it opened: shown on the parent's word (round 7). */
+      .actions .more {
+        flex: none;
+      }
+
+      /* Approve all keeps its place when it has nothing to approve, so rows don't move as it comes and goes. */
+      .link.unused {
+        visibility: hidden;
       }
 
       .actions .pv-btn {
@@ -261,12 +281,23 @@ export class PvChoresInbox extends LitElement {
     // them down (round 6). In portrait it keeps the height it opened with (at least 60% of the screen),
     // and scrolls; rows below one that leaves move up, as in any list.
     const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
-    if (!panel) return;
-    if (this.layout === 'landscape') {
+    const rows = this.renderRoot.querySelector<HTMLElement>('.rows');
+    if (!panel || !rows) return;
+    // The rows keep the most height they have had, so one leaving at the end never pulls the scroll back (round 7).
+    if (rows.offsetHeight > this._rowsHeight) {
+      this._rowsHeight = rows.offsetHeight;
+      rows.style.minHeight = `${this._rowsHeight}px`;
+    }
+    if (this.layout === 'landscape' || this._shownCount === 0) {
+      // Docked, or nothing left to tap: no height to hold (round 7: an empty sheet with Done mid-way).
       if (this._heldHeight) panel.style.height = '';
+      if (this._shownCount === 0 && this._rowsHeight) {
+        rows.style.minHeight = '';
+        this._rowsHeight = 0;
+      }
       this._heldHeight = 0;
     } else if (!this._heldHeight && panel.offsetHeight > 0) {
-      this._heldHeight = Math.max(panel.offsetHeight, Math.round(window.innerHeight * 0.6));
+      this._heldHeight = panel.offsetHeight;
       panel.style.height = `${this._heldHeight}px`;
     }
   }
@@ -277,9 +308,15 @@ export class PvChoresInbox extends LitElement {
     window.clearTimeout(this._settle);
   }
 
-  private _rows(group: 'chores' | 'requests' | 'rewards'): ShownRow[] {
-    this._shown[group] = withAnswered(this.groups[group], this._shown[group], this._answered, performance.now());
+  private _rows(group: 'chores' | 'requests' | 'rewards', shown: InboxGroups): ShownRow[] {
+    this._shown[group] = withAnswered(shown[group], this._shown[group], this._answered, performance.now());
     return this._shown[group];
+  }
+
+  /** "N more came in · Show": the parent's own move, so rows may move now. */
+  private _showArrived(): void {
+    for (const row of this._all()) this._known?.add(row.id);
+    this.requestUpdate();
   }
 
   /** Tapped: its place held, "Saving…", until the module says how it went. */
@@ -331,9 +368,13 @@ export class PvChoresInbox extends LitElement {
   render() {
     const g = this.groups;
     if (!g) return nothing;
-    const chores = this._rows('chores');
-    const requests = this._rows('requests');
-    const rewards = this._rows('rewards');
+    this._known ??= new Set(this._all().map(row => row.id));
+    const held = heldArrivals(g, this._known);
+    for (const group of [held.groups.chores, held.groups.requests, held.groups.rewards]) for (const row of group) this._known.add(row.id);
+    const chores = this._rows('chores', held.groups);
+    const requests = this._rows('requests', held.groups);
+    const rewards = this._rows('rewards', held.groups);
+    this._shownCount = chores.length + requests.length + rewards.length;
     const open = chores.filter(row => !row.answered);
     return html`
       <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
@@ -350,16 +391,20 @@ export class PvChoresInbox extends LitElement {
             <p>Check-offs that need a parent's approval, requests, and rewards land here.</p>
           </div>
         ` : nothing}
-        ${chores.length ? html`
-          <div class="group"><span>Chores to check</span>
-            ${open.length > 1 ? html`<button class="link" type="button" ?disabled=${this.busy.size > 0}
-              @click=${() => this._askApproveAll(open)}>Approve all (${open.length})</button>` : nothing}
-          </div>
-          ${chores.map(row => this._row(row))}
-        ` : nothing}
-        ${requests.length ? html`<div class="group"><span>Requests</span></div>${requests.map(row => this._row(row))}` : nothing}
-        ${rewards.length ? html`<div class="group"><span>Rewards</span></div>${rewards.map(row => this._row(row))}` : nothing}
+        <div class="rows">
+          ${chores.length ? html`
+            <div class="group"><span>Chores to check</span>
+              <button class="link ${open.length > 1 ? '' : 'unused'}" type="button" ?disabled=${this.busy.size > 0 || open.length < 2}
+                aria-hidden=${open.length > 1 ? 'false' : 'true'} tabindex=${open.length > 1 ? 0 : -1}
+                @click=${() => this._askApproveAll(open)}>Approve all (${open.length})</button>
+            </div>
+            ${chores.map(row => this._row(row))}
+          ` : nothing}
+          ${requests.length ? html`<div class="group"><span>Requests</span></div>${requests.map(row => this._row(row))}` : nothing}
+          ${rewards.length ? html`<div class="group"><span>Rewards</span></div>${rewards.map(row => this._row(row))}` : nothing}
+        </div>
         <div class="actions">
+          ${held.arrived ? html`<button class="link more" type="button" @click=${() => this._showArrived()}>${held.arrived} more came in · Show</button>` : nothing}
           <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
         </div>
       </div>
@@ -375,7 +420,7 @@ export class PvChoresInbox extends LitElement {
     const detail: ApproveAllAsk = {
       rows: [...rows],
       start: chosen => this._markPending(chosen, true),
-      settled: (ids, answered) => this._settleRows(ids, new Set(answered)),
+      settle: (id, ok) => this._settleRows([id], new Set(ok ? [id] : [])),
     };
     this.dispatchEvent(new CustomEvent('pv-approve-all-ask', { detail, bubbles: true, composed: true }));
   }
@@ -391,7 +436,7 @@ export class PvChoresInbox extends LitElement {
             <div class="what">${row.lead} <strong>${row.what}</strong>${row.tail}</div>
             <div class="detail">${row.detail}</div>
           </div>
-          <div class="answers"><span class="done-word" role="status">✓ ${answeredWords(row, row.answered)}</span></div>
+          <div class="answers"><span class="done-word" role="status">${row.answered === 'pending' ? '' : '✓ '}${answeredWords(row, row.answered)}</span></div>
         </div>
       `;
     }

@@ -265,26 +265,28 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._approveAsk = null;
     if (event.detail.id !== 'approve') return;
     ask.start(rows);
-    const ids = rows.map(r => r.id);
-    void this._approveAll(rows, answered => ask.settled(ids, answered));
+    void this._approveAll(rows, (id, ok) => ask.settle(id, ok));
   }
 
   /** Each row it named, past any answered elsewhere meanwhile; a cancelled PIN or a failure stops it (round 6). */
-  private async _approveAll(rows: InboxRow[], settled?: (answered: string[]) => void): Promise<void> {
+  private async _approveAll(rows: InboxRow[], settle?: (id: string, ok: boolean) => void): Promise<void> {
     let approved = 0;
     let gone = 0;
-    const answered: string[] = [];
+    let stopped: 'cancelled' | 'failed' | null = null;
     for (const row of rows) {
+      if (stopped) {
+        settle?.(row.id, false);
+        continue;
+      }
       const result = await this._answer(row, true, null, true);
-      if (result === 'done') {
-        approved += 1;
-        answered.push(row.id);
-      } else if (result === 'gone') gone += 1;
-      else break;
+      settle?.(row.id, result === 'done');
+      if (result === 'done') approved += 1;
+      else if (result === 'gone') gone += 1;
+      else stopped = result;
     }
-    settled?.(answered);
-    const text = approveAllSummary(approved, gone);
-    if (text) this.showToast({ id: `approved-${Date.now()}`, text });
+    // A failure stops it and says how many didn't save (round 7: the summary hid the error).
+    const summary = approveAllSummary(approved, gone, stopped === 'failed' ? rows.length - approved - gone : 0);
+    if (summary) this.showToast({ id: `approved-${Date.now()}`, text: summary.text, tone: summary.tone });
   }
 
   private async _quickAdd(draft: QuickAddDraft): Promise<void> {
