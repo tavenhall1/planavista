@@ -120,7 +120,8 @@ export interface ConfettiPiece {
   star: boolean;
 }
 
-const GOLD = '#F5B800';
+/** The theme's gold, so a dimmed screen's confetti dims with it (review m12 B). */
+const GOLD = 'var(--pv-present-gold, #F5B800)';
 
 /** The burst from the box: the child's color and gold stars, the same for the same seed. */
 export function confettiPieces(count: number, seed: number, color: string): ConfettiPiece[] {

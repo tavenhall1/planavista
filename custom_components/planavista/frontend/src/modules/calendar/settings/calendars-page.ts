@@ -4,6 +4,7 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { animationStyles, baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { settingsPageStyles } from '../../../styles/settings';
+import { atLevel } from '../../../core/dimming';
 import type { HouseholdView, Member } from '../../../core/household';
 import { HouseholdApi, errorCode } from '../../../core/household-client';
 import type { Layout } from '../../../core/layout';
@@ -12,6 +13,7 @@ import { inOrder } from '../../../core/household';
 import { PvColorSwatchPicker } from '../../../core/color-swatch-picker';
 import type { PlanaVistaData } from '../../../types';
 import { CalendarRow, belongsTo, buildCalendarRows, toSavedCalendars, rowColor } from '../calendar-rows';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-calendar-calendars-page: which calendars show, how each looks, and who
@@ -19,6 +21,8 @@ import { CalendarRow, belongsTo, buildCalendarRows, toSavedCalendars, rowColor }
  * Each change saves as you tap; a name saves when the field is left.
  */
 export class PvCalendarCalendarsPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -97,6 +101,8 @@ export class PvCalendarCalendarsPage extends LitElement {
 
     return html`
       <div class="page-content">
+        <p class="page-subtitle">${helpLabel(this._help, 'calendars_list', 'Calendars to show')}</p>
+        ${helpBox(this._help, 'calendars_list')}
         <div class="calendar-list">
           ${this._rows.map((cal, idx) => this._renderCalendarRow(cal, idx))}
         </div>
@@ -185,7 +191,8 @@ export class PvCalendarCalendarsPage extends LitElement {
           <div class="cal-details">
             <!-- Display name input -->
             <div class="cal-field">
-              <label class="pv-label" for="cal-name-${idx}">Name</label>
+              <span class="pv-label">${helpFor(this._help, 'calendar_name', 'Name', `cal-name-${idx}`, String(idx))}</span>
+              ${helpBox(this._help, 'calendar_name', String(idx))}
               <input
                 id="cal-name-${idx}"
                 type="text"
@@ -201,7 +208,8 @@ export class PvCalendarCalendarsPage extends LitElement {
 
             <!-- Person entity link -->
             <div class="cal-field">
-              <label class="pv-label" for="cal-person-${idx}">Home Assistant person</label>
+              <span class="pv-label">${helpFor(this._help, 'calendar_person', 'Home Assistant person', `cal-person-${idx}`, String(idx))}</span>
+              ${helpBox(this._help, 'calendar_person', String(idx))}
               <select
                 id="cal-person-${idx}"
                 class="pv-input pv-select cal-person-select"
@@ -230,9 +238,10 @@ export class PvCalendarCalendarsPage extends LitElement {
     if (owner) {
       return html`
         <div class="cal-field">
-          <span class="pv-label">Color</span>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_color', 'Color', undefined, String(idx))}</span>
+          ${helpBox(this._help, 'calendar_color', String(idx))}
           <div class="cal-owned-color">
-            <span class="cal-color-dot" style="background: ${owner.color}" aria-hidden="true"></span>
+            <span class="cal-color-dot" style="background: ${atLevel(owner.color)}" aria-hidden="true"></span>
             <span class="cal-owned-name">${owner.name}'s color</span>
             <button class="pv-btn pv-btn-secondary" type="button"
               @click=${() => this._openPerson(owner)}>Set in People</button>
@@ -242,7 +251,8 @@ export class PvCalendarCalendarsPage extends LitElement {
     }
     return html`
       <div class="cal-field">
-        <label class="pv-label">Color</label>
+        <span class="pv-label">${helpLabel(this._help, 'calendar_color', 'Color', undefined, String(idx))}</span>
+        ${helpBox(this._help, 'calendar_color', String(idx))}
         <pv-color-swatch-picker
           .value=${cal.color}
           .valueLight=${cal.color_light}
@@ -264,7 +274,8 @@ export class PvCalendarCalendarsPage extends LitElement {
     const owner = belongsTo(cal, members);
     return html`
       <div class="cal-field">
-        <label class="pv-label" for="cal-owner-${idx}">Belongs to</label>
+        <span class="pv-label">${helpFor(this._help, 'calendar_belongs_to', 'Belongs to', `cal-owner-${idx}`, String(idx))}</span>
+        ${helpBox(this._help, 'calendar_belongs_to', String(idx))}
         <select
           id="cal-owner-${idx}"
           class="pv-input pv-select cal-person-select"
@@ -289,6 +300,7 @@ export class PvCalendarCalendarsPage extends LitElement {
   }
 
   static styles = [
+    helpStyles,
     baseStyles,
     buttonStyles,
     formStyles,

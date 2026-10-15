@@ -53,7 +53,7 @@ def test_normalize_fills_gaps_and_keeps_unknown_fields() -> None:
         "session_idle_seconds": 120,
         "parent_mode_minutes": 10,
         "kiosk": {"enabled": False, "top_bar": "hidden"},
-        "screensaver": {"enabled": False, "after_minutes": 5, "night": None, "screens": {}},
+        "screensaver": {"enabled": False, "after_minutes": 5, "night": None, "screens": {}, "dim": {"day": 100, "night": 30}},
     }
     assert normalize({"security": {"session_idle_seconds": 45, "parent_mode_minutes": 15}})["security"][
         "session_idle_seconds"

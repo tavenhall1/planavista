@@ -29,6 +29,7 @@ import type { PlanaVistaData } from '../../types';
 import '../../core/pv-member-avatar';
 import '../pv-notice-sheet';
 import './pin-actions';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../core/help';
 
 const PALETTE = PvColorSwatchPicker.PRESETS.map(preset => preset.color);
 
@@ -41,6 +42,8 @@ type Notice = 'discard' | 'remove' | 'changed';
  * own parts (the chores rows, sleep, phones) through personSections.
  */
 export class PvSettingsPerson extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -127,6 +130,7 @@ export class PvSettingsPerson extends LitElement {
   }
 
   static styles = [
+    helpStyles,
     segmentedStyles,
     choiceStyles,
     baseStyles,
@@ -306,9 +310,10 @@ export class PvSettingsPerson extends LitElement {
 
   private _renderName() {
     return html`
-      <label class="field">
-        <span class="label">Name</span>
+      <div class="field">
+        ${helpFor(this._help, 'person_name', 'Name', 'person-name')}
         <input
+          id="person-name"
           class="pv-input"
           type="text"
           maxlength="40"
@@ -316,7 +321,8 @@ export class PvSettingsPerson extends LitElement {
           .value=${this._draft.name}
           @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })}
         />
-      </label>
+      </div>
+      ${helpBox(this._help, 'person_name')}
     `;
   }
 
@@ -327,7 +333,8 @@ export class PvSettingsPerson extends LitElement {
       || !this._draft.color;
     return html`
       <fieldset class="field">
-        <legend>Color</legend>
+        <legend>${helpLabel(this._help, 'person_color', 'Color')}</legend>
+        ${helpBox(this._help, 'person_color')}
         <div class="swatches">
           ${current ? nothing : html`
             <button class="swatch" type="button" style="background:${this._draft.color}" aria-pressed="true"
@@ -371,7 +378,8 @@ export class PvSettingsPerson extends LitElement {
     const choose = (next: Picture) => this._change({ picture: next });
     return html`
       <fieldset class="field">
-        <legend>Picture</legend>
+        <legend>${helpLabel(this._help, 'person_picture', 'Picture')}</legend>
+        ${helpBox(this._help, 'person_picture')}
         <div class="pv-seg stretch" role="group" aria-label="Picture">
           <button type="button" aria-pressed=${shown === 'initial' ? 'true' : 'false'}
             @click=${() => choose({ initial: true })}>Initial</button>
@@ -403,7 +411,8 @@ export class PvSettingsPerson extends LitElement {
   private _renderAgeGroup() {
     return html`
       <fieldset class="field">
-        <legend>Age group</legend>
+        <legend>${helpLabel(this._help, 'person_age_group', 'Age group')}</legend>
+        ${helpBox(this._help, 'person_age_group')}
         <div class="pv-choices">
           ${AGE_GROUP_CHOICES.map(choice => {
             const hint = this._choresOn ? AGE_GROUP_CHORES_HINTS[choice.id] : choice.hint;
@@ -455,7 +464,7 @@ export class PvSettingsPerson extends LitElement {
     return html`
       <div class="field">
         <div class="toggle-row">
-          <span class="label" id="parent-label">Parent</span>
+          ${helpLabel(this._help, 'person_parent', 'Parent', 'parent-label')}
           <div
             class="pv-toggle ${on ? 'active' : ''}"
             role="switch"
@@ -471,7 +480,7 @@ export class PvSettingsPerson extends LitElement {
             }}
           ></div>
         </div>
-        <p class="hint">Parents open Settings. On a shared screen they need a PIN.</p>
+        ${helpBox(this._help, 'person_parent')}
       </div>
     `;
   }
@@ -479,7 +488,8 @@ export class PvSettingsPerson extends LitElement {
   private _renderPin(member: Member | null) {
     return html`
       <div class="field">
-        <span class="label">PIN</span>
+        ${helpLabel(this._help, 'person_pin', 'PIN')}
+        ${helpBox(this._help, 'person_pin')}
         ${member ? html`
           <pv-pin-actions
             .hass=${this.hass}
@@ -506,17 +516,19 @@ export class PvSettingsPerson extends LitElement {
     return html`
       <fieldset class="field">
         <legend>Home Assistant</legend>
-        <label class="field">
-          <span class="label">Person</span>
-          <select class="pv-input pv-select" .value=${this._draft.person ?? ''}
+        <div class="field">
+          ${helpFor(this._help, 'person_ha_person', 'Person', 'person-ha-person')}
+          <select id="person-ha-person" class="pv-input pv-select" .value=${this._draft.person ?? ''}
             @change=${(e: Event) => this._linkPerson((e.target as HTMLSelectElement).value)}>
             <option value="" ?selected=${!this._draft.person}>None</option>
             ${persons.map(id => html`
               <option value=${id} ?selected=${this._draft.person === id}>${this.hass.states[id]?.attributes?.friendly_name ?? id}</option>
             `)}
           </select>
-        </label>
-        <span class="label">Calendars</span>
+        </div>
+        ${helpBox(this._help, 'person_ha_person')}
+        ${helpLabel(this._help, 'person_calendars', 'Calendars')}
+        ${helpBox(this._help, 'person_calendars')}
         ${own.length
           ? html`<ul class="calendars">${own.map(cal => html`<li>${cal.display_name}</li>`)}</ul>`
           : html`<p class="hint">No calendars yet. Choose who each calendar belongs to in Calendars.</p>`}

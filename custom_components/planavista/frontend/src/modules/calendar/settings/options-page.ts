@@ -10,12 +10,15 @@ import { HouseholdApi, errorCode } from '../../../core/household-client';
 import type { Layout } from '../../../core/layout';
 import { PAGE_ERROR, saveErrorMessage } from '../../../core/page-host';
 import type { DisplayConfig, PlanaVistaData } from '../../../types';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-calendar-options-page: the calendar's display options (Settings,
  * Calendar options). Each change saves as you tap (spec 14.1).
  */
 export class PvCalendarOptionsPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -67,7 +70,8 @@ export class PvCalendarOptionsPage extends LitElement {
       <div class="page-content">
         <!-- Time format -->
         <div class="field-group">
-          <label class="pv-label">Time format</label>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_time_format', 'Time format')}</span>
+          ${helpBox(this._help, 'calendar_time_format')}
           <div class="pv-seg" role="group" aria-label="Time format">
             <button
               aria-pressed=${this._draft.time_format === '12h' ? 'true' : 'false'}
@@ -84,7 +88,8 @@ export class PvCalendarOptionsPage extends LitElement {
 
         <!-- First day of the week -->
         <div class="field-group">
-          <label class="pv-label">First day of the week</label>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_first_day', 'First day of the week')}</span>
+          ${helpBox(this._help, 'calendar_first_day')}
           <div class="pv-seg" role="group" aria-label="First day of week">
             <button
               aria-pressed=${this._draft.first_day === 'sunday' ? 'true' : 'false'}
@@ -101,7 +106,8 @@ export class PvCalendarOptionsPage extends LitElement {
 
         <!-- Weather -->
         <div class="field-group">
-          <label class="pv-label" for="weather-select">Weather</label>
+          <span class="pv-label">${helpFor(this._help, 'calendar_weather', 'Weather', 'weather-select')}</span>
+          ${helpBox(this._help, 'calendar_weather')}
           <select
             id="weather-select"
             class="pv-input pv-select"
@@ -117,7 +123,8 @@ export class PvCalendarOptionsPage extends LitElement {
 
         <!-- Default view -->
         <div class="field-group">
-          <label class="pv-label">Default view</label>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_default_view', 'Default view')}</span>
+          ${helpBox(this._help, 'calendar_default_view')}
           <div class="pv-seg stretch" role="group" aria-label="Default calendar view">
             ${([
               { key: 'day', label: 'Day' },
@@ -134,7 +141,7 @@ export class PvCalendarOptionsPage extends LitElement {
         <!-- Address suggestions (location autocomplete) -->
         <div class="field-group">
           <div class="toggle-row">
-            <span class="pv-label" id="address-suggestions-label">Address suggestions</span>
+            <span class="pv-label">${helpLabel(this._help, 'calendar_address_suggestions', 'Address suggestions', 'address-suggestions-label')}</span>
             <div
               class="pv-toggle ${(this._draft.location_autocomplete === true) ? 'active' : ''}"
               role="switch"
@@ -150,6 +157,7 @@ export class PvCalendarOptionsPage extends LitElement {
               }}
             ></div>
           </div>
+          ${helpBox(this._help, 'calendar_address_suggestions')}
           <p class="field-hint">
             <strong>Off (recommended):</strong> address lookup stays 100% local. Locations are plain
             text and nothing is sent anywhere.
@@ -170,6 +178,7 @@ export class PvCalendarOptionsPage extends LitElement {
   }
 
   static styles = [
+    helpStyles,
     segmentedStyles,
     baseStyles,
     buttonStyles,

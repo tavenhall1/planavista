@@ -9,6 +9,7 @@ import {
   shiftLightness,
   toOklch,
 } from '../core/color';
+import { dimColor } from '../core/dimming';
 
 
 /** The three themes; each has a light and a dark version (spec 12.4). */
@@ -435,10 +436,12 @@ export function themeTokens(look: Look, mode: Mode): Tokens {
   return tokens;
 }
 
-/** A person's color and the fill behind their events, for one mode. */
-export function personColors(color: string, colorLight: string | undefined, mode: Mode): { color: string; colorLight: string } {
-  if (mode === 'light' || !parseHex(color)) return { color, colorLight: colorLight || color };
-  return { color: matchedInk(color), colorLight: darkTint(color) };
+/** A person's color and the fill behind their events, for one mode, at a dimmed shared screen's level. */
+export function personColors(color: string, colorLight: string | undefined, mode: Mode, dim = 1): { color: string; colorLight: string } {
+  const both = mode === 'light' || !parseHex(color)
+    ? { color, colorLight: colorLight || color }
+    : { color: matchedInk(color), colorLight: darkTint(color) };
+  return dim >= 1 ? both : { color: dimColor(both.color, dim), colorLight: dimColor(both.colorLight, dim) };
 }
 
 const _applied = new WeakMap<HTMLElement, { key: string; names: string[] }>();

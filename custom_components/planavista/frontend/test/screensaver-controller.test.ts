@@ -61,6 +61,8 @@ class FakePage implements ScreensaverEnv {
   show() { this.shown = true; }
   hide() { this.shown = false; }
   lockParentMode() { this.locks += 1; }
+  keeps = 0;
+  keepParentMode() { this.keeps += 1; }
   wakeLock(hold: boolean) { this.wake.push(hold); }
   guardTaps() { this.guards += 1; }
   loadRecord() { return structuredClone(this.browser.record); }
@@ -380,6 +382,27 @@ describe('the screensaver controller (spec 3.2)', () => {
     page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 6 * MIN).toISOString() };
     saver.tick(start + 6 * MIN, noon(6));
     expect(page.shown).toBe(false);
+  });
+
+  it('a parent looking at a preview keeps parent mode while it shows, and the touch that ends it counts (review m12 J)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    saver.preview(noon());
+    saver.tick(start + MIN, noon(1));
+    saver.tick(start + 2 * MIN, noon(2));
+    expect(page.keeps).toBe(2);
+    saver.touch(start + 3 * MIN);
+    expect([page.shown, page.keeps, page.locks]).toEqual([false, 3, 0]);
+    // The real screensaver keeps nothing: parent mode ended as it came on.
+    saver.tick(start + 9 * MIN, noon(9));
+    expect(page.shown).toBe(true);
+    saver.tick(start + 10 * MIN, noon(10));
+    saver.touch(start + 11 * MIN);
+    expect([page.keeps, page.locks]).toEqual([3, 1]);
+    expect(src('shell/session-controller.ts')).toMatch(/window\.addEventListener\('pv-screensaver-looked', this\._onActivity\);/);
   });
 
   it('is started from main.ts, locks parent mode, and shares the page household with kiosk mode', () => {

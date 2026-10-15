@@ -4,6 +4,7 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { Member, pictureOf } from './household';
 import { contrastText } from './color';
+import { atLevel } from './dimming';
 
 /**
  * pv-member-avatar: a person's photo, emoji, or initial on their color
@@ -37,6 +38,16 @@ export class PvMemberAvatar extends LitElement {
       height: 100%;
       object-fit: cover;
     }
+
+    /* A dimmed shared screen (0.12.0): photos and emoji by the level, letters by the text rule. */
+    img,
+    .emoji {
+      filter: var(--pv-media-filter, none);
+    }
+
+    .initial {
+      filter: var(--pv-ink-filter, none);
+    }
   `;
 
   render() {
@@ -49,10 +60,13 @@ export class PvMemberAvatar extends LitElement {
     const fontSize = Math.round(this.size * (view.kind === 'emoji' ? 0.55 : 0.42));
     const style =
       `width:${this.size}px;height:${this.size}px;font-size:${fontSize}px;` +
-      `background:${member.color};color:${contrastText(member.color)}`;
+      // Settings, the keypad, and setup hand raw colors and set --pv-people-dim; the modules hand dimmed ones.
+      `background:${atLevel(member.color, '--pv-people-dim')};color:${contrastText(member.color)}`;
     return html`
       <div class="avatar" role="img" aria-label=${member.name} style=${style}>
-        ${view.kind === 'photo' ? html`<img src=${view.url} alt="" />` : view.text}
+        ${view.kind === 'photo'
+          ? html`<img src=${view.url} alt="" />`
+          : html`<span class=${view.kind === 'emoji' ? 'emoji' : 'initial'}>${view.text}</span>`}
       </div>
     `;
   }

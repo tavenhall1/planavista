@@ -6,6 +6,7 @@ import { baseStyles, formStyles } from '../../styles/shared';
 import { errorMessage } from '../../core/ws-api';
 import { PAGE_ERROR } from '../../core/page-host';
 import { version } from '../../../package.json';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../core/help';
 
 interface DashboardState {
   shown: boolean;
@@ -20,11 +21,14 @@ interface DashboardState {
  * PlanaVista's own dashboard shows in Home Assistant's sidebar (2026-10-14).
  */
 export class PvSettingsAbout extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private _dashboard: DashboardState | null = null;
   @state() private _busy = false;
 
   static styles = [
+    helpStyles,
     baseStyles,
     formStyles,
     css`
@@ -128,11 +132,12 @@ export class PvSettingsAbout extends LitElement {
     const toggle = () => void this._set(!on);
     return html`
       <div class="toggle-row">
-        <span class="label" id="about-sidebar">Show PlanaVista in the sidebar</span>
+        ${helpLabel(this._help, 'about_sidebar', 'Show PlanaVista in the sidebar', 'about-sidebar')}
         <div class="pv-toggle ${on ? 'active' : ''}" role="switch" tabindex="0" aria-checked=${on ? 'true' : 'false'}
           aria-labelledby="about-sidebar" aria-disabled=${this._busy ? 'true' : 'false'} @click=${toggle}
           @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}></div>
       </div>
+      ${helpBox(this._help, 'about_sidebar')}
       <p class="hint">${this._sidebarHint(dashboard)}</p>
     `;
   }

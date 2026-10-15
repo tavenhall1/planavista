@@ -7,11 +7,12 @@
  * page ignores that burst. Where the household picked a Screen entity for this
  * screen, it is dimmed by day and turned off at night, and put back on waking.
  */
+import { lookForRain } from '../core/rain-record';
 import type { HouseholdView } from '../core/household';
 import { guardPageTaps } from '../core/press-guard';
 import {
   EntityState, MotionSeen, ScreenHold, ScreenRecord, ServiceCall, holdOf, isNight, knownState, readRecord, screenAction,
-  screenRestore, screensaverHere, seeMotion, showsAt,
+  screenRestore, screensaverHere, seeMotion, showsAt, type Trial,
 } from '../core/screensaver';
 import { swallowWakingKey, swallowWakingPress } from '../core/wake-keys';
 import type { HouseholdConnection } from '../core/household-client';
@@ -27,6 +28,8 @@ export interface ScreensaverEnv {
   hide(): void;
   /** Parent mode ends as it shows: nobody is there. */
   lockParentMode(): void;
+  /** A parent looking at a preview, or the touch that ends it: parent mode counts it as a touch (review m12 J). */
+  keepParentMode(): void;
   /** Keeps the device awake (or lets it sleep), where the browser can. */
   wakeLock(hold: boolean): void;
   /** The page ignores the burst that woke it, so the tap presses nothing beneath. */
@@ -142,6 +145,7 @@ export class ScreensaverController {
       // Show it now, left up for the wait without a touch: nobody is looking any more.
       if (this._preview && now >= touched + here.settings.after_minutes * 60_000) {
         this._preview = false;
+        this.trial = null;
         this._env.lockParentMode();
         this._mark(true, now);
       }
@@ -149,6 +153,8 @@ export class ScreensaverController {
         this.wake(now);
         return;
       }
+      // Until then a preview is a parent looking at it, so parent mode doesn't time out under it.
+      if (this._preview) this._env.keepParentMode();
       if (!this._preview && now - this._beatAt >= SHOWING_BEAT_MS) this._mark(true, now);
       this._nightNow = this.night(date);
       // A preview is a look at it: the screen's entity is left alone.
@@ -165,15 +171,23 @@ export class ScreensaverController {
     if (at !== null && now >= at) this._show(now, date, false);
   }
 
-  /** Settings' Show it now: at once, on this screen, until a touch. */
-  preview(date: Date): void {
-    if (!this._showing) this._show(date.getTime(), date, true);
+  /** What Try it asked for, while its preview shows (0.12.0). */
+  trial: Trial | null = null;
+
+  /** Settings' Show it now: at once, on this screen, until a touch; Try it's choices with it. */
+  preview(date: Date, trial: Trial | null = null): void {
+    if (this._showing) return;
+    this.trial = trial;
+    this._show(date.getTime(), date, true);
   }
 
   wake(now: number): void {
     if (!this._showing) return;
+    // The touch that ends a preview is a parent's touch: back in Settings, parent mode carries on.
+    if (this._preview) this._env.keepParentMode();
     this._showing = false;
     this._preview = false;
+    this.trial = null;
     this._lastTouch = now;
     this._env.hide();
     this._env.guardTaps();
@@ -276,6 +290,13 @@ type HassLike = {
   callService?: (domain: string, service: string, data: Record<string, unknown>) => Promise<unknown>;
 };
 
+/** The household's weather entity's condition now, for the rain record. */
+function weatherNow(): string | undefined {
+  const hass = hassNow() as unknown as { states?: Record<string, { state: string; attributes?: Record<string, unknown> }> } | undefined;
+  const display = hass?.states?.['sensor.planavista_config']?.attributes?.display as { weather_entity?: string } | undefined;
+  return display?.weather_entity ? hass?.states?.[display.weather_entity]?.state : undefined;
+}
+
 const hassNow = (): HassLike | undefined => (document.querySelector('home-assistant') as (HTMLElement & { hass?: HassLike }) | null)?.hass;
 
 /** The element shown over the page (pv-screensaver), and the lock it holds. */
@@ -308,12 +329,19 @@ const browserEnv: ScreensaverEnv = {
     document.body.appendChild(shown);
   },
   hide: () => {
-    // Closing its dialog first gives focus back to what had it.
-    shown?.dismiss?.();
-    shown?.remove();
+    const el = shown as (HTMLElement & { dismiss?: () => void; leave?: () => Promise<void> }) | null;
     shown = null;
+    if (!el) return;
+    // A quick fade back to the card (0.12.0); then closing its dialog gives focus back to what had it.
+    const done = () => {
+      el.dismiss?.();
+      el.remove();
+    };
+    if (el.leave) void el.leave().then(done, done);
+    else done();
   },
   lockParentMode: () => window.dispatchEvent(new CustomEvent('pv-screensaver-shown')),
+  keepParentMode: () => window.dispatchEvent(new CustomEvent('pv-screensaver-looked')),
   wakeLock: hold => {
     wantLock = hold;
     if (hold) void holdWakeLock();
@@ -374,6 +402,8 @@ export function startScreensaver(): void {
   window.setInterval(() => {
     followPageConnection(hassNow()?.connection as HouseholdConnection | undefined);
     screensaver.tick(Date.now());
+    // Rain is noted while the page is open, for the rainbow after it (review m12a M2).
+    lookForRain(weatherNow(), Date.now());
   }, 1000);
   // The touch or key that wakes it presses nothing beneath: the rest of it is stopped before the page hears it.
   const pressed = (event: PointerEvent) => {

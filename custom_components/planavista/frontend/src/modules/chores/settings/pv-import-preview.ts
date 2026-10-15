@@ -3,6 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
+import { atLevel } from '../../../core/dimming';
 import { AGE_GROUP_CHOICES, AgeGroup, Member } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import {
@@ -212,7 +213,7 @@ export class PvImportPreview extends LitElement {
             <div class="row">
               <div class="stack">
                 <div style="display: flex; align-items: center; gap: 12px">
-                  <span class="dot" style="background:${person.color ?? '#8E949C'}" aria-hidden="true">${person.name[0]?.toUpperCase()}</span>
+                  <span class="dot" style="background:${atLevel(person.color ?? '#8E949C')}" aria-hidden="true">${person.name[0]?.toUpperCase()}</span>
                   <span class="row-text">
                     <span class="row-title">${person.name}</span>
                     <span class="row-sub">${personLine(person, this.choices, this.members, this.timeFormat)}</span>

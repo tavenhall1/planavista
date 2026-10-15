@@ -160,7 +160,7 @@ describe('one section head (review, spec 3.9)', () => {
     ['shell/settings/person-page.ts', '.field > .label,\n      legend'], ['modules/chores/settings/pv-person-chores.ts', '.legend'],
     ['modules/chores/settings/pv-person-phones.ts', '.legend'], ['modules/chores/settings/pv-person-sleep.ts', '.legend'],
     ['shell/settings/pv-appearance-editor.ts', '.section-heading'], ['shell/settings/pv-settings-customize.ts', '.section-heading'],
-    ['shell/settings/pins-page.ts', 'h2'], ['modules/chores/settings/settings-styles.ts', '.section-label'],
+    ['shell/settings/pins-page.ts', 'h2'], ['shell/settings/screens-page.ts', 'h2'], ['modules/chores/settings/settings-styles.ts', '.section-label'],
     ['modules/chores/chores-styles.ts', '.section-head'], ['modules/chores/pv-chores-quick-add.ts', '.title'],
   ];
 

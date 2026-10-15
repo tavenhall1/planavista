@@ -200,7 +200,8 @@ describe('the screensaver: weather, lightning, and the info (spec 3.3)', () => {
     }
     expect(weatherScene('lightning-rainy')).toMatchObject({ storm: true, rain: 150 });
     expect(weatherScene('fog').fog).toBe(1);
-    expect(weatherScene('windy').wind).toBe(2);
+    // Wind in gusts since 0.12.0, as the approved mockup blew.
+    expect(weatherScene('windy').wind).toBe(2.6);
     expect(weatherScene('who-knows')).toMatchObject({ cover: 0.35, rain: 0, storm: false });
   });
 

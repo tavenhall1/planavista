@@ -50,6 +50,7 @@ export class PvChoresBoard extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
   @property({ attribute: false }) mode: 'light' | 'dark' = 'light';
+  @property({ attribute: false }) dim = 1;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Minutes since the epoch: the board re-derives each minute (bands and the evening check move with the clock). */
   @property({ attribute: false }) minute = 0;
@@ -248,7 +249,7 @@ export class PvChoresBoard extends LitElement {
   private _column(model: ColumnModel, narrow: boolean) {
     const id = model.member.id;
     return html`
-      <pv-chores-column member=${id} .model=${model} .hass=${this.hass} color=${memberColor(model.member, this.mode)}
+      <pv-chores-column member=${id} .model=${model} .hass=${this.hass} color=${memberColor(model.member, this.mode, this.dim)}
         ?narrow=${narrow} ?locked=${memberAccess(this.household, this.session, id) === 'no'}
         .celebrate=${this._celebrate[id] ?? 0} .pulse=${this._pulse[id] ?? 0}
         .surprise=${surpriseOf(id, model.entry, this.board.rewards)} ?mayOpen=${mayOpenSurprise(this.household, id)}></pv-chores-column>
@@ -263,9 +264,9 @@ export class PvChoresBoard extends LitElement {
       <div class="pv-people" role="tablist" aria-label="Whose chores">
         ${columns.map((col, i) => html`
           <button type="button" class="pv-person" role="tab" aria-selected=${i === index ? 'true' : 'false'}
-            style="--member:${memberColor(col.member, this.mode)}" @click=${() => this._show(i)}>
-            <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${memberColor(col.member, this.mode)}>
-              <pv-member-avatar .member=${{ ...col.member, color: memberColor(col.member, this.mode) }} .hass=${this.hass} size="28"></pv-member-avatar>
+            style="--member:${memberColor(col.member, this.mode, this.dim)}" @click=${() => this._show(i)}>
+            <pv-ring size="40" .progress=${col.ring.progress} ?closed=${col.ring.closed} color=${memberColor(col.member, this.mode, this.dim)}>
+              <pv-member-avatar .member=${{ ...col.member, color: memberColor(col.member, this.mode, this.dim) }} .hass=${this.hass} size="28"></pv-member-avatar>
             </pv-ring>
             <span class="pv-person-name">${col.member.name}</span>
           </button>

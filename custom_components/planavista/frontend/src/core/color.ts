@@ -30,12 +30,12 @@ export function toHex(r: number, g: number, b: number): string {
   return `#${part(r)}${part(g)}${part(b)}`.toUpperCase();
 }
 
-function toLinear(channel: number): number {
+export function toLinear(channel: number): number {
   const v = channel / 255;
   return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 }
 
-function fromLinear(v: number): number {
+export function fromLinear(v: number): number {
   return (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055) * 255;
 }
 

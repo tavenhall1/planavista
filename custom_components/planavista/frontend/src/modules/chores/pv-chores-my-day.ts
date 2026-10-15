@@ -336,6 +336,7 @@ export class PvChoresMyDay extends LitElement {
       }
 
       .step .picture {
+        filter: var(--pv-media-filter, none); /* a dimmed shared screen (0.12.0) */
         font-size: 44px;
       }
 
@@ -441,7 +442,7 @@ export class PvChoresMyDay extends LitElement {
     return html`
       <div class="goal">
         <div class="text">
-          <span>Goal: ${pictureOf(goal.reward.icon)} ${goal.reward.name}</span>
+          <span>Goal: <span class="emo">${pictureOf(goal.reward.icon)}</span> ${goal.reward.name}</span>
           <span class="num">${goalWords(goal)}</span>
         </div>
         <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax=${goal.reward.cost} aria-valuenow=${goal.have}
@@ -568,7 +569,7 @@ export class PvChoresMyDay extends LitElement {
         </div>
       ` : nothing}
       ${this.column.member.stars ? html`
-        <div class="label">${stickersLabel(stars)}${this.goal ? html` · Goal: ${pictureOf(this.goal.reward.icon)} ${this.goal.reward.name} · ${goalWords(this.goal)}` : nothing}</div>
+        <div class="label">${stickersLabel(stars)}${this.goal ? html` · Goal: <span class="emo">${pictureOf(this.goal.reward.icon)}</span> ${this.goal.reward.name} · ${goalWords(this.goal)}` : nothing}</div>
         <div class="stickers" role="img" aria-label=${`${stars} stars this week`}>
           ${Array.from({ length: Math.min(30, stars) }, () => html`<span aria-hidden="true">⭐</span>`)}
           ${stars === 0 ? html`<span class="meta">Stars show up here.</span>` : nothing}

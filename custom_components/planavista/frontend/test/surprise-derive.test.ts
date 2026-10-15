@@ -100,7 +100,7 @@ describe('the reveal', () => {
     const pieces = confettiPieces(80, 7, '#E5484D');
     expect(pieces).toHaveLength(80);
     expect(confettiPieces(80, 7, '#E5484D')).toEqual(pieces);
-    expect(new Set(pieces.map(p => p.color))).toEqual(new Set(['#E5484D', '#F5B800']));
+    expect(new Set(pieces.map(p => p.color))).toEqual(new Set(['#E5484D', 'var(--pv-present-gold, #F5B800)']));
     expect(pieces.some(p => p.star)).toBe(true);
     // They spread both ways and mostly fall.
     expect(pieces.some(p => p.dx < -0.3) && pieces.some(p => p.dx > 0.3)).toBe(true);

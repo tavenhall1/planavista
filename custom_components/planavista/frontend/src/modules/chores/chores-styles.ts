@@ -9,6 +9,11 @@ import { statusStyles } from '../../styles/status';
 export const choresStyles = css`
   ${statusStyles}
 
+  /* A dimmed shared screen (0.12.0): emoji by the level, words by the text rule. */
+  .emo {
+    filter: var(--pv-media-filter, none);
+  }
+
   :host {
     --pv-chores-gap: 12px;
     font-family: var(--pv-font-family, system-ui, sans-serif);

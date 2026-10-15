@@ -61,8 +61,8 @@ export class PvSessionRing extends LitElement {
       <svg width=${this.size} height=${this.size} viewBox="0 0 ${this.size} ${this.size}" role="img" aria-label=${label}>
         ${svg`
           <circle class="track" cx=${center} cy=${center} r=${radius} fill="none"
-            stroke=${this.color} stroke-width=${stroke}></circle>
-          <circle cx=${center} cy=${center} r=${radius} fill="none" stroke=${this.color}
+            style="stroke: ${this.color}" stroke-width=${stroke}></circle>
+          <circle cx=${center} cy=${center} r=${radius} fill="none" style="stroke: ${this.color}"
             stroke-width=${stroke} stroke-linecap="round"
             stroke-dasharray=${length} stroke-dashoffset=${length * (1 - fraction)}></circle>
         `}

@@ -3,7 +3,8 @@ import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
 import { HOLD_MS, HoldGesture, MOVE_CANCEL_PX } from '../../core/hold';
 import { BOUNCY, motionOf, springEasing } from '../../core/motion';
-import { contrastText } from '../../core/color';
+import { onColor } from '../../core/dimming';
+import { withEmoji } from '../../core/emoji';
 import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
@@ -65,6 +66,11 @@ export class PvChoreTile extends LitElement {
     :host {
       display: block;
       --tint: color-mix(in srgb, var(--member) 12%, var(--pv-card-bg, #FFFFFF));
+    }
+
+    /* A dimmed shared screen (0.12.0): emoji in a line by the level. */
+    .emo {
+      filter: var(--pv-media-filter, none);
     }
 
     /* It fills its row, so a tile beside a taller one is as tall (round 4). */
@@ -135,6 +141,7 @@ export class PvChoreTile extends LitElement {
     }
 
     .picture {
+      filter: var(--pv-media-filter, none); /* a dimmed shared screen (0.12.0) */
       font-size: 44px;
       line-height: 1;
     }
@@ -343,7 +350,7 @@ export class PvChoreTile extends LitElement {
           @pointerup=${this._up} @pointercancel=${() => { this._hintPress = null; this._gesture.cancel(); }} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>
         ${done ? html`
-          <span class="tick" style="background:${this.color};color:${contrastText(this.color)}" aria-hidden="true">
+          <span class="tick" style="background:${this.color};color:${onColor(this.color)}" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
           </span>
         ` : nothing}
@@ -351,7 +358,7 @@ export class PvChoreTile extends LitElement {
           <span class="picture" aria-hidden="true">${chorePicture(row.icon, row.name)}</span>
         </pv-ring>
         <span class="name">${row.name}</span>
-        <span class=${line.kind === 'waiting' ? 'waiting' : line.kind === 'bad' ? 'sent-back' : 'hint'}>${line.text}</span>
+        <span class=${line.kind === 'waiting' ? 'waiting' : line.kind === 'bad' ? 'sent-back' : 'hint'}>${withEmoji(line.text)}</span>
         </div>
         <button class="more" type="button" aria-label=${`Options for ${row.name}`}
           @click=${() => this._fire('pv-row-options', { row })}>

@@ -36,6 +36,8 @@ from .members import (
 from .kiosk import KIOSK_TOP_BARS, exit_refusal, may_change_kiosk
 from .screensaver import (
     AFTER_CHOICES,
+    DIM_DAY_CHOICES,
+    DIM_NIGHT_CHOICES,
     MOTION_DOMAINS,
     SCREEN_DOMAINS,
     entity_refusal,
@@ -501,6 +503,8 @@ async def ws_shared_screen(
             vol.Optional("screen"): vol.Any(None, str),
             vol.Optional("motion"): vol.Any(None, str),
         },
+        vol.Optional("dim_day"): vol.All(int, vol.In(DIM_DAY_CHOICES)),
+        vol.Optional("dim_night"): vol.All(int, vol.In(DIM_NIGHT_CHOICES)),
         vol.Optional("session"): str,
     }
 )
@@ -555,6 +559,9 @@ async def ws_settings_save(
         saver["after_minutes"] = msg["screensaver_after"]
     if "screensaver_night" in msg:
         saver["night"] = msg["screensaver_night"]
+    for key, field in (("dim_day", "day"), ("dim_night", "night")):
+        if key in msg:
+            saver["dim"][field] = msg[key]
     if "screensaver_screen" in msg:
         pick = msg["screensaver_screen"]
         follow_shared(saver, household.shared_users, {})

@@ -13,6 +13,9 @@ import {
   withCardTheme,
 } from '../core/appearance';
 import { AppearanceEdits } from '../core/appearance-edits';
+import { setPageDim } from './page-dim';
+import { DIM_STEP_MS, DimSettings, dimColor, dimLevel, dimTokens, mediaBrightness, surfaceLevel } from '../core/dimming';
+import type { Member } from '../core/household';
 import { Motion, resolveMotion, ringTokens } from '../core/motion';
 import { Look, Mode, applyTokens, themeTokens } from '../styles/theme-pairs';
 import { runAppearanceChange, viewTransitionsSupported } from './view-transition';
@@ -28,6 +31,43 @@ export interface AppearanceSource {
   haDark: boolean;
   /** A sheet, Settings, setup, or a module's dialog is open. */
   overlayOpen: boolean;
+  /**
+   * On a shared screen: the household's levels and its night (0.12.0); otherwise nothing dims.
+   * 'waiting' until the household answers: the last level drawn stands meanwhile.
+   */
+  dimming?: { settings: DimSettings; members: Member[]; night: { from: string; to: string } | null } | null | 'waiting';
+}
+
+/**
+ * The level this page (or, after a reload, this browser) last drew, so a card
+ * Home Assistant re-creates at night doesn't flash full before the household
+ * answers (review m12 F). Older than LAST_DIM_MS it's forgotten.
+ */
+const LAST_DIM_KEY = 'planavista.dim';
+const LAST_DIM_MS = 10 * 60_000;
+let lastDim: { level: number; at: number } | null = null;
+
+function rememberDim(level: number, at: number): void {
+  if (lastDim?.level === level && at - lastDim.at < 30_000) return;
+  lastDim = { level, at };
+  try {
+    localStorage.setItem(LAST_DIM_KEY, JSON.stringify(lastDim));
+  } catch {
+    // No storage (a private window): this page still remembers.
+  }
+}
+
+function rememberedDim(now: number): number {
+  let last = lastDim;
+  if (!last) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAST_DIM_KEY) ?? 'null') as { level?: unknown; at?: unknown } | null;
+      if (saved && typeof saved.level === 'number' && typeof saved.at === 'number') last = { level: saved.level, at: saved.at };
+    } catch {
+      last = null;
+    }
+  }
+  return last && now - last.at < LAST_DIM_MS && last.level > 0 && last.level <= 1 ? last.level : 1;
 }
 
 type Host = ReactiveControllerHost & HTMLElement;
@@ -52,6 +92,15 @@ export class AppearanceController implements ReactiveController {
   look: Look = lookOf(this.settings);
   /** Automatic follows the sun, but Home Assistant has no sun.sun (spec 15.4). */
   sunMissing = false;
+  /**
+   * How bright this card's surfaces and people's colors are drawn now, 0 to 1
+   * (0.12.0); 1 elsewhere. A light look goes no lower than LIGHT_FLOOR.
+   */
+  dim = 1;
+  /** The household's level now, before the look's floor. */
+  private _level = 1;
+  /** A level Settings is showing for a moment. */
+  private _preview: { level: number; until: number } | null = null;
 
   private _shown: Mode | null = null;
   private _lastInteraction = 0;
@@ -86,6 +135,7 @@ export class AppearanceController implements ReactiveController {
     document.removeEventListener('visibilitychange', this._onVisibility);
     this._reduced?.removeEventListener('change', this._onReducedChange);
     clearTimeout(this._timer);
+    setPageDim(this._host, null);
     // A card that comes back draws at once, without a change to play.
     this._shown = null;
   }
@@ -102,10 +152,47 @@ export class AppearanceController implements ReactiveController {
     this.look = lookOf(settings);
     this.sunMissing = resolved.sunMissing;
     this.motion = resolveMotion(settings.motion, !!this._reduced?.matches);
+    const dimNext = this._dimNow(source.dimming ?? null);
     this._show(resolved.mode, source.overlayOpen);
     // Until the first real settings arrive, what's drawn is a placeholder: they draw without a change to play.
     if (!this._display) this._shown = null;
-    this._schedule(resolved.next);
+    const next = [resolved.next, dimNext].filter((d): d is Date => d !== null).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+    this._schedule(next);
+  }
+
+  /** Show `level` on this card for `ms` (tapping a level in Settings). */
+  preview(level: number, ms: number): void {
+    this._preview = { level, until: Date.now() + ms };
+    this._host.requestUpdate();
+  }
+
+  /**
+   * Work out the level now; answers when to look again. During a fade the
+   * level moves in 15-second steps, so Home Assistant's updates in between
+   * repaint nothing.
+   */
+  private _dimNow(dimming: AppearanceSource['dimming']): Date | null {
+    const now = Date.now();
+    if (this._preview && this._preview.until <= now) this._preview = null;
+    if (this._preview) {
+      this._level = this._preview.level;
+      return new Date(this._preview.until - 1000 + 1);
+    }
+    if (dimming === 'waiting') {
+      this._level = rememberedDim(now);
+      return null;
+    }
+    if (!dimming) {
+      this._level = 1;
+      rememberDim(1, now);
+      return null;
+    }
+    const step = new Date(Math.floor(now / DIM_STEP_MS) * DIM_STEP_MS);
+    const { level, fading } = dimLevel(step, dimming.members, dimming.night, dimming.settings);
+    this._level = level;
+    rememberDim(level, now);
+    // nextLookAt adds a second to a change's time; the next step's start is what's wanted.
+    return fading ? new Date(step.getTime() + DIM_STEP_MS - 1000) : null;
   }
 
   private _show(target: Mode, overlayOpen: boolean): void {
@@ -156,7 +243,22 @@ export class AppearanceController implements ReactiveController {
   private _paint(mode: Mode): void {
     this.mode = mode;
     this._shown = mode;
-    applyTokens(this._host, { ...themeTokens(this.look, mode), '--pv-motion': this.motion, ...ringTokens(this.motion) });
+    // A dimmed shared screen draws every color of its look at the level (0.12.0); pictures follow by a filter.
+    this.dim = surfaceLevel(this._level, mode);
+    const dimmed = this.dim < 1;
+    // Home Assistant's own bars follow (review m12 I).
+    setPageDim(this._host, this.dim);
+    applyTokens(this._host, {
+      ...dimTokens(themeTokens(this.look, mode), this._level, mode),
+      '--pv-motion': this.motion,
+      ...ringTokens(this.motion),
+      '--pv-dim': String(Math.round(this.dim * 1000) / 1000),
+      '--pv-media-filter': dimmed ? `brightness(${mediaBrightness(this.dim).toFixed(3)})` : 'none',
+      '--pv-ink-filter': dimmed ? `brightness(${mediaBrightness(Math.sqrt(this.dim)).toFixed(3)})` : 'none',
+      // Letters on people's colors and white marks (review m12 B): the text rule's level, and white at it.
+      '--pv-ink-level': dimmed ? Math.sqrt(this.dim).toFixed(3) : '1',
+      '--pv-white': dimmed ? dimColor('#FFFFFF', this.dim, true) : '#FFFFFF',
+    });
     this._host.setAttribute('appearance', mode);
     this._host.setAttribute('motion', this.motion);
   }

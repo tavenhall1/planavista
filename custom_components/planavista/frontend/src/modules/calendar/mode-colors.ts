@@ -1,6 +1,7 @@
 import type { Member } from '../../core/household';
 import { memberColor } from '../../core/household';
 import { darkTint, lightTint } from '../../core/color';
+import { dimColor } from '../../core/dimming';
 import type { PlanaVistaData } from '../../types';
 import { Mode, personColors } from '../../styles/theme-pairs';
 
@@ -14,28 +15,29 @@ type Person = Pick<Member, 'id' | 'color' | 'color_dark'>;
  * belongs to nobody keeps its own color. With nobody linked, light mode hands
  * back the same object, so nothing downstream recomputes.
  */
-export function withModeColors(data: PlanaVistaData | null, mode: Mode, members: readonly Person[] = []): PlanaVistaData | null {
+export function withModeColors(data: PlanaVistaData | null, mode: Mode, members: readonly Person[] = [], dim = 1): PlanaVistaData | null {
   if (!data) return data;
   const people = new Map(members.map(m => [m.id, m]));
   const linked = (data.calendars || []).some(cal => cal.member_id && people.has(cal.member_id));
-  if (mode === 'light' && !linked) return data;
+  if (mode === 'light' && !linked && dim >= 1) return data;
   const cache = new Map<string, { color: string; colorLight: string }>();
   const colors = (color: string, light: string | undefined) => {
     const key = `${color}|${light ?? ''}`;
     let found = cache.get(key);
     if (!found) {
-      found = personColors(color, light, mode);
+      found = personColors(color, light, mode, dim);
       cache.set(key, found);
     }
     return found;
   };
+  // A dimmed shared screen draws everyone's colors at its level (0.12.0).
   const byCalendar = new Map<string, { color: string; colorLight: string }>();
   for (const cal of data.calendars || []) {
     const person = cal.member_id ? people.get(cal.member_id) : undefined;
     if (!person) continue;
     byCalendar.set(cal.entity_id, mode === 'light'
-      ? { color: person.color, colorLight: lightTint(person.color) }
-      : { color: memberColor(person, 'dark'), colorLight: darkTint(person.color) });
+      ? { color: dimColor(person.color, dim), colorLight: dimColor(lightTint(person.color), dim) }
+      : { color: memberColor(person, 'dark', dim), colorLight: dimColor(darkTint(person.color), dim) });
   }
   return {
     ...data,

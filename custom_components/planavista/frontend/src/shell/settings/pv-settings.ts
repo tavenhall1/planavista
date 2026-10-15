@@ -20,6 +20,7 @@ import '../pv-parent-strip';
 import './people-page';
 import './person-page';
 import './pins-page';
+import './screens-page';
 import './about-page';
 import './appearance-page';
 
@@ -103,6 +104,8 @@ export class PvSettings extends LitElement {
     buttonStyles,
     css`
       :host {
+        /* People's colors here are the household's own: drawn at the card's level (review m12 B). */
+        --pv-people-dim: var(--pv-dim, 1);
         position: relative;
         display: flex;
         flex-direction: column;
@@ -265,7 +268,7 @@ export class PvSettings extends LitElement {
         height: 24px;
         margin-top: 1px;
         border-radius: 50%;
-        background: #B45309;
+        background: color-mix(in srgb-linear, #B45309 calc(var(--pv-dim, 1) * 100%), #000000);
         color: #FFFFFF;
         font-size: 0.875rem;
         font-weight: 800;

@@ -101,7 +101,9 @@ describe('the screensaver over everything (0.11.0 review)', () => {
     expect(element).toMatch(/<dialog class="saver" @cancel=\$\{\(e: Event\) => e\.preventDefault\(\)\}>/);
     expect(element).toMatch(/this\.renderRoot\.querySelector<HTMLDialogElement>\('dialog'\)\?\.showModal\(\);/);
     expect(element).toMatch(/dismiss\(\): void \{\n\s+this\.renderRoot\.querySelector<HTMLDialogElement>\('dialog'\)\?\.close\(\);/);
-    expect(src('shell/screensaver-controller.ts')).toMatch(/\?\.dismiss\?\.\(\);\n\s+shown\?\.remove\(\);/);
+    // A quick fade first since 0.12.0, then the dialog closes and the element goes.
+    expect(src('shell/screensaver-controller.ts')).toMatch(/el\.dismiss\?\.\(\);\n\s+el\.remove\(\);/);
+    expect(src('shell/screensaver-controller.ts')).toMatch(/if \(el\.leave\) void el\.leave\(\)\.then\(done, done\);/);
   });
 
   it("takes the household's Motion setting, not only the device's", () => {
@@ -138,8 +140,8 @@ describe('the screensaver on the kitchen screen (0.11.1, from the Pi)', () => {
   });
 });
 
-describe("Settings' screensaver picks (0.11.0 review)", () => {
-  const page = src('shell/settings/pins-page.ts');
+describe("Settings' screensaver picks (0.11.0 review; Shared screens since 0.12.0)", () => {
+  const page = src('shell/settings/screens-page.ts');
 
   it('draws its selects like every other select, and keeps a stored pick it cannot list', () => {
     expect(page).not.toMatch(/class="pv-select"/);
@@ -155,8 +157,8 @@ describe("Settings' screensaver picks (0.11.0 review)", () => {
     expect(page).toMatch(/AFTER_CHOICES\.filter\(c => OFFERED_AFTER\.includes\(c\.value\) \|\| c\.value === saver\.after_minutes\)/);
   });
 
-  it("says the Screen should be the screen's own", () => {
-    expect(page).toMatch(/Pick this screen's own backlight or plug, not a room's light\./);
+  it("says the Screen should be the screen's own (in its ?)", () => {
+    expect(src('core/help.ts')).toMatch(/Pick this screen's own backlight or plug, not a room's light\./);
   });
 
   it('turns back a night that starts when it ends, where it was changed, and says why there', () => {

@@ -4,6 +4,13 @@ import { css } from 'lit';
  * Base styles shared across all PlanaVista cards.
  */
 export const baseStyles = css`
+  /* A dimmed shared screen (0.12.0): pictures and emoji by the level, words by the text rule. */
+  .emo,
+  .picture,
+  .pictures button {
+    filter: var(--pv-media-filter, none);
+  }
+
   :host {
     display: block;
     font-family: var(--pv-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif);
@@ -323,7 +330,7 @@ export const formStyles = css`
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: white;
+    background: var(--pv-white, #FFFFFF);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     transition: transform var(--pv-transition, 200ms ease);
   }

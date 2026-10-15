@@ -16,7 +16,7 @@ import { ForecastEntry } from '../../utils/weather-subscription';
 import { CalendarStoreController } from './calendar-store';
 import { CalendarDerived, deriveCalendarData, eventForPopup } from './calendar-derive';
 import { withModeColors } from './mode-colors';
-import { contrastText } from '../../core/color';
+import { onColor } from '../../core/dimming';
 import type { ModuleService } from '../../core/module-registry';
 import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
 import { deepActiveElement } from '../../core/focus';
@@ -75,6 +75,8 @@ export class PvCalendarModule extends LitElement {
   @property({ attribute: false }) display!: DisplayConfig;
   /** Light or dark, as the card's appearance worked it out (spec 12.4). */
   @property({ attribute: false }) mode: Mode = 'light';
+  /** A dimmed shared screen's level (0.12.0): people's colors are drawn at it. */
+  @property({ attribute: false }) dim = 1;
   /** The look's shape settings: event style and avatar border. */
   @property({ attribute: false }) shape: ThemeShape = {};
   /** The card's daily forecast, for Week and Agenda. */
@@ -715,10 +717,11 @@ export class PvCalendarModule extends LitElement {
     hidden: Set<string>,
     mode: Mode,
     members: readonly Member[],
-  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode, members), config, hidden));
+    dim: number,
+  ): CalendarDerived => deriveCalendarData(withModeColors(data, mode, members, dim), config, hidden));
 
   private _derived(): CalendarDerived {
-    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode, this.household?.members ?? NO_PEOPLE);
+    return this._derive(this.data, this.cardConfig, this._pv.store.hiddenCalendars, this.mode, this.household?.members ?? NO_PEOPLE, this.dim);
   }
 
   render() {
@@ -879,7 +882,7 @@ export class PvCalendarModule extends LitElement {
                 return html`
                   <div
                     class="pvc-filter-item ${isActive ? 'active' : ''}"
-                    style="--item-color: ${cal.color}; --item-ink: ${contrastText(cal.color)}"
+                    style="--item-color: ${cal.color}; --item-ink: ${onColor(cal.color)}"
                     role="checkbox"
                     tabindex="0"
                     aria-checked=${isActive ? 'true' : 'false'}
@@ -915,7 +918,7 @@ export class PvCalendarModule extends LitElement {
                 class="pvc-cal-chip ${isActive ? 'active' : ''}"
                 type="button"
                 aria-pressed=${isActive ? 'true' : 'false'}
-                style="--chip-color: ${cal.color}; --chip-ink: ${contrastText(cal.color)}"
+                style="--chip-color: ${cal.color}; --chip-ink: ${onColor(cal.color)}"
                 @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
               >
                 <div
@@ -1068,7 +1071,7 @@ export class PvCalendarModule extends LitElement {
   private _onEventClick(e: CustomEvent) {
     const clicked: CalendarEvent = e.detail.event;
     // The mode's colors, so the popup's people match the views.
-    const allEvents = withModeColors(this.data, this.mode, this.household?.members ?? NO_PEOPLE)?.events || [];
+    const allEvents = withModeColors(this.data, this.mode, this.household?.members ?? NO_PEOPLE, this.dim)?.events || [];
     this._pv.store.selectEvent(eventForPopup(clicked, allEvents));
   }
 

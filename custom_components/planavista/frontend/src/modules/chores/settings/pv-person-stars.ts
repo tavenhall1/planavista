@@ -12,12 +12,15 @@ import type { PlanaVistaData } from '../../../types';
 import type { ChoresService } from '../chores-service';
 import { StarEntry, starLine } from './person-derive';
 import { choresSettingsStyles } from './settings-styles';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-person-stars: someone's stars (spec 14.2, 8.15): the balance, give or
  * take stars with a reason, and the history of what each change was for.
  */
 export class PvPersonStars extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -61,6 +64,7 @@ export class PvPersonStars extends LitElement {
   }
 
   static styles = [
+    helpStyles,
     segmentedStyles,
     baseStyles,
     buttonStyles,
@@ -107,7 +111,7 @@ export class PvPersonStars extends LitElement {
     return html`
       <p class="balance" aria-label="${balance} stars">★ ${balance}</p>
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
-      <h2 class="section-label">Give or take</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'person_stars_give', 'Give or take')}</h2>${helpBox(this._help, 'person_stars_give')}
       <div class="group">
         <div class="row">
           <div class="pv-seg stretch" role="group" aria-label="Give or take">
@@ -133,7 +137,7 @@ export class PvPersonStars extends LitElement {
           </button>
         </div>
       </div>
-      <h2 class="section-label">History</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'person_stars_history', 'History')}</h2>${helpBox(this._help, 'person_stars_history')}
       ${this._history === null ? html`<div class="skeleton"></div><div class="skeleton"></div>` : this._history.length ? html`
         <ul class="group">
           ${this._history.map(entry => {

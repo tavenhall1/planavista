@@ -115,20 +115,22 @@ describe("the strip's kiosk button (D3, D4)", () => {
   });
 });
 
-describe('Settings: Shared screens, Kiosk mode and Top bar (D2, D6)', () => {
-  const pins = read('shell/settings/pins-page.ts');
+describe('Settings: Shared screens, Kiosk mode and Top bar (D2, D6; its own page since 0.12.0)', () => {
+  const screens = read('shell/settings/screens-page.ts');
   it('shows the switch only once a shared screen exists, and the top bar choice only while it is on', () => {
-    expect(pins).toMatch(/\$\{sharedScreens \? html`\s*<section>\s*<h2>Shared screens<\/h2>/);
-    expect(pins).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, !mayChange\)/);
-    expect(pins).toMatch(/\$\{kiosk\.enabled \? this\._choices\('Top bar', 'top-bar-label', TOP_BAR_CHOICES, kiosk\.top_bar,/);
-    expect(pins).toMatch(/value => this\.api\.saveSecurity\(\{ kiosk_top_bar: value \}\)/);
+    expect(screens).toMatch(/\$\{sharedScreens \? html`[\s\S]*<section>\s*<h2>Kiosk mode<\/h2>/);
+    expect(screens).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, 'kiosk', !mayChange\)/);
+    expect(screens).toMatch(/\$\{kiosk\.enabled \? this\._choices\('Top bar', 'top-bar-label', TOP_BAR_CHOICES, kiosk\.top_bar,/);
+    expect(screens).toMatch(/value => this\.api\.saveSecurity\(\{ kiosk_top_bar: value \}\), 'kiosk_top_bar', !mayChange\)/);
+    expect(read('shell/settings/pins-page.ts')).not.toMatch(/Kiosk mode/);
   });
 
-  it("says plainly what it hides, who can step out, and that it isn't a lock", () => {
-    expect(pins).toMatch(/hides Home Assistant's menus/);
-    expect(pins).toMatch(/A parent who is a Home Assistant admin can exit it in parent mode/);
-    expect(pins).toMatch(/isn't a lock/);
-    expect(pins).toMatch(/Guided Access/);
+  it("says plainly what it hides, who can step out, and that it isn't a lock (in its ?)", () => {
+    const help = read('core/help.ts');
+    expect(help).toMatch(/hides Home Assistant's menus/);
+    expect(help).toMatch(/A parent who is a Home Assistant admin can exit it in parent mode/);
+    expect(help).toMatch(/isn't a lock/);
+    expect(help).toMatch(/Guided Access/);
   });
 });
 
@@ -167,10 +169,10 @@ describe("who may change kiosk mode in Settings (review: the owner's rule)", () 
   });
 
   it('locks the switch and the top bar for anyone else, and says who can', () => {
-    const pins = read('shell/settings/pins-page.ts');
-    expect(pins).toMatch(/const mayChange = mayChangeKiosk\(account, this\.session\);/);
-    expect(pins).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, !mayChange\)/);
-    expect(pins).toMatch(/Only a Home Assistant admin, or a parent who is one, can change kiosk mode\./);
+    const screens = read('shell/settings/screens-page.ts');
+    expect(screens).toMatch(/const mayChange = mayChangeKiosk\(account, this\.session\);/);
+    expect(screens).toMatch(/this\._switch\('Kiosk mode', 'kiosk-label', kiosk\.enabled, this\._toggleKiosk, 'kiosk', !mayChange\)/);
+    expect(screens).toMatch(/Only a Home Assistant admin, or a parent who is one, can change kiosk mode\./);
     expect(read('shell/settings/pv-settings.ts')).toMatch(/\.session=\$\{this\.session\}\n\s*mode="settings"/);
   });
 });

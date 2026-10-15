@@ -1,4 +1,5 @@
 import type { WeatherScene } from '../../core/screensaver';
+import { dimRgb } from '../../core/dimming';
 
 // The living sky's light (spec 3.3), ported from the approved mockup (v4): pure
 // rules with no DOM, so the scene only draws what these work out.
@@ -329,15 +330,219 @@ function presetOf(scene: WeatherScene): number {
  * one patch in the far valley. Its presets keep their own seeds, so the sky for
  * "partly cloudy" at 35% is the one the mockup showed.
  */
-export function cloudPlan(scene: WeatherScene): CloudPlan {
+export function cloudPlan(scene: WeatherScene, life = false): CloudPlan {
   const cover = clamp(scene.cover, 0, 1);
   const fog: [number, number, number] = scene.fog >= FOG_BANK ? [2, 2, 1] : scene.rain > 0 ? [1, 0, 0] : [0, 0, 0];
   return {
     seed: 55 + Math.round(cover * 20) + presetOf(scene) * 7,
-    high: Math.round(cover * 4),
+    // Calm-day life (0.12.0): even a clear sky keeps three small fair-weather puffs drifting.
+    high: Math.max(Math.round(cover * 4), life ? LIFE.puffs : 0),
     low: 1 + Math.round(cover * 5),
     more: cover > 0.55 ? Math.round((cover - 0.55) * 7) : 0,
     towers: scene.storm ? 2 : 0,
     fog,
+  };
+}
+
+// ---- 0.12.0: the living sky's life, seasons, rainbow, moon, entrance, and dimming (mockup v15) ----
+
+/** Calm-day life, with Motion Full only: what moves, how far, and how often. */
+export const LIFE = {
+  /** The sun's rays turn once in this many seconds. */
+  raysTurnS: 240,
+  /** The sun and its glow breathe once in this many seconds. */
+  breathS: 7,
+  puffs: 3,
+  /** High and low clouds drift this much quicker. */
+  puffSpeed: 2.4,
+  /** The groups sway this far (px, far to near) on these cycles (seconds). */
+  swayX: [6, 22] as const,
+  swayY: [2, 5] as const,
+  swayPeriod: [95, 120] as const,
+  /** A flock of paper birds crosses every few minutes by day; a shooting star now and then at night. */
+  flockEveryMs: [180_000, 360_000] as const,
+  meteorEveryMs: [120_000, 300_000] as const,
+};
+
+/** How far the sheets sway at time `t` (seconds), group `gi` of `groups`. */
+export function swayAt(t: number, gi: number, groups: number, life: boolean): { x: number; y: number } {
+  const k = groups > 1 ? gi / (groups - 1) : 0;
+  const ax = life ? LIFE.swayX[0] + LIFE.swayX[1] * k : 3 + 11 * k;
+  const ay = life ? LIFE.swayY[0] + LIFE.swayY[1] * k : 1 + 3 * k;
+  const px = life ? LIFE.swayPeriod[0] : 150;
+  const py = life ? LIFE.swayPeriod[1] : 190;
+  return { x: Math.sin((t / px) * 6.283 + gi * 1.7) * ax, y: Math.cos((t / py) * 6.283 + gi) * ay };
+}
+
+/** Wind in gusts (0.12.0): a little faster, then a lot, never a steady conveyor belt. 1 without wind. */
+export function gustAt(t: number, wind: number): number {
+  if (!(wind > 1)) return 1;
+  return 1 + (wind - 1) * (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t / 3.7) * Math.sin(t / 1.9 + 1)));
+}
+
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+const NORTH_SEASONS: Season[] = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
+
+/** The season by month, six months on south of the equator (Home Assistant's latitude). */
+export function seasonAt(date: Date, latitude?: number | null): Season {
+  const month = date.getMonth();
+  const south = typeof latitude === 'number' && latitude < 0;
+  return NORTH_SEASONS[south ? (month + 6) % 12 : month];
+}
+
+/** On the two nearer sheets some trees are broadleaf, and they turn with the season; the high tree line stays evergreen. */
+export const LEAFY: Readonly<Record<number, number>> = { 4: 0.38, 5: 0.46 };
+export const CROWNS: Readonly<Record<Season, readonly string[]>> = {
+  spring: ['#9cc97f', '#f2c4d2', '#8fbf73', '#fbe4ec', '#a6cf86'],
+  summer: ['#4f8a4a', '#5f9b55', '#467f43', '#58924d'],
+  autumn: ['#d9822b', '#c0532f', '#e3a53c', '#a85a2a', '#c9b04a', '#9b8a3e'],
+  winter: [],
+};
+
+/** Winter lays more snow on the peaks and a dusting on the alpine range below them. */
+export function snowFor(snow: number | undefined, d: number, season: Season): number {
+  if (season !== 'winter') return snow || 0;
+  return snow ? Math.min(0.92, snow * 1.45) : d === 3 ? 0.24 : 0;
+}
+
+/** The nearer hills' ground: fresher in spring, deeper in summer, golden in autumn, under snow in winter. */
+export function seasonGround(c: Rgb, d: number, light: Light, season: Season): Rgb {
+  const near = d >= 4 ? 1 : d === 3 ? 0.5 : 0;
+  if (!near) return c;
+  if (season === 'winter') return mixRgb(c, light.snow, d === 5 ? 0.62 : d === 4 ? 0.52 : 0.28);
+  const day = clamp((light.e + 8) / 20, 0, 1);
+  const [tint, k] = ({ spring: ['#86b97a', 0.13], summer: ['#5f9a5c', 0.1], autumn: ['#a8925a', 0.22] } as const)[season];
+  return mixRgb(c, hex(tint), k * near * day);
+}
+
+/** A rainbow shows by day for about 20 minutes after rain stops: in over the first part, out over the last. */
+export const RAINBOW_MS = 20 * 60_000;
+/** The Home Assistant conditions that count as rain (kept with the page's rain record). */
+export { RAIN_CONDITIONS } from '../../core/rain-record';
+
+/**
+ * Fireflies come out on dry summer evenings (review m12b M6: not all night):
+ * from a little before sunset until the sky is fully dark, which is about
+ * when the sun is 12 degrees down.
+ */
+export function firefliesOut(elevation: number, minute: number, rise: number, set: number): boolean {
+  const evening = minute >= (rise + set) / 2 || minute < rise - 60;
+  return evening && elevation < 4 && elevation > -12;
+}
+
+/** How strongly the rainbow shows this long after the rain stopped, 0 to 1. */
+export function rainbowStrength(sinceRainMs: number): number {
+  if (!(sinceRainMs >= 0) || sinceRainMs >= RAINBOW_MS) return 0;
+  const s = sinceRainMs / RAINBOW_MS;
+  if (s < 0.12) return smooth(s / 0.12);
+  if (s > 0.82) return smooth((1 - s) / 0.18);
+  return 1;
+}
+
+/** Whether the weather now leaves room for a rainbow: no rain, snow, or storm, and some sky. */
+export function rainbowWeather(scene: WeatherScene): boolean {
+  return scene.rain === 0 && scene.snow === 0 && !scene.storm && scene.cover < 0.75;
+}
+
+/**
+ * The moon as a lit sphere, pixel by pixel (RGBA, size by size): each point lit
+ * from the sun's side for the phase, the terminator a soft band from just
+ * before the shadow line to just past it, the rim antialiased (the owner, v11).
+ */
+export function moonPixels(size: number, phase: number, light: Rgb, dark: Rgb): Uint8ClampedArray {
+  const px = new Uint8ClampedArray(size * size * 4);
+  const a = 2 * Math.PI * phase;
+  const lx = Math.sin(a);
+  const lz = -Math.cos(a);
+  const rr = size / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const nx = (x + 0.5 - rr) / rr;
+      const ny = (y + 0.5 - rr) / rr;
+      const q = nx * nx + ny * ny;
+      if (q >= 1) continue;
+      const nz = Math.sqrt(1 - q);
+      const t = smooth(clamp((nx * lx + nz * lz + 0.06) / 0.3, 0, 1));
+      const i = (y * size + x) * 4;
+      for (let k = 0; k < 3; k++) px[i + k] = dark[k] + (light[k] - dark[k]) * t;
+      px[i + 3] = 255 * clamp((1 - Math.sqrt(q)) * rr, 0, 1);
+    }
+  }
+  return px;
+}
+
+/**
+ * The entrance (the owner, v5 to v14), in milliseconds before ENTRANCE_PACE: the
+ * sky fades over the card, the sheets rise far to near with their mist, the sun
+ * or moon swings up, clouds slide in, the clock drops with a bounce and the
+ * day's words follow, the card swings on its pegs, and a rainbow already out
+ * comes last.
+ */
+export const ENTRANCE_PACE = 1.6;
+export const ENTRANCE = {
+  sky: { delay: 0, duration: 700 },
+  glow: { delay: 350, duration: 900 },
+  stars: { delay: 400, duration: 1200 },
+  sheets: { delay: 250, step: 160, duration: 1100 },
+  mist: { delay: 410, step: 160, duration: 1100 },
+  sun: { delay: 550, duration: 1400 },
+  clouds: { delay: 600, step: 80, duration: 1600 },
+  clock: { delay: 1200, duration: 1000 },
+  line: { delay: 1550, duration: 600 },
+  card: { delay: 1350, duration: 1700 },
+  rainbow: { delay: 1700, duration: 1500 },
+} as const;
+/** Waking: a quick fade back to the card. */
+export const WAKE_FADE_MS = 260;
+
+/**
+ * Where a part of the info drops in from (review m12 E): far enough above
+ * that its whole box, tilted, starts off the top of the screen, whichever
+ * corner it ends in. `bottom` is its box's bottom edge where it ends.
+ */
+export function dropFrom(bottom: number): string {
+  return `0 ${-Math.ceil(Math.max(0, bottom) + 48)}px`;
+}
+
+/** The sun or moon swinging up from behind the peaks, unseen until its turn (review m12 E). */
+export const SUN_FRAMES: Keyframe[] = [
+  { translate: '-9vw 46vh', scale: '0.7', opacity: 0 },
+  { opacity: 1, offset: 0.2 },
+  { translate: '-3vw 9vh', scale: '0.96', offset: 0.6 },
+  { translate: '0 0', scale: '1', opacity: 1 },
+];
+
+/** A spring as CSS linear() points, the way PlanaVista's motion system draws springs. */
+export function springEase(stiffness: number, damping: number, ms: number): string {
+  const dt = 1 / 600;
+  const steps = Math.round(ms / 1000 / dt);
+  const every = Math.max(1, Math.round(steps / 60));
+  const pts: number[] = [];
+  let x = 0;
+  let v = 0;
+  for (let i = 0; i <= steps; i++) {
+    if (i % every === 0) pts.push(x);
+    v += (stiffness * (1 - x) - damping * v) * dt;
+    x += v * dt;
+  }
+  pts.push(1);
+  return `linear(${pts.map(p => p.toFixed(4)).join(', ')})`;
+}
+
+/** The light at a dimmed shared screen's level (0.12.0): every color the scene draws from it. */
+export function dimLight(light: Light, level: number): Light {
+  if (level >= 1) return light;
+  const d = (c: Rgb) => dimRgb(c, level);
+  return {
+    ...light,
+    sky: three(j => d(light.sky[j])),
+    glow: [d(light.glow[0]), light.glow[1]],
+    far: d(light.far),
+    near: d(light.near),
+    pine: d(light.pine),
+    snow: d(light.snow),
+    cloud: d(light.cloud),
+    // The sun and moon are small and bright: they keep the text rule.
+    sunColor: dimRgb(light.sunColor, level, true),
   };
 }
