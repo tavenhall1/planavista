@@ -100,6 +100,8 @@ class Item:
     counted: bool
     overdue_since: date | None = None
     request: dict[str, Any] | None = None
+    # False when it counts on this day only because it was checked off then (round 10).
+    own: bool = True
 
     @property
     def satisfied(self) -> bool:
@@ -462,7 +464,7 @@ class ChoresEngine:
                 band=None, credit_minutes=float(completion["credit_minutes"]),
                 stars=int(completion["stars"]), window="day",
             )
-            items[occ.member].append(Item(occ, "today", None, completion["state"], completion, True))
+            items[occ.member].append(Item(occ, "today", None, completion["state"], completion, True, own=False))
             present.add(key)
         return items
 
@@ -1358,7 +1360,7 @@ class ChoresEngine:
         if request is not None and request.get("state") == "lapsed":
             raise ChoreError("request_closed")
         if request is not None and request.get("state") == "withdrawn":
-            raise ChoreError("request_withdrawn")  # its chore was handed to someone else (round 9)
+            raise ChoreError("request_handed_on")  # its chore was handed to someone else (rounds 9 and 10)
         if request is not None and request.get("state") == "open":
             request["state"] = "allowed" if allow else "declined"
             request["review"] = {"by": by, "at": self._stamp(now), "note": note, "source": source}
@@ -1370,6 +1372,8 @@ class ChoresEngine:
                     {"occurrence": request["occurrence"], **change, "by": by, "at": self._stamp(now),
                      "request": request["id"]}
                 )
+                if change.get("excused"):
+                    self._excuse_counted(request["occurrence"])  # round 10
             out.result = request["state"]
             out.data = {"occurrence": request["occurrence"]}
             return out
@@ -1474,6 +1478,7 @@ class ChoresEngine:
         self.log["overrides"].append(record)
         out = Outcome("changed", {"occurrence": key}, changed={"log"})
         if record.get("excused"):
+            self._excuse_counted(key)  # the days that counted it not done close again (round 10)
             self._finish_if_done(self.activity(item.occ.chore), now, out)
         return out
 
@@ -1496,6 +1501,7 @@ class ChoresEngine:
             self.log["overrides"].append(
                 {"occurrence": occurrence, "excused": True, "note": note, "by": by, "at": self._stamp(now)}
             )
+            self._excuse_counted(occurrence)  # a past day's ring counts it no more (round 10)
         self._finish_if_done(self.activity(chore), now, out)
         return out
 
@@ -1507,19 +1513,20 @@ class ChoresEngine:
         and the streak hold. A day that never counted it (a weekly chore missed at the week's
         end) only lists it as excused.
         """
-        if not any(key in (s.get("missed") or []) for s in self.log["summaries"]):
+        counted_open = any(((s.get("keys") or {}).get(key) or [None])[0] in OPEN for s in self.log["summaries"])
+        if not counted_open and not any(key in (s.get("missed") or []) for s in self.log["summaries"]):
             raise ChoreError("not_missed")
+        touched = self._excuse_counted(key)
         occ = self._past_occurrence(key)
         parsed = parse_key(key)
         chore = parsed[0] if parsed else None
         # History from before the chore began (its created time, an assignee added later, chores
         # turned off and on) can't be worked out again; a day's own occurrence counted on that day.
         own_period = parsed[2] if parsed else None
-        touched: list[dict[str, Any]] = []
         for summary in self.log["summaries"]:
             missed = summary.get("missed") or []
             still_open = summary.get("open") or []
-            if key not in missed and key not in still_open:
+            if "keys" in summary or (key not in missed and key not in still_open):
                 continue
             period = str(summary.get("period", ""))
             counted = (
@@ -1557,15 +1564,49 @@ class ChoresEngine:
         if done_day >= today:
             return  # its day is still going: the board shows it again
         occ = self._past_occurrence(key)
-        if occ is None or occ.due is None:
-            return
         over = self.period_over(key, now)
-        due_day = self.clock.due_day(occ.due)
-        carry = self.policy_on(due_day) == "carry_over"
+        due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
+        carry = due_day is not None and self.policy_on(due_day) == "carry_over"
         late = "carried" if carry else "missed"
         minutes = float(completion.get("credit_minutes", 0))
         member = completion["member"]
         counted = False
+        if over and carry and occ is not None and not any(c.get("key") == key for c in self.log["carried"]):
+            self.log["carried"].append(self._carry(occ, due_day))
+        # Summaries that recorded what they counted (round 10): exactly those that counted it waiting.
+        keyed_days: set[date] = set()
+        week_of = self.clock.week_start(due_day) if due_day is not None else None
+        for summary in self.log["summaries"]:
+            keys = summary.get("keys")
+            if summary.get("member") != member or keys is None:
+                continue
+            period = str(summary.get("period", ""))
+            if period.startswith("day:"):
+                keyed_days.add(_day(period[4:]))
+            on_due_day = due_day is not None and period == f"day:{due_day.isoformat()}"
+            its_week = week_of is not None and period == f"week:{week_of.isoformat()}"
+            final = over and (on_due_day or its_week)
+            mark = keys.get(key)
+            if mark is not None and mark[0] in CREDITED:
+                if mark[2]:
+                    self._restate(summary, key, "open", late if final else "open")
+                else:
+                    # Counted only because it was checked off that day: as if it never was.
+                    self._restate(summary, key, "gone")
+                    if final:
+                        self._add_counted(summary, key, minutes, late)
+                counted = counted or final
+            elif mark is None and final:
+                # Its due day or week didn't count it, because the check-off had finished it by then.
+                if its_week or (occ is not None and counted_on(occ, due_day, self.clock)):
+                    self._add_counted(summary, key, minutes, late)
+                elif key not in (summary.get(late) or []):
+                    summary[late] = [*(summary.get(late) or []), key]  # listed, as its rollover lists it
+                counted = True
+        if occ is None or due_day is None:
+            if over and counted and not carry and occ is not None:
+                out.events.append(ChoreEvent("missed", occ.member, self._missed_data(occ)))
+            return
 
         def revise(summary: dict[str, Any], listed: str) -> None:
             summary["pending"] = max(0, int(summary.get("pending", 0)) - 1)
@@ -1576,18 +1617,15 @@ class ChoresEngine:
                 tally["done"] = max(0, tally["done"] - 1)
             summary["closed"] = False
 
-        # Under Carry it over it's back on the board as overdue, from its due day (its record went once
-        # it was checked off), and the days it showed as overdue count it again below.
-        if over and carry and not any(c.get("key") == key for c in self.log["carried"]):
-            self.log["carried"].append(self._carry(occ, due_day))
-        # Every ended day from the check-off on whose ring counted it (round 9: a set day, a Repeats
+        # Older summaries, without what they counted (round 9's rules):
+        # every ended day from the check-off on whose ring counted it (a set day, a Repeats
         # window, an overdue copy checked off later): it wasn't done that day. Its due day, once its
         # time ran out, counts it as the missed rule says; any other day lists it as not done then.
         index = self._index()
         days = self._summaries(member, "day")
         day = done_day
         while day < today:
-            summary = days.get(day)
+            summary = days.get(day) if day not in keyed_days else None
             listed_already = summary is not None and any(
                 key in (summary.get(name) or []) for name in ("missed", "carried", "open")
             )
@@ -1600,7 +1638,7 @@ class ChoresEngine:
             day += timedelta(days=1)
         # Its week, once that ended.
         week = self._summaries(member, "week").get(self.clock.week_start(due_day))
-        if over and week is not None and key not in (week.get(late) or []):
+        if over and week is not None and "keys" not in week and key not in (week.get(late) or []):
             revise(week, late)
             counted = True
         # The doer's minutes for the week it was checked off in, once that week ended.
@@ -1615,6 +1653,85 @@ class ChoresEngine:
                 contribution["shared_minutes"] = round(max(0.0, float(contribution.get("shared_minutes", 0)) - minutes), 2)
         if over and counted and not carry:
             out.events.append(ChoreEvent("missed", occ.member, self._missed_data(occ)))
+
+    # What a summary counted (round 10) ----------------------------------------------
+    # Each day and week summary keeps the occurrences it counted as `keys`: {key: [status,
+    # minutes, own]}, own False when it counted only because it was checked off that day.
+    # A correction after the fact (a late send-back, a late excuse) changes exactly the
+    # summaries that counted it, instead of working out again from today's state which days
+    # did (rounds 8 to 10 each found a path that guess missed). Summaries written before
+    # this have no `keys` and keep the earlier rules.
+
+    @staticmethod
+    def _counted_keys(items: Iterable[Item]) -> dict[str, list[Any]]:
+        return {i.occ.key: [i.status, round(float(i.occ.credit_minutes), 2), i.own] for i in items}
+
+    @staticmethod
+    def _restate(summary: dict[str, Any], key: str, to: str, listed: str | None = None) -> None:
+        """Move one counted occurrence to `to` (open, excused, or gone) and work out again whether it closed."""
+        status, minutes, own = summary["keys"][key]
+        minutes = float(minutes or 0)
+        parsed = parse_key(key)
+        tally = (summary.get("chores") or {}).get(parsed[0] if parsed else None)
+        if status in CREDITED:
+            summary[status] = max(0, int(summary.get(status, 0)) - 1)
+            name = f"minutes_{'done' if status == 'done' else 'pending'}"
+            summary[name] = round(max(0.0, float(summary.get(name, 0)) - minutes), 2)
+            if tally:
+                tally["done"] = max(0, tally["done"] - 1)
+        for name in ("missed", "carried", "open"):
+            if key in (summary.get(name) or []):
+                summary[name] = [k for k in summary[name] if k != key]
+        if to in ("excused", "gone") and status not in ("away", "excused"):
+            summary["due"] = max(0, int(summary.get("due", 0)) - 1)
+            summary["minutes_due"] = round(max(0.0, float(summary.get("minutes_due", 0)) - minutes), 2)
+            if tally:
+                tally["due"] = max(0, tally["due"] - 1)
+        if to == "gone":
+            del summary["keys"][key]
+        else:
+            summary["keys"][key] = [to, minutes, own]
+        if to == "excused":
+            summary["excused"] = [*(summary.get("excused") or []), key]
+        elif listed:
+            summary[listed] = [*(summary.get(listed) or []), key]
+        credited = int(summary.get("done", 0)) + int(summary.get("pending", 0))
+        summary["closed"] = int(summary.get("due", 0)) > 0 and credited >= int(summary["due"])
+
+    @staticmethod
+    def _add_counted(summary: dict[str, Any], key: str, minutes: float, listed: str) -> None:
+        """Count an occurrence its summary didn't (its check-off had finished the chore by then), as not done."""
+        summary["due"] = int(summary.get("due", 0)) + 1
+        summary["minutes_due"] = round(float(summary.get("minutes_due", 0)) + minutes, 2)
+        summary.setdefault("keys", {})[key] = ["open", round(minutes, 2), True]
+        summary[listed] = [*(summary.get(listed) or []), key]
+        parsed = parse_key(key)
+        if parsed and isinstance(summary.get("chores"), dict):
+            tally = summary["chores"].setdefault(parsed[0], {"due": 0, "done": 0})
+            tally["due"] += 1
+        summary["closed"] = False
+
+    def _excuse_counted(self, key: str) -> list[dict[str, Any]]:
+        """A late excuse: every summary that counted the occurrence as not done stops counting it.
+
+        Summaries that only listed it (a weekly chore missed at its week's end, not part of that
+        day's ring) list it as excused instead. Returns the day summaries that counted it.
+        """
+        days: list[dict[str, Any]] = []
+        for summary in self.log["summaries"]:
+            keys = summary.get("keys")
+            if keys is None:
+                continue
+            mark = keys.get(key)
+            if mark is not None and mark[0] in OPEN:
+                self._restate(summary, key, "excused")
+                if str(summary.get("period", "")).startswith("day:"):
+                    days.append(summary)
+            elif mark is None and any(key in (summary.get(name) or []) for name in ("missed", "carried")):
+                for name in ("missed", "carried"):
+                    summary[name] = [k for k in (summary.get(name) or []) if k != key]
+                summary["excused"] = [*(summary.get("excused") or []), key]
+        return days
 
     @staticmethod
     def _uncount(summary: dict[str, Any], chore: str | None, minutes: float | None) -> None:
@@ -1637,6 +1754,8 @@ class ChoresEngine:
         activity = self.activity(parsed[0]) if parsed else None
         gen = self.generator()
         occ = gen.from_key(activity, key) if activity else None
+        if occ is None and activity is not None and activity.get("finished_at"):
+            occ = gen.from_key({**activity, "finished_at": None}, key)  # finished, its occurrences still were (round 10)
         if occ is None:
             return None
         return with_overrides(occ, self._index().overrides.get(key, {}), set(self.member_ids()), gen.clock)
@@ -1698,6 +1817,10 @@ class ChoresEngine:
                 used.add(parsed[0])
         for summary in self.log.get("summaries", []):
             used |= set((summary.get("chores") or {}).keys())
+            named = [*(summary.get("keys") or {})]
+            for name in ("missed", "carried", "open", "excused"):
+                named += summary.get(name) or []
+            used |= {parsed[0] for k in named if (parsed := parse_key(k))}
         return used
 
     def _note_joined(self, activity: dict[str, Any], existing: Mapping[str, Any], now: datetime) -> None:
@@ -2220,6 +2343,7 @@ class ChoresEngine:
             "away": away_on(member, day) is not None,
             "closed": bool(due) and all(i.status in CREDITED for i in due),
             "chores": chores,
+            "keys": self._counted_keys(counted),
         }
 
     def _week_summary(
@@ -2240,6 +2364,7 @@ class ChoresEngine:
             "away": bool(days) and all(away_on(member, d) is not None for d in days),
             "closed": bool(due) and not late,
             "contribution": self.contribution(member_id, week, end, index),
+            "keys": self._counted_keys(found),
         }
 
     def _lapse(self, keys: set[str], at: datetime) -> None:
@@ -2265,6 +2390,12 @@ class ChoresEngine:
         log["completions"] = [c for c in log["completions"] if _at(c["at"]) >= cutoff]
         log["overrides"] = [o for o in log["overrides"] if _at(o["at"]) >= cutoff]
         log["requests"] = [r for r in log["requests"] if r.get("state") == "open" or _at(r["at"]) >= cutoff]
+        # What a summary counted is kept 40 days, for corrections after the fact (round 10).
+        keep_from = (end - timedelta(days=40)).date()
+        for summary in log["summaries"]:
+            period = str(summary.get("period", ""))
+            if "keys" in summary and _day(period.split(":", 1)[1]) < keep_from:
+                summary.pop("keys")
         self.rewards["redemptions"] = [
             r for r in self.rewards["redemptions"] if r.get("state") == "requested" or _at(r["at"]) >= cutoff
         ]

@@ -364,7 +364,7 @@ def test_a_handed_chore_drops_the_first_persons_request_and_a_done_one_stays() -
     assert [r for r in engine.open_requests() if r["id"] == request] == []
     with pytest.raises(ChoreError) as err:
         engine.review(SCENE, request_id=request, allow=True, by="blair")
-    assert err.value.code == "request_withdrawn"
+    assert err.value.code == "request_handed_on"  # its own words since round 10
     engine.complete(SCENE, key=CAT_MORNING, by="casey", source="tablet")
     with pytest.raises(ChoreError) as err:
         engine.override(SCENE, key=CAT_MORNING, by="blair", assignee="dana")
@@ -414,6 +414,109 @@ def test_excusing_a_missed_chore_says_whether_the_day_closes() -> None:
     assert first.data["streak_holds"] is False  # Tidy toys is still missed
     second = engine.excuse_missed(at(10, 14, 10), key="tidy_toys|dana|day:2026-10-13|0", by="blair")
     assert second.data["streak_holds"] is True
+
+
+@pytest.mark.parametrize("chore", [
+    once("water_the_ferns", "Water the ferns", ["dana"], on="2026-10-13"),
+    repeats("water_the_ferns", "Water the ferns", ["dana"], "FREQ=DAILY;COUNT=1", "2026-10-13", "day", 10),
+])
+def test_excusing_a_missed_one_off_chore_closes_its_day(chore: dict) -> None:
+    """Round 10 (r10a C1): the rollover finished it, so excusing it later never closed its day."""
+    fish = plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")
+    engine = sample_engine(activities=[fish, chore])
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert tuesday["closed"] is False
+    [key] = [k for k in tuesday["missed"] + tuesday["open"] if k.startswith("water_the_ferns")]
+    out = engine.excuse_missed(at(10, 14, 10), key=key, by="blair")
+    assert (tuesday["due"], tuesday["closed"], out.data["streak_holds"]) == (1, True, True)
+
+
+def test_a_late_send_back_under_carry_over_leaves_later_days_alone() -> None:
+    """Round 10 (r10a I1): sent back two days late, it reopened a closed day that never counted it."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")],
+                           settings={"auto_approve": "never", "missed": "carry_over"})
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    [tuesdays] = engine.open_requests()
+    engine.catch_up(at(10, 14, 9))
+    wed_key = "feed_the_fish|dana|day:2026-10-14|0"
+    engine.complete(at(10, 14, 18), key=wed_key, by="dana", source="tablet")
+    wednesdays = next(r for r in engine.open_requests() if r["occurrence"] == wed_key)
+    engine.review(at(10, 14, 19), request_id=wednesdays["id"], allow=True, by="blair")
+    engine.catch_up(at(10, 15, 9))
+    wednesday = _summary(engine, "dana", "day:2026-10-14")
+    before = {k: wednesday[k] for k in ("due", "done", "pending", "closed")}
+    engine.review(at(10, 15, 10), request_id=tuesdays["id"], allow=False, by="blair")
+    assert {k: wednesday[k] for k in ("due", "done", "pending", "closed")} == before == {"due": 1, "done": 1, "pending": 0, "closed": True}
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert FISH in tuesday["carried"] and tuesday["closed"] is False
+    assert engine.streak("dana", at(10, 15, 10)) >= 1
+
+
+def test_a_one_off_chore_sent_back_after_its_date_is_missed_on_its_date() -> None:
+    """Round 10 (r10a I2): the inbox said "went back", the day it was checked off kept it waiting,
+    and no day counted it missed."""
+    recycling = once("sort_the_recycling", "Sort the recycling", ["casey"], by="2026-10-15", needs_ok=True)
+    engine = sample_engine(activities=[recycling], settings={"auto_approve": "never"})
+    key = "sort_the_recycling|casey|once|0"
+    assert engine.complete(SCENE, key=key, by="casey", source="tablet").result == "pending"
+    engine.catch_up(at(10, 16, 9))
+    tuesday = _summary(engine, "casey", "day:2026-10-13")
+    assert (tuesday["due"], tuesday["pending"]) == (1, 1)
+    [request] = [r for r in engine.open_requests(at(10, 16, 10)) if r["occurrence"] == key]
+    assert request["missed_if_sent_back"] is True
+    engine.review(at(10, 16, 10), request_id=request["id"], allow=False, by="blair")
+    # Tuesday counted it only because it was checked off then: as if it never was.
+    assert (tuesday["due"], tuesday["pending"]) == (0, 0) and key not in tuesday["keys"]
+    thursday = _summary(engine, "casey", "day:2026-10-15")
+    assert key in thursday["missed"] and thursday["closed"] is False
+
+
+def test_excusing_an_overdue_chore_closes_the_day_it_was_carried_from() -> None:
+    """Round 10 (r10a I3): Excuse it on the overdue tile said the streak holds, and its day stayed open."""
+    engine = sample_engine(activities=[
+        plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day"),
+        plan("make_your_bed", "Make your bed", ["dana"], 0.1, "day"),
+    ], settings={"missed": "carry_over"})
+    engine.complete(SCENE, key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert FISH in tuesday["carried"] and tuesday["closed"] is False
+    engine.override(at(10, 14, 10), key=FISH, by="blair", excused=True)
+    assert (tuesday["due"], tuesday["closed"]) == (1, True)
+    assert FISH in tuesday["excused"] and FISH not in tuesday["carried"]
+
+
+def test_excusing_a_past_day_by_the_action_closes_it() -> None:
+    """Round 10 (r10a M1): excuse_chore with a past date answered excused and changed nothing that counts."""
+    engine = sample_engine(activities=[
+        plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day"),
+        plan("make_your_bed", "Make your bed", ["dana"], 0.1, "day"),
+    ])
+    engine.complete(SCENE, key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    engine.excuse(at(10, 14, 10), chore="feed_the_fish", member="dana", by="blair", day=date(2026, 10, 13))
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert (tuesday["due"], tuesday["closed"]) == (1, True)
+
+
+def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
+    """Round 10 (r10a M2): it was refused with the words for an unchecked check-off."""
+    engine = sample_engine()
+    request = engine.request(SCENE, kind="skip", key=TRASH, by="casey").data["request"]
+    engine.override(SCENE, key=TRASH, by="blair", assignee="dana")
+    with pytest.raises(ChoreError) as err:
+        engine.review(SCENE, request_id=request, allow=True, by="blair")
+    assert err.value.code == "request_handed_on"
+
+
+def test_ids_named_only_in_a_summary_stay_taken() -> None:
+    """Round 10 (r10a M3): a weekly chore missed at its week's end, deleted and added again, took its id."""
+    engine = sample_engine()
+    engine.catch_up(at(10, 19, 9))  # the week is over: Yard work was never done
+    engine.delete_activity("yard_work", now=at(10, 19, 10))
+    assert "yard_work" in engine.ids_in_log()
 
 
 def test_undo_reverses_only_what_that_check_off_earned() -> None:

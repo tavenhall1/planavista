@@ -140,11 +140,14 @@ def test_summaries_record_the_day() -> None:
     engine.complete(MONDAY, key="feed_the_fish|dana|day:2026-10-12|0", by="dana", source="tablet", approve=True)
     engine.catch_up(at(10, 13, 9))
     summary = _summary(engine, "dana", "day:2026-10-12")
-    assert summary | {"missed": None, "chores": None} == {
+    assert summary | {"missed": None, "chores": None, "keys": None} == {
         "member": "dana", "period": "day:2026-10-12", "due": 4, "done": 2, "pending": 0,
         "minutes_due": 35.0, "minutes_done": 10.0, "minutes_pending": 0.0, "missed": None,
-        "carried": [], "excused": [], "open": [], "away": False, "closed": False, "chores": None,
+        "carried": [], "excused": [], "open": [], "away": False, "closed": False, "chores": None, "keys": None,
     }
+    # What it counted, for corrections after the fact (round 10).
+    assert summary["keys"]["make_your_bed|dana|day:2026-10-12|0"] == ["done", 5.0, True]
+    assert summary["keys"]["tidy_toys|dana|day:2026-10-12|0"][0] == "open"
     # The check-off still waiting at the end of the day was approved before the summary.
     assert summary["missed"] == ["set_the_table|dana|day:2026-10-12|0", "tidy_toys|dana|day:2026-10-12|0"]
     assert summary["chores"]["make_your_bed"] == {"due": 1, "done": 1}
