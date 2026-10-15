@@ -25,7 +25,7 @@ describe('round 12: screens', () => {
   // I2: in a sections view the sheet fills the window while the card decided it was tall.
   it("decides short by the sheet's own room, not the card's", () => {
     const inbox = src('modules/chores/pv-chores-inbox.ts');
-    expect(inbox).toMatch(/this\.short = this\.getBoundingClientRect\(\)\.height < SHORT_MAX_HEIGHT;/);
+    expect(inbox).toMatch(/const height = this\.getBoundingClientRect\(\)\.height;\n\s+this\.short = height < SHORT_MAX_HEIGHT;/);
     expect(src('modules/chores/pv-chores-module.ts')).not.toMatch(/\?short=\$\{this\.short\}/);
     expect(src('shell/planavista-card.ts')).not.toMatch(/class="pv-module"\n\s+layout=\$\{this\._layout\.layout\}\n\s+\?short=/);
   });

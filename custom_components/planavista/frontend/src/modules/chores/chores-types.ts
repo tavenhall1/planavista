@@ -96,6 +96,8 @@ export interface ChoreRequest {
   stars?: number;
   /** Its time has run out, so sending it back counts it as missed (round 9). */
   missed_if_sent_back?: boolean;
+  /** Its occurrence was owed nothing (excused, or its person away): sent back, it stays excused (round 13). */
+  stays_excused?: boolean;
   until?: string | null;
   reward?: string;
   cost?: number;

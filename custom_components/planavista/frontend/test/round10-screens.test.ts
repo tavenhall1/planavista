@@ -136,7 +136,7 @@ describe('round 10: screens', () => {
       item: pending, activity: activity('feed_the_fish'), owner: dana, members: MEMBERS, today: TODAY, member: 'yes', parent: 'yes', late: true,
     } as OptionsContext);
     expect(options.parent.find(o => o.id === 'send_back')).toMatchObject({ label: 'Not done', late: true });
-    expect(src('modules/chores/pv-chores-inbox.ts')).toMatch(/sendBackReasons\(!!row\.late\)/);
+    expect(src('modules/chores/pv-chores-inbox.ts')).toMatch(/sendBackReasons\(!!\(row\.late \|\| row\.excused\)\)/); // round 13: excused too
     expect(src('modules/chores/pv-chore-options.ts')).toMatch(/sendBackReasons\(!!option\.late\)/);
   });
 

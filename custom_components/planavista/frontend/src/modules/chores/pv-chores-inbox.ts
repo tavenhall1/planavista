@@ -338,9 +338,20 @@ export class PvChoresInbox extends LitElement {
       this._motion.open(panel, backdrop);
       this._detach = this._dragFrom(panel);
     }
+    let room = this.getBoundingClientRect().height;
     const fit = (): void => {
-      this.short = this.getBoundingClientRect().height < SHORT_MAX_HEIGHT;
+      const height = this.getBoundingClientRect().height;
+      this.short = height < SHORT_MAX_HEIGHT;
+      // Turned or resized without a new layout (a sections view is phone both ways), the heights held
+      // for the old room no longer fit (round 13: one row showed). Not while a phone's keyboard is up.
+      const typing = !!this.shadowRoot?.activeElement?.matches('input, textarea');
+      if (Math.abs(height - room) > 1 && !typing) {
+        room = height;
+        this._resetHeld();
+        this.requestUpdate();
+      }
     };
+    panel.addEventListener('focusin', this._focusIn);
     this._room = new ResizeObserver(fit);
     this._room.observe(this);
     fit();
@@ -357,10 +368,7 @@ export class PvChoresInbox extends LitElement {
     if (!panel || !rows) return;
     // Turned: the heights held for the other shape no longer fit (round 8: a gap above Done, docked).
     if (changed.has('layout') && changed.get('layout') !== undefined) {
-      rows.style.minHeight = '';
-      this._rowsHeight = 0;
-      panel.style.height = '';
-      this._heldHeight = 0;
+      this._resetHeld();
       // Turned into a bottom sheet, its handle drags (round 12: attached only when it opened as one).
       this._detach?.();
       this._detach = this.layout === 'landscape' ? null : this._dragFrom(panel);
@@ -387,6 +395,29 @@ export class PvChoresInbox extends LitElement {
       panel.style.height = `${this._heldHeight}px`;
     }
   }
+
+  /** Lets go of the heights held for the room it had (rounds 8 and 13). */
+  private _resetHeld(): void {
+    const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
+    const rows = this.renderRoot.querySelector<HTMLElement>('.rows');
+    if (rows) rows.style.minHeight = '';
+    this._rowsHeight = 0;
+    if (panel) panel.style.height = '';
+    this._heldHeight = 0;
+  }
+
+  /** Keyboard focus moved behind the sticky head: bring it out below (round 13; no scroll padding, round 12). */
+  private _focusIn = (event: FocusEvent): void => {
+    const target = event.composedPath()[0] as HTMLElement | undefined;
+    const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
+    const head = this.renderRoot.querySelector<HTMLElement>('.head');
+    if (!target || !panel || !head || head.contains(target)) return;
+    requestAnimationFrame(() => {
+      const shown = target.getBoundingClientRect();
+      const by = revealBy({ top: shown.top, bottom: shown.bottom }, { top: head.getBoundingClientRect().bottom + 8, bottom: Infinity });
+      if (by) panel.scrollBy({ top: by });
+    });
+  };
 
   private _dragFrom(panel: HTMLElement): () => void {
     return this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
@@ -553,12 +584,12 @@ export class PvChoresInbox extends LitElement {
       </div>
       ${this._sendingBack === row.id ? html`
         <div class="reasons">
-          <span class="lead">${row.late ? 'It counts as missed that day. Add a note for them?' : 'Sending back: what should change?'}</span>
-          ${sendBackReasons(!!row.late).map(reason => html`<button class="chip" type="button" @click=${() => this._review(row, false, reason)}>${reason}</button>`)}
+          <span class="lead">${row.excused ? 'It stays excused. Add a note for them?' : row.late ? 'It counts as missed that day. Add a note for them?' : 'Sending back: what should change?'}</span>
+          ${sendBackReasons(!!(row.late || row.excused)).map(reason => html`<button class="chip" type="button" @click=${() => this._review(row, false, reason)}>${reason}</button>`)}
           <input type="text" maxlength="60" placeholder="Write a note…" aria-label="Write a note" .value=${this._note}
             @input=${(e: Event) => { this._note = (e.target as HTMLInputElement).value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this._review(row, false, this._note.trim() || null); }} />
-          <button class="chip" type="button" @click=${() => this._review(row, false, this._note.trim() || null)}>${row.late ? 'Count as missed' : 'Send back'}</button>
+          <button class="chip" type="button" @click=${() => this._review(row, false, this._note.trim() || null)}>${row.excused ? 'Not done' : row.late ? 'Count as missed' : 'Send back'}</button>
         </div>
       ` : nothing}
     `;
