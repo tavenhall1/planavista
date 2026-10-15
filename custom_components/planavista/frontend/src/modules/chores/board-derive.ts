@@ -1,5 +1,5 @@
 import type { Member } from '../../core/household';
-import { BadgeContext, StatusBadge, itemBadge, minutesText, ringLabel } from '../../core/status-map';
+import { BadgeContext, StatusBadge, itemBadge, minutesText, ringLabel, shortDay } from '../../core/status-map';
 import type { Activity, Band, Board, BoardMember, ItemView } from './chores-types';
 import { DayEvent, clockTime, nextOnCalendar } from './calendar-ties';
 
@@ -24,6 +24,8 @@ export interface RowModel {
   /** When it was checked off today ("4:20"), and by someone other than its owner. */
   doneAt?: string;
   doneBy?: string | null;
+  /** Overdue from an earlier day: that day in short ("Wed", "Sep 28"). */
+  overdueDay?: string;
 }
 
 export type BandState = 'past' | 'now' | 'later';
@@ -131,6 +133,7 @@ function rowFor(item: ItemView, ctx: DeriveContext, board: Board, earnsStars: bo
     state: item.status,
     doneAt,
     doneBy,
+    ...(item.overdue_since ? { overdueDay: shortDay(item.overdue_since, ctx.today) } : {}),
     ...extra,
   };
 }
@@ -210,7 +213,8 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
         earlier.push(rowFor(item, ctx, board, earnsStars));
       } else done.push(rowFor(item, ctx, board, earnsStars));
     }
-    const next = live.find(i => OPEN.has(i.status)) ?? live.find(i => i.status === 'pending');
+    // A sent-back session first, so its note shows (round 10: an open session hid it).
+    const next = live.find(i => i.status === 'sent_back') ?? live.find(i => OPEN.has(i.status)) ?? live.find(i => i.status === 'pending');
     if (!next) continue;
     const group = { done: credited, total };
     const time = minutesText(live.reduce((sum, i) => sum + i.credit_minutes, 0));

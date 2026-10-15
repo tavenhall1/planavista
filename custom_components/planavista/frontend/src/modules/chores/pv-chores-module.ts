@@ -9,7 +9,10 @@ import type { ModuleElement, ModuleService, OpenTarget } from '../../core/module
 import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
-import { creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
+import { keyed } from 'lit/directives/keyed.js';
+import { guardPageTaps } from '../../core/press-guard';
+import { BoardHandoff, boardHandoff, handoffWords, sheetKey } from './sheet-key';
+import { actingParent, creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
 import { deepActiveElement } from '../../core/focus';
 import { ViewPlace, viewChange, viewMotion } from '../../core/view-motion';
@@ -31,13 +34,18 @@ import { RewardDraft, balances, elsewhereText, recentLine, redeemers, rewardCard
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
-import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
+import { creditedText, dayWords, historyLines, itemOptions, skipWords, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
-import { InboxRow, answeredText, inboxGroups } from './inbox-derive';
-import type { ReviewDetail } from './pv-chores-inbox';
+import { InboxRow, answeredText, approveAllSummary, excusedRequest, inboxGroups, lateRequest, reviewQuestion } from './inbox-derive';
+import type { ApproveAllAsk, ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
-import { errorMessage } from '../../core/ws-api';
+import { errorCode, errorMessage } from '../../core/ws-api';
+import './pv-surprise-present';
+import './pv-surprise-reveal';
+import type { SurpriseOpenDetail } from './pv-surprise-present';
+import type { RevealDetail } from './pv-surprise-reveal';
+import { mayOpenSurprise, surpriseOf } from './surprise-derive';
 import { chime, haptic } from './effects';
 import type { PvChoresBoard } from './pv-chores-board';
 import { IMPORT_EXPORT, editChore } from './settings/targets';
@@ -189,12 +197,20 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** The bar's and the parent-mode strip's buttons: Waiting for approval and Add chore. */
   moduleAction(id: string): void {
-    if (id === 'inbox') void this._openInbox();
+    if (id === 'inbox') {
+      // Pressed again, it closes To approve (round 10: sideways on a phone, Done was out of reach).
+      if (this._sheet?.kind === 'inbox') void this.renderRoot.querySelector<HTMLElement & { close(): Promise<void> }>('pv-chores-inbox')?.close();
+      else void this._openInbox();
+    }
     if (id === 'add') void this._openQuickAdd();
   }
 
   private async _openInbox(): Promise<void> {
-    if (await this.asParent("Who's approving?")) this._sheet = { kind: 'inbox' };
+    if (await this.asParent("Who's approving?")) {
+      this._sheet = { kind: 'inbox' };
+      // A double tap on the bar's button would close it again at once (round 11).
+      guardPageTaps();
+    }
   }
 
   private async _openQuickAdd(): Promise<void> {
@@ -203,17 +219,30 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** One answer from the inbox: its own review, attributed to the parent (spec 13.7). */
   private async _review(detail: ReviewDetail): Promise<boolean> {
-    const { row, allow, note } = detail;
+    const result = await this._answer(detail.row, detail.allow, detail.note ?? null);
+    detail.settled?.(result === 'done');
+    return result === 'done';
+  }
+
+  /** What the last refused answer said, for Approve all's summary (round 7). */
+  private _lastRefusal: string | null = null;
+
+  /** One answer, and how it went: answered elsewhere meanwhile is `gone`, not a failure (round 6). */
+  private async _answer(row: InboxRow, allow: boolean, note: string | null, quietGone = false): Promise<'done' | 'cancelled' | 'gone' | 'failed'> {
     const api = this.service?.api;
-    if (!api || !(await this.asParent("Who's approving?"))) return false;
+    if (!api || !(await this.asParent(reviewQuestion(row, allow)))) return 'cancelled';
     this._reviewing = new Set([...this._reviewing, row.id]);
     try {
-      await api.review(row.id, allow ? 'allow' : 'decline', note ?? null);
+      await api.review(row.id, allow ? 'allow' : 'decline', note);
       this.showToast({ id: `review-${row.id}`, text: answeredText(row, allow, note) });
-      return true;
+      return 'done';
     } catch (err) {
-      this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
-      return false;
+      const gone = ['unknown_request', 'request_closed', 'request_withdrawn', 'request_handed_on'].includes(errorCode(err));
+      this._lastRefusal = errorMessage(err);
+      if (!(gone && quietGone)) {
+        this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+      }
+      return gone ? 'gone' : 'failed';
     } finally {
       const next = new Set(this._reviewing);
       next.delete(row.id);
@@ -222,13 +251,57 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Approve all: each chore to check approved on its own, so each is attributed and stands alone. */
-  private async _approveAll(rows: InboxRow[]): Promise<void> {
-    let approved = 0;
-    for (const row of rows) {
-      if (await this._review({ row, allow: true })) approved += 1;
-      else break;
+  /** Approve all's question, asked over the inbox (round 6). */
+  @state() private _approveAsk: ApproveAllAsk | null = null;
+
+  /** The rows it named, less any answered elsewhere since; none left (or the inbox gone), no question. */
+  private _renderApproveAsk() {
+    const ask = this._approveAsk;
+    if (!ask) return nothing;
+    const waiting = new Set(this.service?.board()?.requests.map(r => r.id) ?? []);
+    const rows = ask.rows.filter(row => waiting.has(row.id));
+    if (rows.length === 0 || this._sheet?.kind !== 'inbox') {
+      queueMicrotask(() => { if (this._approveAsk === ask) this._approveAsk = null; });
+      return nothing;
     }
-    if (approved > 1) this.showToast({ id: `approved-${Date.now()}`, text: `Approved ${approved} chores.` });
+    return html`
+      <pv-notice-sheet .layout=${this.layout} heading=${`Approve all ${rows.length}?`}
+        body="Each one counts as approved by you, with its stars."
+        .actions=${[{ id: 'approve', label: `Approve all ${rows.length}`, kind: 'primary' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+        @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onApproveAsk(e, ask, rows)}></pv-notice-sheet>
+    `;
+  }
+
+  private _onApproveAsk(event: CustomEvent<{ id: string }>, ask: ApproveAllAsk, rows: InboxRow[]): void {
+    event.stopPropagation();
+    this._approveAsk = null;
+    // Focus back in To approve, not the page (round 15).
+    void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focusTitle(): void }>('pv-chores-inbox')?.focusTitle());
+    if (event.detail.id !== 'approve') return;
+    ask.start(rows);
+    void this._approveAll(rows, (id, ok) => ask.settle(id, ok));
+  }
+
+  /** Each row it named, past any answered elsewhere meanwhile; a cancelled PIN or a failure stops it (round 6). */
+  private async _approveAll(rows: InboxRow[], settle?: (id: string, ok: boolean) => void): Promise<void> {
+    this._lastRefusal = null;
+    let approved = 0;
+    let gone = 0;
+    let stopped: 'cancelled' | 'failed' | null = null;
+    for (const row of rows) {
+      if (stopped) {
+        settle?.(row.id, false);
+        continue;
+      }
+      const result = await this._answer(row, true, null, true);
+      settle?.(row.id, result === 'done');
+      if (result === 'done') approved += 1;
+      else if (result === 'gone') gone += 1;
+      else stopped = result;
+    }
+    // A failure stops it and says how many didn't save (round 7: the summary hid the error).
+    const summary = approveAllSummary(approved, gone, stopped === 'failed' ? rows.length - approved - gone : 0, this._lastRefusal);
+    if (summary) this.showToast({ id: `approved-${Date.now()}`, text: summary.text, tone: summary.tone });
   }
 
   private async _quickAdd(draft: QuickAddDraft): Promise<void> {
@@ -269,6 +342,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
+    if (changed.has('session') || changed.has('household')) this._refreshReveal();
+    this._replayCutShort();
     if (this.view === 'week') this._loadWeek();
     if (changed.has('_sheet') && changed.get('_sheet') && !this._sheet) {
       const opener = this._opener;
@@ -318,7 +393,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       ${this._renderContent(service)}
       <pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}
         @pv-toast-action=${this._onToastAction}></pv-toast>
-      ${this._renderSheet()}
+      ${keyed(sheetKey(this._sheet), this._renderSheet())}
+      ${this._renderApproveAsk()}
     `;
   }
 
@@ -406,6 +482,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         .colorOf=${this._colorOf} .timeFormat=${timeFormat} .minute=${this._minute}
         .goal=${goalFor(member, column.entry, board.rewards)} .shares=${fairShares(board, inOrder(this.household?.members ?? []))}
         .bedtime=${bedtimeOn(member, new Date())}
+        .surprise=${surpriseOf(member.id, column.entry, board.rewards)} ?mayOpen=${mayOpenSurprise(this.household, member.id)}
+        @pv-surprise-open=${(e: CustomEvent<SurpriseOpenDetail>) => this._openSurprise(e.detail)}
         ?locked=${memberAccess(this.household, this.session, member.id) === 'no'}
         @pv-my-day-member=${(e: CustomEvent<{ member: string }>) => { this._myDayMember = e.detail.member; }}
         @pv-my-day-style=${(e: CustomEvent<{ member: string; style: MyDayStyle }>) => void this._setStyle(e.detail.member, e.detail.style)}
@@ -417,18 +495,19 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** The week to show, fetched when the view opens, the week changes, or (this week) the board changes. */
-  private _loadWeek(force = false): void {
+  /** Loads the week shown; the promise settles once it has (round 7: Excuse it waits for it). */
+  private _loadWeek(force = false): Promise<void> {
     const board = this.service?.board();
     const api = this.service?.api;
-    if (!board || !api) return;
+    if (!board || !api) return Promise.resolve();
     const date = this._weekOffset === 0 ? board.week.start : addDays(board.week.start, 7 * this._weekOffset);
     const stale = this._weekOffset === 0 && this._weekRevision !== this.revision;
-    if (!force && this._weekAsked === date && !stale) return;
+    if (!force && this._weekAsked === date && !stale) return Promise.resolve();
     this._weekAsked = date;
     this._weekRevision = this.revision;
     if (this._week?.week.start !== date) this._week = null;
     this._weekFailed = false;
-    api.week(date).then(
+    return api.week(date).then(
       view => {
         if (this._weekAsked === date) this._week = view;
       },
@@ -442,7 +521,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const members = inOrder(this.household?.members ?? []);
     const view = this._week;
     return html`
-      <pv-chores-week .view=${view} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
+      <pv-chores-week .view=${view} .excusing=${this._excusing} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
         .highlights=${view ? weekHighlights(view, members) : []} .shares=${view ? weekShares(view, members) : []}
         .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout} ?current=${this._weekOffset === 0}
         ?failed=${this._weekFailed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
@@ -458,12 +537,14 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._loadWeek(offset === 0 && this._weekFailed);
   }
 
-  private _openDay(member: string, date: string): void {
+  /** `keep`: the day shown stays while it reloads, so rows don't move under the finger (round 5). */
+  private _openDay(member: string, date: string, keep = false): Promise<void> {
     const api = this.service?.api;
-    if (!api) return;
-    const sheet = { kind: 'day' as const, member, date, day: null, failed: false };
+    if (!api) return Promise.resolve();
+    const shown = keep && this._sheet?.kind === 'day' && this._sheet.date === date ? this._sheet.day : null;
+    const sheet = { kind: 'day' as const, member, date, day: shown, failed: false };
     this._sheet = sheet;
-    api.day(date).then(
+    return api.day(date).then(
       day => {
         if (this._sheet?.kind === 'day' && this._sheet.date === date) this._sheet = { ...this._sheet, day };
       },
@@ -474,17 +555,37 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Excuse it on a missed one (spec 13.5): its day and the streak hold. */
+  /** Being excused now: the day sheet's link takes no second tap, and comes back if nothing was (round 6). */
+  @state() private _excusing: ReadonlySet<string> = new Set();
+
   private async _excuseMissed(occurrence: string, name: string, member: string): Promise<void> {
     const api = this.service?.api;
-    if (!api || !(await this.asParent(`Who's excusing ${name}?`))) return;
+    if (!api || this._excusing.has(occurrence)) return;
+    this._excusing = new Set([...this._excusing, occurrence]);
     try {
-      await api.excuseMissed(occurrence);
+      if (!(await this.asParent(`Who's excusing ${name}?`))) return;
+      const result = await api.excuseMissed(occurrence);
       const who = this._member(member)?.name;
-      this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${who ? ` ${who}'s streak holds.` : ''}` });
-      this._loadWeek(true);
-      if (this._sheet?.kind === 'day') this._openDay(this._sheet.member, this._sheet.date);
+      // Only a day that closes keeps the streak (round 9: it said so while the day had another miss).
+      this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${result.streak_holds && who ? ` ${who}'s streak holds.` : ''}` });
+      // Its link stays gone until the day and the week show it excused (round 7: a double tap excused twice).
+      await Promise.all([
+        this._loadWeek(true),
+        this._sheet?.kind === 'day' ? this._openDay(this._sheet.member, this._sheet.date, true) : Promise.resolve(),
+      ]);
     } catch (err) {
       this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+      // Excused on another screen meanwhile: show the day as it is (round 7: the row kept saying Missed).
+      if (errorCode(err) === 'not_missed') {
+        await Promise.all([
+          this._loadWeek(true),
+          this._sheet?.kind === 'day' ? this._openDay(this._sheet.member, this._sheet.date, true) : Promise.resolve(),
+        ]);
+      }
+    } finally {
+      const next = new Set(this._excusing);
+      next.delete(occurrence);
+      this._excusing = next;
     }
   }
 
@@ -493,7 +594,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return html`
       <pv-chores-rewards .balances=${balances(board, members)} .cards=${rewardCards(board, members, this._waitingAsks(board))}
         .recent=${recentLine(board, members)} .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout}
-        ?canEdit=${parentAccess(this.household, this.session) !== 'no'}
+        ?canEdit=${parentAccess(this.household, this.session) !== 'no'} .mayOpen=${this._mayOpen}
+        @pv-surprise-open=${(e: CustomEvent<SurpriseOpenDetail>) => this._openSurprise(e.detail)}
+        @pv-surprise-replay=${(e: CustomEvent<{ member: string }>) => this._replaySurprise(e.detail.member)}
         @pv-reward-redeem=${(e: CustomEvent<{ reward: string }>) => this._redeem(e.detail.reward)}
         @pv-reward-open=${(e: CustomEvent<{ reward: string | null }>) => void this._openReward(e.detail.reward)}></pv-chores-rewards>
     `;
@@ -516,23 +619,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       if (elsewhere.length) this.showToast({ id: `redeem-${Date.now()}`, text: elsewhereText(elsewhere, card.reward.name) });
       return;
     }
-    const go = async (member: Member) => {
-      const api = this.service?.api;
-      if (!api || !(await this.asMember(member.id, `Who's getting ${card.reward.name}?`))) return;
-      const ask = { member: member.id, reward: rewardId };
-      this._asking = [...this._asking, ask];
-      try {
-        const out = await api.redeem(member.id, rewardId);
-        if (out.result === 'given') this._asking = this._asking.filter(a => a !== ask);
-        this.showToast({
-          id: `redeem-${Date.now()}`,
-          text: out.result === 'given' ? `${card.reward.name} is ${member.name}'s!` : `Asked for ${card.reward.name}. A parent will answer.`,
-        });
-      } catch (err) {
-        this._asking = this._asking.filter(a => a !== ask);
-        this.showToast({ id: `redeem-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
-      }
-    };
+    const go = (member: Member) => this._redeemAs(member, rewardId, card.reward.name);
     if (ready.length === 1) {
       void go(ready[0]);
       return;
@@ -541,6 +628,133 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       kind: 'people', heading: `Who's getting ${card.reward.name}?`, people: ready, body: `It costs ★ ${card.reward.cost}.`,
       pick: member => { if (member) void go(member); },
     };
+  }
+
+  /** One member spends their stars on a reward, behind their PIN if they have one. */
+  private async _redeemAs(member: Member, rewardId: string, rewardName: string): Promise<void> {
+    const api = this.service?.api;
+    if (!api || !(await this.asMember(member.id, `Who's getting ${rewardName}?`))) return;
+    const ask = { member: member.id, reward: rewardId };
+    this._asking = [...this._asking, ask];
+    try {
+      const out = await api.redeem(member.id, rewardId);
+      if (out.result === 'given') this._asking = this._asking.filter(a => a !== ask);
+      this.showToast({
+        id: `redeem-${Date.now()}`,
+        text: out.result === 'given' ? `${rewardName} is ${member.name}'s!` : `Asked for ${rewardName}. A parent will answer.`,
+      });
+    } catch (err) {
+      this._asking = this._asking.filter(a => a !== ask);
+      this.showToast({ id: `redeem-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    }
+  }
+
+  // The goal surprise (milestone 10) -------------------------------------------------------
+
+  private _mayOpen = (memberId: string): boolean => mayOpenSurprise(this.household, memberId);
+
+  /** A present held open: the reveal plays at once while Home Assistant marks it opened. */
+  private _openSurprise(detail: SurpriseOpenDetail): void {
+    const api = this.service?.api;
+    if (!api) {
+      detail.settle(false);
+      return;
+    }
+    const reveal = this._reveal({ model: detail.model, name: detail.name, color: detail.color, from: detail.from });
+    api.openSurprise(detail.model.memberId).then(
+      () => detail.settle(true),
+      err => {
+        detail.settle(false);
+        guardPageTaps(); // the hold's lifting finger lands on the page the reveal left (round 5)
+        reveal.dispatchEvent(new CustomEvent('pv-fullscreen-done', { bubbles: true, composed: true }));
+        this.showToast({ id: `surprise-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t open. Try again.', tone: 'bad' });
+      },
+    );
+  }
+
+  /** Watch it again, from Rewards: the same reveal, nothing to change. */
+  private _replaySurprise(memberId: string): void {
+    const board = this.service?.board();
+    const member = this.household?.members.find(m => m.id === memberId);
+    const model = board && member ? surpriseOf(memberId, board.members[memberId], board.rewards) : null;
+    if (!model || !member) return;
+    this._reveal({ model, name: member.name, color: this._colorOf(member), from: null });
+  }
+
+  /**
+   * What it has open, for the card Home Assistant makes again after a reconnect
+   * (core/handoff.ts). A sheet isn't reopened: parent mode went with the connection,
+   * so it would ask for a PIN nobody asked for; the new card says what closed (round 4).
+   */
+  handoff(): BoardHandoff | undefined {
+    return boardHandoff({
+      sheet: this._sheet, reveal: this._openReveal?.detail.model.memberId ?? null, toast: this._toast?.text ?? null,
+      myDay: this._myDayMember ?? null,
+    });
+  }
+
+  resume(note: unknown, options?: { quiet?: boolean }): void {
+    const n = note && typeof note === 'object' ? (note as BoardHandoff) : null;
+    const words = handoffWords(n);
+    if (words && !options?.quiet) this.showToast({ id: `handoff-${Date.now()}`, text: words });
+    if (typeof n?.myDay === 'string' && this.household?.members.some(m => m.id === n.myDay)) this._myDayMember = n.myDay;
+    if (typeof n?.reveal === 'string') this._replayAfter = { member: n.reveal, until: Date.now() + 15_000 };
+    this.requestUpdate();
+  }
+
+  /** A reveal a reconnect cut short, played again once the board is here (round 4). */
+  private _replayAfter: { member: string; until: number } | null = null;
+
+  private _replayCutShort(): void {
+    const want = this._replayAfter;
+    if (!want) return;
+    if (Date.now() > want.until) {
+      this._replayAfter = null;
+      return;
+    }
+    const board = this.service?.board();
+    if (!board) return;
+    this._replayAfter = null;
+    // Opened before the drop: play it again. Not opened: its present still waits on the board.
+    if (board.members[want.member]?.surprise?.opened) this._replaySurprise(want.member);
+  }
+
+  /** The reveal on screen, whose button follows this screen's session (round 4). */
+  private _openReveal: (HTMLElement & { detail: RevealDetail }) | null = null;
+
+  private _parentActs(): boolean {
+    return actingParent(this.household, this.session)?.parent === true;
+  }
+
+  /** Parent mode began or lapsed under an open reveal: its button says what a press would do now. */
+  private _refreshReveal(): void {
+    const reveal = this._openReveal;
+    if (!reveal) return;
+    const parent = actingParent(this.household, this.session)?.parent === true;
+    if (reveal.detail.parent !== parent) reveal.detail = { ...reveal.detail, parent };
+  }
+
+  /** Asks the card to show the reveal over everything; its button asks for the reward. */
+  private _reveal(detail: Omit<RevealDetail, 'sound'>): HTMLElement {
+    const reveal = document.createElement('pv-surprise-reveal') as HTMLElement & { detail: RevealDetail };
+    const board = this.service?.board();
+    const { memberId, reward } = detail.model;
+    // An ask already waiting (or on its way) shows as waiting, not a second Ask for it (review B3).
+    const asked = !!board?.requests.some(r => r.kind === 'redemption' && r.member === memberId && r.reward === reward.id)
+      || this._asking.some(a => a.member === memberId && a.reward === reward.id);
+    // A parent's own ask is their answer: the button says it gives it at once (round 3, r3b I4).
+    reveal.detail = { ...detail, sound: !!board?.settings.sound, asked, parent: this._parentActs() };
+    this._openReveal = reveal;
+    reveal.addEventListener('pv-fullscreen-done', () => {
+      if (this._openReveal === reveal) this._openReveal = null;
+    });
+    reveal.addEventListener('pv-reveal-choice', event => {
+      if ((event as CustomEvent<{ choice: string }>).detail.choice !== 'ask') return;
+      const member = this.household?.members.find(m => m.id === detail.model.memberId);
+      if (member) void this._redeemAs(member, detail.model.reward.id, detail.model.reward.name);
+    });
+    this.dispatchEvent(new CustomEvent('pv-fullscreen', { detail: { element: reveal }, bubbles: true, composed: true }));
+    return reveal;
   }
 
   private async _openReward(id: string | null): Promise<void> {
@@ -593,6 +807,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         @pv-hold-undo=${(e: CustomEvent<HoldDetail>) => this._uncheck(e.detail)}
         @pv-hint=${(e: CustomEvent<{ row: RowModel }>) => this._hint(e.detail.row)}
         @pv-row-options=${(e: CustomEvent<{ row: RowModel }>) => this._openOptions(e.detail.row)}
+        @pv-surprise-open=${(e: CustomEvent<SurpriseOpenDetail>) => this._openSurprise(e.detail)}
         @pv-member-open=${(e: CustomEvent<{ member: string }>) => this._openMyDay(e.detail.member)}></pv-chores-board>
     `;
   }
@@ -748,6 +963,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         member: memberAccess(this.household, this.session, owner.id),
         parent: parentAccess(this.household, this.session),
         credit: this._creditable(owner.id).length > 0,
+        late: lateRequest(board, row.item.completion?.id),
+        excused: excusedRequest(board, row.item.completion?.id),
       }),
     };
   }
@@ -815,7 +1032,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       }
       case 'skip': {
         if (!(await this.asMember(owner.id, `Who's asking to skip ${name}?`))) return;
-        await this._run(() => api.request('skip', key), 'Asked to skip this week. A parent will answer.');
+        await this._run(() => api.request('skip', key), `Asked to skip ${skipWords(row.item.period, board.today)}. A parent will answer.`);
         return;
       }
       case 'undo': {
@@ -867,11 +1084,14 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       case 'approve':
       case 'send_back': {
         const request = item.completion?.id;
-        if (!request || !(await this.asParent(choice.id === 'approve' ? "Who's approving?" : "Who's sending it back?"))) return;
+        const late = lateRequest(board, request);
+        const excused = excusedRequest(board, request);
+        if (!request || !(await this.asParent(reviewQuestion({ kind: 'completion', late, excused }, choice.id === 'approve')))) return;
         const allow = choice.id === 'approve';
+        const note = choice.value ? `: ${choice.value}` : '';
         await this._run(
           () => api.review(request, allow ? 'allow' : 'decline', allow ? null : choice.value ?? null),
-          allow ? `${name}: looks good.` : `${name} went back${choice.value ? `: ${choice.value}` : ''}.`,
+          allow ? `${name}: looks good.` : excused ? `${name} stays excused${note}.` : late ? `${name} counts as missed that day${note}.` : `${name} went back${note}.`,
         );
         return;
       }
@@ -1022,7 +1242,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       const board = this.service?.board();
       if (!member || !board) return nothing;
       return html`
-        <pv-chores-day-sheet .layout=${this.layout} .member=${member} date=${sheet.date} today=${board.today}
+        <pv-chores-day-sheet .layout=${this.layout} .member=${member} date=${sheet.date} today=${board.today} .excusing=${this._excusing}
           .day=${sheet.day} ?failed=${sheet.failed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
           .names=${(id: string) => this._member(id)?.name ?? id}
           @pv-day-excuse=${(e: CustomEvent<{ occurrence: string; name: string }>) => void this._excuseMissed(e.detail.occurrence, e.detail.name, sheet.member)}
@@ -1058,11 +1278,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (sheet.kind === 'inbox') {
       const board = this.service?.board();
       if (!board) return nothing;
-      const groups = inboxGroups(board.requests, inOrder(this.household?.members ?? []), board.today, this.display?.time_format ?? '12h');
+      const groups = inboxGroups(board.requests, inOrder(this.household?.members ?? []), board.today, this.display?.time_format ?? '12h', board.settings?.day_starts);
       return html`
         <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
           @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}
-          @pv-approve-all=${() => void this._approveAll(groups.chores)}
+          @pv-approve-all-ask=${(e: CustomEvent<ApproveAllAsk>) => { this._approveAsk = e.detail; }}
           @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chores-inbox>
       `;
     }

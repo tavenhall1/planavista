@@ -13,7 +13,7 @@ import re
 from typing import Any
 import unicodedata
 
-from ..const import DEFAULT_COLORS
+from ..const import DEFAULT_COLORS, LEGACY_COLOR_PRESETS
 
 AGE_GROUPS = ("young_child", "older_child", "teen", "adult")
 MY_DAY_STYLES = ("timeline", "list", "pictures")
@@ -49,9 +49,11 @@ EDITABLE_FIELDS = (
 # Records name who acted with a member id or one of these words (spec 7.6).
 RESERVED_IDS = frozenset({"automation", "admin", "auto"})
 
-# The 20 calendar color presets; no two members share one.
+# The 24 colors offered; no two members share one.
 PALETTE: tuple[str, ...] = tuple(DEFAULT_COLORS)
 MAX_MEMBERS = len(PALETTE)
+# The first 20 colors stay valid for people who have one (owner, 2026-10-14), but new people get PALETTE's.
+ACCEPTED: tuple[str, ...] = PALETTE + tuple(p["color"] for p in LEGACY_COLOR_PRESETS)
 NAME_MAX_LENGTH = 40
 EMOJI_MAX_LENGTH = 16
 AWAY_NOTE_MAX_LENGTH = 60
@@ -98,7 +100,7 @@ def palette_color(color: object) -> str | None:
     if not isinstance(color, str):
         return None
     wanted = color.strip().upper()
-    return next((c for c in PALETTE if c.upper() == wanted), None)
+    return next((c for c in ACCEPTED if c.upper() == wanted), None)
 
 
 _HEX = re.compile(r"#[0-9A-Fa-f]{6}")

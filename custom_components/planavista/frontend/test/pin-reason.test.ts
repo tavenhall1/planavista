@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { pinReason } from '../src/core/pin-gate';
+import { reviewQuestion, type InboxRow } from '../src/modules/chores/inbox-derive';
 
 const read = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf-8');
 
@@ -15,6 +16,17 @@ describe('the PIN sheet always says why it is asking (milestone 8, spec 3.12)', 
     expect(pinReason('Whose day is this?')).toBe('To change their My day');
     expect(pinReason('Whose goal is this?')).toBe('To set their goal');
     expect(pinReason("Who's giving Alex the credit?")).toBe('To give Alex the credit');
+    expect(pinReason("Who's declining?")).toBe('To decline');
+  });
+
+  // Round 3 (r3a A10): the inbox's Send back and Decline asked "To approve" under the PIN.
+  it("asks for the inbox's answer in its own words", () => {
+    const row = (kind: InboxRow['kind']) => ({ kind }) as InboxRow;
+    expect(reviewQuestion(row('completion'), true)).toBe("Who's approving?");
+    expect(reviewQuestion(row('completion'), false)).toBe("Who's sending it back?");
+    expect(reviewQuestion(row('redemption'), false)).toBe("Who's declining?");
+    expect(reviewQuestion(row('skip'), false)).toBe("Who's declining?");
+    expect(reviewQuestion(row('redemption'), true)).toBe("Who's approving?");
   });
 
   it('has a reason for every question the card asks', () => {

@@ -97,3 +97,16 @@ def may_manage_pin(account: Account, session: SessionView | None, target: str) -
     if account.screen_rules and session is not None and session.member_id == target:
         return target
     return None
+
+
+def may_open_surprise(account: Account, member_id: str, *, shared_screens: int) -> bool:
+    """Opening a member's goal surprise (milestone 10): on a shared screen or the member's own login.
+
+    Not on a parent's phone, so a parent checking in from work can't open it for the
+    child; a household with no shared screens lets any login, or nobody could.
+    """
+    if account.kind == "automation":
+        return False
+    if account.screen_rules or account.member_id == member_id:
+        return True
+    return shared_screens == 0

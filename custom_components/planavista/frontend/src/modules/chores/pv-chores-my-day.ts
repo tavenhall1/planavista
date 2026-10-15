@@ -1,4 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
+import './pv-surprise-present';
+import type { SurpriseModel } from './surprise-derive';
 import { peopleStripStyles, segmentedStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -56,6 +58,9 @@ export class PvChoresMyDay extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
   @property({ attribute: false }) goal: GoalModel | null = null;
+  /** Their goal surprise, waiting at the top until it is opened (milestone 10). */
+  @property({ attribute: false }) surprise: SurpriseModel | null = null;
+  @property({ type: Boolean }) mayOpen = false;
   @property({ attribute: false }) shares: FairShare[] = [];
   @property({ attribute: false }) bedtime: Date | null = null;
   @property({ attribute: false }) timeFormat: '12h' | '24h' = '12h';
@@ -136,6 +141,10 @@ export class PvChoresMyDay extends LitElement {
 
 
 
+
+      pv-surprise-present.surprise {
+        margin: 4px 0 12px;
+      }
 
       .goal {
         margin-top: 12px;
@@ -416,6 +425,10 @@ export class PvChoresMyDay extends LitElement {
               `)}
             </div>
           </div>
+          ${this.surprise && !this.surprise.opened ? html`
+            <pv-surprise-present class="surprise" .model=${this.surprise} name=${member.name} color=${this.colorOf(member)}
+              ?may=${this.mayOpen} large ?young=${member.age_group === 'young_child'} .order=${member.order}></pv-surprise-present>
+          ` : nothing}
           ${this.goal && this.layout !== 'landscape' ? this._goal(this.goal) : nothing}
           ${style === 'timeline' ? this._timeline() : style === 'list' ? this._list() : this._pictures()}
         </div>

@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
 import yaml
 
+from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
@@ -51,6 +53,41 @@ async def test_services_yaml_documents_exactly_the_registered_services(
         *((name, schema) for name, (_handler, schema, _response) in CHORES_SERVICES.items()),
     ):
         assert set(documented[service]["fields"]) == _schema_fields(schema), service
+
+
+def _card_calls() -> dict[str, bool]:
+    """Every WebSocket command the card's clients send, and whether it carries the open session.
+
+    `WsApi.call(type, fields, withSession = true)` adds the PIN session unless the
+    last argument is `false` (core/ws-api.ts).
+    """
+    calls: dict[str, bool] = {}
+    for path in (INTEGRATION_DIR / "frontend" / "src").rglob("*.ts"):
+        text = path.read_text("utf-8")
+        for found in re.finditer(r"this\.call(?:<[^>]*>)?\(\s*'(planavista/[^']+)'", text):
+            depth, end = 1, found.end()
+            while depth:
+                depth += {"(": 1, ")": -1}.get(text[end], 0)
+                end += 1
+            args = text[found.end():end - 1]
+            calls[found.group(1)] = calls.get(found.group(1), False) or not re.search(r",\s*false\s*$", args)
+    return calls
+
+
+async def test_every_command_the_card_sends_a_session_with_accepts_one(hass: HomeAssistant) -> None:
+    """Round 3 (r3a A1): the surprise wouldn't open while a PIN session was on the screen.
+
+    The card sent the session and the command's schema refused it ("not a valid option at 'session'").
+    """
+    assert await async_setup_component(hass, DOMAIN, {})
+    handlers = hass.data[websocket_api.DOMAIN]
+    calls = _card_calls()
+    assert "planavista/chores/surprise/open" in calls and len(calls) > 30
+    for command, with_session in calls.items():
+        assert command in handlers, command
+        if with_session:
+            _handler, schema = handlers[command]
+            assert "session" in {str(key) for key in schema.schema}, command
 
 
 def test_english_translations_match_strings() -> None:

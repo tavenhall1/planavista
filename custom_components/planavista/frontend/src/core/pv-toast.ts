@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { PressGuard } from './press-guard';
-import { nextSheetLayer } from './sheet-layer';
+import { toastLayer } from './sheet-layer';
 import { defineElement } from '../utils/define';
 import { SMOOTH, motionOf, springEasing } from './motion';
 
@@ -115,7 +115,7 @@ export class PvToast extends LitElement {
     if (!toast) return;
     this._pressGuard.arm();
     // Above whatever was open when it appeared, under whatever opens after (round 2).
-    this.style.zIndex = String(nextSheetLayer());
+    this.style.zIndex = String(toastLayer());
     const box = this.renderRoot.querySelector<HTMLElement>('.toast');
     if (box) {
       if (motionOf(this) === 'reduced') box.animate({ opacity: [0, 1] }, { duration: 150 });

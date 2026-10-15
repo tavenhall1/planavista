@@ -31,6 +31,24 @@ export function rewardDirty(record: RewardRecord): boolean {
   return JSON.stringify(record.draft) !== JSON.stringify(record.start);
 }
 
+/**
+ * A draft whose reward changed elsewhere since it started (round 4): rewards carry
+ * no revision, so the editor compares where its draft began with the reward now.
+ */
+export function rewardStale(record: RewardRecord, reward: Reward | null): boolean {
+  return JSON.stringify(record.start) !== JSON.stringify(rewardDraftOf(reward));
+}
+
+/** Keep editing: the person's own changes, on the new version. */
+export function rebaseReward(record: RewardRecord, reward: Reward | null): RewardRecord {
+  const start = rewardDraftOf(reward);
+  const draft: Record<string, unknown> = { ...start };
+  for (const key of Object.keys(record.draft) as Array<keyof RewardDraft>) {
+    if (JSON.stringify(record.draft[key]) !== JSON.stringify(record.start[key])) draft[key] = record.draft[key];
+  }
+  return { draft: draft as unknown as RewardDraft, start };
+}
+
 /** What Save sends. */
 export function rewardChanges(draft: RewardDraft): Partial<Reward> {
   return { name: draft.name.trim(), icon: draft.icon, cost: draft.cost, needs_ok: draft.needs_ok, who: draft.who };

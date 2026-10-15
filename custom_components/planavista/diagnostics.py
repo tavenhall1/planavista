@@ -75,6 +75,11 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PlanaVi
             "summaries": len(engine.log["summaries"]),
             "rewards": len(engine.rewards["rewards"]),
             "ledger": len(engine.rewards["ledger"]),
+            "surprises": {
+                "waiting": sum(1 for s in engine.rewards.get("surprises", {}).values() if not s.get("opened") and not s.get("away")),
+                "opened": sum(1 for s in engine.rewards.get("surprises", {}).values() if s.get("opened") and not s.get("away")),
+                "set_aside": sum(1 for s in engine.rewards.get("surprises", {}).values() if s.get("away")),
+            },
             "last_day": engine.log.get("last_day"),
             "last_boundary": engine.log.get("last_boundary"),
             "stores": {

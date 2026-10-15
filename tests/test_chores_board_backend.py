@@ -97,7 +97,7 @@ def test_excusing_a_missed_check_off_mends_its_day_and_the_streak() -> None:
     engine.catch_up(SCENE)
     assert engine.streak("casey", SCENE) == 0
     out = engine.excuse_missed(SCENE, key=CAT_MONDAY_EVENING, by="blair", note="Sick day")
-    assert (out.result, out.data, out.changed) == ("excused", {"occurrence": CAT_MONDAY_EVENING}, {"log"})
+    assert (out.result, out.data, out.changed) == ("excused", {"occurrence": CAT_MONDAY_EVENING, "streak_holds": True}, {"log"})
     assert engine.streak("casey", SCENE) == 2
     monday = engine.day_view(SCENE, date(2026, 10, 12))["members"]["casey"]
     assert monday["summary"] == {"due": 1, "done": 1, "pending": 0, "closed": True}
@@ -242,7 +242,7 @@ async def test_excusing_a_missed_one_is_a_parents(
     assert refused["error"]["code"] == "not_allowed"
     alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
     reply = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "occurrence": CAT_MONDAY_EVENING, "note": "Sick"})
-    assert reply["result"] == {"result": "excused", "occurrence": CAT_MONDAY_EVENING}
+    assert reply["result"] == {"result": "excused", "occurrence": CAT_MONDAY_EVENING, "streak_holds": True}
     again = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "occurrence": CAT_MONDAY_EVENING})
     assert again["error"] == {"code": "not_missed", "message": "That chore wasn't missed, or it was already excused."}
 

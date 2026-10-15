@@ -1,19 +1,27 @@
 import type { Member } from '../../core/household';
+import { type SurpriseModel, surpriseOf } from './surprise-derive';
 import type { Board, Reward } from './chores-types';
-import { GoalModel, goalFor } from './my-day-derive';
+import { GoalModel, goalFor, isGoalOf } from './my-day-derive';
 import { dayWords } from './options-derive';
 
 export interface Balance {
   member: Member;
   stars: number;
   goal: GoalModel | null;
+  /** Their goal surprise, waiting or opened (milestone 10). */
+  surprise: SurpriseModel | null;
 }
 
 /** Who earns stars, with their balance and goal (spec 13.6: balances and goals on top). */
 export function balances(board: Board, members: Member[]): Balance[] {
   return members
     .filter(m => m.stars && board.members[m.id])
-    .map(member => ({ member, stars: board.members[member.id].stars, goal: goalFor(member, board.members[member.id], board.rewards) }));
+    .map(member => ({
+      member,
+      stars: board.members[member.id].stars,
+      goal: goalFor(member, board.members[member.id], board.rewards),
+      surprise: surpriseOf(member.id, board.members[member.id], board.rewards),
+    }));
 }
 
 export interface RewardCard {
@@ -52,7 +60,7 @@ export function rewardCards(board: Board, members: Member[], asking: ReadonlyArr
     return {
       reward,
       people,
-      goals: members.filter(m => m.goal === reward.id),
+      goals: members.filter(m => isGoalOf(m, reward)),
       asked: members.filter(m => asked.has(m.id)),
       canRedeem: people.some(p => p.afford && !p.asked),
     };

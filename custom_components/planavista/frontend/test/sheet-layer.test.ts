@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { MENU_LAYER, SheetLayer, nextSheetLayer } from '../src/core/sheet-layer';
+import { MENU_LAYER, SheetLayer, nextSheetLayer, toastLayer } from '../src/core/sheet-layer';
 
 // Seen on the kitchen tablet (1.6.1): a chore's options, then Looks good, opened
 // the parent's keypad behind the options. Every sheet sat on z-index 100 in the
@@ -26,6 +26,25 @@ describe('sheets stack in the order they open', () => {
     new SheetLayer(options).hostConnected();
     new SheetLayer(pin).hostConnected();
     expect(Number(pin.style.zIndex)).toBeGreaterThan(Number(options.style.zIndex));
+  });
+
+  // Round 3 (r3a A3): two children at once, one hold asking Casey's PIN, Dana's toast
+  // came above the keypad, and its "Someone else did it?" opened behind it.
+  it("a toast that shows while the keypad asks goes under it, still above the sheet it's about", () => {
+    const options = host();
+    const pin = host();
+    new SheetLayer(options).hostConnected();
+    const asks = new SheetLayer(pin, true);
+    asks.hostConnected();
+    const toast = toastLayer();
+    expect(toast).toBeLessThan(Number(pin.style.zIndex));
+    expect(toast).toBeGreaterThan(Number(options.style.zIndex));
+    // A sheet opened above the keypad (Who did it?) doesn't lift the toast over the keypad.
+    new SheetLayer(host()).hostConnected();
+    expect(toastLayer()).toBeLessThan(Number(pin.style.zIndex));
+    // Once the keypad closes, toasts come on top again.
+    asks.hostDisconnected();
+    expect(toastLayer()).toBeGreaterThan(Number(pin.style.zIndex));
   });
 
   it('a sheet opened again comes back on top', () => {
@@ -55,7 +74,13 @@ describe('every sheet takes its layer', () => {
   });
 
   it.each(sheets.map(path => [path.slice(src.length + 1), path]))('%s', (_name, path) => {
-    expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _layer = new SheetLayer\(this\);/);
+    expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _layer = new SheetLayer\(this(, true)?\);/);
+  });
+
+  it('the keypad and the notice ask first: nothing that shows after them goes above', () => {
+    for (const path of [join(src, 'shell', 'pv-pin-sheet.ts'), join(src, 'shell', 'pv-notice-sheet.ts')]) {
+      expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _layer = new SheetLayer\(this, true\);/);
+    }
   });
 });
 
@@ -78,7 +103,7 @@ describe('one order for everything that opens over the card', () => {
     const toast = read('core/pv-toast.ts');
     expect(toast).not.toMatch(/TOAST_LAYER/);
     const updated = toast.slice(toast.indexOf('protected updated('));
-    expect(updated.slice(0, updated.indexOf('\n  }\n'))).toMatch(/this\.style\.zIndex = String\(nextSheetLayer\(\)\);/);
+    expect(updated.slice(0, updated.indexOf('\n  }\n'))).toMatch(/this\.style\.zIndex = String\(toastLayer\(\)\);/);
     expect(nextSheetLayer()).toBeLessThan(MENU_LAYER);
     const bar = read('shell/pv-nav-bar.ts');
     const menu = bar.slice(bar.indexOf('    .menu {'));

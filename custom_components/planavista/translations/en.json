@@ -191,7 +191,8 @@
               "sent_back": "Sent back",
               "undone": "Undone",
               "missed": "Missed",
-              "redeemed": "Redeemed"
+              "redeemed": "Redeemed",
+              "goal_reached": "Goal reached"
             }
           }
         }

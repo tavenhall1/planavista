@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio, matchedInk, matchedSurface, toOklch } from '../src/core/color';
 import { Look, Mode, ThemePair, applyTokens, personColors, themeTokens } from '../src/styles/theme-pairs';
@@ -7,11 +8,21 @@ const look = (changes: Partial<Look>): Look => ({ ...PLAIN, ...changes });
 const PAIRS: ThemePair[] = ['planavista', 'minimal', 'vibrant'];
 const MODES: Mode[] = ['light', 'dark'];
 
-/** The 20 colors the swatch picker offers, which households choose accents and backgrounds from. */
-const PRESETS = [
-  '#001219', '#005F73', '#0A9396', '#94D2BD', '#E9D8A6', '#EE9B00', '#CA6702', '#BB3E03', '#AE2012', '#9B2226',
-  '#F94144', '#F3722C', '#F8961E', '#F9844A', '#F9C74F', '#90BE6D', '#43AA8B', '#4D908E', '#577590', '#277DA1',
-];
+// Milestone 10 review B12: the present's gold was read in three places and defined by no theme.
+describe("the present's gold", () => {
+  it('is a token of every theme, light and dark', () => {
+    for (const pair of PAIRS) for (const mode of MODES) {
+      expect(themeTokens(look({ pair }), mode)['--pv-present-gold'], `${pair} ${mode}`).toBe('#F5B800');
+    }
+  });
+});
+
+/** Every color the swatch picker has offered (tests/fixtures/palette.json), which households choose accents and backgrounds from. */
+const TABLE = JSON.parse(readFileSync(new URL('../../../../tests/fixtures/palette.json', import.meta.url), 'utf-8')) as {
+  presets: Array<{ color: string }>;
+  legacy: Array<{ color: string }>;
+};
+const PRESETS = [...TABLE.presets, ...TABLE.legacy].map(p => p.color);
 
 function hueDistance(a: number, b: number): number {
   const d = Math.abs(a - b) % 360;

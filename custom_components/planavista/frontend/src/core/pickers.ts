@@ -40,6 +40,16 @@ export function timeLabel(time: string, format: '12h' | '24h'): string {
 }
 
 /** A date as the household reads it: "Tue, October 20, 2026" (the editor's and every field's label). */
+/**
+ * How far to scroll a sheet so a picker `height` px tall opens below a field
+ * whose bottom is at `fieldBottom`, as far as the sheet can scroll (`scrollable`).
+ * Opening above covered the sheet's title (round 1).
+ */
+export function scrollForPicker(fieldBottom: number, viewport: number, height: number, scrollable: number): number {
+  const missing = height + 12 - (viewport - fieldBottom);
+  return Math.max(0, Math.min(scrollable, missing));
+}
+
 export function dateLabel(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '';
   const [y, m, d] = value.split('-').map(Number);

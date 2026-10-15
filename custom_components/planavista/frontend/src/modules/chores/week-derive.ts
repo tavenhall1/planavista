@@ -1,4 +1,16 @@
 import type { Member } from '../../core/household';
+
+/**
+ * Items in the order they were shown, new ones after them (round 6): excusing the
+ * first of two missed chores sorted it below the second, which slid under the finger.
+ */
+export function keepOrder<T extends { key: string }>(items: readonly T[], before: readonly string[]): T[] {
+  const at = new Map(before.map((key, i) => [key, i]));
+  return items
+    .map((item, i) => ({ item, rank: at.get(item.key) ?? before.length + i }))
+    .sort((a, b) => a.rank - b.rank)
+    .map(entry => entry.item);
+}
 import { weekRangeLabel } from '../../utils/date-utils';
 import { dayDate, minutesText } from '../../core/status-map';
 import { FairShare, fairnessShares } from './fairness';
@@ -135,7 +147,7 @@ export function weekHighlights(view: WeekView, members: Member[], limit = 3): Hi
       for (const missed of day.missed_items ?? []) {
         found.push({
           key: `missed:${missed.key}`, member,
-          text: `${member.name} missed ${missed.name} on ${dayWords(day.date, view.today)}.`,
+          text: `${member.name} missed ${missed.name} on ${dayWords(day.date, view.today)}${missed.note ? `: ${missed.note}` : ''}.`,
           excuse: { occurrence: missed.key, name: missed.name, day: day.date },
         });
       }

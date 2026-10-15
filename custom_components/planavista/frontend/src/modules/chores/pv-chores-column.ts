@@ -11,6 +11,8 @@ import type { ColumnEntry, ColumnModel, RowModel } from './board-derive';
 import { bump, flyStars, glide, measure } from './effects';
 import './pv-chore-item';
 import './pv-chore-tile';
+import './pv-surprise-present';
+import type { SurpriseModel } from './surprise-derive';
 import { ref } from 'lit/directives/ref.js';
 import { ScrollReporter } from '../../core/content-scroll';
 import { stickersLabel } from './my-day-derive';
@@ -42,6 +44,10 @@ export class PvChoresColumn extends LitElement {
   @property({ type: Number }) celebrate = 0;
   /** Change it to pulse once (the evening check). */
   @property({ type: Number }) pulse = 0;
+  /** Their goal surprise, waiting until it is opened (milestone 10). */
+  @property({ attribute: false }) surprise: SurpriseModel | null = null;
+  /** This screen may open it. */
+  @property({ type: Boolean }) mayOpen = false;
   @property({ type: String, reflect: true }) member = '';
 
   private _before: Map<string, DOMRect> | null = null;
@@ -97,15 +103,31 @@ export class PvChoresColumn extends LitElement {
         line-height: 1.15;
       }
 
+      /* It clips the dot that leads each wrapped line, so neither end of a line shows one (round 3). */
       .line {
+        display: block;
+        overflow: hidden;
         color: var(--pv-text-secondary, #5F6670);
         font-size: 0.875rem;
         font-variant-numeric: tabular-nums;
       }
 
+      .parts {
+        display: flex;
+        flex-wrap: wrap;
+        margin-left: -1em;
+      }
+
       /* The line breaks between its parts, never inside one ("🔥 2 days", round 1). */
-      .line > span {
+      .parts > span {
         white-space: nowrap;
+      }
+
+      .parts > span::before {
+        content: '·';
+        display: inline-block;
+        width: 1em;
+        text-align: center;
       }
 
       .stars {
@@ -281,7 +303,7 @@ export class PvChoresColumn extends LitElement {
         </pv-ring>
         <span class="who">
           <span class="name">${member.name}</span>
-          <span class="line">${model.parts.map((part, i) => html`${i ? ' ' : ''}<span class=${part.kind}>${i ? '· ' : ''}${part.text}</span>`)}</span>
+          <span class="line"><span class="parts">${model.parts.map(part => html`<span class=${part.kind}>${part.text}</span>`)}</span></span>
         </span>
       </button>
       ${model.next ? html`<div class="next">${this._next(model.next)}</div>` : nothing}
@@ -305,7 +327,17 @@ export class PvChoresColumn extends LitElement {
   }
 
   private _list(model: ColumnModel) {
-    return repeat(model.entries, entry => entry.key, entry => this._entry(entry));
+    return html`${this._present(model, 'row')}${repeat(model.entries, entry => entry.key, entry => this._entry(entry))}`;
+  }
+
+  /** The goal surprise, while it waits to be opened. */
+  private _present(model: ColumnModel, shape: 'tile' | 'row') {
+    const surprise = this.surprise;
+    if (!surprise || surprise.opened) return nothing;
+    return html`
+      <pv-surprise-present class="surprise" .model=${surprise} name=${model.member.name} color=${this.color}
+        ?may=${this.mayOpen} shape=${shape} ?young=${model.member.age_group === 'young_child'} .order=${model.member.order}></pv-surprise-present>
+    `;
   }
 
   private _entry(entry: ColumnEntry) {
@@ -338,6 +370,7 @@ export class PvChoresColumn extends LitElement {
     const stickers = model.entry.week_stars;
     return html`
       <div class="tiles">
+        ${this._present(model, 'tile')}
         ${repeat(tiles, t => t.row.key, t => html`
           <pv-chore-tile data-key=${t.row.key} .row=${t.row} color=${this.color} ?now=${t.now} ?locked=${this.locked}
             .stars=${t.stars}></pv-chore-tile>

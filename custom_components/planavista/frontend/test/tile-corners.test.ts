@@ -28,6 +28,28 @@ describe("a picture tile's corner controls clear its ring", () => {
     expect(tile.indexOf('@container (max-width: 160px)')).toBeGreaterThan(tile.indexOf('      padding: 14px 8px 12px;'));
   });
 
+  // Round 3 (r3c C5): beside a phone's narrow tiles the present's ring sat 22 px higher and its row grew.
+  it("starts a narrow present's ring where the tiles beside it start theirs", () => {
+    const present = readFileSync(new URL('../src/modules/chores/pv-surprise-present.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    expect(present).toMatch(/\.surprise \{[^}]*container-type: inline-size;/);
+    expect(present).toMatch(/@container \(max-width: 160px\) \{\n\s+:host\(:not\(\[shape='row'\]\)\) \.hold \{\n\s+padding-top: 36px;/);
+    expect(present.indexOf('@container (max-width: 160px)')).toBeGreaterThan(present.indexOf('      padding: 14px 8px 12px;'));
+  });
+
+  // Round 4 (r4b B6): beside a present the row grew, and the tiles drew 179 and 192 px in a 197 px row.
+  it('fills its row like the present beside it, rings level at the top', () => {
+    const present = readFileSync(new URL('../src/modules/chores/pv-surprise-present.ts', import.meta.url), 'utf-8').replace(/\r\n/g, '\n');
+    for (const [source, box] of [[tile, '.tile'], [present, '.surprise']] as const) {
+      expect(source.slice(source.indexOf(`    ${box} {`), source.indexOf('}', source.indexOf(`    ${box} {`)))).toMatch(/height: 100%;/);
+      const hold = source.slice(source.indexOf('    .hold {'), source.indexOf('}', source.indexOf('    .hold {')));
+      expect(hold).toMatch(/height: 100%;/);
+      expect(hold).toMatch(/justify-content: flex-start;/);
+    }
+    // The large present and the large tile on My day keep their content in the middle (round 5, r5b B6).
+    expect(present).toMatch(/:host\(\[large\]\) \.hold \{[^}]*justify-content: center;/);
+    expect(tile).toMatch(/:host\(\[large\]\) \.hold \{[^}]*justify-content: center;/);
+  });
+
   it('clears both corners from the narrowest tile up, and the wider tiles keep their spacing', () => {
     // The query measures the tile inside its 2 px border: up to 160 px there is a tile up to 164 px.
     for (let width = 118; width <= 164; width += 2) {

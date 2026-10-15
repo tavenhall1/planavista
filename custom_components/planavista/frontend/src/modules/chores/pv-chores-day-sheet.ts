@@ -1,12 +1,13 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
+import { keepOrder } from './week-derive';
 import { buttonStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
-import { StatusBadge, itemBadge, pastBadge } from '../../core/status-map';
+import { StatusBadge, badgeBelow, itemBadge, pastBadge } from '../../core/status-map';
 import { SheetMotion } from '../../shell/sheet-motion';
 import { choresStyles } from './chores-styles';
 import type { DayView, ItemView, PastItem } from './chores-types';
@@ -50,6 +51,8 @@ export class PvChoresDaySheet extends LitElement {
   @property({ attribute: false }) day: DayView | null = null;
   @property({ type: Boolean }) failed = false;
   @property({ type: Boolean }) canExcuse = false;
+  /** Being excused now (the PIN, the save): its link takes no second tap, and comes back if nothing was (round 6). */
+  @property({ attribute: false }) excusing: ReadonlySet<string> = new Set();
   @property({ attribute: false }) names: (id: string) => string = id => id;
 
   private _motion = new SheetMotion(this);
@@ -89,7 +92,26 @@ export class PvChoresDaySheet extends LitElement {
         min-width: 0;
       }
 
+      /* A long badge (a parent's note) goes under the name and wraps, as on the board (round 11). */
+      li .name.below {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
+        padding: 6px 0;
+      }
+
+      li .name.below .badge {
+        white-space: normal;
+        text-align: left;
+      }
+
+      li .link {
+        flex: none;
+      }
+
       li .pic {
+        flex: none;
         width: 28px;
         text-align: center;
       }
@@ -130,7 +152,7 @@ export class PvChoresDaySheet extends LitElement {
 
   private _badge(item: ItemView | PastItem): StatusBadge | null {
     if (isPast(item)) {
-      const badge = pastBadge(item.status);
+      const badge = pastBadge(item.status, item.note);
       if (item.status === 'done' && item.done_by && item.done_by !== this.member.id) return { ...badge, words: `Done by ${this.names(item.done_by)}` };
       return badge;
     }
@@ -139,6 +161,10 @@ export class PvChoresDaySheet extends LitElement {
 
   render() {
     const entry = this.day?.members[this.member?.id ?? ''];
+    // Rows keep the places they were shown in while the day reloads after Excuse it (round 6).
+    const place = `${this.member?.id}|${this.date}`;
+    const items = entry ? keepOrder(entry.items, this._order.place === place ? this._order.keys : []) : [];
+    if (entry) this._order = { place, keys: items.map(item => item.key) };
     const summary = entry?.summary;
     const sub = !this.day
       ? ''
@@ -155,16 +181,19 @@ export class PvChoresDaySheet extends LitElement {
         ${sub ? html`<p class="sub">${sub}</p>` : nothing}
         ${this.failed ? html`<p class="sub">Couldn't load this day. Try again in a moment.</p>` : !this.day ? html`
           <div aria-busy="true"><div class="bone" style="height:44px;margin-bottom:8px"></div><div class="bone" style="height:44px"></div></div>
-        ` : entry && entry.items.length ? html`
+        ` : entry && items.length ? html`
           <ul>
-            ${entry.items.map(item => {
+            ${items.map(item => {
               const badge = this._badge(item);
+              // One long badge puts every badge under its name, so the list keeps one column (round 12).
+              const below = items.some(item => badgeBelow(this._badge(item), false));
+              const shown = badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing;
               return html`
                 <li>
                   <span class="pic" aria-hidden="true">${chorePicture(item.icon, item.name)}</span>
-                  <span class="name">${item.name}</span>
-                  ${badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing}
-                  ${isPast(item) && item.status === 'missed' && this.canExcuse ? html`
+                  <span class="name ${below ? 'below' : ''}">${item.name}${below ? shown : nothing}</span>
+                  ${below ? nothing : shown}
+                  ${isPast(item) && item.status === 'missed' && this.canExcuse && !this.excusing.has(item.key) ? html`
                     <button class="link" type="button" @click=${() => this._excuse(item)}>Excuse it</button>
                   ` : nothing}
                 </li>
@@ -177,7 +206,10 @@ export class PvChoresDaySheet extends LitElement {
     `;
   }
 
+  private _order: { place: string; keys: string[] } = { place: '', keys: [] };
+
   private _excuse(item: PastItem): void {
+    if (this.excusing.has(item.key)) return;
     this.dispatchEvent(new CustomEvent('pv-day-excuse', { detail: { occurrence: item.key, name: item.name }, bubbles: true, composed: true }));
   }
 

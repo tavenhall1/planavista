@@ -1,6 +1,6 @@
 import type { Member } from '../../core/household';
 import type { Access, ParentAccess } from '../../core/access';
-import { dayDate, daysBetween, minutesText } from '../../core/status-map';
+import { dayDate, daysBetween, minutesText, shortDay } from '../../core/status-map';
 import type { Activity, Band, ChoreHistory, ItemView } from './chores-types';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -30,6 +30,10 @@ export interface OptionModel {
   pick?: { min: string; max?: string };
   destructive?: boolean;
   disabled?: boolean;
+  /** Send back for a check-off whose day is over: it counts as missed (round 10). */
+  late?: boolean;
+  /** Not done for a check-off of an occurrence owed nothing: it stays excused (round 14). */
+  excused?: boolean;
 }
 
 export interface OptionsContext {
@@ -43,6 +47,10 @@ export interface OptionsContext {
   parent: ParentAccess;
   /** False when this screen can't credit anyone else (`creditable` is empty): no Done by someone else. */
   credit?: boolean;
+  /** Its check-off waits past its day: sending it back counts it as missed (round 10). */
+  late?: boolean;
+  /** Its occurrence was owed nothing: sent back, it stays excused (round 14). */
+  excused?: boolean;
 }
 
 export interface OptionsModel {
@@ -53,8 +61,18 @@ export interface OptionsModel {
   added: string | null;
   /** "Sent back: edges", or a request still waiting. */
   note: string | null;
+  /** The note's color: bad for sent back or overdue, act for a request waiting (round 11). */
+  noteTone?: 'bad' | 'act';
   member: OptionModel[];
   parent: OptionModel[];
+}
+
+/** What a skip covers, in words (round 15): a daily chore's day, this week, this time, or the one-time chore itself. */
+export function skipWords(period: string, today: string): string {
+  if (period.startsWith('day:')) return dayWords(period.slice(4), today);
+  if (period.startsWith('week:')) return 'this week';
+  if (period === 'once') return 'it';
+  return 'this time';
 }
 
 /** A day `n` days after `day` (YYYY-MM-DD). */
@@ -167,21 +185,23 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   const due = item.due_day;
   const memberMay = ctx.member !== 'no';
 
+  // Overdue, it stays on the board until it's done: no new day or date (round 9: they changed nothing).
+  const overdue = !!item.overdue_since;
   if (open && memberMay) {
-    const chips = planChips(item, today);
+    const chips = overdue ? [] : planChips(item, today);
     if (chips.length) {
       member.push({
         id: 'plan_day', label: 'Plan it for a day', tag: memberTag, chips,
         hint: due ? `Shows on that day, and it's still due ${dayWords(due, today)}.` : 'Shows on that day.',
       });
     }
-    if (!ownerIsParent && due && !item.request) {
+    if (!ownerIsParent && due && !item.request && !overdue) {
       member.push({
         id: 'more_time', label: 'Ask for more time', tag: 'Needs approval', chips: moreTimeChips(item, today),
         pick: { min: addDays(due, 1), max: addDays(today, 60) },
         hint: parents.length ? `Sends a request to ${names(parents)}.` : 'Sends a request to the parents.',
       });
-      member.push({ id: 'skip', label: 'Ask to skip this week', tag: 'Needs approval', hint: 'Sick, away, rained out…' });
+      member.push({ id: 'skip', label: `Ask to skip ${skipWords(item.period, today)}`, tag: 'Needs approval', hint: 'Sick, away, rained out…' });
     }
     if (ctx.credit !== false) member.push({ id: 'done_by', label: 'Done by someone else…', tag: memberTag, hint: 'They get the credit.' });
   }
@@ -196,13 +216,19 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   if (ctx.parent !== 'no') {
     if (status === 'pending') {
       parent.push({ id: 'approve', label: 'Looks good', tag: parentTag, hint: 'Approves it, and the stars are earned.' });
-      parent.push({ id: 'send_back', label: 'Send back', tag: parentTag, hint: 'It goes back on the list with a note.' });
+      parent.push(ctx.excused
+        ? { id: 'send_back', label: 'Not done', tag: parentTag, hint: 'It stays excused.', late: true, excused: true }
+        : ctx.late
+        ? { id: 'send_back', label: 'Not done', tag: parentTag, hint: 'It counts as missed that day.', late: true }
+        : { id: 'send_back', label: 'Send back', tag: parentTag, hint: 'It goes back on the list with a note.' });
     }
-    if (open) {
+    if (open && !overdue) {
       parent.push({
         id: 'change_due', label: 'Change the due date', tag: parentTag, chips: dueChips(item, today),
         pick: { min: today }, hint: due ? `Due ${dayWords(due, today)} now.` : 'It has no due date now.',
       });
+    }
+    if (open) {
       parent.push({ id: 'hand_off', label: 'Hand it to someone else', tag: parentTag, hint: 'Just this time.' });
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }
@@ -216,13 +242,18 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   const request = item.request
     ? item.request.kind === 'more_time' && item.request.until
       ? `Waiting for a parent: more time, until ${dayWords(item.request.until, today)}.`
-      : 'Waiting for a parent: skip this week.'
+      : `Waiting for a parent: skip ${skipWords(item.period, today)}.`
     : null;
   return {
     title: item.name,
     meta: metaParts.filter(Boolean).join(' · '),
     added: addedLine(activity, members, today),
-    note: status === 'sent_back' ? (item.note ? `Sent back: ${item.note}` : 'Sent back') : request,
+    note: [
+      status === 'sent_back' ? (item.note ? `Sent back: ${item.note}` : 'Sent back') : request,
+      // Overdue from an earlier day (round 10: the sheet didn't say so).
+      overdue && open ? `Overdue since ${shortDay(item.overdue_since!, today)}` : null,
+    ].filter(Boolean).join(' · ') || null,
+    noteTone: status === 'sent_back' || (overdue && open) ? 'bad' : 'act',
     member,
     parent,
   };

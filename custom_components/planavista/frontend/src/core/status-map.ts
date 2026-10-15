@@ -99,12 +99,13 @@ export function pastBadge(status: string, note?: string | null): StatusBadge {
     case 'pending':
       return { words: 'Waiting for approval', tone: 'act', glyph: '⏳' };
     case 'missed':
-      return { words: 'Missed', tone: 'bad', glyph: '×' };
+      // Counted as missed by a parent after its day, with their note (round 10).
+      return { words: note ? `Missed: ${note}` : 'Missed', tone: 'bad', glyph: '×' };
     case 'carried':
       return { words: 'Carried over', tone: 'time', glyph: '•' };
     case 'open':
       // A make-up chore that slipped its day: it kept that day's ring open.
-      return { words: 'Not done that day', tone: 'time', glyph: '•' };
+      return { words: note ? `Not done that day: ${note}` : 'Not done that day', tone: 'time', glyph: '•' };
     case 'excused':
       return { words: note ? `Excused: ${note}` : 'Excused', tone: 'muted' };
     default:

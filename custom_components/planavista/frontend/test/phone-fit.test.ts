@@ -29,6 +29,24 @@ describe('the card fits the screen on a phone (one scroll area)', () => {
     expect(host).not.toMatch(/height: calc\(100vh - var\(--header-height, 56px\)\);/);
   });
 
+  // Round 3 (r3a A5): in a sections view on an iPhone the card kept 62 px for the status bar
+  // and 34 px for the home indicator in the middle of the page (its Week view a sliver).
+  it("in a sections view's cell keeps no room for the status bar or the home indicator", () => {
+    expect(block(card, ':host([grid])')).toMatch(/--pv-under-status-bar: 0px;/);
+    expect(block(card, ':host([grid]) pv-nav-bar')).toMatch(/--safe-area-inset-bottom: 0px;/);
+    expect(block(card, ":host([grid][layout='landscape']) ha-card")).toMatch(/padding-bottom: 0;/);
+    // The sheets stay on the screen, so they still clear the home indicator.
+    expect(read('styles/sheet.ts')).toMatch(/calc\(20px \+ var\(--safe-area-inset-bottom, env\(safe-area-inset-bottom, 0px\)\)\)/);
+  });
+
+  // Round 3 (r3a A7): a sideways phone's Settings ran under the camera and the corners
+  // (Lock at x 902 to 950 of 956) while the card's own content stayed inside them.
+  it("keeps Settings and the short setup inside a sideways phone's side insets, like the card's content", () => {
+    const overlay = block(card, '.pvc-settings-overlay');
+    expect(overlay).toMatch(/padding-left: var\(--pv-inset-left, 0px\);/);
+    expect(overlay).toMatch(/padding-right: var\(--pv-inset-right, 0px\);/);
+  });
+
   it('keeps landscape content clear of the home indicator, with the card behind it (review: a light band showed under a dark card)', () => {
     expect(card).not.toMatch(/:host\(:not\(\[layout='landscape'\]\)\) \{/);
     const landscape = block(card, ":host([layout='landscape']) ha-card");

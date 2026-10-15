@@ -6,6 +6,7 @@ import './shell/planavista-card';
 import { version } from '../package.json';
 import { registerCardPicker } from './shell/card-picker';
 import { startKiosk } from './shell/kiosk-controller';
+import { watchPagePresses } from './core/press-guard';
 
 // Register the card with the HA card picker (once, even if another copy of the bundle ran first).
 window.customCards = window.customCards || [];
@@ -13,6 +14,9 @@ registerCardPicker(window.customCards);
 
 // Kiosk mode on shared screens, on every Home Assistant page (milestone 9).
 startKiosk();
+
+// The page's presses, so a sheet built on a burst's first tap knows the burst (round 8).
+watchPagePresses();
 
 console.info(
   `%c PLANAVISTA %c v${version} `,

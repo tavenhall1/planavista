@@ -288,7 +288,7 @@ activities:                           # list order = order within a time of day
 
 Rules:
 
-- **Once:** `on` (shows on that day), or `by` with an optional `by_time` (shows from creation until then), or neither (stays until done). `sessions` is 1 or more; each session is its own check-off. `estimate_minutes` is the estimate for the whole chore.
+- **Once:** `on` (shows on that day), or `by` with an optional `by_time` (shows from creation until that day ends; due at that time, and a check-off after it still counts that day, as the board shows it), or neither (stays until done). `sessions` is 1 or more; each session is its own check-off. `estimate_minutes` is the estimate for the whole chore.
 - **Repeats:** a standard RFC 5545 RRULE, the format Home Assistant calendars use. Supported subset: `FREQ=DAILY|WEEKLY|MONTHLY`, `INTERVAL`, `BYDAY` (weekly), `BYMONTHDAY` (monthly, one day), and `COUNT` or `UNTIL` (or neither). Anything else is rejected with a clear validation error. `window` is `day` (each instance is due on its day) or `period` (any time that week or month). `estimate_minutes` is per instance.
 - **Plan** stays day- and week-based because it is the agreement. Anything with another rhythm (monthly, every 3 days) is a Repeats chore.
 - Two or more assignees on a Once or Repeats chore: each person gets their own check-off.

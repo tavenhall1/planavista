@@ -23,7 +23,7 @@ from homeassistant.util import dt as dt_util
 from ..const import CONF_CALENDARS, VERSION
 from ..coordinator import async_apply_config
 from ..household.members import MemberError, check_parent_pins, import_members
-from ..household.permissions import member_level, parent_level
+from ..household.permissions import may_open_surprise, member_level, parent_level
 from ..household.store import Household
 from ..household.websocket import (
     ERROR_MESSAGES,
@@ -153,14 +153,25 @@ def _item(
     engine, now = runtime.engine, runtime.now()
     item = engine.find_item(msg["occurrence"], now)
     if item is None:
+        parsed = parse_key(msg["occurrence"])
+        activity = engine.activity(parsed[0]) if parsed else None
+        member = engine.member(parsed[1]) if parsed else None
         later = engine.planned_later(msg["occurrence"], now)
         if later is not None:
-            parsed = parse_key(msg["occurrence"])
-            activity = engine.activity(parsed[0]) if parsed else None
             name = activity["name"] if activity else "That chore"
             send_refusal(connection, msg, "planned_later", f"{name} is planned for {later.strftime('%A')}.")
-        else:
+        # Changed on another screen (round 3, r3c C1): say what happened, not that the day ended.
+        elif parsed and activity is None:
+            send_refusal(connection, msg, "unknown_chore", MESSAGES["unknown_chore"])
+        elif parsed and member is None:
+            send_refusal(connection, msg, "unknown_member", MESSAGES["unknown_member"])
+        elif activity is not None and member is not None and member["id"] not in activity.get("assignees", []):
+            send_refusal(connection, msg, "not_assigned", f"{activity['name']} isn't on {member['name']}'s list anymore.")
+        elif not parsed or engine.period_over(msg["occurrence"], now):
             send_refusal(connection, msg, "period_closed", "The day had ended.")
+        else:
+            # Its day or week still runs: the chore changed (off the board, other days, finished) (round 4).
+            send_refusal(connection, msg, "chore_changed", "That chore changed on another screen.")
     return item
 
 
@@ -404,7 +415,7 @@ async def ws_activity_delete(hass: HomeAssistant, connection: websocket_api.Acti
     runtime = _runtime(hass, connection, msg)
     if runtime is None or parent_for(hass, connection, msg, needs_file=False) is None:
         return
-    out = await _apply(connection, msg, runtime, lambda e, _now: e.delete_activity(msg["activity_id"]))
+    out = await _apply(connection, msg, runtime, lambda e, now: e.delete_activity(msg["activity_id"], now))
     if out is not None:
         connection.send_result(msg["id"])
 
@@ -509,6 +520,28 @@ async def ws_reward_redeem(hass: HomeAssistant, connection: websocket_api.Active
     ))
     if out is not None:
         connection.send_result(msg["id"], {"result": out.result, **out.data})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "planavista/chores/surprise/open", vol.Required("member"): str})
+@websocket_api.async_response
+async def ws_surprise_open(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Open a member's goal surprise: on a shared screen or their own login (milestone 10)."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None:
+        return
+    household = runtime.household
+    account = account_for(hass, household, connection.user)
+    member = household.member(msg["member"])
+    if member is None:  # fixed words: never repeat what the caller sent
+        send_refusal(connection, msg, "no_surprise", MESSAGES["no_surprise"])
+        return
+    if not may_open_surprise(account, msg["member"], shared_screens=len(household.shared_users)):
+        send_refusal(connection, msg, "not_their_screen", f"Only {member['name']}'s own screen or a shared screen opens this.")
+        return
+    by = account.member_id or source_of(account)
+    out = await _apply(connection, msg, runtime, lambda e, now: e.open_surprise(now, member=msg["member"], by=by))
+    if out is not None:
+        connection.send_result(msg["id"], {"result": out.result})
 
 
 @websocket_api.websocket_command({
@@ -632,7 +665,7 @@ async def ws_import_apply(hass: HomeAssistant, connection: websocket_api.ActiveC
         changes = plan_import(
             parsed, msg["choices"], household.members, engine.plan["activities"], engine.rewards["rewards"],
             engine.settings, persons={s.entity_id for s in hass.states.async_all("person")},
-            calendars={row["entity_id"] for row in rows},
+            calendars={row["entity_id"] for row in rows}, used_ids=engine.ids_in_log(),
         )
     except ImportProblem as err:
         connection.send_result(msg["id"], {"problem": _problem(err)})
@@ -710,6 +743,7 @@ CHORES_COMMANDS = (
     ws_reward_save,
     ws_reward_delete,
     ws_reward_redeem,
+    ws_surprise_open,
     ws_stars_award,
     ws_stars_history,
     ws_import_preview,

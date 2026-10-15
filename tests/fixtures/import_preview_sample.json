@@ -13,7 +13,7 @@
     "name": "Alex",
     "match": "alex",
     "match_name": "Alex",
-    "color": "#001219",
+    "color": "#D93A40",
     "bedtime": {
      "weeknight": "23:00",
      "weekend": "23:30"
@@ -27,7 +27,7 @@
     "name": "Blair",
     "match": "blair",
     "match_name": "Blair",
-    "color": "#005F73",
+    "color": "#FF7B6E",
     "bedtime": {
      "weeknight": "22:30",
      "weekend": "23:30"
@@ -41,7 +41,7 @@
     "name": "Casey",
     "match": "casey",
     "match_name": "Casey",
-    "color": "#0A9396",
+    "color": "#F26A10",
     "bedtime": {
      "weeknight": "22:00",
      "weekend": "23:00"
@@ -55,7 +55,7 @@
     "name": "Dana",
     "match": null,
     "match_name": null,
-    "color": "#F94144",
+    "color": "#C9286E",
     "bedtime": {
      "weeknight": "19:30",
      "weekend": "20:00"

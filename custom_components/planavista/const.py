@@ -3,7 +3,7 @@ from typing import Final
 
 DOMAIN: Final = "planavista"
 NAME: Final = "PlanaVista"
-VERSION: Final = "0.9.1"
+VERSION: Final = "0.10.0"
 
 # Event fetching range
 EVENT_RANGE_PAST_DAYS: Final = 30
@@ -42,9 +42,38 @@ VIEW_AGENDA: Final = "agenda"
 
 CALENDAR_VIEWS: Final = [VIEW_DAY, VIEW_WEEK, VIEW_MONTH, VIEW_AGENDA]
 
-# Curated color presets (primary + light variant pairs)
+# People's and the theme's colors: 24 standard colors in color-wheel order, then
+# neutrals (owner, 2026-10-14). tests/fixtures/palette.json holds the same table
+# for the card. light = the color 65% of the way to white (core/color.ts lightTint).
 COLOR_PRESETS: Final = [
-    # Palette 1: Earth & Ocean tones
+    {"name": "Red",      "color": "#D93A40", "color_light": "#F2BABC"},
+    {"name": "Coral",    "color": "#FF7B6E", "color_light": "#FFD1CC"},
+    {"name": "Orange",   "color": "#F26A10", "color_light": "#FACBAB"},
+    {"name": "Amber",    "color": "#FFB224", "color_light": "#FFE4B2"},
+    {"name": "Yellow",   "color": "#F5D90A", "color_light": "#FCF2A9"},
+    {"name": "Lime",     "color": "#99D52A", "color_light": "#DBF0B4"},
+    {"name": "Green",    "color": "#2E9E52", "color_light": "#B6DDC2"},
+    {"name": "Mint",     "color": "#3CCB9A", "color_light": "#BBEDDC"},
+    {"name": "Teal",     "color": "#0D9EA8", "color_light": "#AADDE1"},
+    {"name": "Cyan",     "color": "#00A6D6", "color_light": "#A6E0F1"},
+    {"name": "Sky",      "color": "#5BBDF0", "color_light": "#C6E8FA"},
+    {"name": "Blue",     "color": "#1A72E0", "color_light": "#AFCEF4"},
+    {"name": "Indigo",   "color": "#3E5BD6", "color_light": "#BBC6F1"},
+    {"name": "Violet",   "color": "#6B4FD8", "color_light": "#CBC1F1"},
+    {"name": "Purple",   "color": "#9B48C2", "color_light": "#DCBFEA"},
+    {"name": "Magenta",  "color": "#B837B5", "color_light": "#E6B9E5"},
+    {"name": "Pink",     "color": "#EC5BAE", "color_light": "#F8C6E3"},
+    {"name": "Rose",     "color": "#C9286E", "color_light": "#ECB4CC"},
+    {"name": "Brown",    "color": "#9A6B47", "color_light": "#DCCBBF"},
+    {"name": "Sand",     "color": "#C8A57A", "color_light": "#ECE0D0"},
+    {"name": "Slate",    "color": "#5E7189", "color_light": "#C7CDD6"},
+    {"name": "Gray",     "color": "#8B8D98", "color_light": "#D6D7DB"},
+    {"name": "Charcoal", "color": "#3A3D44", "color_light": "#BABBBE"},
+    {"name": "Black",    "color": "#17181A", "color_light": "#AEAEAF"},
+]
+
+# The first 20 colors: still accepted, so nobody's color changes; not offered.
+LEGACY_COLOR_PRESETS: Final = [
     {"name": "Ink Black",        "color": "#001219", "color_light": "#A6ACAF"},
     {"name": "Dark Teal",        "color": "#005F73", "color_light": "#A6C7CE"},
     {"name": "Dark Cyan",        "color": "#0A9396", "color_light": "#A9D9DA"},
@@ -55,7 +84,6 @@ COLOR_PRESETS: Final = [
     {"name": "Rusty Spice",      "color": "#BB3E03", "color_light": "#E7BBA7"},
     {"name": "Oxidized Iron",    "color": "#AE2012", "color_light": "#E3B1AC"},
     {"name": "Brown Red",        "color": "#9B2226", "color_light": "#DCB2B3"},
-    # Palette 2: Warm & Vivid tones
     {"name": "Strawberry Red",   "color": "#F94144", "color_light": "#FDBDBE"},
     {"name": "Pumpkin Spice",    "color": "#F3722C", "color_light": "#FBCEB5"},
     {"name": "Carrot Orange",    "color": "#F8961E", "color_light": "#FDDAB0"},

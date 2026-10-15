@@ -299,8 +299,8 @@ def test_an_import_names_who_breaks_a_rule() -> None:
 
 
 def test_a_color_from_elsewhere_becomes_the_nearest_free_palette_color() -> None:
-    assert nearest_palette_color("#2A7FA3", set()) == "#277DA1"
-    assert nearest_palette_color("#2a7fa3", {"#277da1"}) == "#0A9396"
-    assert nearest_palette_color("#277DA1", set()) == "#277DA1"
+    assert nearest_palette_color("#2A7FA3", set()) == "#0D9EA8"
+    assert nearest_palette_color("#2a7fa3", {"#0d9ea8"}) == "#5E7189"
+    assert nearest_palette_color("#1A72E0", set()) == "#1A72E0"
     assert nearest_palette_color("not a color", {PALETTE[0]}) == PALETTE[1]
     assert nearest_palette_color(None, set(PALETTE)) is None

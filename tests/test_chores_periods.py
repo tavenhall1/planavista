@@ -81,6 +81,16 @@ def test_changing_back_before_it_takes_effect_cancels_the_change() -> None:
     assert WeekRule("monday").changed_to("monday", date(2026, 10, 14)) == WeekRule("monday")
 
 
+def test_a_second_change_of_the_first_day_keeps_the_weeks_already_lived() -> None:
+    """Round 15 (r15a I2): the second change re-read every earlier week by the newer rule."""
+    rule = WeekRule("monday").changed_to("sunday", date(2026, 10, 21)).changed_to("monday", date(2026, 10, 28))
+    assert rule.start(date(2026, 10, 25)) == date(2026, 10, 19)  # still the Monday week
+    assert rule.start(date(2026, 10, 27)) == date(2026, 10, 26)  # the short Sunday week
+    assert rule.end(date(2026, 10, 27)) == date(2026, 11, 1)
+    assert rule.start(date(2026, 11, 3)) == date(2026, 11, 2)  # Mondays again
+    assert WeekRule.from_dict(rule.as_dict()) == rule
+
+
 def test_a_week_rule_survives_the_log() -> None:
     rule = WeekRule("sunday", before="monday", since=date(2026, 10, 19))
     assert WeekRule.from_dict(rule.as_dict()) == rule

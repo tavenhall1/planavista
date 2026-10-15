@@ -5,6 +5,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../utils/define';
 import { CalendarConfig, CalendarEvent, DisplayConfig, PlanaVistaCardConfig, PlanaVistaData, ViewType } from '../../types';
 import type { Layout } from '../../core/layout';
+import type { EditorFields, PVEventCreateDialog } from './components/event-create-dialog';
 import type { Mode, ThemeShape } from '../../styles/theme-pairs';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../../styles/shared';
 import { statusStyles } from '../../styles/status';
@@ -44,6 +45,16 @@ const DEFAULT_ENTITY = 'sensor.planavista_config';
 interface EditorWant {
   mode: 'create' | 'edit';
   prefill: Partial<CalendarEvent> | null;
+}
+
+/** The event editor as it was, for the card Home Assistant makes again after a reconnect (round 3). */
+interface EditorNote extends EditorWant {
+  fields: EditorFields;
+}
+
+function isEditorNote(note: unknown): note is EditorNote {
+  const n = note as Partial<EditorNote> | null;
+  return !!n && (n.mode === 'create' || n.mode === 'edit') && !!n.fields && typeof n.fields.title === 'string';
 }
 
 /** Nobody linked yet: one array, so the cached colors aren't worked out again on every render. */
@@ -105,6 +116,24 @@ export class PvCalendarModule extends LitElement {
   /** The editor sheet (New event, Edit event), mounted the same way. */
   private _editor: Presence<EditorWant> = GONE;
   private _editorMount = 0;
+  /** What the old card's editor held, for the editor this one opens (round 3). */
+  private _resume: EditorFields | null = null;
+
+  /** The open editor and what's typed in it (core/handoff.ts). */
+  handoff(): EditorNote | undefined {
+    const editor = this._editor.value;
+    const dialog = this.renderRoot.querySelector<PVEventCreateDialog>('pv-event-create-dialog');
+    if (!editor || this._editor.leaving || !dialog) return undefined;
+    return { mode: editor.mode, prefill: editor.prefill, fields: dialog.fields() };
+  }
+
+  /** Opens the old card's editor again, as it was. */
+  resume(note: unknown): void {
+    if (!isEditorNote(note)) return;
+    this._resume = note.fields;
+    if (note.mode === 'edit' && note.prefill) this._pv.store.openEditDialog(note.prefill as CalendarEvent);
+    else this._pv.store.openCreateDialog(note.prefill ?? undefined);
+  }
   private _editorOpener: HTMLElement | null = null;
   /** The store's editor choice as one object, so the presence sees the same value while it stands. */
   private _editorWant: EditorWant | null = null;
@@ -652,6 +681,7 @@ export class PvCalendarModule extends LitElement {
   /** The editor left: the store lets go, and focus goes back to what opened it (Edit, or New event). */
   private _onEditorClosed = (): void => {
     this._editor = GONE;
+    this._resume = null;
     if (this._pv.store.dialogOpen) this._pv.store.closeDialog();
     this.requestUpdate();
     const opener = this._editorOpener;
@@ -755,6 +785,7 @@ export class PvCalendarModule extends LitElement {
           .open=${true}
           .mode=${this._editor.value.mode}
           .prefill=${this._editor.value.prefill}
+          .resume=${this._resume}
           .leaving=${this._editor.leaving}
           .timeFormat=${display?.time_format || '12h'}
           .locationAutocomplete=${display.location_autocomplete === true}

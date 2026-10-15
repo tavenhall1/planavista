@@ -125,9 +125,11 @@ export class KioskController {
     if (this._stepOut && stepOutOver(this._stepOut, now)) this.restore();
     // The browser's Back, or a reload on another page, left a kiosk screen with no sidebar, no
     // menu button, and no card (round 2). A moment's grace lets a card on a new page show first.
+    // Tabs lead back from the dashboard's other views; with the top bar hidden nothing does (round 3).
     const home = this._env.remembered();
-    const away = this.look !== 'off' && !this._stepOut && this._cards === 0 && home !== null
-      && dashboardOf(this._env.path()) !== dashboardOf(home);
+    const path = this._env.path();
+    const elsewhere = home !== null && (this.look === 'hidden' ? path !== home : dashboardOf(path) !== dashboardOf(home));
+    const away = this.look !== 'off' && !this._stepOut && this._cards === 0 && elsewhere;
     if (!away) {
       this._awaySince = null;
       return;

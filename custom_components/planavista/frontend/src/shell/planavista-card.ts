@@ -6,6 +6,7 @@ import { HomeAssistant } from 'custom-card-helpers';
 import { defineElement, defineElementAlias } from '../utils/define';
 import { nextSheetLayer } from '../core/sheet-layer';
 import { deepActiveElement } from '../core/focus';
+import { CardDrafts } from '../core/page-drafts';
 import { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../types';
 import { baseStyles, buttonStyles, typographyStyles, animationStyles } from '../styles/shared';
 import { statusStyles } from '../styles/status';
@@ -57,6 +58,7 @@ import { SCREEN_AS_SHOWN, composedAncestor, fitView } from '../core/panel-fit';
 import { kioskStripAction, showsKioskReturn } from '../core/kiosk';
 import { errorMessage } from '../core/ws-api';
 import type { Toast } from '../core/pv-toast';
+import { PAGE_HANDOFFS, TAKE_MS, handoffToast } from '../core/handoff';
 import '../core/pv-toast';
 import { kiosk } from './kiosk-controller';
 
@@ -79,6 +81,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @property({ type: Boolean, reflect: true, attribute: 'panel' }) isPanel = false;
   /** 'grid' in a sections view, where the card fills its cell (shown on the host as `grid`; round 2). */
   @property({ attribute: false }) layout?: string;
+  /** A module's full-screen layer, shown outside ha-card. */
+  @state() private _fullscreen: HTMLElement | null = null;
   /** Puts Home Assistant's view back as it was (core/panel-fit). */
   private _unfitView?: () => void;
   /** Stops hearing kiosk mode's changes (milestone 9). */
@@ -100,7 +104,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   @state() private _sheet: CardSheet | null = null;
   private _sheetOpener: HTMLElement | null = null;
   /** Drafts of person edits; they outlive Settings until the page reloads (spec 9.4). */
-  private _drafts = new Map<string, unknown>();
+  /** Editors' drafts outlive the card (Home Assistant rebuilds it after a restart); its appearance edits stay its own. */
+  private _drafts = new CardDrafts();
   /** How Settings was opened: by this account's own rights, or through parent mode. */
   private _settingsVia: 'access' | 'session' | null = null;
   /** The view each module shows; the bar and the module both change it (data down, events up). */
@@ -139,7 +144,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       cardTheme: this._config?.theme,
       sun: sunOf(this.hass?.states as never),
       haDark: !!(this.hass as unknown as { themes?: { darkMode?: boolean } } | undefined)?.themes?.darkMode,
-      overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || !!this._flow || this._moduleOverlay,
+      // The goal's reveal too: an automatic switch would play its view transition over it (round 3).
+      overlayOpen: !!this._sheet || this._settingsOpen || this._wizardOpen || !!this._flow || this._moduleOverlay || !!this._fullscreen,
     }),
     async () => {
       await this.updateComplete;
@@ -159,7 +165,12 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   /** How a module asks for a PIN: the card's PIN sheet, then the card's session. */
   private readonly _pinGate: PinGate = {
     ask: (members, heading, reason) => new Promise<boolean>(resolve => {
-      if (members.length === 0 || this._sheet) {
+      if (this._sheet) {
+        this._toast = { id: `pin-busy-${Date.now()}`, text: "Finish the PIN that's open first." };
+        resolve(false);
+        return;
+      }
+      if (members.length === 0) {
         resolve(false);
         return;
       }
@@ -253,10 +264,21 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
       /* A panel view's one card meets the edges of the screen, as Home Assistant's
          own cards do there: the screen's corners are the only rounded ones. */
-      /* A sections view gives the card a cell of its own size: fill it, and nothing more (round 2). */
+      /* A sections view gives the card a cell of its own size: fill it, and nothing more (round 2).
+         The cell scrolls with the page, away from the screen's edges: no room for the status bar or
+         the home indicator (round 3). The sheets stay on the screen, so they keep theirs. */
       :host([grid]) {
         height: 100%;
         margin: 0;
+        --pv-under-status-bar: 0px;
+      }
+
+      :host([grid]) pv-nav-bar {
+        --safe-area-inset-bottom: 0px;
+      }
+
+      :host([grid][layout='landscape']) ha-card {
+        padding-bottom: 0;
       }
 
       :host([panel]) ha-card {
@@ -318,6 +340,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       /* The card's own toast sits just after the module area: above the bar in
          portrait and on phones, at the bottom in landscape, as the chores
          toasts do (review: it covered the bar). */
+      .fullscreen {
+        display: contents;
+      }
+
       .toast-anchor {
         order: 3;
         position: relative;
@@ -377,6 +403,9 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         inset: 0;
         z-index: 50;
         padding-top: var(--pv-under-status-bar, 0px);
+        /* Over ha-card's padding too, so it keeps a sideways phone's side insets itself (round 3). */
+        padding-left: var(--pv-inset-left, 0px);
+        padding-right: var(--pv-inset-right, 0px);
         box-sizing: border-box;
         background: var(--pv-card-bg, #FFFFFF);
         animation: pv-fadeIn 200ms ease forwards;
@@ -525,6 +554,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   protected willUpdate(changed: PropertyValues): void {
     super.willUpdate(changed);
     if (changed.has('layout')) this.toggleAttribute('grid', this.layout === 'grid');
+    // Home Assistant makes the card again when the connection comes back (round 3).
+    if (changed.has('hass') && this.hass) {
+      if (this.hass.connected === false) PAGE_HANDOFFS.dropped(Date.now());
+      else PAGE_HANDOFFS.reconnected(Date.now());
+    }
     const opened = changed as Map<string, unknown>;
     if ((opened.has('_settingsOpen') && this._settingsOpen) || (opened.has('_flow') && this._flow)) {
       this._overlayLayer = nextSheetLayer();
@@ -577,10 +611,70 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     void this.updateComplete.then(() => this._fitView());
     this._unhearKiosk = kiosk.onChange(() => this.requestUpdate());
     kiosk.cardShown(location.pathname);
+    // After the swap: Home Assistant may put this card in before it takes the old one out.
+    window.setTimeout(() => this._takeHandoff(), 0);
+  }
+
+  /** Module notes from the old card, kept until each module shows (round 4: chores waits for the household). */
+  private _resumes: Record<string, unknown> | null = null;
+  private _resumesUntil = 0;
+  /** The latest a note may wait for the household (round 5: after a restart it can take a while). */
+  private _resumesBy = 0;
+  /** The card said what closed, so a module says nothing over it (round 5). */
+  private _resumeQuiet = false;
+
+  /** What the old card for this place had open when Home Assistant made this one (round 3). */
+  private _takeHandoff(): void {
+    const note = this._placeKey ? PAGE_HANDOFFS.take(this._placeKey, Date.now()) : null;
+    if (!note) return;
+    const toast = handoffToast(note);
+    if (toast) this._toast = toast;
+    this._resumeQuiet = !!toast;
+    if (Object.keys(note.modules).length === 0) return;
+    this._resumes = { ...note.modules };
+    this._resumesUntil = 0; // from when the household answers
+    this._resumesBy = Date.now() + 120_000;
+    this.requestUpdate();
+  }
+
+  /** Gives the module now showing the old card's note for it, once. */
+  private _resumeModule(): void {
+    const resumes = this._resumes;
+    if (!resumes) return;
+    if (Date.now() > this._resumesBy) {
+      this._resumes = null;
+      return;
+    }
+    // Modules show once the household answers, which after a restart can take a while.
+    if (!this._household.view) return;
+    if (this._resumesUntil === 0) this._resumesUntil = Date.now() + TAKE_MS;
+    if (Date.now() > this._resumesUntil) {
+      this._resumes = null;
+      return;
+    }
+    const module = this.renderRoot.querySelector('.pv-module') as ModuleElement | null;
+    if (!module || !(module.localName in resumes)) return;
+    const mine = resumes[module.localName];
+    delete resumes[module.localName];
+    if (Object.keys(resumes).length === 0) this._resumes = null;
+    module.resume?.(mine, { quiet: this._resumeQuiet });
+  }
+
+  /** What this card has open, left for the card Home Assistant makes again after a reconnect. */
+  private _leaveHandoff(): void {
+    if (!this._placeKey) return;
+    const module = this.renderRoot.querySelector('.pv-module') as ModuleElement | null;
+    const mine = module?.handoff?.();
+    PAGE_HANDOFFS.leave(this._placeKey, {
+      pin: this._sheet?.kind === 'pin',
+      toast: this._toast,
+      modules: module && mine !== undefined ? { [module.localName]: mine } : {},
+    }, Date.now());
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._leaveHandoff();
     window.clearInterval(this._placeTimer);
     this._savePlace();
     this._unfitView?.();
@@ -592,6 +686,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+    this._resumeModule();
     if (changedProps.has('isPanel')) this._fitView();
     if (changedProps.has('_moduleId') || changedProps.has('_views')) this._savePlace();
     this._guardSettings();
@@ -946,7 +1041,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const active = this._activeModule();
 
     return html`
-      <ha-card class=${this._underStatusBar() === 'card' ? 'under' : ''}>
+      <ha-card class=${this._underStatusBar() === 'card' ? 'under' : ''} @pv-fullscreen=${this._onFullscreen}>
         ${this._renderParentStrip()}
         ${showsKioskReturn(kiosk.steppedOut, this._session.session) ? html`
           <div class="banner info kiosk-out" role="status">
@@ -1005,8 +1100,27 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${this._renderSheet()}
         <div class="toast-anchor"><pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}></pv-toast></div>
       </ha-card>
+      ${this._renderFullscreen()}
     `;
   }
+
+  /**
+   * A module's full-screen layer (the goal surprise's reveal, milestone 10). It
+   * sits outside ha-card, whose container query would hold a fixed layer
+   * inside the card, so it covers the whole screen, Home Assistant's bars too.
+   */
+  private _renderFullscreen() {
+    const layer = this._fullscreen;
+    if (!layer) return nothing;
+    return html`<div class="fullscreen" @pv-fullscreen-done=${(e: Event) => {
+      if (e.composedPath()[0] === layer) this._fullscreen = null;
+    }}>${layer}</div>`;
+  }
+
+  private _onFullscreen = (event: CustomEvent<{ element: HTMLElement }>): void => {
+    event.stopPropagation();
+    this._fullscreen = event.detail.element;
+  };
 
   /** Render a module through its registered element. */
   private _renderModule(mod: ModuleDefinition, data: PlanaVistaData, display: DisplayConfig) {
@@ -1014,6 +1128,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     return staticHtml`
       <${tag}
         class="pv-module"
+        ?inert=${this._settingsOpen}
         layout=${this._layout.layout}
         .hass=${this.hass}
         .cardConfig=${this._config}
@@ -1047,6 +1162,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
         ${ref(this._headerHeights.attach)}
         layout=${this._layout.layout}
         ?short=${this._layout.short}
+        ?inert=${this._settingsOpen}
         ?compact=${this._layout.layout === 'portrait' && this._compactHeader}
         .timeFormat=${display.time_format || '12h'}
         .weather=${weather ?? null}
@@ -1064,6 +1180,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       <pv-nav-bar
         layout=${this._layout.layout}
         ?short=${this._layout.short}
+        ?inert=${this._settingsOpen}
         .modules=${this._modules().shown.map(m => ({ id: m.id, label: m.label, icon: m.icon }))}
         .activeModule=${active.id}
         .views=${active.views}

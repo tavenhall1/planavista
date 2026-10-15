@@ -16,7 +16,7 @@ logged once and listed under Needs a look; requests then show on the screen.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 import logging
 import secrets
 from typing import TYPE_CHECKING, Any
@@ -69,6 +69,22 @@ def clock_text(at: str, time_format: str) -> str:
     return f"{hour}:{clock.minute:02d} {'AM' if clock.hour < 12 else 'PM'}"
 
 
+def _skip_when(occurrence: object) -> str:
+    """What a skip covers (round 15): a daily chore's day, this week, this time, or nothing for a one-time chore."""
+    parts = occurrence.split("|") if isinstance(occurrence, str) else []
+    period = parts[2] if len(parts) >= 4 else ""
+    if period.startswith("day:"):
+        try:
+            return f" on {date.fromisoformat(period[4:]):%A}"
+        except ValueError:
+            return ""
+    if period == "once":
+        return ""
+    if period.startswith("rep:"):
+        return " this time"
+    return " this week"
+
+
 def request_text(request: dict[str, Any], names: dict[str, str]) -> str:
     """What a request's notification says, such as "Dana finished Feed the fish (1 star)"."""
     member = names.get(request["member"], request["member"])
@@ -84,7 +100,7 @@ def request_text(request: dict[str, Any], names: dict[str, str]) -> str:
         until = request.get("until")
         return f"{member} asks for more time on {request['name']}" + (f", until {until}." if until else ".")
     if kind == "skip":
-        return f"{member} asks to skip {request['name']} this week."
+        return f"{member} asks to skip {request['name']}{_skip_when(request.get('occurrence'))}."
     cost = int(request.get("cost") or 0)
     return f"{member} wants {request['name']} ({cost} stars)."
 
@@ -112,6 +128,7 @@ class ChoresNotifier:
             return
         self._known = {r["id"] for r in self._open_requests()}
         self._unsubs.append(self.runtime.async_listen(self._on_change))
+        self._unsubs.append(self.runtime.async_listen_events(self._on_event))
         self._unsubs.append(self.hass.bus.async_listen(EVENT_ACTION, self._on_action))
         self._schedule_reminder()
 
@@ -206,6 +223,33 @@ class ChoresNotifier:
                 sent.phones.add(phone)
         if sent.phones:
             self._sent[request["id"]] = sent
+
+    @callback
+    def _on_event(self, event: Any) -> None:
+        """A goal reached: tell the parents a surprise is waiting (milestone 10)."""
+        if event.type == "goal_reached":
+            self.hass.async_create_task(self._async_send_goal(event.member, event.data), eager_start=False)
+
+    async def _async_send_goal(self, member_id: str, data: dict[str, Any]) -> None:
+        member = self.runtime.household.member(member_id) or {}
+        name = member.get("name", member_id)
+        reward = self.runtime.engine.reward(data["reward"]) or {}
+        icon = reward.get("icon")
+        message = {
+            "title": f"{name} reached a goal",
+            "message": f"{icon + ' ' if icon else ''}{data['reward_name']}. There's a surprise waiting on {name}'s screen.",
+            # News, not a question: it arrives quietly, since it can come with the 3 AM approval.
+            "data": {
+                "tag": f"{TAG_PREFIX}goal-{member_id}", "group": "planavista",
+                "push": {"interruption-level": "passive"},  # iOS
+                "channel": "PlanaVista goals", "importance": "low",  # Android
+            },
+        }
+        for parent in self._parents_to_ask():
+            for phone in parent["phones"]:
+                service = self._reachable(phone, parent["id"])
+                if service is not None:
+                    await self.hass.services.async_call("notify", service, message)
 
     async def _async_clear(self, request_id: str, phones: set[str] | None = None) -> None:
         """Take a request's notifications off every phone that got them."""

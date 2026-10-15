@@ -8,7 +8,7 @@ const read = (path: string) =>
 describe('round 1 polish', () => {
   it("a column's line breaks between its parts, never inside one (\"🔥 2 days\")", () => {
     const column = read('modules/chores/pv-chores-column.ts');
-    expect(column).toMatch(/\.line > span \{\s*white-space: nowrap;\s*\}/);
+    expect(column).toMatch(/\.parts > span \{\s*white-space: nowrap;\s*\}/);
   });
 
   it('a young child with nothing on the board gets the quiet line, not the sticker strip too', () => {

@@ -21,11 +21,26 @@ export function deepActiveElement(root: FocusHolder = document): HTMLElement | n
   return active && typeof (active as HTMLElement).focus === 'function' ? (active as HTMLElement) : null;
 }
 
+/** The controls Tab can land on: shown ones only (round 14: a hidden Done took the press, and Tab went nowhere). */
+export function tabbable(items: HTMLElement[]): HTMLElement[] {
+  return items.filter(el => el.getClientRects().length > 0);
+}
+
+/** The controls inside `root` in tree order, walking into open shadow roots (round 15: a date field's own buttons). */
+export function focusablesIn(root: ParentNode): HTMLElement[] {
+  const found: HTMLElement[] = [];
+  for (const el of root.querySelectorAll<HTMLElement>('*')) {
+    if (el.matches(FOCUSABLE)) found.push(el);
+    if (el.shadowRoot) found.push(...focusablesIn(el.shadowRoot));
+  }
+  return found;
+}
+
 /** Keep Tab inside a dialog rendered in `root` (spec 11.8). */
 export function trapTab(root: ShadowRoot, event: KeyboardEvent): void {
   if (event.key !== 'Tab') return;
-  const items = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)];
-  const index = items.indexOf(root.activeElement as HTMLElement);
+  const items = tabbable(focusablesIn(root));
+  const index = items.indexOf(deepActiveElement(root) as HTMLElement);
   const next = wrapFocusIndex(index, items.length, event.shiftKey);
   if (next >= 0) {
     event.preventDefault();

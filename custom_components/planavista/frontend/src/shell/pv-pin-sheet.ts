@@ -51,8 +51,8 @@ function formatWait(ms: number): string {
 export class PvPinSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._cancel());
-  private readonly _layer = new SheetLayer(this);
-  private readonly _pressGuard = new PressGuard(this);
+  private readonly _layer = new SheetLayer(this, true);
+  private readonly _pressGuard = new PressGuard(this, { restart: 'same-spot' });
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
@@ -397,6 +397,8 @@ export class PvPinSheet extends LitElement {
   }
 
   private _enterFor(member: Member): void {
+    // The faces turn into the keypad in place: a double tap's second tap is no digit (round 5).
+    this._pressGuard.arm();
     this._who = member;
     this._step = 'enter';
     this._message = '';

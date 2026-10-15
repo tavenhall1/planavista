@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import './pv-surprise-present';
 import { tagStyles } from '../../styles/controls';
 import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -31,6 +32,8 @@ export class PvChoresRewards extends LitElement {
   @property({ attribute: false }) cards: RewardCard[] = [];
   @property({ attribute: false }) recent: string | null = null;
   @property({ attribute: false }) hass?: HomeAssistant;
+  /** Whether this screen may open a member's surprise (milestone 10). */
+  @property({ attribute: false }) mayOpen: (memberId: string) => boolean = () => false;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Parents (or a screen that can ask for a parent's PIN) see New reward. */
@@ -64,6 +67,7 @@ export class PvChoresRewards extends LitElement {
 
       .balance {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 12px;
         padding: 12px 14px;
@@ -80,8 +84,9 @@ export class PvChoresRewards extends LitElement {
         white-space: nowrap;
       }
 
+      /* A narrow card puts the goal (and a present) under the stars, at its full width (review B11). */
       .balance .goal {
-        flex: 1 1 auto;
+        flex: 1 1 200px;
         min-width: 0;
         font-size: 0.8125rem;
         color: var(--pv-text-secondary, #5F6670);
@@ -226,6 +231,14 @@ export class PvChoresRewards extends LitElement {
                     Goal: ${pictureOf(b.goal.reward.icon)} ${b.goal.reward.name} · ${goalWords(b.goal)}
                     <div class="bar"><span style="width:${Math.round(b.goal.progress * 100)}%"></span></div>
                   ` : html`No goal yet`}
+                  ${b.surprise && !b.surprise.opened ? html`
+                    <pv-surprise-present class="surprise" .model=${b.surprise} name=${b.member.name} color=${this.colorOf(b.member)}
+                      ?may=${this.mayOpen(b.member.id)} shape="row" ?young=${b.member.age_group === 'young_child'} .order=${b.member.order}></pv-surprise-present>
+                  ` : nothing}
+                  ${b.surprise?.opened ? html`
+                    <button class="again pv-btn pv-btn-secondary accent" type="button"
+                      @click=${() => this._fire('pv-surprise-replay', { member: b.member.id })}>🎁 Watch it again</button>
+                  ` : nothing}
                 </div>
               </div>
             `)}

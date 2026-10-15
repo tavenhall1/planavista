@@ -77,6 +77,8 @@ export interface BoardMember {
   week_stars: number;
   chore_minutes: number;
   away: AwaySpan | null;
+  /** Their goal surprise (milestone 10); missing from older backends. */
+  surprise?: { reward: string; opened: boolean } | null;
 }
 
 export type RequestKind = 'completion' | 'more_time' | 'skip' | 'redemption';
@@ -92,6 +94,12 @@ export interface ChoreRequest {
   chore?: string;
   occurrence?: string;
   stars?: number;
+  /** Its time has run out, so sending it back counts it as missed (round 9). */
+  missed_if_sent_back?: boolean;
+  /** Its occurrence was owed nothing (excused, or its person away): sent back, it stays excused (round 13). */
+  stays_excused?: boolean;
+  /** Owed nothing because its person was away that day (round 14). */
+  away?: boolean;
   until?: string | null;
   reward?: string;
   cost?: number;
@@ -223,6 +231,8 @@ export interface PastItem {
   icon: string | null;
   /** `open`: counted that day and not done by its end, without being missed then (a make-up chore). */
   status: 'done' | 'pending' | 'missed' | 'carried' | 'excused' | 'open';
+  /** A parent's note: why it was excused, or counted as missed after its day. */
+  note?: string | null;
   done_by?: string;
   at?: string;
 }

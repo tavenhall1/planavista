@@ -18,7 +18,7 @@ import {
 } from '../../core/household';
 import { HouseholdApi, errorCode } from '../../core/household-client';
 import type { Layout } from '../../core/layout';
-import { POP_PAGE, announceEditor, saveErrorMessage } from '../../core/page-host';
+import { POP_PAGE, announceEditor, editorExit, saveErrorMessage } from '../../core/page-host';
 import {
   DraftRecord, PersonDraft, ageGroupNote, beginDraft, draftChanges, draftProblem, isDirty, rebaseDraft, withAgeGroup,
 } from '../../core/person-draft';
@@ -110,9 +110,16 @@ export class PvSettingsPerson extends LitElement {
     this._change(event.detail);
   };
 
+  /** Removed on another screen while open. */
+  private get _gone(): boolean {
+    return this._memberId !== null && !!this.household && !this._member;
+  }
+
   /** Settings asks before leaving a page with changes (spec 14.1). */
   confirmLeave(): Promise<boolean> {
-    if (!this._loaded || !isDirty(this._draft, this._start)) return Promise.resolve(true);
+    const exit = editorExit(this._loaded && isDirty(this._draft, this._start), this._gone);
+    if (exit === 'drop') this.drafts.delete(this._draftKey);
+    if (exit !== 'ask') return Promise.resolve(true);
     this._notice = 'discard';
     return new Promise(resolve => {
       this._leave = resolve;
@@ -252,7 +259,7 @@ export class PvSettingsPerson extends LitElement {
     const isNew = this._memberId === null;
     const editor = {
       label: isNew ? 'Add' : 'Save',
-      ready: !(this._saving || (!isNew && !isDirty(this._draft, this._start))),
+      ready: !(this._gone || this._saving || (!isNew && !isDirty(this._draft, this._start))),
       save: () => void this._save(),
       cancel: () => this._cancel(),
     };
@@ -315,10 +322,17 @@ export class PvSettingsPerson extends LitElement {
 
   private _renderColor() {
     const taken = takenColors(this.household!.members, this._memberId ?? undefined);
+    // A color from before the palette grew (or from a file) stays shown, chosen, first (2026-10-14).
+    const current = PvColorSwatchPicker.PRESETS.some(p => p.color.toUpperCase() === this._draft.color.toUpperCase())
+      || !this._draft.color;
     return html`
       <fieldset class="field">
         <legend>Color</legend>
         <div class="swatches">
+          ${current ? nothing : html`
+            <button class="swatch" type="button" style="background:${this._draft.color}" aria-pressed="true"
+              aria-label="Current color"></button>
+          `}
           ${PvColorSwatchPicker.PRESETS.map(preset => {
             const owner = taken.get(preset.color.toUpperCase());
             const selected = this._draft.color.toUpperCase() === preset.color.toUpperCase();
@@ -567,10 +581,12 @@ export class PvSettingsPerson extends LitElement {
   }
 
   private _cancel(): void {
-    if (isDirty(this._draft, this._start)) {
+    const exit = editorExit(isDirty(this._draft, this._start), this._gone);
+    if (exit === 'ask') {
       this._notice = 'discard';
       return;
     }
+    if (exit === 'drop') this.drafts.delete(this._draftKey);
     this._pop();
   }
 

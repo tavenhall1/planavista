@@ -98,20 +98,24 @@ The shell watches the card's own box, not the window or the device, and sets a `
 
 ### 4.2 People's colors
 
-Twenty presets in two palettes. Each has a color and a light fill for its events.
+Twenty-four presets, the standard colors in color-wheel order (red through rose) and then six neutrals; each has a color and a light fill for its events, and letters on each read at 4.5:1 or better. They serve people and the theme's Customize colors alike (`tests/fixtures/palette.json`, shared by the backend and the card).
 
 | Name | Color | Fill | Name | Color | Fill |
 |---|---|---|---|---|---|
-| Ink Black | `#001219` | `#A6ACAF` | Strawberry Red | `#F94144` | `#FDBDBE` |
-| Dark Teal | `#005F73` | `#A6C7CE` | Pumpkin Spice | `#F3722C` | `#FBCEB5` |
-| Dark Cyan | `#0A9396` | `#A9D9DA` | Carrot Orange | `#F8961E` | `#FDDAB0` |
-| Pearl Aqua | `#94D2BD` | `#DAEFE8` | Atomic Tangerine | `#F9844A` | `#FDD4C0` |
-| Wheat | `#E9D8A6` | `#F7F1E0` | Tuscan Sun | `#F9C74F` | `#FDEBC1` |
-| Golden Orange | `#EE9B00` | `#F9DCA6` | Willow Green | `#90BE6D` | `#D8E8CC` |
-| Burnt Caramel | `#CA6702` | `#ECCAA6` | Seaweed | `#43AA8B` | `#BDE1D6` |
-| Rusty Spice | `#BB3E03` | `#E7BBA7` | Ocean Cyan | `#4D908E` | `#C1D8D7` |
-| Oxidized Iron | `#AE2012` | `#E3B1AC` | Blue Slate | `#577590` | `#C4CFD8` |
-| Brown Red | `#9B2226` | `#DCB2B3` | Cerulean | `#277DA1` | `#B3D2DE` |
+| Red | `#D93A40` | `#F2BABC` | Indigo | `#3E5BD6` | `#BBC6F1` |
+| Coral | `#FF7B6E` | `#FFD1CC` | Violet | `#6B4FD8` | `#CBC1F1` |
+| Orange | `#F26A10` | `#FACBAB` | Purple | `#9B48C2` | `#DCBFEA` |
+| Amber | `#FFB224` | `#FFE4B2` | Magenta | `#B837B5` | `#E6B9E5` |
+| Yellow | `#F5D90A` | `#FCF2A9` | Pink | `#EC5BAE` | `#F8C6E3` |
+| Lime | `#99D52A` | `#DBF0B4` | Rose | `#C9286E` | `#ECB4CC` |
+| Green | `#2E9E52` | `#B6DDC2` | Brown | `#9A6B47` | `#DCCBBF` |
+| Mint | `#3CCB9A` | `#BBEDDC` | Sand | `#C8A57A` | `#ECE0D0` |
+| Teal | `#0D9EA8` | `#AADDE1` | Slate | `#5E7189` | `#C7CDD6` |
+| Cyan | `#00A6D6` | `#A6E0F1` | Gray | `#8B8D98` | `#D6D7DB` |
+| Sky | `#5BBDF0` | `#C6E8FA` | Charcoal | `#3A3D44` | `#BABBBE` |
+| Blue | `#1A72E0` | `#AFCEF4` | Black | `#17181A` | `#AEAEAF` |
+
+The first twenty colors (Ink Black to Cerulean) are no longer offered but stay valid: someone who has one keeps it, and their person page shows it first.
 
 A custom color gets its fill computed for it, 65 percent of the way to white, as every preset's fill is. In dark mode both are derived in OKLCH (section 5.3), so contrast is measured rather than eyeballed.
 
@@ -341,6 +345,16 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 - Fifteen animated icons. The condition text is capitalized, with hyphens as spaces.
 - Without a weather entity the space collapses, with no placeholder.
 
+### 11.10 The goal surprise
+
+`pv-surprise-present` and `pv-surprise-reveal` (modules/chores): when a person's stars reach their goal, a present in their color with a gold ribbon and bow waits first in their column (a tile like their chore tiles, or a row in a list column), at the top of their My day (large), and by their goal in Rewards.
+
+- **Waiting:** every 4 seconds, offset per person, a wiggle and a hop with three sparkles by the bow, then still; nothing moves while the page is hidden. Reduced motion: a soft glow instead.
+- **Opening:** the same hold as a chore (550 ms, a 12 px move cancels, Space or Enter), and the hold is the reveal's first act: the present shakes harder and faster and rises as the ring fills, and a finished hold flows into the reveal from where the present was. Letting go early springs it back. On a login that may not open it (a parent's or a sibling's own), it reads "Waiting for Dana to open it" and can't be held.
+- **The reveal:** a full-screen layer above everything, Home Assistant's bars included (the card shows it outside `ha-card`). The present flies to the middle, shakes twice, the lid pops (bouncy) in a burst of confetti in the person's color and gold stars, the reward's picture rises out of the box, "Dana, you did it!" and the reward's name fade up, then the reward's button (🙋 Ask for it, or 🎉 Get it when it needs no approval) and Later, about 4 seconds in all. A tap skips to the end, but only a press that began on the layer, since the hold's lifting finger lands there. Reduced motion: the present fades to the reward with a glow. The chime plays only with Sound on.
+
+- **The reveal's buttons are the celebration's own** (the one exception to 11.9's single button family): 56 px gold and frosted pills in a heavier weight, drawn on the reveal's dark layer in every theme and mode, so the moment reads as a celebration rather than a sheet. They keep 48 px targets, a visible focus ring, and the family's words. The gold is `--pv-present-gold`, a token of every theme.
+
 ### 11.9 Controls: one for each kind of choice
 
 The shared styles live in `styles/controls.ts`; each site keeps its own buttons, inputs, and handlers.
@@ -386,6 +400,14 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-14: Changed: people's colors
+
+- Twenty-four standard colors in color-wheel order and six neutrals replace the first twenty, which leaned on earth tones and had no pink or purple and one blue (4.2). The first twenty stay valid for anyone who has one.
+
+### 2026-10-13: Added: the goal surprise
+
+- A reached goal waits as a wrapped present on the child's own screen until they hold it open; the hold is the reveal's first act, and the reveal covers the whole screen (11.10).
 
 ### 2026-10-13: Changed: the second adversarial review
 

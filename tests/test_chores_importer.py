@@ -186,7 +186,7 @@ def test_a_new_person_needs_an_age_group_before_anything_is_saved() -> None:
 def test_an_import_adds_people_and_updates_bedtimes_and_sleep() -> None:
     result = _plan()
     (dana,) = result["members_add"]
-    assert (dana["id"], dana["age_group"], dana["parent"], dana["color"]) == ("dana", "young_child", False, "#F94144")
+    assert (dana["id"], dana["age_group"], dana["parent"], dana["color"]) == ("dana", "young_child", False, "#C9286E")
     assert (dana["bedtime"], dana["sleep_hours"], dana["my_day"]) == ({"weeknight": "19:30", "weekend": "20:00"}, 10.5, "pictures")
     assert result["members_update"]["casey"] == {"bedtime": {"weeknight": "22:00", "weekend": "23:00"}, "sleep_hours": 9.0}
     assert result["summary"]["people_added"] == ["Dana"]
@@ -304,6 +304,28 @@ def test_a_restore_brings_a_household_back_with_its_ids() -> None:
     assert result["settings"]["missed"] == "strict"
 
 
+def test_a_plan_import_never_reuses_an_id_the_log_still_names() -> None:
+    """Round 9 (r9a A1): a re-imported chore took a deleted chore's id, and arrived done."""
+    result = plan_import(read_file(PLAN_TEXT), {"people": {"p_dana": {"age_group": "young_child"}}},
+                         _household("Alex", "Blair", "Casey"), [], [], {}, used_ids={"take_out_the_trash"})
+    ids = [a["id"] for a in result["activities_add"]]
+    assert "take_out_the_trash" not in ids and "take_out_the_trash_2" in ids
+    ws = (Path(__file__).parent.parent / "custom_components" / "planavista" / "chores" / "websocket.py").read_text("utf-8")
+    assert "used_ids=engine.ids_in_log()" in ws
+
+
+def test_a_plan_without_bedtimes_keeps_the_ones_people_have() -> None:
+    """Round 9 (r9a A8): a plan naming no bedtimes wrote 22:30 and 23:30 onto a matched person."""
+    file = json.loads(PLAN_TEXT)
+    casey = next(p for p in file["people"] if p["name"] == "Casey")
+    casey.pop("bedWk"), casey.pop("bedWe")
+    members = _household("Alex", "Blair", "Casey")
+    result = _plan(members=members, text=json.dumps(file))
+    assert "bedtime" not in result["members_update"]["casey"]
+    (dana,) = result["members_add"]
+    assert dana["bedtime"] == {"weeknight": "19:30", "weekend": "20:00"}
+
+
 def test_a_restore_onto_a_household_updates_what_is_there() -> None:
     parsed = read_file(json.dumps(_export()))
     members = [dict(m) for m in MEMBERS]
@@ -339,7 +361,7 @@ def test_plan_colors_come_in_as_the_nearest_free_palette_colors() -> None:
     parsed = read_file(json.dumps(plan))
     members = _household("Alex", "Blair", "Casey", "Dana")
     colors = {p["name"]: p["color"] for p in preview(parsed, members, [], [])["people"]}
-    assert (colors["Alex"], colors["Jordan"], colors["Sam"]) == (members[0]["color"], "#277DA1", "#4D908E")
+    assert (colors["Alex"], colors["Jordan"], colors["Sam"]) == (members[0]["color"], "#0D9EA8", "#5E7189")
     choices = {"people": {"p_jordan": {"age_group": "teen"}, "p_sam": {"age_group": "teen"}}}
     added = {m["name"]: m["color"] for m in plan_import(parsed, choices, members, [], [], {})["members_add"]}
-    assert added == {"Jordan": "#277DA1", "Sam": "#4D908E"}
+    assert added == {"Jordan": "#0D9EA8", "Sam": "#5E7189"}

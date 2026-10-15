@@ -7,7 +7,7 @@ import { contrastText } from '../../core/color';
 import '../../core/pv-ring';
 import type { HoldDetail } from './pv-chore-item';
 import type { RowModel } from './board-derive';
-import { rowChange, tileLine, tileRingFill } from './hold-state';
+import { rowChange, tileLabel, tileLine, tileRingFill } from './hold-state';
 import { chorePicture } from './picture-words';
 
 /** The picture for a chore: its emoji, or a star when it has none (spec 7.3: the icon is also the picture tile). */
@@ -67,10 +67,12 @@ export class PvChoreTile extends LitElement {
       --tint: color-mix(in srgb, var(--member) 12%, var(--pv-card-bg, #FFFFFF));
     }
 
+    /* It fills its row, so a tile beside a taller one is as tall (round 4). */
     .tile {
       position: relative;
       box-sizing: border-box;
       width: 100%;
+      height: 100%;
       border-radius: 18px;
       border: 2px solid transparent;
       background: var(--tint);
@@ -81,11 +83,12 @@ export class PvChoreTile extends LitElement {
     .hold {
       box-sizing: border-box;
       width: 100%;
+      height: 100%;
       min-height: 132px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 6px;
       padding: 14px 8px 12px;
       border-radius: 16px;
@@ -99,6 +102,7 @@ export class PvChoreTile extends LitElement {
     :host([large]) .hold {
       min-height: 300px;
       gap: 10px;
+      justify-content: center;
     }
 
     /* A narrow tile (a phone's two across): the ring starts below the corner controls, which sat on its arc (round 2). */
@@ -334,8 +338,7 @@ export class PvChoreTile extends LitElement {
     return html`
       <div class="tile ${pending ? 'pending' : ''} ${done ? 'done' : ''}" style="--member:${this.color}">
         <div class="hold" role="button" tabindex=${this.locked ? -1 : 0} aria-disabled=${this.locked ? 'true' : 'false'}
-          aria-label=${done ? `${row.name}, done. Hold to uncheck` : pending ? `${row.name}, waiting for approval`
-            : state === 'sent_back' ? `${row.name}, ${row.badge?.words ?? 'sent back'}. Hold to complete` : `Hold to complete ${row.name}`}
+          aria-label=${tileLabel(row)}
           @pointerdown=${this._down} @pointermove=${(e: PointerEvent) => this._gesture.move(e.clientX, e.clientY)}
           @pointerup=${this._up} @pointercancel=${() => { this._hintPress = null; this._gesture.cancel(); }} @keydown=${this._key}
           @contextmenu=${(e: Event) => e.preventDefault()}>

@@ -115,6 +115,10 @@ describe('small helpers', () => {
     const reward = { id: 'movie', name: 'Movie night pick', icon: '🎬', cost: 40, needs_ok: true, who: [] };
     expect(goalFor({ ...casey, goal: 'movie' }, column([], { stars: 23 }), [reward])).toEqual({ reward, have: 23, need: 17, progress: 23 / 40 });
     expect(goalFor(casey, column([], { stars: 23 }), [reward])).toBeNull();
+    // Round 3 (r3b M1): the engine's rule, so My day never says "Enough stars!" for a goal that isn't theirs.
+    expect(goalFor({ ...casey, goal: 'movie' }, column([], { stars: 23 }), [{ ...reward, who: ['dana'] }])).toBeNull();
+    expect(goalFor({ ...casey, goal: 'movie', stars: false }, column([], { stars: 23 }), [reward])).toBeNull();
+    expect(goalFor({ ...casey, goal: 'movie' }, column([], { stars: 23 }), [{ ...reward, who: ['casey'] }])?.need).toBe(17);
   });
 
   it('shares out the shared chores by time done', () => {

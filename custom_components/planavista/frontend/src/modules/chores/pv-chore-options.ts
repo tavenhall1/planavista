@@ -13,14 +13,13 @@ import type { OptionId, OptionModel, OptionsModel } from './options-derive';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
 import { PressGuard } from '../../core/press-guard';
+import { sendBackReasons } from './inbox-derive';
 
 const ICONS: Record<OptionId, string> = {
   plan_day: '📅', more_time: '⏰', skip: '🛌', done_by: '🙋', history: '📜', undo: '↩️',
   change_due: '🗓️', hand_off: '🔁', excuse: '🤒', edit: '✏️', delete: '🗑️', approve: '✅', send_back: '↩️',
 };
 
-/** Quick reasons for Send back (spec 13.7). */
-export const SEND_BACK_REASONS = ['Not finished', 'Missed a spot', 'Do it again'];
 
 export interface OptionChoice {
   id: OptionId;
@@ -251,7 +250,7 @@ export class PvChoreOptions extends LitElement {
           <h2 id="options-title" tabindex="-1">${model.title}</h2>
           <div class="meta-line">${model.meta}</div>
           ${model.added ? html`<div class="added">${model.added}</div>` : nothing}
-          ${model.note ? html`<div class="note"><span class="badge ${model.note.startsWith('Sent back') ? 'bad' : 'act'}">${model.note}</span></div>` : nothing}
+          ${model.note ? html`<div class="note"><span class="badge ${model.noteTone ?? 'act'}">${model.note}</span></div>` : nothing}
         </div>
         ${model.member.filter(option => !option.destructive).map(option => this._option(option))}
         ${model.parent.some(option => !option.destructive)
@@ -296,13 +295,13 @@ export class PvChoreOptions extends LitElement {
     if (option.id === 'send_back') {
       return html`
         <div class="chips">
-          ${SEND_BACK_REASONS.map(reason => html`
+          ${sendBackReasons(!!option.late).map(reason => html`
             <button class="chip" type="button" @click=${() => this._choose(option.id, reason)}>${reason}</button>
           `)}
           <input type="text" maxlength="60" placeholder="Write a note…" aria-label="Write a note" .value=${this._note}
             @input=${(e: Event) => { this._note = (e.target as HTMLInputElement).value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' && this._note.trim()) this._choose(option.id, this._note.trim()); }} />
-          ${this._note.trim() ? html`<button class="chip" type="button" @click=${() => this._choose(option.id, this._note.trim())}>Send back</button>` : nothing}
+          ${this._note.trim() ? html`<button class="chip" type="button" @click=${() => this._choose(option.id, this._note.trim())}>${option.excused ? 'Not done' : option.late ? 'Count as missed' : 'Send back'}</button>` : nothing}
         </div>
       `;
     }
