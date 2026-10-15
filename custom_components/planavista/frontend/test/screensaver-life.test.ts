@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ENTRANCE, ENTRANCE_PACE, LIFE, RAINBOW_MS, RAIN_CONDITIONS, cloudPlan, dimLight, gustAt, hex, lightAt, moonPixels,
+  ENTRANCE, ENTRANCE_PACE, LIFE, SUN_FRAMES, dropFrom, firefliesOut, RAINBOW_MS, RAIN_CONDITIONS, cloudPlan, dimLight, gustAt, hex, lightAt, moonPixels,
   rainbowStrength, rainbowWeather, seasonAt, seasonGround, snowFor, springEase, swayAt,
 } from '../src/modules/screensaver/sky';
 import { trialTime, weatherScene } from '../src/core/screensaver';
@@ -145,5 +145,61 @@ describe('the screensaver on a dimmed screen', () => {
     expect(dim.near[1]).toBeLessThan(light.near[1]);
     // The text rule dims less: the sun keeps more of its brightness than the sky does.
     expect(dim.sunColor[0] / light.sunColor[0]).toBeGreaterThan(dim.sky[2][0] / light.sky[2][0]);
+  });
+});
+
+// Review m12 E: in a lower corner the clock and the card hung mid-screen before their turn, and the sun showed first.
+describe('the entrance shows nothing before its turn', () => {
+  it('drops the clock and card from above the screen, whichever corner they end in', () => {
+    expect(dropFrom(120)).toBe('0 -168px');
+    expect(dropFrom(1050)).toBe('0 -1098px');
+    expect(dropFrom(-10)).toBe('0 -48px');
+  });
+
+  it('keeps the sun or moon unseen until it swings up', () => {
+    expect(SUN_FRAMES[0].opacity).toBe(0);
+    expect(SUN_FRAMES.at(-1)).toMatchObject({ translate: '0 0', scale: '1', opacity: 1 });
+  });
+
+  it('the screensaver measures where each part ends', async () => {
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(new URL('../src/shell/pv-screensaver.ts', import.meta.url), 'utf8');
+    expect(source).toMatch(/dropFrom\(el\?\.getBoundingClientRect\(\)\.bottom/);
+    expect(source).not.toMatch(/'0 -70vh'|'0 -150%'/);
+  });
+});
+
+describe('the sky after review m12', () => {
+  it('fireflies come out in the evening, not all night or at dawn', () => {
+    const rise = 7 * 60;
+    const set = 19 * 60;
+    expect(firefliesOut(2, 19 * 60 - 10, rise, set)).toBe(true);
+    expect(firefliesOut(-8, 19 * 60 + 40, rise, set)).toBe(true);
+    expect(firefliesOut(-18, 23 * 60, rise, set)).toBe(false);
+    expect(firefliesOut(-6, 6 * 60 + 40, rise, set)).toBe(false);
+    expect(firefliesOut(20, 15 * 60, rise, set)).toBe(false);
+  });
+
+  it('notes rain once a minute while the page is open', async () => {
+    const { vi } = await import('vitest');
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) });
+    const { lookForRain, rainAt, RAIN_LOOK_MS } = await import('../src/core/rain-record');
+    lookForRain('rainy', 1_000_000);
+    expect(rainAt()).toBe(1_000_000);
+    lookForRain('pouring', 1_000_000 + 10_000);
+    expect(rainAt()).toBe(1_000_000);
+    lookForRain('cloudy', 1_000_000 + RAIN_LOOK_MS);
+    expect(rainAt()).toBe(1_000_000);
+    lookForRain('rainy', 1_000_000 + 2 * RAIN_LOOK_MS);
+    expect(rainAt()).toBe(1_000_000 + 2 * RAIN_LOOK_MS);
+    vi.unstubAllGlobals();
+  });
+
+  it('the page looks for rain on its tick, and the rainbow eases between relights', async () => {
+    const { readFileSync } = await import('node:fs');
+    const read = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+    expect(read('shell/screensaver-controller.ts')).toMatch(/lookForRain\(weatherNow\(\), Date\.now\(\)\)/);
+    expect(read('modules/screensaver/sky-styles.ts')).toMatch(/\.pvs-rainbow \{[^}]*transition: opacity/);
   });
 });

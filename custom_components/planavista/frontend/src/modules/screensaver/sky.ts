@@ -417,8 +417,18 @@ export function seasonGround(c: Rgb, d: number, light: Light, season: Season): R
 
 /** A rainbow shows by day for about 20 minutes after rain stops: in over the first part, out over the last. */
 export const RAINBOW_MS = 20 * 60_000;
-/** The Home Assistant conditions that count as rain for the rainbow afterwards. */
-export const RAIN_CONDITIONS: ReadonlySet<string> = new Set(['rainy', 'pouring', 'lightning-rainy', 'snowy-rainy', 'hail']);
+/** The Home Assistant conditions that count as rain (kept with the page's rain record). */
+export { RAIN_CONDITIONS } from '../../core/rain-record';
+
+/**
+ * Fireflies come out on dry summer evenings (review m12b M6: not all night):
+ * from a little before sunset until the sky is fully dark, which is about
+ * when the sun is 12 degrees down.
+ */
+export function firefliesOut(elevation: number, minute: number, rise: number, set: number): boolean {
+  const evening = minute >= (rise + set) / 2 || minute < rise - 60;
+  return evening && elevation < 4 && elevation > -12;
+}
 
 /** How strongly the rainbow shows this long after the rain stopped, 0 to 1. */
 export function rainbowStrength(sinceRainMs: number): number {
@@ -484,6 +494,23 @@ export const ENTRANCE = {
 } as const;
 /** Waking: a quick fade back to the card. */
 export const WAKE_FADE_MS = 260;
+
+/**
+ * Where a part of the info drops in from (review m12 E): far enough above
+ * that its whole box, tilted, starts off the top of the screen, whichever
+ * corner it ends in. `bottom` is its box's bottom edge where it ends.
+ */
+export function dropFrom(bottom: number): string {
+  return `0 ${-Math.ceil(Math.max(0, bottom) + 48)}px`;
+}
+
+/** The sun or moon swinging up from behind the peaks, unseen until its turn (review m12 E). */
+export const SUN_FRAMES: Keyframe[] = [
+  { translate: '-9vw 46vh', scale: '0.7', opacity: 0 },
+  { opacity: 1, offset: 0.2 },
+  { translate: '-3vw 9vh', scale: '0.96', offset: 0.6 },
+  { translate: '0 0', scale: '1', opacity: 1 },
+];
 
 /** A spring as CSS linear() points, the way PlanaVista's motion system draws springs. */
 export function springEase(stiffness: number, damping: number, ms: number): string {

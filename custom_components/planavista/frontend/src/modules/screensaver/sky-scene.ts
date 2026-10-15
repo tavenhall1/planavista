@@ -3,7 +3,7 @@ import { dimRgb } from '../../core/dimming';
 import { boltSource,
   CROWNS, ENTRANCE, ENTRANCE_PACE, LEAFY, LIFE, Light, Rgb, SCENE_MARGIN, Season, clamp, cloudPlan, dimLight, fractal, gustAt,
   hex, horizonAt, lightAt, minuteOfDay, mixRgb, moonPhase, moonPixels, nightLight, rgba, rng, seasonGround, shade, snowFor,
-  springEase, sunPosition, swayAt,
+  springEase, sunPosition, swayAt, SUN_FRAMES, firefliesOut,
 } from './sky';
 
 // The living sky's drawing (spec 3.3), ported from the approved mockup (v4,
@@ -634,10 +634,7 @@ export class SkyScene {
       { delay: E.sheets.delay + gi * E.sheets.step, duration: E.sheets.duration, easing: SETTLE }));
     this._mistHosts.forEach((el, gi) => go(el, [{ translate: '0 110%' }, { translate: '0 0' }],
       { delay: E.mist.delay + gi * E.mist.step, duration: E.mist.duration, easing: SETTLE }));
-    for (const el of [this._sun, this._rays]) {
-      go(el, [{ translate: '-9vw 46vh', scale: '0.7' }, { translate: '-3vw 9vh', scale: '0.96', offset: 0.6 }, { translate: '0 0', scale: '1' }],
-        { ...E.sun, easing: SWING });
-    }
+    for (const el of [this._sun, this._rays]) go(el, SUN_FRAMES, { ...E.sun, easing: SWING });
     this._clouds.filter(c => c.host === this._farHost).forEach((c, i) => {
       const from = c.x + c.w / 2 < this._w / 2 ? -1 : 1;
       go(c.el, [{ translate: `${from * this._w * 0.55}px 0`, opacity: 0 }, { translate: '0 0', opacity: 1 }],
@@ -806,6 +803,8 @@ export class SkyScene {
     this._sunX = sp.x + M;
     // After rain, by day: a paper rainbow, as strong as the time since the rain allows.
     const rainbow = light.sun.day ? clamp(inputs.rainbow ?? 0, 0, 1) : 0;
+    // Its first light is at once (the entrance brings it in); after that it eases between relights.
+    this._rainbow.style.transition = this._rainbow.style.opacity === '' ? 'none' : '';
     this._rainbow.style.opacity = String(rainbow);
     const jobs: Array<() => void> = [
       () => this._drawSun(),
@@ -1121,7 +1120,9 @@ export class SkyScene {
     this._moveBirds(t, dt);
     // Fireflies on dry summer evenings, swaying with the near hill.
     const scene = this._inputs?.weather;
-    const show = this._life && !!L && this._season === 'summer' && L.e < 4 && !!scene && scene.rain === 0 && scene.snow === 0;
+    const inputs = this._inputs;
+    const show = this._life && !!L && this._season === 'summer' && !!scene && scene.rain === 0 && scene.snow === 0 && !!inputs
+      && firefliesOut(L.e, inputs.now.getHours() * 60 + inputs.now.getMinutes(), inputs.rise, inputs.set);
     if (this._fireflies.hidden === show) this._fireflies.hidden = !show;
     if (show) {
       this._fireflies.style.transform = this._ridges[GROUPS - 1].style.transform;

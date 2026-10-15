@@ -89,6 +89,8 @@ export const skyStyles = css`
   }
   .pvs-rainbow {
     opacity: 0;
+    /* It's re-lit once a minute: eased between, so it comes and goes smoothly (review m12b M1). */
+    transition: opacity 50s linear;
   }
   /* Summer evenings: small fireflies low among the trees, at the pines' scale. Their glow and wander are the
      browser's own animations, so a Raspberry Pi spends nothing on them frame to frame. */

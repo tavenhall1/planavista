@@ -4,6 +4,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { getPlanaVistaData } from '../utils/ha-utils';
+import { noteRain, rainAt } from '../core/rain-record';
 import type { HouseholdView } from '../core/household';
 import { CORNER_MS, infoCorner, trialTime, weatherScene } from '../core/screensaver';
 import { DIM_DEFAULT, dimLevel, mediaBrightness } from '../core/dimming';
@@ -15,7 +16,7 @@ import { eventsOn } from '../modules/chores/calendar-ties';
 import { screensaverInfo } from '../modules/screensaver/info';
 import { SkyScene } from '../modules/screensaver/sky-scene';
 import {
-  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, rainbowStrength, rainbowWeather, seasonAt, springEase,
+  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropFrom, rainbowStrength, rainbowWeather, seasonAt, springEase,
 } from '../modules/screensaver/sky';
 import { skyStyles } from '../modules/screensaver/sky-styles';
 import { onPageHousehold } from './page-household';
@@ -25,22 +26,6 @@ import { screensaver } from './screensaver-controller';
 const hassNow = (): HomeAssistant | undefined =>
   (document.querySelector('home-assistant') as (HTMLElement & { hass?: HomeAssistant }) | null)?.hass;
 
-/** When it last rained here, for the rainbow afterwards (0.12.0): kept by the page so a reload remembers. */
-const RAIN_KEY = 'planavista.rainAt';
-function rainAt(): number {
-  try {
-    return Number(localStorage.getItem(RAIN_KEY)) || 0;
-  } catch {
-    return 0;
-  }
-}
-function noteRain(at: number): void {
-  try {
-    localStorage.setItem(RAIN_KEY, String(at));
-  } catch {
-    // A private window keeps no storage: the rainbow just doesn't come after a reload.
-  }
-}
 const BOUNCY = springEase(260, 13, 1000);
 
 /** sun.sun's next rising or setting as a minute of the day, or the fallback (spec 3.3: 7:00 AM and 7:00 PM). */
@@ -341,10 +326,14 @@ export class PvScreensaver extends LitElement {
       go(info, [{ opacity: 0 }, { opacity: 1 }], { delay: 0, duration: 500 / ENTRANCE_PACE }, 'ease-out');
       return;
     }
-    go(info?.querySelector('.clock'), [{ translate: '0 -150%' }, { translate: '0 0' }], ENTRANCE.clock, BOUNCY);
+    // Each drops from just above the screen, whichever corner it ends in (review m12 E).
+    const above = (el: Element | null | undefined) => dropFrom(el?.getBoundingClientRect().bottom ?? window.innerHeight);
+    const clock = info?.querySelector('.clock');
+    const card = info?.querySelector('.card');
+    go(clock, [{ translate: above(clock) }, { translate: '0 0' }], ENTRANCE.clock, BOUNCY);
     go(info?.querySelector('.line'), [{ opacity: 0, translate: '0 -0.7em' }, { opacity: 1, translate: '0 0' }], ENTRANCE.line, 'ease-out');
-    go(info?.querySelector('.card'), [
-      { translate: '0 -70vh', rotate: '-8deg' },
+    go(card, [
+      { translate: above(card), rotate: '-8deg' },
       { translate: '0 0', rotate: '5deg', offset: 0.5 },
       { rotate: '-2.5deg', offset: 0.7 },
       { rotate: '1deg', offset: 0.86 },

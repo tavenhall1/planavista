@@ -7,6 +7,7 @@
  * page ignores that burst. Where the household picked a Screen entity for this
  * screen, it is dimmed by day and turned off at night, and put back on waking.
  */
+import { lookForRain } from '../core/rain-record';
 import type { HouseholdView } from '../core/household';
 import { guardPageTaps } from '../core/press-guard';
 import {
@@ -283,6 +284,13 @@ type HassLike = {
   callService?: (domain: string, service: string, data: Record<string, unknown>) => Promise<unknown>;
 };
 
+/** The household's weather entity's condition now, for the rain record. */
+function weatherNow(): string | undefined {
+  const hass = hassNow() as unknown as { states?: Record<string, { state: string; attributes?: Record<string, unknown> }> } | undefined;
+  const display = hass?.states?.['sensor.planavista_config']?.attributes?.display as { weather_entity?: string } | undefined;
+  return display?.weather_entity ? hass?.states?.[display.weather_entity]?.state : undefined;
+}
+
 const hassNow = (): HassLike | undefined => (document.querySelector('home-assistant') as (HTMLElement & { hass?: HassLike }) | null)?.hass;
 
 /** The element shown over the page (pv-screensaver), and the lock it holds. */
@@ -387,6 +395,8 @@ export function startScreensaver(): void {
   window.setInterval(() => {
     followPageConnection(hassNow()?.connection as HouseholdConnection | undefined);
     screensaver.tick(Date.now());
+    // Rain is noted while the page is open, for the rainbow after it (review m12a M2).
+    lookForRain(weatherNow(), Date.now());
   }, 1000);
   // The touch or key that wakes it presses nothing beneath: the rest of it is stopped before the page hears it.
   const pressed = (event: PointerEvent) => {
