@@ -102,6 +102,7 @@ export class PvChoreTile extends LitElement {
     :host([large]) .hold {
       min-height: 300px;
       gap: 10px;
+      justify-content: center;
     }
 
     /* A narrow tile (a phone's two across): the ring starts below the corner controls, which sat on its arc (round 2). */

@@ -618,6 +618,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   /** Module notes from the old card, kept until each module shows (round 4: chores waits for the household). */
   private _resumes: Record<string, unknown> | null = null;
   private _resumesUntil = 0;
+  /** The latest a note may wait for the household (round 5: after a restart it can take a while). */
+  private _resumesBy = 0;
+  /** The card said what closed, so a module says nothing over it (round 5). */
+  private _resumeQuiet = false;
 
   /** What the old card for this place had open when Home Assistant made this one (round 3). */
   private _takeHandoff(): void {
@@ -625,9 +629,11 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     if (!note) return;
     const toast = handoffToast(note);
     if (toast) this._toast = toast;
+    this._resumeQuiet = !!toast;
     if (Object.keys(note.modules).length === 0) return;
     this._resumes = { ...note.modules };
-    this._resumesUntil = Date.now() + TAKE_MS;
+    this._resumesUntil = 0; // from when the household answers
+    this._resumesBy = Date.now() + 120_000;
     this.requestUpdate();
   }
 
@@ -635,6 +641,13 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   private _resumeModule(): void {
     const resumes = this._resumes;
     if (!resumes) return;
+    if (Date.now() > this._resumesBy) {
+      this._resumes = null;
+      return;
+    }
+    // Modules show once the household answers, which after a restart can take a while.
+    if (!this._household.view) return;
+    if (this._resumesUntil === 0) this._resumesUntil = Date.now() + TAKE_MS;
     if (Date.now() > this._resumesUntil) {
       this._resumes = null;
       return;
@@ -644,7 +657,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     const mine = resumes[module.localName];
     delete resumes[module.localName];
     if (Object.keys(resumes).length === 0) this._resumes = null;
-    module.resume?.(mine);
+    module.resume?.(mine, { quiet: this._resumeQuiet });
   }
 
   /** What this card has open, left for the card Home Assistant makes again after a reconnect. */

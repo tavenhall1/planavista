@@ -27,9 +27,12 @@ describe("each of the board's sheets gets its own element", () => {
 
   // Round 4 (r4b B2, B4): a reconnect took the reveal mid-celebration, and a check-off's toast.
   it("hands the new card what the board had open: a sheet, the reveal, the toast showing", () => {
-    expect(boardHandoff({ sheet: null, reveal: null, toast: null })).toBeUndefined();
-    expect(boardHandoff({ sheet: { kind: 'quick_add' }, reveal: 'dana', toast: 'Done.' })).toEqual({ closed: 'New chore', reveal: 'dana', toast: 'Done.' });
-    expect(boardHandoff({ sheet: null, reveal: 'dana', toast: null })).toEqual({ reveal: 'dana' });
+    expect(boardHandoff({ sheet: null, reveal: null, toast: null, myDay: null })).toBeUndefined();
+    expect(boardHandoff({ sheet: { kind: 'quick_add' }, reveal: 'dana', toast: 'Done.', myDay: null }))
+      .toEqual({ closed: 'New chore', reveal: 'dana', toast: 'Done.' });
+    expect(boardHandoff({ sheet: null, reveal: 'dana', toast: null, myDay: null })).toEqual({ reveal: 'dana' });
+    // Round 5 (r5b B7): a reconnect took My day back to the first person.
+    expect(boardHandoff({ sheet: null, reveal: null, toast: null, myDay: 'dana' })).toEqual({ myDay: 'dana' });
   });
 
   it('says what closed first, else the toast that was showing', () => {
@@ -43,6 +46,8 @@ describe("each of the board's sheets gets its own element", () => {
     const module = readFileSync(fileURLToPath(new URL('../src/modules/chores/pv-chores-module.ts', import.meta.url)), 'utf-8');
     expect(module).toMatch(/handoff\(\): BoardHandoff \| undefined \{\s*return boardHandoff\(/);
     expect(module).toMatch(/const words = handoffWords\(n\);/);
+    // Round 5 (r5a A7): with the card's own word (the keypad closed), the board says nothing over it.
+    expect(module).toMatch(/if \(words && !options\?\.quiet\)/);
   });
 
   it('the same sheet changing (busy, its history loading) keeps its element, so nothing typed is lost', () => {

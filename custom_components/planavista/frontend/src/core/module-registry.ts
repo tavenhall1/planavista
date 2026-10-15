@@ -94,8 +94,8 @@ export interface ModuleElement extends HTMLElement {
   moduleAction?(id: string): void;
   /** What it has open, for the card Home Assistant makes again after a reconnect (core/handoff.ts). */
   handoff?(): unknown;
-  /** The old card's `handoff()`, given to the new card's module once it shows. */
-  resume?(note: unknown): void;
+  /** The old card's `handoff()`, given to the new card's module once it shows; `quiet` when the card said what closed. */
+  resume?(note: unknown, options?: { quiet?: boolean }): void;
 }
 
 /** A feature area the card hosts (Calendar today; Chores and Lists later). */

@@ -23,13 +23,18 @@ export interface BoardHandoff {
   reveal?: string;
   /** The toast that was showing (its buttons answered to the old card). */
   toast?: string;
+  /** Whose My day was picked (round 5). */
+  myDay?: string;
 }
 
-export function boardHandoff(open: { sheet: SheetLike | null; reveal: string | null; toast: string | null }): BoardHandoff | undefined {
+export function boardHandoff(open: {
+  sheet: SheetLike | null; reveal: string | null; toast: string | null; myDay: string | null;
+}): BoardHandoff | undefined {
   const note: BoardHandoff = {
     ...(open.sheet ? { closed: sheetName(open.sheet) } : {}),
     ...(open.reveal ? { reveal: open.reveal } : {}),
     ...(open.toast ? { toast: open.toast } : {}),
+    ...(open.myDay ? { myDay: open.myDay } : {}),
   };
   return Object.keys(note).length ? note : undefined;
 }

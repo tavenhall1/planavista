@@ -602,13 +602,15 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   handoff(): BoardHandoff | undefined {
     return boardHandoff({
       sheet: this._sheet, reveal: this._openReveal?.detail.model.memberId ?? null, toast: this._toast?.text ?? null,
+      myDay: this._myDayMember ?? null,
     });
   }
 
-  resume(note: unknown): void {
+  resume(note: unknown, options?: { quiet?: boolean }): void {
     const n = note && typeof note === 'object' ? (note as BoardHandoff) : null;
     const words = handoffWords(n);
-    if (words) this.showToast({ id: `handoff-${Date.now()}`, text: words });
+    if (words && !options?.quiet) this.showToast({ id: `handoff-${Date.now()}`, text: words });
+    if (typeof n?.myDay === 'string' && this.household?.members.some(m => m.id === n.myDay)) this._myDayMember = n.myDay;
     if (typeof n?.reveal === 'string') this._replayAfter = { member: n.reveal, until: Date.now() + 15_000 };
     this.requestUpdate();
   }

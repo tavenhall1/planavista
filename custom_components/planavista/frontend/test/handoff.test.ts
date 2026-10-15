@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { Handoffs, REBUILD_MS, TAKE_MS, handoffToast } from '../src/core/handoff';
 
@@ -54,6 +56,16 @@ describe('a card rebuilt after a reconnect picks up where the old one was', () =
     handoffs.dropped(1_000);
     handoffs.leave(KEY, { pin: false, toast: null, modules: {} }, 2_000);
     expect(handoffs.take(KEY, 2_100)).toBeNull();
+  });
+
+  // Round 5 (r5a A6, A7): after a Home Assistant restart the household came after the note's
+  // 15 s; and the card's toast and the board's sat on top of each other.
+  it('the card keeps module notes until the household answers, and quiets the board when it spoke', () => {
+    const card = readFileSync(fileURLToPath(new URL('../src/shell/planavista-card.ts', import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
+    const resume = card.slice(card.indexOf('  private _resumeModule(): void {'));
+    const body = resume.slice(0, resume.indexOf('\n  }\n'));
+    expect(body).toMatch(/if \(!this\._household\.view\) return;/);
+    expect(body).toMatch(/module\.resume\?\.\(mine, \{ quiet: this\._resumeQuiet \}\);/);
   });
 
   it('says what closed: the keypad first, else the toast that was showing', () => {

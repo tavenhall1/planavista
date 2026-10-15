@@ -45,8 +45,9 @@ describe("a picture tile's corner controls clear its ring", () => {
       expect(hold).toMatch(/height: 100%;/);
       expect(hold).toMatch(/justify-content: flex-start;/);
     }
-    // The large present on My day keeps its content in the middle.
+    // The large present and the large tile on My day keep their content in the middle (round 5, r5b B6).
     expect(present).toMatch(/:host\(\[large\]\) \.hold \{[^}]*justify-content: center;/);
+    expect(tile).toMatch(/:host\(\[large\]\) \.hold \{[^}]*justify-content: center;/);
   });
 
   it('clears both corners from the narrowest tile up, and the wider tiles keep their spacing', () => {
