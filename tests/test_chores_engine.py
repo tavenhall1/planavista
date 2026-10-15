@@ -758,6 +758,44 @@ def test_a_plan_chore_never_keeps_a_finished_mark() -> None:
     assert any(k.startswith(f"{added['id']}|dana|day:") for k in keys(engine, "dana", SCENE))
 
 
+def test_a_send_back_before_its_due_day_is_judged_as_the_board_will_show_it() -> None:
+    """Round 15 (r15a I1): judged by its due day while that was still ahead, it said Away and went back."""
+    books = once("return_the_books", "Return the books", ["dana"], by="2026-10-20")
+    engine = sample_engine(activities=[books], settings={"auto_approve": "never"})
+    engine.complete(SCENE, key="return_the_books|dana|once|0", by="dana", source="tablet")
+    engine.member("dana")["away"] = [{"from": "2026-10-19", "to": "2026-10-20", "note": None}]
+    [check_off] = [r for r in engine.open_requests(SCENE) if r["kind"] == "completion"]
+    assert (check_off["stays_excused"], check_off["away"]) == (False, False)
+
+
+def test_two_missed_rule_changes_keep_the_first_for_its_days() -> None:
+    """Round 15 (r15a M1): the second change re-read the days before the first by the newer one."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "carry_over"})
+    engine.save_settings(at(10, 13, 10), {"missed": "make_up"})
+    engine.save_settings(at(10, 15, 10), {"missed": "strict"})
+    assert [engine.policy_on(date(2026, 10, d)) for d in (13, 14, 15, 16)] == ["carry_over", "make_up", "make_up", "strict"]
+
+
+def test_a_carried_copy_whose_day_is_later_marked_away_is_owed_nothing() -> None:
+    """Round 15 (r15a I3): it showed Away that week, then came back owed the next."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 14, 9))
+    assert any(c["key"] == FISH for c in engine.log["carried"])
+    engine.member("dana")["away"] = [{"from": "2026-10-13", "to": "2026-10-13", "note": None}]
+    engine.catch_up(at(10, 20, 9))
+    later = [s["period"] for s in engine.log["summaries"]
+             if s["member"] == "dana" and s["period"].startswith("day:") and s["period"] > "day:2026-10-13" and FISH in (s.get("keys") or {})]
+    assert later == [] and FISH not in keys(engine, "dana", at(10, 20, 9))
+
+
+def test_overdue_copies_wait_without_counting_on_an_away_day() -> None:
+    """Round 15 (r15a M3): Away, with "0 of 1 today" from an overdue copy."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 14, 9))
+    engine.member("dana")["away"] = [{"from": "2026-10-14", "to": "2026-10-14", "note": None}]
+    assert engine.board(at(10, 14, 10))["members"]["dana"]["today"]["due"] == 0
+
+
 def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
     """Round 10 (r10a M2): it was refused with the words for an unchecked check-off."""
     engine = sample_engine()

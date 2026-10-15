@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 import re
+from typing import Any
 
 WEEKDAY_CODES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 FIRST_DAYS = {"monday": 0, "sunday": 6}
@@ -53,42 +54,70 @@ class WeekRule:
     first_day: str = "monday"
     before: str | None = None
     since: date | None = None
+    # Older changes, oldest first: each (until, first_day) covers the days before `until` (round 15: a second
+    # change kept only itself, and re-read every earlier week by the newer rule).
+    earlier: tuple[tuple[date, str], ...] = ()
+
+    def _segments(self) -> tuple[tuple[date, str], ...]:
+        last = ((self.since, self.before),) if self.since is not None and self.before else ()
+        return self.earlier + last
 
     def first_day_on(self, day: date) -> str:
         """The first-day setting that weeks follow on `day`."""
-        if self.since is not None and day < self.since and self.before:
-            return self.before
+        for until, first_day in self._segments():
+            if day < until:
+                return first_day
         return self.first_day
+
+    def _bounds(self, day: date) -> tuple[date | None, date | None]:
+        low = high = None
+        for until, _first_day in self._segments():
+            if until <= day:
+                low = until
+            elif high is None:
+                high = until
+        return low, high
 
     def start(self, day: date) -> date:
         """The first chore day of the week holding `day`."""
-        if self.since is not None and day < self.since:
-            return _rule_start(day, self.first_day_on(day))
-        start = _rule_start(day, self.first_day)
-        if self.since is not None and start < self.since:
-            return self.since
-        return start
+        low, _high = self._bounds(day)
+        start = _rule_start(day, self.first_day_on(day))
+        return low if low is not None and start < low else start
 
     def end(self, day: date) -> date:
         """The first chore day after the week holding `day`."""
-        if self.since is not None and day < self.since:
-            return min(_rule_start(day, self.first_day_on(day)) + timedelta(days=7), self.since)
-        return _rule_start(day, self.first_day) + timedelta(days=7)
+        _low, high = self._bounds(day)
+        end = _rule_start(day, self.first_day_on(day)) + timedelta(days=7)
+        return high if high is not None and end > high else end
+
+    @classmethod
+    def _of(cls, segments: list[tuple[date, str]], first_day: str) -> WeekRule:
+        if not segments:
+            return cls(first_day)
+        until, before = segments[-1]
+        return cls(first_day, before=before, since=until, earlier=tuple(segments[:-1]))
 
     def changed_to(self, first_day: str, today: date) -> WeekRule:
-        """The rule after the setting changes on `today`: from the next week boundary on."""
-        current = self.first_day_on(today)
-        if first_day == current:
-            return WeekRule(first_day) if self.first_day != current else self
-        return WeekRule(first_day, before=current, since=self.end(today))
+        """The rule after the setting changes on `today`: from the next week boundary on.
 
-    def as_dict(self) -> dict[str, str | None]:
-        """How the log stores the rule."""
-        return {
+        Boundaries already passed stay; a change still ahead is replaced (or undone).
+        """
+        passed = [s for s in self._segments() if s[0] <= today]
+        base = self._of(passed, self.first_day_on(today))
+        if first_day == base.first_day:
+            return base
+        return self._of([*passed, (base.end(today), base.first_day)], first_day)
+
+    def as_dict(self) -> dict[str, Any]:
+        """How the log stores the rule (`earlier` only when there were two changes or more)."""
+        stored: dict[str, Any] = {
             "first_day": self.first_day,
             "before": self.before,
             "since": self.since.isoformat() if self.since else None,
         }
+        if self.earlier:
+            stored["earlier"] = [{"until": until.isoformat(), "first_day": day} for until, day in self.earlier]
+        return stored
 
     @classmethod
     def from_dict(cls, data: object) -> WeekRule:
@@ -100,7 +129,14 @@ class WeekRule:
             since = date.fromisoformat(data["since"]) if data.get("since") else None
         except (TypeError, ValueError):
             since = None
-        return cls(data["first_day"], before if since else None, since if before else None)
+        earlier: list[tuple[date, str]] = []
+        for entry in data.get("earlier") or []:
+            try:
+                if isinstance(entry, dict) and entry.get("first_day") in FIRST_DAYS:
+                    earlier.append((date.fromisoformat(entry["until"]), entry["first_day"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return cls(data["first_day"], before if since else None, since if before else None, tuple(sorted(earlier)))
 
 
 @dataclass(frozen=True)

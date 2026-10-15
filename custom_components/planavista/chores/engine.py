@@ -233,6 +233,10 @@ class ChoresEngine:
     def policy_on(self, day: date) -> str:
         """The missed policy for chore day `day`: a change takes effect at the next day boundary."""
         policy = self.log.get("policy") or {}
+        for entry in policy.get("earlier") or []:
+            # Older changes, oldest first (round 15: a second change re-read the days before the first).
+            if isinstance(entry, Mapping) and entry.get("until") and entry.get("missed") and day < _day(entry["until"]):
+                return entry["missed"]
         since, before = policy.get("since"), policy.get("before")
         if since and before and day < _day(since):
             return before
@@ -453,6 +457,9 @@ class ChoresEngine:
             if done_earlier:
                 continue
             occ = self._carried_occurrence(record)
+            person = self.member(record["member"])
+            if person is not None and away_on(person, _day(record["since"])) is not None:
+                continue  # its own day became an away day after it carried: nothing was owed (round 15)
             overrides = index.overrides.get(key, {})
             if overrides.get("excused"):
                 occ = replace(occ, excused=True)
@@ -461,12 +468,16 @@ class ChoresEngine:
                 occ = replace(occ, member=overrides["assignee"])
             if completion is not None and completion.get("member") != occ.member:
                 completion = None
+            status = self._status(occ, completion, day)
+            holder = self.member(occ.member)
+            if status in OPEN and holder is not None and away_on(holder, day) is not None:
+                status = "away"  # away today, an overdue copy waits without counting (round 15)
             items[occ.member].append(
                 Item(
                     occ,
                     "overdue",
                     None,
-                    self._status(occ, completion, day),
+                    status,
                     completion,
                     True,
                     overdue_since=_day(record["since"]),
@@ -713,10 +724,13 @@ class ChoresEngine:
                 activity = self.activity(c["chore"])
                 missed = False
                 occ = self._past_occurrence(c["occurrence"])
-                # Sent back, an occurrence owed nothing stays that way (rounds 12 and 13): never missed.
-                away = self._away_when_due(occ, self._day_of(c["at"]))
+                over = now is not None and self.period_over(c["occurrence"], now)
+                # Sent back, an occurrence owed nothing stays that way (rounds 12 and 13): never missed. Judged as
+                # the board will show it: by its due day once that's over, else today (round 15).
+                away = (self._away_when_due(occ, self._day_of(c["at"])) if over
+                        else occ is not None and now is not None and self._is_away(occ, self.today(now)))
                 owed = not (away or self._excused(c["occurrence"]))
-                if owed and now is not None and self.period_over(c["occurrence"], now):
+                if owed and over:
                     due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
                     missed = due_day is not None and self.policy_on(due_day) != "carry_over"
                 found.append({
@@ -1591,7 +1605,8 @@ class ChoresEngine:
         if done_day >= today:
             return  # its day is still going: the board shows it again
         occ = self._past_occurrence(key)
-        if self._owes_nothing(key, occ, done_day):
+        # Away counts once its due day is over; before it, the board puts it back and so it goes back (round 15).
+        if self._excused(key) or (self.period_over(key, now) and self._away_when_due(occ, done_day)):
             # Never owed (a skip allowed, a sick day, its person away): sent back it stays that way, and the
             # days that counted it waiting count it no more (round 12: excused turned into a miss; round 13: away).
             excused = self._excused(key)
@@ -2068,7 +2083,14 @@ class ChoresEngine:
         out = Outcome("saved", {"settings": dict(settings)}, changed={"plan"})
         if settings["missed"] != self.settings["missed"]:
             today = self.today(now)
-            self.log["policy"] = {"before": self.policy_on(today), "since": (today + timedelta(days=1)).isoformat()}
+            old = self.log.get("policy") or {}
+            earlier = [e for e in (old.get("earlier") or []) if isinstance(e, Mapping)]
+            if old.get("since") and old.get("before") and _day(old["since"]) <= today:
+                earlier.append({"until": old["since"], "missed": old["before"]})  # it covered its days, and keeps them
+            self.log["policy"] = {
+                "before": self.policy_on(today), "since": (today + timedelta(days=1)).isoformat(),
+                **({"earlier": earlier} if earlier else {}),
+            }
             out.changed.add("log")
         self.plan["settings"] = settings
         return out
