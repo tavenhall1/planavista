@@ -50,6 +50,8 @@ export class PvChoresDaySheet extends LitElement {
   @property({ attribute: false }) day: DayView | null = null;
   @property({ type: Boolean }) failed = false;
   @property({ type: Boolean }) canExcuse = false;
+  /** Being excused now (the PIN, the save): its link takes no second tap, and comes back if nothing was (round 6). */
+  @property({ attribute: false }) excusing: ReadonlySet<string> = new Set();
   @property({ attribute: false }) names: (id: string) => string = id => id;
 
   private _motion = new SheetMotion(this);
@@ -164,7 +166,7 @@ export class PvChoresDaySheet extends LitElement {
                   <span class="pic" aria-hidden="true">${chorePicture(item.icon, item.name)}</span>
                   <span class="name">${item.name}</span>
                   ${badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing}
-                  ${isPast(item) && item.status === 'missed' && this.canExcuse && !this._excused.has(item.key) ? html`
+                  ${isPast(item) && item.status === 'missed' && this.canExcuse && !this.excusing.has(item.key) ? html`
                     <button class="link" type="button" @click=${() => this._excuse(item)}>Excuse it</button>
                   ` : nothing}
                 </li>
@@ -177,13 +179,8 @@ export class PvChoresDaySheet extends LitElement {
     `;
   }
 
-  /** Excused here: its link takes no second tap while the day reloads (round 5). */
-  private _excused = new Set<string>();
-
   private _excuse(item: PastItem): void {
-    if (this._excused.has(item.key)) return;
-    this._excused.add(item.key);
-    this.requestUpdate();
+    if (this.excusing.has(item.key)) return;
     this.dispatchEvent(new CustomEvent('pv-day-excuse', { detail: { occurrence: item.key, name: item.name }, bubbles: true, composed: true }));
   }
 

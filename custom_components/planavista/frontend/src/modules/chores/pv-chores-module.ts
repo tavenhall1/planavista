@@ -37,10 +37,10 @@ import { needsOk } from './overlay';
 import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
-import { InboxRow, answeredText, inboxGroups, reviewQuestion } from './inbox-derive';
+import { InboxRow, answeredText, approveAllSummary, inboxGroups, reviewQuestion } from './inbox-derive';
 import type { ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
-import { errorMessage } from '../../core/ws-api';
+import { errorCode, errorMessage } from '../../core/ws-api';
 import './pv-surprise-present';
 import './pv-surprise-reveal';
 import type { SurpriseOpenDetail } from './pv-surprise-present';
@@ -211,17 +211,26 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** One answer from the inbox: its own review, attributed to the parent (spec 13.7). */
   private async _review(detail: ReviewDetail): Promise<boolean> {
-    const { row, allow, note } = detail;
+    const result = await this._answer(detail.row, detail.allow, detail.note ?? null);
+    detail.settled?.(result === 'done');
+    return result === 'done';
+  }
+
+  /** One answer, and how it went: answered elsewhere meanwhile is `gone`, not a failure (round 6). */
+  private async _answer(row: InboxRow, allow: boolean, note: string | null, quietGone = false): Promise<'done' | 'cancelled' | 'gone' | 'failed'> {
     const api = this.service?.api;
-    if (!api || !(await this.asParent(reviewQuestion(row, allow)))) return false;
+    if (!api || !(await this.asParent(reviewQuestion(row, allow)))) return 'cancelled';
     this._reviewing = new Set([...this._reviewing, row.id]);
     try {
-      await api.review(row.id, allow ? 'allow' : 'decline', note ?? null);
+      await api.review(row.id, allow ? 'allow' : 'decline', note);
       this.showToast({ id: `review-${row.id}`, text: answeredText(row, allow, note) });
-      return true;
+      return 'done';
     } catch (err) {
-      this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
-      return false;
+      const gone = errorCode(err) === 'unknown_request' || errorCode(err) === 'request_closed';
+      if (!(gone && quietGone)) {
+        this.showToast({ id: `review-${row.id}-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+      }
+      return gone ? 'gone' : 'failed';
     } finally {
       const next = new Set(this._reviewing);
       next.delete(row.id);
@@ -230,13 +239,22 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Approve all: each chore to check approved on its own, so each is attributed and stands alone. */
-  private async _approveAll(rows: InboxRow[]): Promise<void> {
+  /** Each row it named, past any answered elsewhere meanwhile; a cancelled PIN or a failure stops it (round 6). */
+  private async _approveAll(rows: InboxRow[], settled?: (answered: string[]) => void): Promise<void> {
     let approved = 0;
+    let gone = 0;
+    const answered: string[] = [];
     for (const row of rows) {
-      if (await this._review({ row, allow: true })) approved += 1;
+      const result = await this._answer(row, true, null, true);
+      if (result === 'done') {
+        approved += 1;
+        answered.push(row.id);
+      } else if (result === 'gone') gone += 1;
       else break;
     }
-    if (approved > 1) this.showToast({ id: `approved-${Date.now()}`, text: `Approved ${approved} chores.` });
+    settled?.(answered);
+    const text = approveAllSummary(approved, gone);
+    if (text) this.showToast({ id: `approved-${Date.now()}`, text });
   }
 
   private async _quickAdd(draft: QuickAddDraft): Promise<void> {
@@ -488,10 +506,15 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Excuse it on a missed one (spec 13.5): its day and the streak hold. */
+  /** Being excused now: the day sheet's link takes no second tap, and comes back if nothing was (round 6). */
+  @state() private _excusing: ReadonlySet<string> = new Set();
+
   private async _excuseMissed(occurrence: string, name: string, member: string): Promise<void> {
     const api = this.service?.api;
-    if (!api || !(await this.asParent(`Who's excusing ${name}?`))) return;
+    if (!api || this._excusing.has(occurrence)) return;
+    this._excusing = new Set([...this._excusing, occurrence]);
     try {
+      if (!(await this.asParent(`Who's excusing ${name}?`))) return;
       await api.excuseMissed(occurrence);
       const who = this._member(member)?.name;
       this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${who ? ` ${who}'s streak holds.` : ''}` });
@@ -499,6 +522,10 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       if (this._sheet?.kind === 'day') this._openDay(this._sheet.member, this._sheet.date, true);
     } catch (err) {
       this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
+    } finally {
+      const next = new Set(this._excusing);
+      next.delete(occurrence);
+      this._excusing = next;
     }
   }
 
@@ -1150,7 +1177,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       const board = this.service?.board();
       if (!member || !board) return nothing;
       return html`
-        <pv-chores-day-sheet .layout=${this.layout} .member=${member} date=${sheet.date} today=${board.today}
+        <pv-chores-day-sheet .layout=${this.layout} .member=${member} date=${sheet.date} today=${board.today} .excusing=${this._excusing}
           .day=${sheet.day} ?failed=${sheet.failed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
           .names=${(id: string) => this._member(id)?.name ?? id}
           @pv-day-excuse=${(e: CustomEvent<{ occurrence: string; name: string }>) => void this._excuseMissed(e.detail.occurrence, e.detail.name, sheet.member)}
@@ -1190,7 +1217,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       return html`
         <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
           @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}
-          @pv-approve-all=${(e: CustomEvent<{ ids: string[] }>) => void this._approveAll(groups.chores.filter(r => e.detail.ids.includes(r.id)))}
+          @pv-approve-all=${(e: CustomEvent<{ ids: string[]; settled?: (answered: string[]) => void }>) =>
+            void this._approveAll(groups.chores.filter(r => e.detail.ids.includes(r.id)), e.detail.settled)}
           @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chores-inbox>
       `;
     }

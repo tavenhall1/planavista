@@ -89,14 +89,18 @@ export function reviewQuestion(row: Pick<InboxRow, 'kind'>, allow: boolean): str
 
 /** How long a row answered here stays where it was, so nothing slides under the finger (round 5). */
 export const ANSWERED_MS = 1200;
+/** The longest a row waits for its answer (a PIN, the save) before its buttons come back (round 6). */
+export const PENDING_MS = 30_000;
 
 export interface Answered {
   allow: boolean;
-  /** When it was answered (ms, the page's clock). */
+  /** When it was tapped, or answered once `done` (ms, the page's clock). */
   at: number;
+  /** On its way (the PIN, the save), or answered (round 6: it said Approved before either). */
+  state: 'pending' | 'done';
 }
 
-export type ShownRow = InboxRow & { answered?: 'allowed' | 'declined' };
+export type ShownRow = InboxRow & { answered?: 'pending' | 'allowed' | 'declined' };
 
 /**
  * A group's rows as drawn (round 5, r5b B1): the board's rows in the order they
@@ -114,17 +118,28 @@ export function withAnswered(
     const live = fresh.get(row.id);
     fresh.delete(row.id);
     const answer = answered.get(row.id);
-    if (answer && now - answer.at < ANSWERED_MS) shown.push({ ...(live ?? row), answered: answer.allow ? 'allowed' : 'declined' });
-    else if (live) shown.push(live);
+    const held = answer && now - answer.at < (answer.state === 'pending' ? PENDING_MS : ANSWERED_MS);
+    if (answer && held) {
+      shown.push({ ...(live ?? row), answered: answer.state === 'pending' ? 'pending' : answer.allow ? 'allowed' : 'declined' });
+    } else if (live) shown.push(live);
   }
   return [...shown, ...rows.filter(row => fresh.has(row.id))];
 }
 
 /** What an answered row says in place of its buttons. */
-export function answeredWords(row: Pick<InboxRow, 'kind'>, answered: 'allowed' | 'declined'): string {
+export function answeredWords(row: Pick<InboxRow, 'kind'>, answered: 'pending' | 'allowed' | 'declined'): string {
+  if (answered === 'pending') return 'Saving…';
   if (row.kind === 'completion') return answered === 'allowed' ? 'Approved' : 'Sent back';
   if (row.kind === 'redemption') return answered === 'allowed' ? 'Approved' : 'Declined';
   return answered === 'allowed' ? 'Allowed' : 'Not this time';
+}
+
+/** What Approve all says when it ends (round 6): rows answered elsewhere meanwhile are named, not failures. */
+export function approveAllSummary(approved: number, gone: number): string | null {
+  if (approved > 0 && gone > 0) return `Approved ${approved}. ${gone} ${gone === 1 ? 'was' : 'were'} already answered.`;
+  if (approved > 1) return `Approved ${approved} chores.`;
+  if (approved === 0 && gone > 0) return 'Those were already answered.';
+  return null;
 }
 
 export function answeredText(row: InboxRow, allowed: boolean, note?: string | null): string {

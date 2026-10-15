@@ -22,6 +22,8 @@ export interface ReviewDetail {
   row: InboxRow;
   allow: boolean;
   note?: string | null;
+  /** Told whether it was answered (a PIN cancelled or a refusal is not) (round 6). */
+  settled?: (ok: boolean) => void;
 }
 
 /**
@@ -49,7 +51,8 @@ export class PvChoresInbox extends LitElement {
   @state() private _sendingBack: string | null = null;
   /** Answered here: kept in place for a moment (round 5). */
   @state() private _answered = new Map<string, Answered>();
-  @state() private _confirmAll = false;
+  /** Approve all's question, with the rows it names, frozen when it opened (round 6). */
+  @state() private _confirmRows: InboxRow[] | null = null;
   /** What each group drew last, so answered rows keep their places. */
   private _shown: Record<'chores' | 'requests' | 'rewards', ShownRow[]> = { chores: [], requests: [], rewards: [] };
   private _settle?: number;
@@ -258,10 +261,23 @@ export class PvChoresInbox extends LitElement {
     return this._shown[group];
   }
 
-  private _markAnswered(rows: readonly InboxRow[], allow: boolean): void {
+  /** Tapped: its place held, "Saving…", until the module says how it went. */
+  private _markPending(rows: readonly InboxRow[], allow: boolean): void {
     const at = performance.now();
     const next = new Map(this._answered);
-    for (const row of rows) next.set(row.id, { allow, at });
+    for (const row of rows) next.set(row.id, { allow, at, state: 'pending' });
+    this._answered = next;
+  }
+
+  /** Answered (held a moment more, "Approved"), or not (its buttons back at once). */
+  private _settleRows(ids: readonly string[], answered: ReadonlySet<string>): void {
+    const at = performance.now();
+    const next = new Map(this._answered);
+    for (const id of ids) {
+      const was = next.get(id);
+      if (was && answered.has(id)) next.set(id, { ...was, at, state: 'done' });
+      else next.delete(id);
+    }
     this._answered = next;
     window.clearTimeout(this._settle);
     this._settle = window.setTimeout(() => this.requestUpdate(), ANSWERED_MS + 50);
@@ -295,6 +311,9 @@ export class PvChoresInbox extends LitElement {
     const requests = this._rows('requests');
     const rewards = this._rows('rewards');
     const open = chores.filter(row => !row.answered);
+    // Its question keeps the rows it named, less any answered elsewhere since; none left, no question.
+    const confirm = this._confirmRows?.filter(row => open.some(o => o.id === row.id)) ?? null;
+    if (this._confirmRows && confirm?.length === 0) queueMicrotask(() => { this._confirmRows = null; });
     return html`
       <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal=${this.layout === 'landscape' ? 'false' : 'true'} aria-labelledby="inbox-title"
@@ -313,7 +332,7 @@ export class PvChoresInbox extends LitElement {
         ${chores.length ? html`
           <div class="group"><span>Chores to check</span>
             ${open.length > 1 ? html`<button class="link" type="button" ?disabled=${this.busy.size > 0}
-              @click=${() => { this._confirmAll = true; }}>Approve all (${open.length})</button>` : nothing}
+              @click=${() => { this._confirmRows = open; }}>Approve all (${open.length})</button>` : nothing}
           </div>
           ${chores.map(row => this._row(row))}
         ` : nothing}
@@ -323,22 +342,24 @@ export class PvChoresInbox extends LitElement {
           <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
         </div>
       </div>
-      ${this._confirmAll ? html`
-        <pv-notice-sheet .layout=${this.layout} heading=${`Approve all ${open.length}?`}
+      ${confirm ? html`
+        <pv-notice-sheet .layout=${this.layout} heading=${`Approve all ${confirm.length}?`}
           body="Each one counts as approved by you, with its stars."
-          .actions=${[{ id: 'approve', label: `Approve all ${open.length}`, kind: 'primary' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
-          @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onConfirmAll(e, open)}></pv-notice-sheet>
+          .actions=${[{ id: 'approve', label: `Approve all ${confirm.length}`, kind: 'primary' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+          @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onConfirmAll(e, confirm)}></pv-notice-sheet>
       ` : nothing}
     `;
   }
 
-  /** Approve all asks first: a bulk answer with no Undo (round 5). */
+  /** Approve all asks first: a bulk answer with no Undo (round 5), for the rows it named (round 6). */
   private _onConfirmAll(event: CustomEvent<{ id: string }>, rows: readonly InboxRow[]): void {
     event.stopPropagation();
-    this._confirmAll = false;
+    this._confirmRows = null;
     if (event.detail.id !== 'approve' || rows.length === 0) return;
-    this._markAnswered(rows, true);
-    this.dispatchEvent(new CustomEvent('pv-approve-all', { detail: { ids: rows.map(r => r.id) }, bubbles: true, composed: true }));
+    this._markPending(rows, true);
+    const ids = rows.map(r => r.id);
+    const settled = (answered: string[]) => this._settleRows(ids, new Set(answered));
+    this.dispatchEvent(new CustomEvent('pv-approve-all', { detail: { ids, settled }, bubbles: true, composed: true }));
   }
 
   private _row(row: ShownRow) {
@@ -394,8 +415,9 @@ export class PvChoresInbox extends LitElement {
 
   private _review(row: InboxRow, allow: boolean, note?: string | null): void {
     this._sendingBack = null;
-    this._markAnswered([row], allow);
-    this.dispatchEvent(new CustomEvent<ReviewDetail>('pv-review', { detail: { row, allow, note }, bubbles: true, composed: true }));
+    this._markPending([row], allow);
+    const settled = (ok: boolean) => this._settleRows([row.id], new Set(ok ? [row.id] : []));
+    this.dispatchEvent(new CustomEvent<ReviewDetail>('pv-review', { detail: { row, allow, note, settled }, bubbles: true, composed: true }));
   }
 
   private _key = (event: KeyboardEvent): void => {
