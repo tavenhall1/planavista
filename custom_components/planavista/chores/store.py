@@ -81,6 +81,11 @@ def normalize_plan(data: object) -> dict[str, Any]:
         if isinstance(activities, list)
         else []
     )
+    for activity in doc["activities"]:
+        # A Plan chore never finishes (round 14: one marked finished, edited from a one-time chore before
+        # round 13 or restored from such a file, never showed).
+        if activity["schedule"] == "plan" and activity.get("finished_at"):
+            activity["finished_at"] = None
     return doc
 
 

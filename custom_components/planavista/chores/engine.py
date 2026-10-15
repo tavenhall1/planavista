@@ -569,8 +569,10 @@ class ChoresEngine:
             for member, found in (on_day if on_day is not None else self._items_on(day, index)).items():
                 for item in found:
                     due = item.occ.due
-                    if item.section == "overdue" or due is None:
+                    if due is None:
                         continue
+                    # An overdue copy counts in the week it came due, as anything does (round 14: given more
+                    # time into the next week and carried, it counted in no week); earlier weeks' stay theirs.
                     if week <= clock.due_day(due) < end:
                         result[member][item.occ.key] = item
             day += timedelta(days=1)
@@ -712,7 +714,7 @@ class ChoresEngine:
                 missed = False
                 occ = self._past_occurrence(c["occurrence"])
                 # Sent back, an occurrence owed nothing stays that way (rounds 12 and 13): never missed.
-                away = occ is not None and self._is_away(occ, self._day_of(c["at"]))
+                away = self._away_when_due(occ, self._day_of(c["at"]))
                 owed = not (away or self._excused(c["occurrence"]))
                 if owed and now is not None and self.period_over(c["occurrence"], now):
                     due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
@@ -1748,8 +1750,15 @@ class ChoresEngine:
         summary["closed"] = False
 
     def _owes_nothing(self, key: str, occ: Occurrence | None, day: date) -> bool:
-        """Excused (a skip allowed, Excuse it), or its person away that day: nothing was owed (round 13)."""
-        return self._excused(key) or (occ is not None and self._is_away(occ, day))
+        """Excused (a skip allowed, Excuse it), or its person away when it came due: nothing was owed (round 13)."""
+        return self._excused(key) or self._away_when_due(occ, day)
+
+    def _away_when_due(self, occ: Occurrence | None, day: date) -> bool:
+        """Away by the day it came due, as the rollover judged it (round 14: by the check-off's week, a chore
+        due the next week came out wrong both ways); `day` only for one with no due."""
+        if occ is None:
+            return False
+        return self._is_away(occ, self.clock.due_day(occ.due) if occ.due is not None else day)
 
     def _excused(self, key: str) -> bool:
         """Whether an occurrence stands excused (a skip allowed, Excuse it), by the latest word on it."""
@@ -1964,6 +1973,8 @@ class ChoresEngine:
             taken.add(activity["id"])
             activity["rev"] = 1
             activity.setdefault("created", {"by": by, "source": source, "at": self._stamp(now)})
+            if activity.get("schedule") == "plan" and activity.get("finished_at"):
+                activity["finished_at"] = None  # a Plan chore never finishes (round 14)
             added.append(activity)
         if len(activities) + len(added) > MAX_ACTIVITIES:
             raise ChoreError("too_many")

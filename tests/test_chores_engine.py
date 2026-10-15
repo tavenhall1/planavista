@@ -709,6 +709,55 @@ def test_a_last_time_given_more_time_counts_in_its_new_due_week() -> None:
     assert counted == {"week:2026-10-19": "done"}
 
 
+@pytest.mark.parametrize(("away", "missed"), [
+    (("2026-10-12", "2026-10-14"), False),  # away when it came due
+    (("2026-10-05", "2026-10-11"), True),  # away the week it was checked off, home when it came due
+])
+def test_a_late_send_back_is_judged_away_by_when_it_came_due(away: tuple[str, str], missed: bool) -> None:
+    """Round 14 (r14a A): judged by the week of the check-off, a chore due the next week came out wrong both ways."""
+    craft = once("sort_the_craft_box", "Sort the craft box", ["dana"], by="2026-10-14")
+    engine = sample_engine(at(10, 9), activities=[craft], settings={"auto_approve": "never"})
+    engine.complete(at(10, 9, 10), key="sort_the_craft_box|dana|once|0", by="dana", source="tablet")
+    engine.member("dana")["away"] = [{"from": away[0], "to": away[1], "note": None}]
+    engine.catch_up(at(10, 15, 9))
+    [check_off] = [r for r in engine.open_requests(at(10, 15, 10)) if r["kind"] == "completion"]
+    assert (check_off["missed_if_sent_back"], check_off["stays_excused"]) == (missed, not missed)
+    out = engine.review(at(10, 15, 10), request_id=check_off["id"], allow=False, by="blair")
+    assert ("missed" in [e.type for e in out.events]) is missed
+
+
+def test_a_chore_given_more_time_into_next_week_and_carried_counts_in_that_week() -> None:
+    """Round 14 (r14a B): under Carry it over, Sunday's chore given until Tuesday and carried counted in no week."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 18, 9))
+    key = "feed_the_fish|dana|day:2026-10-18|0"
+    engine.request(at(10, 18, 9), kind="more_time", key=key, by="dana", until=date(2026, 10, 20))
+    [ask] = [r for r in engine.open_requests() if r["kind"] == "more_time"]
+    engine.review(at(10, 18, 9), request_id=ask["id"], allow=True, by="blair")
+    engine.catch_up(at(10, 21, 9))
+    assert any(c["key"] == key for c in engine.log["carried"])
+    # This week's seven, and Sunday's, due Tuesday now.
+    assert engine.board(at(10, 21, 9))["members"]["dana"]["week"]["due"] == 8
+
+
+def test_a_plan_chore_never_keeps_a_finished_mark() -> None:
+    """Round 14 (r14a C): restored with one (exported before round 13's fix), a Plan chore never showed."""
+    from custom_components.planavista.chores.store import normalize_plan
+
+    doc = normalize_plan({"activities": [
+        {"id": "water", "name": "Water", "schedule": "plan", "finished_at": "2026-10-10T03:00:00-05:00"},
+        {"id": "gate", "name": "Gate", "schedule": "once", "finished_at": "2026-10-10T03:00:00-05:00"},
+    ]})
+    assert [a.get("finished_at") for a in doc["activities"]] == [None, "2026-10-10T03:00:00-05:00"]
+    engine = sample_engine(activities=[])
+    restored = {"name": "Water the garden", "schedule": "plan", "assignees": ["dana"],
+                "minimum": {"hours": 0.25, "per": "day"}, "finished_at": "2026-10-10T03:00:00-05:00"}
+    engine.apply_import(SCENE, {"activities_add": [restored], "activities_update": {}, "settings": None}, by="alex", source="tablet")
+    [added] = engine.plan["activities"]
+    assert added.get("finished_at") is None
+    assert any(k.startswith(f"{added['id']}|dana|day:") for k in keys(engine, "dana", SCENE))
+
+
 def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
     """Round 10 (r10a M2): it was refused with the words for an unchecked check-off."""
     engine = sample_engine()
