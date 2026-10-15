@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import type { HomeAssistant } from 'custom-card-helpers';
@@ -15,6 +15,7 @@ import { screensaverInfo } from '../modules/screensaver/info';
 import { SkyScene } from '../modules/screensaver/sky-scene';
 import { skyStyles } from '../modules/screensaver/sky-styles';
 import { onPageHousehold } from './page-household';
+import { HEADING_FONT, ensurePageStyles } from './page-styles';
 import { screensaver } from './screensaver-controller';
 
 const hassNow = (): HomeAssistant | undefined =>
@@ -54,7 +55,7 @@ export class PvScreensaver extends LitElement {
       overflow: hidden;
       background: #a8cdee;
       color: #0d1b2a;
-      font-family: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+      font-family: '${unsafeCSS(HEADING_FONT)}', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
       cursor: none;
       user-select: none;
@@ -118,11 +119,13 @@ export class PvScreensaver extends LitElement {
       letter-spacing: -0.02em;
       color: var(--cream);
       font-variant-numeric: tabular-nums;
+      /* A cut edge, so cream letters still read as a white paper cloud drifts behind them (the kitchen screen). */
       text-shadow:
+        0 0 1px rgba(13, 27, 42, 0.34),
         0 1px 0 rgba(255, 255, 255, 0.55),
-        0 2px 0 rgba(13, 27, 42, 0.16),
-        0 6px 10px rgba(13, 27, 42, 0.16),
-        0 18px 34px rgba(13, 27, 42, 0.14);
+        0 2px 0 rgba(13, 27, 42, 0.24),
+        0 6px 10px rgba(13, 27, 42, 0.2),
+        0 18px 34px rgba(13, 27, 42, 0.16);
       transition: color 4s ease, opacity 4s ease;
     }
     .ampm { font-size: 0.24em; font-weight: 700; letter-spacing: 0.04em; }
@@ -131,7 +134,7 @@ export class PvScreensaver extends LitElement {
       font-size: clamp(17px, 1.75vw, 34px);
       font-weight: 700;
       color: var(--cream);
-      text-shadow: 0 1px 0 rgba(13, 27, 42, 0.18), 0 4px 14px rgba(13, 27, 42, 0.22);
+      text-shadow: 0 0 1px rgba(13, 27, 42, 0.4), 0 1px 0 rgba(13, 27, 42, 0.22), 0 4px 14px rgba(13, 27, 42, 0.28);
       transition: opacity 4s ease;
     }
     .line .dot { opacity: 0.7; padding: 0 0.45em; }
@@ -210,12 +213,13 @@ export class PvScreensaver extends LitElement {
     .quiet { margin: 0; padding: 0.9em 1.1em 0.4em; color: rgba(13, 27, 42, 0.62); font-weight: 700; }
     .chores { margin: 0.7em 1.1em 0; padding: 0.9em 0 1.1em; border-top: 1px dashed rgba(13, 27, 42, 0.14); }
     .chores-title { font-weight: 800; font-size: 0.76em; letter-spacing: 0.01em; color: rgba(13, 27, 42, 0.55); }
-    .rings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5em; margin-top: 0.7em; }
-    .ring { display: grid; justify-items: center; gap: 0.3em; }
+    .rings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5em; margin-top: 0.7em; }
+    .ring { display: grid; justify-items: center; gap: 0.3em; min-width: 0; }
     .ring svg { width: 3.1em; height: 3.1em; }
     .ring .track { stroke: rgba(13, 27, 42, 0.09); }
     .ring .arc { transition: stroke-dashoffset 1.2s ease; }
-    .ring text { font: 800 15px 'Nunito', ui-rounded, system-ui, sans-serif; fill: var(--ink); }
+    .ring text { font: 800 15px '${unsafeCSS(HEADING_FONT)}', ui-rounded, system-ui, sans-serif; fill: var(--ink); }
+    .ring .who { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; font-size: 0.82em; color: rgba(13, 27, 42, 0.78); }
     .ring small { font-weight: 700; font-size: 0.8em; color: rgba(13, 27, 42, 0.6); font-variant-numeric: tabular-nums; }
 
     /* Night: the card goes, the clock dims to a warm low glow. */
@@ -245,6 +249,8 @@ export class PvScreensaver extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    // The rounded face is declared on the page, and a page without the card (Home Assistant's own) has none yet.
+    ensurePageStyles();
     this._offView = onPageHousehold(view => { this._view = view; });
     const hass = hassNow();
     this._chores = new ChoresSubscription(feed => { this._board = feed?.board ?? null; });
@@ -376,6 +382,7 @@ export class PvScreensaver extends LitElement {
                           stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset=${113.1 * (1 - r.done / r.due)} transform="rotate(-90 22 22)"></circle>
                         <text x="22" y="27.5" text-anchor="middle">${r.initial}</text>
                       </svg>
+                      <small class="who">${r.name}</small>
                       <small>${r.done} of ${r.due}</small>
                     </div>
                   `)}

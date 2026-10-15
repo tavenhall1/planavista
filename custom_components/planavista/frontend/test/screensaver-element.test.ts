@@ -117,6 +117,27 @@ describe('the screensaver over everything (0.11.0 review)', () => {
   });
 });
 
+describe('the screensaver on the kitchen screen (0.11.1, from the Pi)', () => {
+  const element = src('shell/pv-screensaver.ts');
+
+  it("draws in PlanaVista's own rounded face, which it installs itself (the Pi has only DejaVu)", () => {
+    expect(element).toMatch(/font-family: '\$\{unsafeCSS\(HEADING_FONT\)\}', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;/);
+    expect(element).toMatch(/\.ring text \{ font: 800 15px '\$\{unsafeCSS\(HEADING_FONT\)\}', ui-rounded, system-ui, sans-serif;/);
+    expect(element).not.toMatch(/'Nunito'/);
+    expect(element).toMatch(/connectedCallback\(\): void \{\n\s+super\.connectedCallback\(\);\n\s+\/\/[^\n]*\n\s+ensurePageStyles\(\);/);
+  });
+
+  it('keeps its letters readable over a white paper cloud, with a cut edge', () => {
+    expect(element).toMatch(/\.clock \{[^}]*text-shadow:\n\s+0 0 1px rgba\(13, 27, 42, 0\.34\),/);
+    expect(element).toMatch(/\.line \{[^}]*text-shadow: 0 0 1px rgba\(13, 27, 42, 0\.4\), 0 1px 0 rgba\(13, 27, 42, 0\.22\), 0 4px 14px rgba\(13, 27, 42, 0\.28\);/);
+  });
+
+  it("names each person under their ring, so two people with one initial aren't confused", () => {
+    expect(element).toMatch(/<small class="who">\$\{r\.name\}<\/small>\n\s+<small>\$\{r\.done\} of \$\{r\.due\}<\/small>/);
+    expect(element).toMatch(/\.ring \.who \{[^}]*text-overflow: ellipsis;/);
+  });
+});
+
 describe("Settings' screensaver picks (0.11.0 review)", () => {
   const page = src('shell/settings/pins-page.ts');
 
