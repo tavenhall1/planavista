@@ -101,7 +101,9 @@ describe('the screensaver over everything (0.11.0 review)', () => {
     expect(element).toMatch(/<dialog class="saver" @cancel=\$\{\(e: Event\) => e\.preventDefault\(\)\}>/);
     expect(element).toMatch(/this\.renderRoot\.querySelector<HTMLDialogElement>\('dialog'\)\?\.showModal\(\);/);
     expect(element).toMatch(/dismiss\(\): void \{\n\s+this\.renderRoot\.querySelector<HTMLDialogElement>\('dialog'\)\?\.close\(\);/);
-    expect(src('shell/screensaver-controller.ts')).toMatch(/\?\.dismiss\?\.\(\);\n\s+shown\?\.remove\(\);/);
+    // A quick fade first since 0.12.0, then the dialog closes and the element goes.
+    expect(src('shell/screensaver-controller.ts')).toMatch(/el\.dismiss\?\.\(\);\n\s+el\.remove\(\);/);
+    expect(src('shell/screensaver-controller.ts')).toMatch(/if \(el\.leave\) void el\.leave\(\)\.then\(done, done\);/);
   });
 
   it("takes the household's Motion setting, not only the device's", () => {

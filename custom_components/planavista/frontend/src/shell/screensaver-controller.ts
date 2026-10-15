@@ -315,10 +315,16 @@ const browserEnv: ScreensaverEnv = {
     document.body.appendChild(shown);
   },
   hide: () => {
-    // Closing its dialog first gives focus back to what had it.
-    shown?.dismiss?.();
-    shown?.remove();
+    const el = shown as (HTMLElement & { dismiss?: () => void; leave?: () => Promise<void> }) | null;
     shown = null;
+    if (!el) return;
+    // A quick fade back to the card (0.12.0); then closing its dialog gives focus back to what had it.
+    const done = () => {
+      el.dismiss?.();
+      el.remove();
+    };
+    if (el.leave) void el.leave().then(done, done);
+    else done();
   },
   lockParentMode: () => window.dispatchEvent(new CustomEvent('pv-screensaver-shown')),
   wakeLock: hold => {

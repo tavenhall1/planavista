@@ -23,6 +23,22 @@ export const AFTER_CHOICES = [1, 2, 5, 10, 15, 30] as const;
 /** Settings' Try it (0.12.0, spec 3.5): show it now at another time, in other weather, or in another season. */
 export type TrialTime = 'morning' | 'afternoon' | 'evening' | 'night';
 export type TrialSeason = 'spring' | 'summer' | 'autumn' | 'winter';
+/**
+ * Today at Try it's time of day, by the home's own sun (sunrise and sunset as
+ * minutes of the day): an hour after sunrise, two thirds of the way to sunset,
+ * sunset, and the middle of the night. A home whose sun runs on another
+ * clock than the screen's still gets an afternoon that is day.
+ */
+export function trialTime(now: Date, time: TrialTime, rise: number, set: number): Date {
+  const day = ((set - rise) % 1440 + 1440) % 1440 || 720;
+  const minute = time === 'morning' ? rise + Math.min(60, day * 0.2)
+    : time === 'afternoon' ? rise + day * 0.68
+    : time === 'evening' ? rise + day
+    : rise + day + (1440 - day) / 2;
+  const m = ((Math.round(minute) % 1440) + 1440) % 1440;
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(m / 60), m % 60);
+}
+
 export interface Trial {
   time?: TrialTime;
   /** A Home Assistant condition; after_rain is clear skies with the rainbow out. */
@@ -341,8 +357,8 @@ const SCENES: Record<string, Omit<WeatherScene, 'wind'> & { wind?: number }> = {
   hail: { cover: 0.85, rain: 90, snow: 0, fog: 0, storm: false },
   lightning: { cover: 0.85, rain: 0, snow: 0, fog: 0, storm: true },
   'lightning-rainy': { cover: 0.95, rain: 150, snow: 0, fog: 0.4, storm: true },
-  windy: { cover: 0.3, rain: 0, snow: 0, fog: 0, storm: false, wind: 2 },
-  'windy-variant': { cover: 0.6, rain: 0, snow: 0, fog: 0, storm: false, wind: 2 },
+  windy: { cover: 0.3, rain: 0, snow: 0, fog: 0, storm: false, wind: 2.6 },
+  'windy-variant': { cover: 0.6, rain: 0, snow: 0, fog: 0, storm: false, wind: 2.6 },
   exceptional: { cover: 0.6, rain: 0, snow: 0, fog: 0, storm: false },
 };
 

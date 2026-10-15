@@ -89,6 +89,11 @@ function dimChannels(rgb: [number, number, number], level: number, text: boolean
   return rgb.map((c, i) => fromLinear(toLinear(c) * k * m[i])) as [number, number, number];
 }
 
+/** 0 to 255 channels at the level (the screensaver's light model uses these); `text` for small marks. */
+export function dimRgb(rgb: [number, number, number], level: number, text = false): [number, number, number] {
+  return level >= 1 ? rgb : dimChannels(rgb, level, text);
+}
+
 /** A '#RRGGBB' color at the level; `text` for letters and small marks. */
 export function dimColor(hex: string, level: number, text = false): string {
   if (level >= 1) return hex;

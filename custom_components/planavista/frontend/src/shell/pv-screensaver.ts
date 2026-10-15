@@ -5,7 +5,8 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { getPlanaVistaData } from '../utils/ha-utils';
 import type { HouseholdView } from '../core/household';
-import { infoCorner, weatherScene } from '../core/screensaver';
+import { CORNER_MS, infoCorner, trialTime, weatherScene } from '../core/screensaver';
+import { DIM_DEFAULT, dimLevel, mediaBrightness } from '../core/dimming';
 import { appearanceSettings } from '../core/appearance';
 import { resolveMotion } from '../core/motion';
 import { ChoresSubscription } from '../modules/chores/chores-client';
@@ -13,6 +14,9 @@ import type { Board } from '../modules/chores/chores-types';
 import { eventsOn } from '../modules/chores/calendar-ties';
 import { screensaverInfo } from '../modules/screensaver/info';
 import { SkyScene } from '../modules/screensaver/sky-scene';
+import {
+  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, rainbowStrength, rainbowWeather, seasonAt, springEase,
+} from '../modules/screensaver/sky';
 import { skyStyles } from '../modules/screensaver/sky-styles';
 import { onPageHousehold } from './page-household';
 import { HEADING_FONT, ensurePageStyles } from './page-styles';
@@ -20,6 +24,24 @@ import { screensaver } from './screensaver-controller';
 
 const hassNow = (): HomeAssistant | undefined =>
   (document.querySelector('home-assistant') as (HTMLElement & { hass?: HomeAssistant }) | null)?.hass;
+
+/** When it last rained here, for the rainbow afterwards (0.12.0): kept by the page so a reload remembers. */
+const RAIN_KEY = 'planavista.rainAt';
+function rainAt(): number {
+  try {
+    return Number(localStorage.getItem(RAIN_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+function noteRain(at: number): void {
+  try {
+    localStorage.setItem(RAIN_KEY, String(at));
+  } catch {
+    // A private window keeps no storage: the rainbow just doesn't come after a reload.
+  }
+}
+const BOUNCY = springEase(260, 13, 1000);
 
 /** sun.sun's next rising or setting as a minute of the day, or the fallback (spec 3.3: 7:00 AM and 7:00 PM). */
 function minuteOf(text: unknown, fallback: number): number {
@@ -45,6 +67,9 @@ export class PvScreensaver extends LitElement {
   private _lastMinute = -1;
   private _lastWeather = '';
   private _lastNight: boolean | null = null;
+  /** The corner's ten minutes the entrance played in: that corner's info comes in with the entrance, not its fade. */
+  private _entrySlot = Math.floor(Date.now() / CORNER_MS);
+  private _entrance: Animation[] = [];
 
   static styles = [skyStyles, css`
     :host {
@@ -53,7 +78,7 @@ export class PvScreensaver extends LitElement {
       z-index: 2147483000;
       display: block;
       overflow: hidden;
-      background: #a8cdee;
+      background: transparent;
       color: #0d1b2a;
       font-family: '${unsafeCSS(HEADING_FONT)}', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
@@ -78,7 +103,7 @@ export class PvScreensaver extends LitElement {
       padding: 0;
       border: 0;
       overflow: hidden;
-      background: #a8cdee;
+      background: transparent;
       color: inherit;
       outline: none;
     }
@@ -104,6 +129,12 @@ export class PvScreensaver extends LitElement {
       animation: pvs-arrive 4s ease both;
     }
     @keyframes pvs-arrive { from { opacity: 0; } }
+    /* The first corner's info comes in with the entrance (0.12.0), not its own fade. */
+    .info.entering { animation: none; }
+    .card { transform-origin: 50% 0; }
+    /* A dimmed shared screen (0.12.0): the words by the text rule, the card at the level. */
+    .clock, .line { filter: var(--pvs-ink-filter, none); }
+    .card { filter: var(--pvs-card-filter, none); }
     /* It moves to the next corner every 10 minutes, so nothing stays in one place on the screen for hours. */
     .info.mirrored { grid-template-columns: auto 1fr; }
     .info.mirrored .time { order: 2; justify-self: end; text-align: right; }
@@ -291,6 +322,44 @@ export class PvScreensaver extends LitElement {
     this._resize.observe(this);
     this._feed(true);
     this._scene.start();
+    void this._enter(reduced);
+  }
+
+  /**
+   * The entrance (0.12.0): the scene's parts, then the clock dropping in with a
+   * bounce, the day's words after it, and the card swinging on its pegs.
+   * Reduced motion: the info fades in with the scene.
+   */
+  private async _enter(reduced: boolean): Promise<void> {
+    this._scene?.enter();
+    await this.updateComplete;
+    const info = this.renderRoot.querySelector<HTMLElement>('.info');
+    const go = (el: Element | null | undefined, frames: Keyframe[], o: { delay: number; duration: number }, easing: string) => {
+      if (el) this._entrance.push(el.animate(frames, { fill: 'backwards', easing, duration: o.duration * ENTRANCE_PACE, delay: o.delay * ENTRANCE_PACE }));
+    };
+    if (reduced) {
+      go(info, [{ opacity: 0 }, { opacity: 1 }], { delay: 0, duration: 500 / ENTRANCE_PACE }, 'ease-out');
+      return;
+    }
+    go(info?.querySelector('.clock'), [{ translate: '0 -150%' }, { translate: '0 0' }], ENTRANCE.clock, BOUNCY);
+    go(info?.querySelector('.line'), [{ opacity: 0, translate: '0 -0.7em' }, { opacity: 1, translate: '0 0' }], ENTRANCE.line, 'ease-out');
+    go(info?.querySelector('.card'), [
+      { translate: '0 -70vh', rotate: '-8deg' },
+      { translate: '0 0', rotate: '5deg', offset: 0.5 },
+      { rotate: '-2.5deg', offset: 0.7 },
+      { rotate: '1deg', offset: 0.86 },
+      { translate: '0 0', rotate: '0deg' },
+    ], ENTRANCE.card, 'cubic-bezier(.3,.7,.3,1)');
+  }
+
+  /** A touch: the entrance jumps to its end and the whole screensaver fades back to the card (0.12.0). */
+  leave(): Promise<void> {
+    this._scene?.finishEntrance();
+    for (const a of this._entrance) a.finish();
+    this._entrance = [];
+    this.style.pointerEvents = 'none';
+    const fade = this.animate([{ opacity: 1 }, { opacity: 0 }], { duration: WAKE_FADE_MS, easing: 'ease-in', fill: 'forwards' });
+    return fade.finished.then(() => undefined, () => undefined);
   }
 
   private _visibility = (): void => {
@@ -303,26 +372,74 @@ export class PvScreensaver extends LitElement {
     this._feed(false);
   }
 
-  /** The scene's inputs: re-lit when the minute, the weather, or night changes. */
+  /** Try it's weather as a Home Assistant condition: after rain is a few clouds, and clear is clear-night after dark. */
+  private _triedCondition(now: Date): string | null {
+    const tried = screensaver.trial?.weather;
+    if (!tried) return null;
+    if (tried === 'after_rain') return 'partlycloudy';
+    return tried === 'sunny' && this._nightNow(now) ? 'clear-night' : tried;
+  }
+
+  /** Night here, or as Try it asks (0.12.0). */
+  private _nightNow(now: Date): boolean {
+    const time = screensaver.trial?.time;
+    return time ? time === 'night' : screensaver.night(now);
+  }
+
+  /** The level a dimmed shared screen draws at now (0.12.0); 1 elsewhere. */
+  private _dimNow(now: Date): number {
+    const view = this._view;
+    const saver = view?.security.screensaver;
+    if (!view?.account.shared || !saver) return 1;
+    return dimLevel(now, view.members, saver.night, saver.dim ?? DIM_DEFAULT).level;
+  }
+
+  /** The scene's inputs: re-lit when the minute, the weather, or night changes; Try it's choices in place of the facts. */
   private _feed(force: boolean): void {
     const hass = hassNow();
     const now = this._now;
     const minute = now.getHours() * 60 + now.getMinutes();
     const weather = this._weatherState(hass);
-    const key = weather ? `${weather.state}|${String(weather.attributes.cloud_coverage ?? '')}` : '';
-    const night = screensaver.night(now);
+    const trial = screensaver.trial;
+    const key = `${weather ? `${weather.state}|${String(weather.attributes.cloud_coverage ?? '')}` : ''}|${JSON.stringify(trial ?? {})}`;
+    const night = this._nightNow(now);
     if (!force && minute === this._lastMinute && key === this._lastWeather && night === this._lastNight) return;
     this._lastMinute = minute;
     this._lastWeather = key;
     this._lastNight = night;
     const sun = hass?.states['sun.sun']?.attributes ?? {};
+    const rise = minuteOf(sun.next_rising, 7 * 60);
+    const set = minuteOf(sun.next_setting, 19 * 60);
+    // Rain now: noted, for the rainbow once it stops.
+    if (weather && RAIN_CONDITIONS.has(weather.state)) noteRain(now.getTime());
+    const afterRain = trial?.weather === 'after_rain';
+    const condition = this._triedCondition(now) ?? weather?.state;
+    const scene = weatherScene(condition, trial?.weather ? undefined : weather?.attributes.cloud_coverage);
+    const rainbow = afterRain ? 1 : rainbowWeather(scene) ? rainbowStrength(now.getTime() - rainAt()) : 0;
+    const latitude = (hass as unknown as { config?: { latitude?: number } } | undefined)?.config?.latitude;
+    const level = this._dimNow(now);
+    this._dimInfo(level);
     this._scene?.update({
-      now,
-      rise: minuteOf(sun.next_rising, 7 * 60),
-      set: minuteOf(sun.next_setting, 19 * 60),
-      weather: weatherScene(weather?.state, weather?.attributes.cloud_coverage),
+      now: trial?.time ? trialTime(now, trial.time, rise, set) : now,
+      rise,
+      set,
+      weather: scene,
       night,
+      season: trial?.season ?? seasonAt(now, latitude),
+      rainbow,
+      dim: level,
     });
+  }
+
+  /** The words and the card at a dimmed screen's level: the words by the text rule. */
+  private _dimInfo(level: number): void {
+    if (level >= 1) {
+      this.style.removeProperty('--pvs-ink-filter');
+      this.style.removeProperty('--pvs-card-filter');
+      return;
+    }
+    this.style.setProperty('--pvs-ink-filter', `brightness(${mediaBrightness(Math.sqrt(level)).toFixed(3)})`);
+    this.style.setProperty('--pvs-card-filter', `brightness(${mediaBrightness(level).toFixed(3)})`);
   }
 
   private _weatherState(hass: HomeAssistant | undefined): { state: string; attributes: Record<string, unknown> } | undefined {
@@ -339,17 +456,22 @@ export class PvScreensaver extends LitElement {
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const members = this._view?.members ?? [];
+    // Try it's weather in the words too, with the real temperature (0.12.0).
+    const real = this._weatherState(hass);
+    const tried = this._triedCondition(now);
+    const weather = tried && real ? { ...real, state: tried } : real;
     const info = screensaverInfo({
-      now, format, weather: this._weatherState(hass), events: eventsOn(data, dayStart, dayEnd), members, board: this._board,
+      now, format, weather, events: eventsOn(data, dayStart, dayEnd), members, board: this._board,
     });
     const colors = new Map(members.map(m => [m.id, m.color]));
-    const night = screensaver.night(now);
+    const night = this._nightNow(now);
     const corner = infoCorner(now.getTime());
+    const entering = Math.floor(now.getTime() / CORNER_MS) === this._entrySlot;
     const shortDate = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     return html`
       <dialog class="saver" @cancel=${(e: Event) => e.preventDefault()}>
       <div class="scene" aria-hidden="true"></div>
-      ${keyed(corner, html`<div class="info ${night ? 'night' : ''} ${corner.endsWith('right') ? 'mirrored' : ''} ${corner.startsWith('bottom') ? 'lower' : ''}"
+      ${keyed(corner, html`<div class="info ${night ? 'night' : ''} ${corner.endsWith('right') ? 'mirrored' : ''} ${corner.startsWith('bottom') ? 'lower' : ''} ${entering ? 'entering' : ''}"
         role="img" aria-label=${`${info.time}${info.ampm ? ` ${info.ampm}` : ''}, ${info.date}. Touch to wake.`}>
         <div class="time">
           <div class="clock"><span class="hm">${info.time}</span>${info.ampm ? html`<span class="ampm">${info.ampm}</span>` : nothing}</div>

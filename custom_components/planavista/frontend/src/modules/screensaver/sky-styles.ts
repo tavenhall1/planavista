@@ -66,4 +66,61 @@ export const skyStyles = css`
   .pvs-flash {
     opacity: 0;
   }
+  /* Calm-day life (0.12.0): the sun's slow rays, paper birds, a shooting star now and then. */
+  .pvs-rays,
+  .pvs-bird {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+    pointer-events: none;
+  }
+  .pvs-meteor {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 16vmax;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(255, 246, 228, 0), rgba(255, 246, 228, 0.95));
+    transform-origin: 100% 50%;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pvs-rainbow {
+    opacity: 0;
+  }
+  /* Summer evenings: small fireflies low among the trees, at the pines' scale. Their glow and wander are the
+     browser's own animations, so a Raspberry Pi spends nothing on them frame to frame. */
+  .pvs-fireflies {
+    will-change: transform;
+  }
+  .pvs-fireflies[hidden] {
+    display: none;
+  }
+  .pvs-firefly {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 250, 205, 1) 0, rgba(232, 238, 130, 0.62) 32%, rgba(232, 238, 130, 0) 70%);
+    opacity: 0;
+    animation: pvs-glow var(--dur) ease-in-out var(--delay) infinite, pvs-wander var(--wander) ease-in-out var(--delay) infinite alternate;
+  }
+  @keyframes pvs-glow {
+    0%, 46%, 100% { opacity: 0; }
+    56% { opacity: 1; }
+    68% { opacity: 0.15; }
+    74% { opacity: 0.7; }
+    84% { opacity: 0; }
+  }
+  @keyframes pvs-wander {
+    from { translate: 0 0; }
+    to { translate: var(--dx) var(--dy); }
+  }
+  .pvs-still .pvs-fireflies,
+  .pvs-still .pvs-rays {
+    display: none;
+  }
 `;
