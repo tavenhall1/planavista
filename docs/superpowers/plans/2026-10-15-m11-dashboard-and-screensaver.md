@@ -25,7 +25,7 @@
 | 6 | The rules: idle clock, motion, night, the Screen entity, weather, corners | a7c5aa0 | test/screensaver-rules.test.ts |
 | 7 | The sky and the info (ported from mockup v4) | 12d96ff | test/screensaver-sky.test.ts, screensaver-info.test.ts |
 | 8 | The page-wide controller and the element | d6f4791 | test/screensaver-controller.test.ts; review copy, real 2-minute wait |
-| 9 | Settings' Shared screens section, Show it now, the Motion filter | c44b930, 9b3f9f4 | test/pins.test.ts; review copy |
+| 9 | Settings' Shared screens section, Show it now, the Motion filter | c44b930, 9b3f9f4 | test/screensaver-rules.test.ts (the filter); review copy (the section); after review, test/screensaver-element.test.ts |
 | 10 | Version, README, design system; the bundle | 52fb6a5, 37614ab | both suites |
 
 ## Review and fixes
