@@ -361,10 +361,10 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 
 - **The scene:** six cut-paper ridges (a distant range, a massif with snowfields, its shoulders, an alpine range with a tree line, forested foothills, the nearest hill) with shadows between the sheets and a paper fiber texture, paper clouds of varying thickness, fog as tall see-through vellum patches whose feet hide behind the next ridge, rain, snow, and a gentle storm. Never long thin clouds or mist bands.
 - **Light:** the sky, the ridges' tones, and the glow follow the real sun (sun.sun's rising and setting) and the weather entity's condition and cloud cover. The sun and moon move every frame from the clock; colors are re-lit once a minute in steps too small to see. The moon is drawn by its real phase.
-- **Words:** a large clock in cream paper letters, the date with the temperature and conditions, and the Today card (the icon's calendar card with its coral header and pegs) with the next events and a ring per person for today's chores. The words move to another place every 10 minutes. Labels are sentence case.
+- **Words:** a large clock in cream paper letters, the date with the temperature and conditions, and the Today card (the icon's calendar card with its coral header and pegs) with the next events and a ring per person for today's chores. The words move to the next corner of the screen every 10 minutes, fading in. Labels are sentence case.
 - **Night:** from the latest bedtime to the earliest wake-up in Sleep times, the scene darkens to a warm near-black, drifts at a quarter speed, and shows only the dimmed clock.
-- **Motion:** transforms and opacity only (no blur or filters), one animation loop at 30 frames a second, stopped while the page is hidden. Lightning is a soft flash and a faint bolt, at least 9 seconds apart. Reduced motion keeps the light and the clock and drops drifting, rain, snow, and lightning.
-- **Waking:** a touch only wakes it; the page ignores that burst, so nothing beneath is pressed.
+- **Motion:** transforms and opacity only (no blur or filters), one animation loop at 30 frames a second, stopped while the page is hidden. Lightning is a soft flash and a faint bolt, at least 9 seconds apart. Reduced motion (PlanaVista's Motion setting, or the device's when it says Device) keeps the light and the clock and drops drifting, rain, snow, and lightning.
+- **Waking:** a touch or a key only wakes it; the page ignores that burst, so nothing beneath is pressed. It is a modal dialog in the top layer, above Home Assistant's own dialogs.
 
 ### 11.9 Controls: one for each kind of choice
 
