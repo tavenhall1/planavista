@@ -3,7 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
 import { BOUNCY, GENTLE, motionOf, springEasing } from '../../core/motion';
 import { deepActiveElement, trapTab } from '../../core/focus';
-import { PressGuard } from '../../core/press-guard';
+import { PressGuard, guardPageTaps } from '../../core/press-guard';
 import { chime, haptic } from './effects';
 import { pictureOf } from './pv-chore-tile';
 import { presentArt } from './surprise-art';
@@ -410,6 +410,8 @@ export class PvSurpriseReveal extends LitElement {
   private _choose(choice: 'ask' | 'later'): void {
     if (this._closing) return;
     this._closing = true;
+    // Taps that follow this one reach nothing beneath (round 5: a double tap pressed Redeem).
+    guardPageTaps();
     this.dispatchEvent(new CustomEvent('pv-reveal-choice', { detail: { choice }, bubbles: true, composed: true }));
     const done = () => this.dispatchEvent(new CustomEvent('pv-fullscreen-done', { bubbles: true, composed: true }));
     if (motionOf(this) === 'reduced') {

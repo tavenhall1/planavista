@@ -21,6 +21,44 @@ type GuardHost = ReactiveControllerHost & EventTarget;
 
 const CAPTURE = { capture: true } as const;
 
+/**
+ * The page beneath an overlay that just closed ignores that burst (round 5): a
+ * double tap on the reveal's Later pressed Redeem beneath it, and a hold's
+ * lifting finger, under a reveal that closed at once, opened the person's day.
+ * A page press counts once its pointerdown begins `PRESS_GRACE_MS` after the
+ * last one (a tap inside starts it over, as the guard's restart does); then,
+ * or after `lifetimeMs`, it goes. Keyboard clicks (`detail` 0) always count.
+ */
+export function guardPageTaps(
+  target: EventTarget = window, now: () => number = () => performance.now(), lifetimeMs = 3000,
+): () => void {
+  let since = now();
+  let pressed = false;
+  const down = (): void => {
+    const at = now();
+    pressed = at - since >= PRESS_GRACE_MS;
+    if (!pressed) since = at;
+  };
+  const click = (event: Event): void => {
+    if ((event as MouseEvent).detail === 0) return;
+    if (pressed) {
+      stop();
+      return;
+    }
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  };
+  const timer = setTimeout(() => stop(), lifetimeMs);
+  const stop = (): void => {
+    clearTimeout(timer);
+    target.removeEventListener('pointerdown', down, CAPTURE);
+    target.removeEventListener('click', click, CAPTURE);
+  };
+  target.addEventListener('pointerdown', down, CAPTURE);
+  target.addEventListener('click', click, CAPTURE);
+  return stop;
+}
+
 export interface PressGuardOptions {
   now?: () => number;
   /**

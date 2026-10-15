@@ -10,6 +10,7 @@ import type { PinGate } from '../../core/pin-gate';
 import type { Session } from '../../core/session';
 import type { Toast } from '../../core/pv-toast';
 import { keyed } from 'lit/directives/keyed.js';
+import { guardPageTaps } from '../../core/press-guard';
 import { BoardHandoff, boardHandoff, handoffWords, sheetKey } from './sheet-key';
 import { actingParent, creditAccess, creditable, memberAccess, parentAccess, pinChoicesFor } from '../../core/access';
 import { OPEN_SETTINGS } from '../../core/page-host';
@@ -575,6 +576,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       () => detail.settle(true),
       err => {
         detail.settle(false);
+        guardPageTaps(); // the hold's lifting finger lands on the page the reveal left (round 5)
         reveal.dispatchEvent(new CustomEvent('pv-fullscreen-done', { bubbles: true, composed: true }));
         this.showToast({ id: `surprise-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t open. Try again.', tone: 'bad' });
       },

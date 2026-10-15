@@ -1,5 +1,6 @@
 import type { Layout } from '../core/layout';
 import { BOUNCY, SMOOTH, motionOf, springEasing } from '../core/motion';
+import { guardPageTaps } from '../core/press-guard';
 import { sheetDragOffset, sheetDragOutcome } from '../core/sheet-drag';
 
 export { motionOf };
@@ -34,8 +35,10 @@ export class SheetMotion {
 
   /** Animate out; resolves once the sheet has left, so it closes only then. */
   async close(panel: HTMLElement, backdrop: HTMLElement): Promise<void> {
-    // On its way out it takes no taps: the next one goes to what is under it (round 2).
+    // On its way out it takes no taps: the next one goes to what is under it (round 2), but not
+    // the rest of the burst that closed it (round 5: a double tap on Done pressed the bar beneath).
     this._host.style.pointerEvents = 'none';
+    guardPageTaps();
     const reduced = motionOf(this._host) === 'reduced';
     const now = getComputedStyle(panel).transform;
     const from = now && now !== 'none' ? now : 'translateY(0)';
