@@ -547,6 +547,27 @@ def test_an_occurrences_time_follows_its_own_due() -> None:
     assert dated.period_over("sort_the_shed|casey|once|0", at(10, 30, 9)) is False
 
 
+def test_an_occurrences_time_runs_out_after_the_rollover_finished_it() -> None:
+    """Round 6 (r6a A2): the 3 AM rollover finishes a missed dated Once chore, so the plan no longer
+    makes it, and a check-off queued across 3 AM said "changed on another screen"; so did the next
+    day's Undo of a Once chore with no date done the day before."""
+    dated = sample_engine(activities=[
+        once("water_the_garden", "Water the garden", ["dana"], on="2026-10-13"),
+        once("sweep_the_porch", "Sweep the porch", ["casey"], by="2026-10-13", sessions=2),
+        once("sort_the_shed", "Sort the shed", ["alex"]),
+    ])
+    dated.complete(SCENE, key="sort_the_shed|alex|once|0", by="alex", source="tablet")
+    wednesday = at(10, 14, 9)
+    dated.catch_up(wednesday)
+    assert dated.period_over("water_the_garden|dana|once|0", wednesday) is True
+    assert dated.period_over("sweep_the_porch|casey|once|1", wednesday) is True
+    assert dated.period_over("sort_the_shed|alex|once|0", wednesday) is True
+    # Turned off the board by a parent: that is a change, not the day ending.
+    plain = sample_engine(activities=[once("pack", "Pack for camp", ["casey"], by="2026-10-20")])
+    plain.save_activity(SCENE, {"on_board": False}, by="alex", source="tablet", activity_id="pack")
+    assert plain.period_over("pack|casey|once|0", SCENE) is False
+
+
 def test_a_once_chore_past_its_time_can_still_be_checked_off_while_it_shows() -> None:
     """Round 5 (r5a A4): "Return library books, by 6 PM", held at 6:34 PM, said Done and stayed open."""
     engine = sample_engine(activities=[once("library_books", "Return library books", ["casey"], by="2026-10-13", by_time="15:00")])

@@ -694,6 +694,12 @@ class ChoresEngine:
         today = self.today(now)
         activity = self.activity(parsed[0])
         occ = self.generator().from_key(activity, key) if activity is not None else None
+        finished = activity.get("finished_at") if activity is not None else None
+        if occ is None and finished:
+            # Finished (done, or missed at the rollover): the plan no longer makes it; its own due still says (round 6).
+            occ = self.generator().from_key({**activity, "finished_at": None}, key)
+            if occ is not None and occ.due is None:
+                return self._day_of(finished) < today
         if occ is not None:
             occ = with_overrides(occ, self._index().overrides.get(key, {}), set(self.member_ids()), self.clock)
             return occ.due is not None and self.clock.due_day(occ.due) < today
