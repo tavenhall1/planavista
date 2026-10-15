@@ -11,6 +11,11 @@ import { saveErrorMessage } from '../../core/page-host';
 import type { PlanaVistaData } from '../../types';
 import type { Session } from '../../core/session';
 import { mayChangeKiosk } from '../../core/kiosk';
+import {
+  SCREEN_DOMAINS, type ScreenEntities, entityChoices, motionCandidate, nightText, nightWindow,
+} from '../../core/screensaver';
+import { screensaver } from '../screensaver-controller';
+import '../../core/pv-time-field';
 import '../../core/pv-member-avatar';
 import './pin-actions';
 
@@ -31,6 +36,13 @@ const TOP_BAR_CHOICES = [
   { value: 'hidden', label: 'Hidden', spoken: 'Hidden' },
   { value: 'tabs', label: 'Tabs only', spoken: 'Tabs only' },
 ] as const;
+const AFTER_CHOICES = [
+  { value: 2, label: '2 min', spoken: '2 minutes' },
+  { value: 5, label: '5 min', spoken: '5 minutes' },
+  { value: 10, label: '10 min', spoken: '10 minutes' },
+  { value: 15, label: '15 min', spoken: '15 minutes' },
+  { value: 30, label: '30 min', spoken: '30 minutes' },
+] as const;
 const CAP_CHOICES = [
   { value: 5, label: '5 min', spoken: '5 minutes' },
   { value: 10, label: '10 min', spoken: '10 minutes' },
@@ -50,6 +62,8 @@ export class PvSettingsPins extends LitElement {
 
   @state() private _message = '';
   @state() private _busy = false;
+  /** Why night's own times were turned back, shown beside them. */
+  @state() private _nightProblem = '';
 
   static styles = [
     baseStyles,
@@ -138,6 +152,39 @@ export class PvSettingsPins extends LitElement {
         margin-top: 0;
       }
 
+      /* The screensaver's night and each shared screen's entities (milestone 11). */
+      .saver-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        min-height: 48px;
+        margin-top: 12px;
+      }
+
+      .saver-row .times {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .screen {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--pv-border, #E5E7EB);
+      }
+
+      .screen h3 {
+        margin: 0 0 4px;
+        font-size: 1rem;
+      }
+
+      .screen select {
+        min-height: 44px;
+        max-width: 100%;
+      }
+
       .rule {
         font-size: 0.875rem;
         color: var(--pv-text-secondary, #6B7280);
@@ -184,6 +231,7 @@ export class PvSettingsPins extends LitElement {
           ${kiosk.enabled ? html`
             <p class="hint">Hidden: PlanaVista fills the screen. Tabs only: the dashboard's tabs stay, for other screens the family uses.</p>
           ` : nothing}
+          ${this._screensaver(household)}
         </section>
       ` : nothing}
 
@@ -225,6 +273,102 @@ export class PvSettingsPins extends LitElement {
         to Home Assistant with a parent's or an admin's own account and set new ones here.
       </p>
     `;
+  }
+
+  /** The screensaver (milestone 11, spec 3.4): beside kiosk mode, for shared screens. */
+  private _screensaver(household: HouseholdView) {
+    const saver = household.security.screensaver;
+    if (!saver) return nothing;
+    const format = this.data?.display?.time_format === '24h' ? '24h' : '12h';
+    const tonight = nightWindow(household.members, saver.night, new Date());
+    return html`
+      ${this._switch('Screensaver', 'saver-label', saver.enabled, this._toggleSaver)}
+      <p class="hint">When nobody has touched a shared screen for a while, it shows the sky, the time, and today. A touch wakes it.</p>
+      ${saver.enabled ? html`
+        ${this._choices('Comes on after', 'saver-after-label', AFTER_CHOICES, saver.after_minutes as 2 | 5 | 10 | 15 | 30,
+          value => this.api.saveSecurity({ screensaver_after: value }))}
+        <div class="saver-row">
+          <span class="label">Night</span>
+          ${saver.night ? html`
+            <span class="times">
+              <pv-time-field .format=${format} .value=${saver.night.from} aria-label="Night starts"
+                @change=${(e: Event) => this._nightPart('from', e.target as HTMLInputElement)}></pv-time-field>
+              <span>to</span>
+              <pv-time-field .format=${format} .value=${saver.night.to} aria-label="Night ends"
+                @change=${(e: Event) => this._nightPart('to', e.target as HTMLInputElement)}></pv-time-field>
+            </span>
+          ` : html`<span>${nightText(tonight, format)}</span>`}
+        </div>
+        ${this._nightProblem ? html`<p class="message" role="alert">${this._nightProblem}</p>` : nothing}
+        <p class="hint">
+          ${saver.night ? 'Night runs at these times.' : tonight.source === 'sleep'
+            ? 'From the latest bedtime to the earliest wake-up in Sleep times.'
+            : 'Nobody has a bedtime in Sleep times yet, so night runs at these times.'}
+          At night the sky goes dark and only the time shows.
+        </p>
+        <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy}
+          @click=${() => this._night(saver.night ? null : { from: '22:00', to: '06:30' })}>${saver.night ? 'From Sleep times' : 'Set its own times'}</button>
+        ${saver.screens.map(screen => this._screenRow(screen))}
+        <div class="saver-row">
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => screensaver.preview(new Date())}>Show it now</button>
+        </div>
+      ` : nothing}
+    `;
+  }
+
+  private _screenRow(screen: ScreenEntities) {
+    const options = (fits: (s: { entity_id: string; attributes: Record<string, unknown> }) => boolean, current: string | null) =>
+      entityChoices(this.hass?.states ?? {}, fits, current);
+    const pick = (field: 'screen' | 'motion', value: string) =>
+      void this._run(() => this.api.saveSecurity({ screensaver_screen: { user: screen.user_id, [field]: value || null } }));
+    return html`
+      <div class="screen">
+        <h3>${screen.name ?? 'A shared screen'}</h3>
+        <div class="saver-row">
+          <label class="label" for=${`screen-${screen.user_id}`}>Screen</label>
+          <select id=${`screen-${screen.user_id}`} class="pv-input pv-select" ?disabled=${this._busy}
+            @change=${(e: Event) => pick('screen', (e.target as HTMLSelectElement).value)}>
+            <option value="" ?selected=${!screen.screen}>None</option>
+            ${options(s => (SCREEN_DOMAINS as readonly string[]).includes(s.entity_id.split('.', 1)[0]), screen.screen).map(s => html`<option value=${s.id} ?selected=${s.id === screen.screen}>${s.name}</option>`)}
+          </select>
+        </div>
+        <p class="hint">Pick this screen's own backlight or plug, not a room's light. A light or number is dimmed while the screensaver shows; at night the screen is turned off or all the way down, and it comes back in the morning and on a touch.</p>
+        <div class="saver-row">
+          <label class="label" for=${`motion-${screen.user_id}`}>Motion</label>
+          <select id=${`motion-${screen.user_id}`} class="pv-input pv-select" ?disabled=${this._busy}
+            @change=${(e: Event) => pick('motion', (e.target as HTMLSelectElement).value)}>
+            <option value="" ?selected=${!screen.motion}>None</option>
+            ${options(s => motionCandidate(s.entity_id, s.attributes), screen.motion).map(s => html`<option value=${s.id} ?selected=${s.id === screen.motion}>${s.name}</option>`)}
+          </select>
+        </div>
+        <p class="hint">Someone in front of the screen keeps it awake and wakes it. Devices signed in with this account share these.</p>
+      </div>
+    `;
+  }
+
+  private _toggleSaver = (): void => {
+    const saver = this.household?.security.screensaver;
+    if (!saver) return;
+    void this._run(() => this.api.saveSecurity({ screensaver_enabled: !saver.enabled }));
+  };
+
+  /** One end of night's own times changed; a night that would start when it ends goes back, saying why there. */
+  private _nightPart(part: 'from' | 'to', field: HTMLInputElement): void {
+    const night = this.household?.security.screensaver?.night;
+    if (!night) return;
+    const next = { ...night, [part]: field.value };
+    if (next.from === next.to) {
+      field.value = night[part];
+      this._nightProblem = 'Night needs a start and an end that differ.';
+      return;
+    }
+    this._nightProblem = '';
+    this._night(next);
+  }
+
+  private _night(night: { from: string; to: string } | null): void {
+    if (night && (!night.from || !night.to)) return;
+    void this._run(() => this.api.saveSecurity({ screensaver_night: night }));
   }
 
   private _switch(label: string, id: string, on: boolean, toggle: () => void, locked = false) {

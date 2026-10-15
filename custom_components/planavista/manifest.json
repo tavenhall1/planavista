@@ -1,7 +1,7 @@
 {
   "domain": "planavista",
   "name": "PlanaVista",
-  "after_dependencies": ["calendar", "google"],
+  "after_dependencies": ["calendar", "google", "lovelace"],
   "codeowners": ["@tavenhall1"],
   "config_flow": true,
   "dependencies": ["frontend", "http"],
@@ -11,5 +11,5 @@
   "issue_tracker": "https://github.com/tavenhall1/planavista/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.10.0"
+  "version": "0.11.0"
 }

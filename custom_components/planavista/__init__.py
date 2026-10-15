@@ -20,6 +20,7 @@ from .chores.services import async_setup_chores_services
 from .chores.websocket import async_setup_chores_websocket
 from .const import CONF_DISPLAY, DOMAIN, FRONTEND_BUNDLE, FRONTEND_URL_PATH
 from .coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
+from .dashboard import async_setup_dashboard_websocket, dashboard_for
 from .household.store import async_get_household, async_start_household
 from .household.websocket import async_setup_household_websocket
 from .services import async_setup_services
@@ -40,6 +41,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_chores_services(hass)
     async_setup_household_websocket(hass)
     async_setup_chores_websocket(hass)
+    async_setup_dashboard_websocket(hass)
     await async_register_frontend(hass)
     return True
 
@@ -68,7 +70,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -
     chores.platforms_loaded = chores.enabled
     platforms = [*PLATFORMS, *CHORES_PLATFORMS] if chores.enabled else PLATFORMS
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
+
+    # PlanaVista's own dashboard: a new entry's first setup puts it in the sidebar (2026-10-14).
+    dashboard = dashboard_for(hass)
+    await dashboard.async_start(bool(entry.data.get("dashboard_offer")))
+    entry.async_on_unload(dashboard.async_unregister)
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> None:
+    """PlanaVista was removed: its own dashboard goes with it."""
+    await dashboard_for(hass).async_remove()
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: PlanaVistaConfigEntry) -> bool:

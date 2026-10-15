@@ -3,12 +3,15 @@
     "step": {
       "user": {
         "title": "Welcome to PlanaVista",
-        "description": "PlanaVista has been installed successfully.\n\nTo complete setup:\n\n1. Navigate to the dashboard where you want your calendar\n2. Click the pencil icon (Edit Dashboard) in the top right\n3. Click \"+ Add Card\" and search for \"PlanaVista\"\n4. Save the dashboard\n\nThe first time the card loads, a setup wizard will walk you through choosing your calendars, colors, and theme.\n\nClick Submit to finish installation."
+        "description": "PlanaVista is your family's calendar and chores, on a wall tablet and everyone's phones.\n\nClick Submit and PlanaVista adds its own dashboard to the sidebar. Open it and a short setup walks you through your family, your calendars, and the look."
       }
     },
     "abort": {
       "already_configured": "PlanaVista is already configured.",
       "single_instance_allowed": "PlanaVista is already set up. Only one instance is supported."
+    },
+    "create_entry": {
+      "default": "PlanaVista is in the sidebar. Open it to set up your family."
     }
   },
   "options": {

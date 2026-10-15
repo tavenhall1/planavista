@@ -13,7 +13,7 @@ import {
   withCardTheme,
 } from '../core/appearance';
 import { AppearanceEdits } from '../core/appearance-edits';
-import { Motion, resolveMotion } from '../core/motion';
+import { Motion, resolveMotion, ringTokens } from '../core/motion';
 import { Look, Mode, applyTokens, themeTokens } from '../styles/theme-pairs';
 import { runAppearanceChange, viewTransitionsSupported } from './view-transition';
 
@@ -156,7 +156,7 @@ export class AppearanceController implements ReactiveController {
   private _paint(mode: Mode): void {
     this.mode = mode;
     this._shown = mode;
-    applyTokens(this._host, { ...themeTokens(this.look, mode), '--pv-motion': this.motion });
+    applyTokens(this._host, { ...themeTokens(this.look, mode), '--pv-motion': this.motion, ...ringTokens(this.motion) });
     this._host.setAttribute('appearance', mode);
     this._host.setAttribute('motion', this.motion);
   }

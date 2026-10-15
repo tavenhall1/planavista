@@ -10,7 +10,8 @@
  * clock, counted anywhere on the page (D4).
  */
 import type { HouseholdView } from '../core/household';
-import { HouseholdConnection, HouseholdSubscription } from '../core/household-client';
+import type { HouseholdConnection } from '../core/household-client';
+import { followPageConnection, onPageHousehold } from './page-household';
 import {
   KIOSK_PARTS, KIOSK_SHEETS, KioskLook, StepOut, kioskLook, startStepOut, stepOutOver, stepOutTouched, stepOutWithLimits,
 } from '../core/kiosk';
@@ -239,10 +240,11 @@ export function startKiosk(): void {
   const w = window as unknown as Record<string, unknown>;
   if (w[STARTED]) return;
   w[STARTED] = true;
-  const subscription = new HouseholdSubscription(view => kiosk.setView(view));
+  // One household subscription for the page, shared with the screensaver (milestone 11).
+  onPageHousehold(view => kiosk.setView(view));
   const follow = () => {
     const ha = document.querySelector('home-assistant') as HassElement | null;
-    subscription.update(ha?.hass?.connection as HouseholdConnection | undefined);
+    followPageConnection(ha?.hass?.connection as HouseholdConnection | undefined);
     kiosk.sync();
     kiosk.tick(Date.now());
   };

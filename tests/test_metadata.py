@@ -103,7 +103,7 @@ def test_manifest() -> None:
 
     assert manifest["single_config_entry"] is True
     assert manifest["dependencies"] == ["frontend", "http"]
-    assert manifest["after_dependencies"] == ["calendar", "google"]
+    assert manifest["after_dependencies"] == ["calendar", "google", "lovelace"]  # PlanaVista's own dashboard (2026-10-14)
     # hassfest: domain and name first, then alphabetical.
     rest = [key for key in manifest if key not in ("domain", "name")]
     assert list(manifest) == ["domain", "name", *sorted(rest)]

@@ -1,5 +1,6 @@
 /** Household members and accounts as the card receives them (planavista/household/subscribe). */
 
+import type { ScreensaverSettings } from './screensaver';
 import { matchedInk } from './color';
 
 export type AgeGroup = 'young_child' | 'older_child' | 'teen' | 'adult';
@@ -23,6 +24,9 @@ export interface Member {
   has_pin: boolean;
   pin_length: number | null;
   locked_until: string | null;
+  /** Sleep times (the person page's Sleep section): the screensaver's night reads them (milestone 11). */
+  bedtime?: Bedtime | null;
+  sleep_hours?: number | null;
   [key: string]: unknown;
 }
 
@@ -51,6 +55,8 @@ export interface HouseholdView {
     parent_mode_minutes?: number;
     /** Kiosk mode on shared screens (milestone 9); missing from older backends. */
     kiosk?: { enabled: boolean; top_bar: 'hidden' | 'tabs' };
+    /** The screensaver on shared screens (milestone 11); missing from older backends. */
+    screensaver?: ScreensaverSettings;
   };
   modules: Record<string, unknown>;
   /** Where setup stands; `start` is how the household started (restore, plan, common, empty, calendar). */

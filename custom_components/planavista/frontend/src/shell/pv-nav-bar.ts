@@ -325,6 +325,7 @@ export class PvNavBar extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    // Measured once the browser has laid it out, never forcing a layout of its own (the kitchen screen, 0.11.0).
     this._observer = new ResizeObserver(() => this._measure());
     this._observer.observe(this);
   }
@@ -344,7 +345,7 @@ export class PvNavBar extends LitElement {
 
   protected updated(changed: PropertyValues): void {
     super.updated(changed);
-    if (!changed.has('_shape')) this._measure();
+    this._watchParts();
     this.toggleAttribute('wrapped', this._shape === 'wrapped');
     if (changed.has('_menuOpen') && this._menuOpen) this._showMenu();
   }
@@ -354,6 +355,18 @@ export class PvNavBar extends LitElement {
    * button never shrink, and whichever isn't shown is kept as a hidden copy,
    * so the answer doesn't depend on the shape drawn and can't flip back and forth.
    */
+  /**
+   * Watch the bar and each part as drawn now. Observing reports every part after the
+   * browser's next layout, so the bar measures then, with nothing left to lay out.
+   */
+  private _watchParts(): void {
+    const nav = this.renderRoot.querySelector('nav');
+    if (!nav || !this._observer) return;
+    this._observer.disconnect();
+    this._observer.observe(this);
+    for (const part of [nav, ...nav.children, ...nav.querySelectorAll('.views .view')]) this._observer.observe(part);
+  }
+
   private _measure(): void {
     const nav = this.renderRoot.querySelector('nav');
     if (!nav || !nav.clientWidth) return;

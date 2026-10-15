@@ -15,6 +15,7 @@ from homeassistant.util.hass_dict import HassKey
 from ..const import CONF_CALENDARS, CONF_ONBOARDING_COMPLETE, DOMAIN
 from ..coordinator import PlanaVistaConfigEntry, PlanaVistaCoordinator
 from .kiosk import default_kiosk, normalize_kiosk
+from .screensaver import default_screensaver, follow_shared, normalize_screensaver
 from .members import clear_missing_persons, link_calendars
 from .security import (
     PARENT_MODE_CHOICES,
@@ -41,6 +42,7 @@ def default_document() -> dict[str, Any]:
             "pins": {}, "shared_users": [], "shuffle_keypad": False,
             "session_idle_seconds": SESSION_IDLE_SECONDS, "parent_mode_minutes": PARENT_MODE_MINUTES,
             "kiosk": default_kiosk(),
+            "screensaver": default_screensaver(),
         },
         "modules": {},
         "setup": {"completed": False, "step": None},
@@ -69,6 +71,7 @@ def normalize(data: object) -> dict[str, Any]:
     if security.get("parent_mode_minutes") not in PARENT_MODE_CHOICES:
         security["parent_mode_minutes"] = PARENT_MODE_MINUTES
     security["kiosk"] = normalize_kiosk(security.get("kiosk"))
+    security["screensaver"] = normalize_screensaver(security.get("screensaver"))
     doc["security"] = security
     setup = dict(doc["setup"]) if isinstance(doc.get("setup"), Mapping) else {}
     if not isinstance(setup.get("completed"), bool):
@@ -260,6 +263,13 @@ async def async_start_household(
         if members != household.members:
             household.members = members
             await household.async_save()
+    # Each shared screen's entry in the screensaver, with its account's name (screens marked before 0.11.0 too).
+    saver = household.data["security"]["screensaver"]
+    before = {user: dict(entry) for user, entry in saver["screens"].items()}
+    names = {user: (u.name if (u := await hass.auth.async_get_user(user)) else None) for user in household.shared_users}
+    follow_shared(saver, household.shared_users, names)
+    if saver["screens"] != before:
+        await household.async_save()
     first_time = not household.data["migrations"].get(MIGRATION_PEOPLE)
     await async_link_calendars(hass, household, entry, create_people=first_time)
     if first_time:
