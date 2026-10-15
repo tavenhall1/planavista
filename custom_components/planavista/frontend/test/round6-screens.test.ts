@@ -43,6 +43,9 @@ describe('round 6: screens', () => {
     expect(clicks).toEqual([]);
     // A double-tapped gear (another spot), then digits typed fast on other keys: they count.
     now += PRESS_GRACE_MS;
+    const gear = new Event('pointerdown');
+    Object.defineProperties(gear, { clientX: { value: 50 }, clientY: { value: 40 } });
+    page.dispatchEvent(gear); // the gear's first tap opens the keypad
     guard.arm();
     now += 180;
     tap(50, 40);

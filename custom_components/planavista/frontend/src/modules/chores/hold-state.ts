@@ -44,6 +44,11 @@ export function tileLine(row: RowModel, fill: number, large: boolean, stars: num
   const done = row.state === 'done';
   if (row.state === 'pending') return { kind: 'waiting', text: '⏳ Waiting for approval' };
   if (fill > 0 && !done) return { kind: 'hint', text: `Keep holding… ${stars > 0 ? `⭐ +${stars}` : ''}`.trim() };
-  if (row.state === 'sent_back') return { kind: 'bad', text: `↩ ${row.badge?.words ?? 'Sent back'}` };
+  if (row.state === 'sent_back') {
+    // Overdue from an earlier day, it says so beside today's copy (round 9: two tiles looked the same).
+    const since = row.item.overdue_since;
+    const day = since ? new Date(`${since}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short' }) : null;
+    return { kind: 'bad', text: `↩ ${row.badge?.words ?? 'Sent back'}${day ? ` · from ${day}` : ''}` };
+  }
   return { kind: 'hint', text: large && !done ? 'Hold me' : '' };
 }

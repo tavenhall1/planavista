@@ -167,15 +167,17 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   const due = item.due_day;
   const memberMay = ctx.member !== 'no';
 
+  // Overdue, it stays on the board until it's done: no new day or date (round 9: they changed nothing).
+  const overdue = !!item.overdue_since;
   if (open && memberMay) {
-    const chips = planChips(item, today);
+    const chips = overdue ? [] : planChips(item, today);
     if (chips.length) {
       member.push({
         id: 'plan_day', label: 'Plan it for a day', tag: memberTag, chips,
         hint: due ? `Shows on that day, and it's still due ${dayWords(due, today)}.` : 'Shows on that day.',
       });
     }
-    if (!ownerIsParent && due && !item.request) {
+    if (!ownerIsParent && due && !item.request && !overdue) {
       member.push({
         id: 'more_time', label: 'Ask for more time', tag: 'Needs approval', chips: moreTimeChips(item, today),
         pick: { min: addDays(due, 1), max: addDays(today, 60) },
@@ -198,11 +200,13 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       parent.push({ id: 'approve', label: 'Looks good', tag: parentTag, hint: 'Approves it, and the stars are earned.' });
       parent.push({ id: 'send_back', label: 'Send back', tag: parentTag, hint: 'It goes back on the list with a note.' });
     }
-    if (open) {
+    if (open && !overdue) {
       parent.push({
         id: 'change_due', label: 'Change the due date', tag: parentTag, chips: dueChips(item, today),
         pick: { min: today }, hint: due ? `Due ${dayWords(due, today)} now.` : 'It has no due date now.',
       });
+    }
+    if (open) {
       parent.push({ id: 'hand_off', label: 'Hand it to someone else', tag: parentTag, hint: 'Just this time.' });
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }

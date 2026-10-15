@@ -21,6 +21,8 @@ export interface InboxRow {
   decline: string;
   /** Approving isn't possible now (not enough stars). */
   blocked: boolean;
+  /** A check-off whose time ran out: sending it back counts it as missed that day (round 9). */
+  late?: boolean;
 }
 
 export interface InboxGroups {
@@ -53,10 +55,11 @@ export function inboxGroups(requests: ChoreRequest[], members: Member[], today: 
     if (r.kind === 'completion') {
       const doer = r.done_by && r.done_by !== r.member ? byId.get(r.done_by)?.name ?? r.done_by : null;
       const stars = r.stars ? ` · ★\u00a0${r.stars}` : ''; // the star keeps its number (round 2)
+      const late = r.missed_if_sent_back === true;
       groups.chores.push({
         id: r.id, kind: r.kind, member, lead: doer ? `${doer} finished` : `${name} finished`, what: r.name,
-        tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format)}${stars}`,
-        allow: 'Looks good', decline: 'Send back', blocked: false,
+        tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format)}${stars}${late ? ' · Its day is over' : ''}`,
+        allow: 'Looks good', decline: late ? 'Not done' : 'Send back', blocked: false, late,
       });
     } else if (r.kind === 'more_time' || r.kind === 'skip') {
       const more = r.kind === 'more_time';
@@ -131,9 +134,9 @@ export function isHeld(answer: Answered | undefined, now: number): boolean {
 }
 
 /** What an answered row says in place of its buttons. */
-export function answeredWords(row: Pick<InboxRow, 'kind'>, answered: 'pending' | 'allowed' | 'declined'): string {
+export function answeredWords(row: Pick<InboxRow, 'kind' | 'late'>, answered: 'pending' | 'allowed' | 'declined'): string {
   if (answered === 'pending') return 'Saving…';
-  if (row.kind === 'completion') return answered === 'allowed' ? 'Approved' : 'Sent back';
+  if (row.kind === 'completion') return answered === 'allowed' ? 'Approved' : row.late ? 'Counted as missed' : 'Sent back';
   if (row.kind === 'redemption') return answered === 'allowed' ? 'Approved' : 'Declined';
   return answered === 'allowed' ? 'Allowed' : 'Not this time';
 }
@@ -176,6 +179,7 @@ export function heldArrivals(
 }
 
 export function answeredText(row: InboxRow, allowed: boolean, note?: string | null): string {
+  if (row.kind === 'completion' && !allowed && row.late) return `${row.what} counts as missed that day${note ? `: ${note}` : ''}.`;
   if (row.kind === 'completion') return allowed ? `${row.what}: looks good.` : `${row.what} went back${note ? `: ${note}` : ''}.`;
   if (row.kind === 'redemption') return allowed ? `${row.what} is ${row.member?.name ?? 'theirs'}'s.` : `${row.what}: declined.`;
   return allowed ? `Allowed: ${row.what}.` : `Not this time: ${row.what}.`;

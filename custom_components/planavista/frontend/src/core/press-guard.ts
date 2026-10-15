@@ -158,9 +158,12 @@ export class PressGuard implements ReactiveController {
     const { clientX: x, clientY: y } = event as PointerEvent;
     // The press before this one anywhere on the page (the page heard this one already), if it was a moment ago.
     const prev = this.page?.prev;
-    const sameSpot = typeof x === 'number' && typeof y === 'number' && !!prev
-      && now - prev.at < PRESS_GRACE_MS && Math.hypot(x - prev.x, y - prev.y) <= SAME_SPOT_PX;
-    this._pressed = now - this._since >= PRESS_GRACE_MS;
+    const near = !!prev && typeof x === 'number' && typeof y === 'number' && Math.hypot(x - prev.x, y - prev.y) <= SAME_SPOT_PX;
+    const sameSpot = near && now - prev!.at < PRESS_GRACE_MS;
+    // On the keypad a press away from the page's last one is typing, and counts at once (round 9: the first
+    // digit, typed in the keypad's first 300 ms, was dropped). A burst's taps land on one spot.
+    const elsewhere = this.restart === 'same-spot' && !!prev && !near;
+    this._pressed = now - this._since >= PRESS_GRACE_MS || elsewhere;
     // The keypad starts over only for a burst at one spot (a face tapped three times), never for typing (round 6).
     if (!this._pressed && (this.restart === true || (this.restart === 'same-spot' && sameSpot))) this._since = now;
   };

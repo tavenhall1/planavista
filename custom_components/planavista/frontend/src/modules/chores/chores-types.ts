@@ -94,6 +94,8 @@ export interface ChoreRequest {
   chore?: string;
   occurrence?: string;
   stars?: number;
+  /** Its time has run out, so sending it back counts it as missed (round 9). */
+  missed_if_sent_back?: boolean;
   until?: string | null;
   reward?: string;
   cost?: number;

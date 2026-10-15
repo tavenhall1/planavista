@@ -61,7 +61,7 @@ export class ChoresApi extends WsApi {
     return this.call('planavista/chores/override', { occurrence, ...changes });
   }
 
-  excuseMissed(occurrence: string, note?: string | null): Promise<{ result: string }> {
+  excuseMissed(occurrence: string, note?: string | null): Promise<{ result: string; streak_holds?: boolean }> {
     return this.call('planavista/chores/excuse_missed', note ? { occurrence, note } : { occurrence });
   }
 

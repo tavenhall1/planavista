@@ -554,9 +554,10 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._excusing = new Set([...this._excusing, occurrence]);
     try {
       if (!(await this.asParent(`Who's excusing ${name}?`))) return;
-      await api.excuseMissed(occurrence);
+      const result = await api.excuseMissed(occurrence);
       const who = this._member(member)?.name;
-      this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${who ? ` ${who}'s streak holds.` : ''}` });
+      // Only a day that closes keeps the streak (round 9: it said so while the day had another miss).
+      this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${result.streak_holds && who ? ` ${who}'s streak holds.` : ''}` });
       // Its link stays gone until the day and the week show it excused (round 7: a double tap excused twice).
       await Promise.all([
         this._loadWeek(true),

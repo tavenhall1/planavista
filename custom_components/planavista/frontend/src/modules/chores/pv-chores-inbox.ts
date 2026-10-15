@@ -108,8 +108,27 @@ export class PvChoresInbox extends LitElement {
         overflow-y: auto;
       }
 
-      .top {
+      /*
+       * The grab handle and the title, pinned together at the very top (round 9: rows scrolled through
+       * a band above the title, inside the panel's top padding, and the handle scrolled away).
+       */
+      .head {
         position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--pv-card-bg, #FFFFFF);
+      }
+
+      :host(:not([layout='landscape'])) .panel {
+        padding-top: 0;
+      }
+
+      .head .grab-zone {
+        margin-top: 0;
+      }
+
+      .top {
+        position: relative;
         top: 0;
         z-index: 1;
         display: flex;
@@ -153,6 +172,13 @@ export class PvChoresInbox extends LitElement {
 
       :host([layout='landscape']) .actions {
         padding: 12px 16px 20px;
+      }
+
+      /* A phone held sideways: pinned, Done and the word covered most rows (round 9). */
+      @media (max-height: 500px) {
+        .actions {
+          position: static;
+        }
       }
 
       /* Rows that came in after it opened: shown on the parent's word (round 7). */
@@ -311,8 +337,12 @@ export class PvChoresInbox extends LitElement {
       panel.style.height = '';
       this._heldHeight = 0;
     }
-    // The rows keep the most height they have had, so one leaving at the end never pulls the scroll back (round 7).
-    if (rows.offsetHeight > this._rowsHeight) {
+    // Scrolling something into view keeps it above the pinned Done row (round 9).
+    const actions = this.renderRoot.querySelector<HTMLElement>('.actions');
+    if (actions) panel.style.scrollPaddingBottom = `${actions.offsetHeight + 8}px`;
+    // The rows keep the most height they have had, so one leaving at the end never pulls the scroll back
+    // (round 7); open Send back reasons don't count, or a gap stays once they close (round 9).
+    if (!this._sendingBack && rows.offsetHeight > this._rowsHeight) {
       this._rowsHeight = rows.offsetHeight;
       rows.style.minHeight = `${this._rowsHeight}px`;
     }
@@ -411,9 +441,11 @@ export class PvChoresInbox extends LitElement {
       <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal=${this.layout === 'landscape' ? 'false' : 'true'} aria-labelledby="inbox-title"
         @keydown=${this._key}>
-        <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
-        <div class="top">
-          <h2 id="inbox-title" tabindex="-1">To approve${g.count ? ` · ${g.count}` : ''}</h2>
+        <div class="head">
+          <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
+          <div class="top">
+            <h2 id="inbox-title" tabindex="-1">To approve${g.count ? ` · ${g.count}` : ''}</h2>
+          </div>
         </div>
         ${this._shownCount === 0 ? html`
           <div class="state">
@@ -487,12 +519,12 @@ export class PvChoresInbox extends LitElement {
       </div>
       ${this._sendingBack === row.id ? html`
         <div class="reasons">
-          <span class="lead">Sending back: what should change?</span>
+          <span class="lead">${row.late ? 'It counts as missed that day. Add a note for them?' : 'Sending back: what should change?'}</span>
           ${SEND_BACK_REASONS.map(reason => html`<button class="chip" type="button" @click=${() => this._review(row, false, reason)}>${reason}</button>`)}
           <input type="text" maxlength="60" placeholder="Write a note…" aria-label="Write a note" .value=${this._note}
             @input=${(e: Event) => { this._note = (e.target as HTMLInputElement).value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this._review(row, false, this._note.trim() || null); }} />
-          <button class="chip" type="button" @click=${() => this._review(row, false, this._note.trim() || null)}>Send back</button>
+          <button class="chip" type="button" @click=${() => this._review(row, false, this._note.trim() || null)}>${row.late ? 'Count as missed' : 'Send back'}</button>
         </div>
       ` : nothing}
     `;
@@ -502,6 +534,10 @@ export class PvChoresInbox extends LitElement {
     if (row.kind === 'completion') {
       this._sendingBack = this._sendingBack === row.id ? null : row.id;
       this._note = '';
+      // Opened on the last row, the reasons fell under the pinned Done (round 9): bring them up.
+      if (this._sendingBack) {
+        void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.reasons')?.scrollIntoView({ block: 'nearest', behavior: motionOf(this) === 'reduced' ? 'auto' : 'smooth' }));
+      }
       return;
     }
     this._review(row, false);
