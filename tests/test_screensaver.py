@@ -123,7 +123,10 @@ async def test_a_parent_turns_it_on_and_sets_its_times_and_entities(
     assert reply["success"]
     assert saver["night"] is None and saver["screens"][kitchen_shared]["screen"] == "light.kitchen_screen"
     assert saver["screens"][kitchen_shared]["motion"] is None
-    for bad in ({"screensaver_after": 7}, {"screensaver_enabled": "yes"}, {"screensaver_night": {"from": "9pm", "to": "06:00"}}):
+    # The shortest wait is a minute (the owner, from the kitchen screen).
+    assert (await ws_command(client, {"type": SAVE, "screensaver_after": 1}))["success"]
+    assert saver["after_minutes"] == 1
+    for bad in ({"screensaver_after": 7}, {"screensaver_after": 0}, {"screensaver_enabled": "yes"}, {"screensaver_night": {"from": "9pm", "to": "06:00"}}):
         refused = await ws_command(client, {"type": SAVE, **bad})
         assert not refused["success"], bad
 

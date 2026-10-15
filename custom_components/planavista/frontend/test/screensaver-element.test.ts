@@ -147,6 +147,14 @@ describe("Settings' screensaver picks (0.11.0 review)", () => {
     expect(page).toMatch(/entityChoices\(this\.hass\?\.states \?\? \{\}, /);
   });
 
+  it('offers a 1-minute wait (the owner, from the kitchen screen)', () => {
+    expect(page).toMatch(/\{ value: 1, label: '1 min', spoken: '1 minute' \},/);
+    expect(src('core/screensaver.ts')).toMatch(/export const AFTER_CHOICES = \[1, 2, 5, 10, 15, 30\] as const;/);
+    // Five fit a phone's Settings in one row; 15 minutes stays for a household that chose it.
+    expect(page).toMatch(/const OFFERED_AFTER = \[1, 2, 5, 10, 30\];/);
+    expect(page).toMatch(/AFTER_CHOICES\.filter\(c => OFFERED_AFTER\.includes\(c\.value\) \|\| c\.value === saver\.after_minutes\)/);
+  });
+
   it("says the Screen should be the screen's own", () => {
     expect(page).toMatch(/Pick this screen's own backlight or plug, not a room's light\./);
   });
