@@ -60,6 +60,7 @@ async def test_subscribe_describes_the_account(
         "screensaver": {
             "enabled": False, "after_minutes": 5, "night": None,
             "screens": [{"user_id": accounts["kitchen"].id, "name": None, "screen": None, "motion": None}],
+            "dim": {"day": 100, "night": 30},
         },
     }
 

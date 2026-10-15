@@ -3,7 +3,9 @@
 When nobody has touched a shared screen for a while, the card shows a living
 sky with the time and today. Each shared account may name a Home Assistant
 entity that dims or turns off its screen, and one that senses motion in front
-of it. These rules are pure; the WebSocket layer works out the facts.
+of it. Shared screens are drawn darker at night (0.12.0): the brightness by day
+and at night, in whole percents. These rules are pure; the WebSocket layer
+works out the facts.
 """
 from __future__ import annotations
 
@@ -12,6 +14,10 @@ import re
 from typing import Any
 
 AFTER_CHOICES = (1, 2, 5, 10, 15, 30)
+DIM_DAY_CHOICES = (100, 85, 70)
+# 100 at night means no dimming.
+DIM_NIGHT_CHOICES = (100, 50, 30, 15, 8)
+DIM_DEFAULT = {"day": 100, "night": 30}
 SCREEN_DOMAINS = ("light", "switch", "input_boolean", "number", "input_number")
 MOTION_DOMAINS = ("binary_sensor", "input_boolean")
 
@@ -20,8 +26,19 @@ _ENTITY = re.compile(r"[a-z_]+\.[a-z0-9_]+")
 
 
 def default_screensaver() -> dict[str, Any]:
-    """Off; on after 5 minutes; night from Sleep times; no screen's entities picked."""
-    return {"enabled": False, "after_minutes": 5, "night": None, "screens": {}}
+    """Off; on after 5 minutes; night from Sleep times; no screen's entities picked; 100% by day, 30% at night."""
+    return {"enabled": False, "after_minutes": 5, "night": None, "screens": {}, "dim": dict(DIM_DEFAULT)}
+
+
+def _level(value: object, choices: tuple[int, ...], default: int) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value in choices else default
+
+
+def _dim(value: object) -> dict[str, Any]:
+    dim: dict[str, Any] = dict(value) if isinstance(value, Mapping) else {}
+    dim["day"] = _level(dim.get("day"), DIM_DAY_CHOICES, DIM_DEFAULT["day"])
+    dim["night"] = _level(dim.get("night"), DIM_NIGHT_CHOICES, DIM_DEFAULT["night"])
+    return dim
 
 
 def _night(value: object) -> dict[str, str] | None:
@@ -61,6 +78,7 @@ def normalize_screensaver(value: object) -> dict[str, Any]:
         if isinstance(screens, Mapping)
         else {}
     )
+    saver["dim"] = _dim(saver.get("dim"))
     return saver
 
 
@@ -100,6 +118,7 @@ def screensaver_view(saver: Mapping[str, Any], shared_users: list[str]) -> dict[
              "screen": (screens.get(user) or {}).get("screen"), "motion": (screens.get(user) or {}).get("motion")}
             for user in shared_users
         ],
+        "dim": {"day": saver["dim"]["day"], "night": saver["dim"]["night"]},
     }
 
 
@@ -116,4 +135,5 @@ def screensaver_diagnostics(saver: Mapping[str, Any]) -> dict[str, Any]:
             {"screen": domain(entry.get("screen")), "motion": domain(entry.get("motion"))}
             for entry in (saver.get("screens") or {}).values()
         ],
+        "dim": {"day": saver["dim"]["day"], "night": saver["dim"]["night"]},
     }
