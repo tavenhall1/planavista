@@ -6833,6 +6833,11 @@ function e(e,t,s,i){var a,n=arguments.length,o=n<3?t:null===i?i=Object.getOwnPro
         padding: 12px 16px 20px;
       }
 
+      /* Done in the head on a short screen, where the list's end is out of reach (round 10). */
+      .head-done {
+        display: none;
+      }
+
       /* A phone held sideways: pinned, Done and the word covered most rows (round 9). */
       @media (max-height: 500px) {
         .actions {
@@ -6844,11 +6849,6 @@ function e(e,t,s,i){var a,n=arguments.length,o=n<3?t:null===i?i=Object.getOwnPro
         .actions .done {
           display: none;
         }
-      }
-
-      /* Done in the head on a short screen, where the list's end is out of reach (round 10). */
-      .head-done {
-        display: none;
       }
 
       /* Rows that came in after it opened: shown on the parent's word (round 7). */
