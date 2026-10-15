@@ -355,6 +355,9 @@ export class PvChoresInbox extends LitElement {
     // Scrolling something into view keeps it above the pinned Done row (round 9).
     const actions = this.renderRoot.querySelector<HTMLElement>('.actions');
     if (actions) panel.style.scrollPaddingBottom = `${actions.offsetHeight + 8}px`;
+    // And below the sticky head: reasons taller than the room left scrolled under it (round 11).
+    const head = this.renderRoot.querySelector<HTMLElement>('.head');
+    if (head) panel.style.scrollPaddingTop = `${head.offsetHeight + 8}px`;
     // The rows keep the most height they have had, so one leaving at the end never pulls the scroll back
     // (round 7); open Send back reasons don't count, or a gap stays once they close (round 9).
     if (!this._sendingBack && rows.offsetHeight > this._rowsHeight) {

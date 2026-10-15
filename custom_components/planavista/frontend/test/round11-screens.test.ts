@@ -20,6 +20,8 @@ describe('round 11: screens', () => {
   it("ignores the burst that opened Send back's reasons", () => {
     const inbox = src('modules/chores/pv-chores-inbox.ts');
     expect(inbox).toMatch(/if \(this\._sendingBack\) \{\n\s+\/\/ [^\n]*\n\s+guardPageTaps\(\);/);
+    // Taller than the room below the sticky head, the reasons scrolled under it (found on the dev copy).
+    expect(inbox).toMatch(/if \(head\) panel\.style\.scrollPaddingTop = `\$\{head\.offsetHeight \+ 8\}px`;/);
   });
 
   // I2: a long note crushed the chore's name and pushed Excuse it off the day sheet.
