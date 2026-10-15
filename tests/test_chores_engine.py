@@ -122,6 +122,7 @@ def test_approving_grants_the_stars() -> None:
         "id": None, "kind": "completion", "member": "dana", "done_by": "dana", "chore": "feed_the_fish",
         "name": "Feed the fish", "occurrence": FISH, "at": "2026-10-13T16:10:00-05:00", "stars": 1,
         "missed_if_sent_back": False,
+        "stays_excused": False,
     }
     out = engine.review(SCENE + timedelta(minutes=20), request_id=request["id"], allow=True, by="alex", source="notification")
     assert out.result == "approved"
@@ -618,7 +619,7 @@ def test_an_allowed_skip_stays_excused_when_its_check_off_is_sent_back_late() ->
     tuesday = _summary(engine, "dana", "day:2026-10-13")
     assert tuesday["closed"] is True
     [check_off] = [r for r in engine.open_requests(at(10, 14, 10)) if r["kind"] == "completion" and r["occurrence"] == FISH]
-    assert check_off["missed_if_sent_back"] is False
+    assert check_off["missed_if_sent_back"] is False and check_off["stays_excused"] is True
     out = engine.review(at(10, 14, 10), request_id=check_off["id"], allow=False, by="blair")
     assert tuesday["closed"] is True and FISH not in tuesday["missed"] and FISH not in tuesday["carried"]
     assert "missed" not in [e.type for e in out.events]
@@ -644,6 +645,67 @@ def test_last_weeks_overdue_copy_done_this_week_stays_out_of_its_numbers() -> No
     engine.catch_up(at(10, 20, 9))
     tuesday = engine.board(at(10, 20, 9))["members"]["dana"]["week"]
     assert (tuesday["due"], tuesday["done"]) == (monday["due"], monday["done"])
+
+
+@pytest.mark.parametrize("policy", ["make_up", "carry_over"])
+def test_a_check_off_on_an_away_day_sent_back_late_stays_away(policy: str) -> None:
+    """Round 13 (r13a I1): an away day owes nothing, yet its check-off sent back late became a miss (or was carried)."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")],
+                           settings={"auto_approve": "never", "missed": policy})
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    engine.member("dana")["away"] = [{"from": "2026-10-13", "to": "2026-10-13", "note": "At Grandma's"}]
+    engine.catch_up(at(10, 14, 9))
+    [check_off] = [r for r in engine.open_requests(at(10, 14, 10)) if r["kind"] == "completion"]
+    assert check_off["missed_if_sent_back"] is False and check_off["stays_excused"] is True
+    out = engine.review(at(10, 14, 10), request_id=check_off["id"], allow=False, by="blair")
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert FISH not in tuesday["missed"] and FISH not in tuesday["carried"]
+    assert "missed" not in [e.type for e in out.events]
+    assert not engine.log["carried"]
+
+
+def test_a_finished_one_time_chore_edited_into_a_plan_chore_shows_again() -> None:
+    """Round 13 (r13a I2): it kept its finished mark, so it never showed on the board again."""
+    engine = sample_engine(activities=[once("fix_the_gate", "Fix the gate", ["alex"], by="2026-10-16")])
+    engine.complete(SCENE, key="fix_the_gate|alex|once|0", by="alex", source="tablet")
+    assert engine.activity("fix_the_gate")["finished_at"] is not None
+    engine.save_activity(SCENE, {"schedule": "plan", "minimum": {"hours": 0.25, "per": "day"}},
+                         by="alex", source="tablet", activity_id="fix_the_gate")
+    assert engine.activity("fix_the_gate")["finished_at"] is None
+    assert "fix_the_gate|alex|day:2026-10-13|0" in keys(engine, "alex", SCENE)
+
+
+@pytest.mark.parametrize(("chore", "key"), [
+    (plan("water_the_ferns", "Water the ferns", ["dana"], 0.25, "week", days=["sun"]), "water_the_ferns|dana|week:2026-10-12|0"),
+    (once("hang_the_shelf", "Hang the shelf", ["dana"], by="2026-10-16"), "hang_the_shelf|dana|once|0"),
+])
+def test_last_weeks_overdue_copy_of_any_chore_done_this_week_stays_out_of_its_numbers(chore: dict, key: str) -> None:
+    """Round 13 (r13a M1): round 12 kept only a daily chore's overdue copy out of the later week."""
+    engine = sample_engine(activities=[chore], settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 19, 9))
+    assert any(c["key"] == key for c in engine.log["carried"])
+    engine.complete(at(10, 19, 10), key=key, by="dana", source="tablet")
+    monday = engine.board(at(10, 19, 11))["members"]["dana"]["week"]
+    engine.catch_up(at(10, 20, 9))
+    tuesday = engine.board(at(10, 20, 9))["members"]["dana"]["week"]
+    assert (tuesday["due"], tuesday["done"]) == (monday["due"], monday["done"])
+
+
+def test_a_last_time_given_more_time_counts_in_its_new_due_week() -> None:
+    """Round 13 (r13a M2): its later due day was lost once the check-off finished the chore."""
+    windows = repeats("wash_the_windows", "Wash the windows", ["casey"], "FREQ=WEEKLY;COUNT=1", "2026-10-15", "period", 30)
+    engine = sample_engine(activities=[windows])
+    engine.catch_up(at(10, 15, 9))
+    key = next(i.occ.key for i in engine.items(at(10, 15, 9))["casey"] if i.occ.chore == "wash_the_windows")
+    engine.request(at(10, 15, 9), kind="more_time", key=key, by="casey", until=date(2026, 10, 20))
+    [ask] = [r for r in engine.open_requests() if r["kind"] == "more_time"]
+    engine.review(at(10, 15, 9), request_id=ask["id"], allow=True, by="blair")
+    engine.catch_up(at(10, 19, 9))
+    engine.complete(at(10, 19, 10), key=key, by="casey", source="tablet")
+    engine.catch_up(at(10, 26, 9))
+    counted = {s["period"]: s["keys"][key][0] for s in engine.log["summaries"] if s["member"] == "casey" and key in (s.get("keys") or {})}
+    # Any time that week, due Tuesday now: done, in its new week, and on no day's ring (Monday counted it).
+    assert counted == {"week:2026-10-19": "done"}
 
 
 def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
