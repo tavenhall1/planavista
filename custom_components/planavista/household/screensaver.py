@@ -11,7 +11,7 @@ from collections.abc import Mapping
 import re
 from typing import Any
 
-AFTER_CHOICES = (2, 5, 10, 15, 30)
+AFTER_CHOICES = (1, 2, 5, 10, 15, 30)
 SCREEN_DOMAINS = ("light", "switch", "input_boolean", "number", "input_number")
 MOTION_DOMAINS = ("binary_sensor", "input_boolean")
 

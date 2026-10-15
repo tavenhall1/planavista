@@ -130,6 +130,22 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.shown).toBe(false);
   });
 
+  it("a restart's fresh reading of no motion doesn't start the wait over (the kitchen screen)", () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ motion: 'binary_sensor.kitchen' }), start);
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - 30 * MIN).toISOString() };
+    saver.tick(start + MIN, noon(1));
+    // Home Assistant restarts: the sensor goes away and comes back off, changed just now.
+    page.entities['binary_sensor.kitchen'] = { state: 'unavailable', attributes: {} };
+    saver.tick(start + 2 * MIN, noon(2));
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start + 3 * MIN).toISOString() };
+    saver.tick(start + 3 * MIN, noon(3));
+    saver.tick(start + 5 * MIN, noon(5));
+    expect(page.shown).toBe(true);
+  });
+
   it("wakes on motion when Home Assistant's clock is behind the screen's", () => {
     const page = new FakePage();
     const start = noon().getTime();

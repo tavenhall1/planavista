@@ -16,7 +16,7 @@ export interface ScreensaverSettings {
   screens: ScreenEntities[];
 }
 
-export const AFTER_CHOICES = [2, 5, 10, 15, 30] as const;
+export const AFTER_CHOICES = [1, 2, 5, 10, 15, 30] as const;
 export const SCREEN_DOMAINS = ['light', 'switch', 'input_boolean', 'number', 'input_number'] as const;
 export const MOTION_DOMAINS = ['binary_sensor', 'input_boolean'] as const;
 const MOTION_CLASSES = new Set(['motion', 'occupancy', 'presence', 'moving']);
@@ -73,7 +73,7 @@ export interface MotionSeen {
  * The motion entity's reading, timed by this page (0.11.0 review: a screen
  * whose clock ran ahead of Home Assistant's never woke on motion). A change is
  * timed when the page first sees it, within its one-second tick; the first
- * reading takes Home Assistant's time, never later than now.
+ * reading of motion takes Home Assistant's time, never later than now.
  */
 export function seeMotion(
   prev: MotionSeen | null, state: { state: string; last_changed?: string } | undefined, now: number,
@@ -82,7 +82,10 @@ export function seeMotion(
   if (!reading) return null;
   const changed = state?.last_changed ?? '';
   if (prev && prev.changed === changed && prev.on === reading.on) return prev;
-  return { on: reading.on, changed, at: prev ? now : Math.min(now, reading.since || now) };
+  if (prev) return { on: reading.on, changed, at: now };
+  // A first reading (the page loading, or the sensor back after Home Assistant restarts) of no
+  // motion starts nothing: only a change to off this page saw starts the wait (the kitchen screen).
+  return { on: reading.on, changed, at: reading.on ? Math.min(now, reading.since || now) : 0 };
 }
 
 /** The motion entity as the idle clock reads it: on, and since when it last changed (ms). */

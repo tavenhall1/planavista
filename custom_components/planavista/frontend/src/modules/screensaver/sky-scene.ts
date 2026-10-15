@@ -1,5 +1,5 @@
 import { WeatherScene, nextLightning } from '../../core/screensaver';
-import {
+import { boltSource,
   Light, Rgb, SCENE_MARGIN, clamp, cloudPlan, fractal, horizonAt, lightAt, minuteOfDay, mixRgb, moonPhase,
   nightLight, rgba, rng, shade, sunPosition,
 } from './sky';
@@ -1011,17 +1011,22 @@ export class SkyScene {
       this._nextBolt = this._lastBolt ? Math.max(first, nextLightning(this._lastBolt, 0)) : first;
     }
     if (now < this._nextBolt) return;
-    this._strike();
+    if (!this._strike()) {
+      this._nextBolt = now + 1500;
+      return;
+    }
     this._lastBolt = now;
     this._nextBolt = nextLightning(now, Math.random());
   }
 
-  private _strike(): void {
+  /** A bolt from a cloud's base down behind the near ranges; false when there's no cloud to come from. */
+  private _strike(): boolean {
     const g = this._bolt.getContext('2d');
-    if (!g) return;
+    const source = boltSource(this._clouds.filter(c => c.host === this._farHost), this._w, this._horizon);
+    if (!g || !source) return false;
     const r = Math.random;
     const bw = 140;
-    const bh = Math.round(this._band * 0.5 + this._horizon * 0.45);
+    const bh = Math.max(80, Math.round(this._horizon + this._band * 0.22 - source.top));
     this._bolt.width = Math.round(bw * this._dpr);
     this._bolt.height = Math.round(bh * this._dpr);
     this._bolt.style.width = `${bw}px`;
@@ -1056,8 +1061,8 @@ export class SkyScene {
     g.fill();
     g.restore();
     paperOver(g, bw, bh);
-    const x = this._w * (0.25 + r() * 0.55);
-    const y = this._horizon * 0.55 + this._band * 0.02;
+    const x = source.x;
+    const y = source.top;
     const reach = Math.max(this._w, this._h);
     this._bolt.style.transform = `translate3d(${x - bw / 2}px, ${y}px, 0)`;
     this._flash.style.background =
@@ -1066,6 +1071,7 @@ export class SkyScene {
     // One soft flash that rises fast and fades: never a strobe.
     this._bolt.animate([{ opacity: 0 }, { opacity: BOLT_PEAK, offset: 0.08 }, { opacity: 0 }], { duration: 760, easing: 'ease-out' });
     this._flash.animate([{ opacity: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 0 }], { duration: 980, easing: 'ease-out' });
+    return true;
   }
 
   // ---- The loop --------------------------------------------------------------------

@@ -1,9 +1,33 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { WeatherScene } from '../src/core/screensaver';
 import {
-  DEFAULT_RISE, DEFAULT_SET, GREY, KEYS, Rgb, cloudPlan, fractal, hex, horizonAt, lightAt, minuteOfDay, mixRgb,
+  DEFAULT_RISE, DEFAULT_SET, GREY, KEYS, Rgb, boltSource, cloudPlan, fractal, hex, horizonAt, lightAt, minuteOfDay, mixRgb,
   moonPhase, nightLight, rng, shade, sunAt, sunPosition,
 } from '../src/modules/screensaver/sky';
+
+// The owner, 2026-10-15: "Lightning should always originate from a cloud."
+describe('lightning comes out of a cloud', () => {
+  const cloud = (kind: string, x: number, w: number, y: number) => ({ kind, x, w, y });
+
+  it('starts at the base of a cloud on screen, a storm tower first', () => {
+    const clouds = [cloud('low', 400, 240, 420), cloud('tower', 900, 300, 380)];
+    expect(boltSource(clouds, 1920, 500, () => 0.5)).toEqual({ x: 900 + 300 * 0.5, top: 377 });
+  });
+
+  it('takes another cloud without a tower, and waits when none is on screen', () => {
+    expect(boltSource([cloud('low', 600, 240, 420)], 1920, 500, () => 0)).toEqual({ x: 600 + 240 * 0.3, top: 417 });
+    const away = [cloud('low', -500, 200, 420), cloud('low', 1900, 300, 420), cloud('high', 800, 200, 600)];
+    expect(boltSource(away, 1920, 500)).toBeNull();
+  });
+
+  it("the scene's strike starts there, and waits a moment when there's no cloud to come from", () => {
+    const scene = readFileSync(fileURLToPath(new URL('../src/modules/screensaver/sky-scene.ts', import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
+    expect(scene).toMatch(/const source = boltSource\(this\._clouds\.filter\(c => c\.host === this\._farHost\), this\._w, this\._horizon\);/);
+    expect(scene).toMatch(/if \(!this\._strike\(\)\) \{\n\s+this\._nextBolt = now \+ 1500;\n\s+return;\n\s+\}/);
+  });
+});
 
 // The living sky's light rules (spec 3.3), checked against the approved mockup (v4).
 const RISE = 430; // 7:10 AM

@@ -9,6 +9,23 @@ export type Rgb = [number, number, number];
 /** How far the sheets, stars, and weather are drawn past each side, so the slow drift never shows an edge (px). */
 export const SCENE_MARGIN = 56;
 
+/**
+ * Where a bolt of lightning starts: the base of a cloud well on screen, a
+ * storm's tall cloud first (the owner, 2026-10-15: "Lightning should always
+ * originate from a cloud"). Null with no cloud to come from; the strike waits.
+ */
+export function boltSource(
+  clouds: ReadonlyArray<{ kind: string; x: number; w: number; y: number }>, width: number, horizon: number,
+  draw: () => number = Math.random,
+): { x: number; top: number } | null {
+  const onScreen = clouds.filter(c => c.x + c.w * 0.25 > width * 0.08 && c.x + c.w * 0.75 < width * 0.92 && c.y < horizon);
+  const towers = onScreen.filter(c => c.kind === 'tower');
+  const pool = towers.length ? towers : onScreen;
+  if (!pool.length) return null;
+  const c = pool[Math.min(pool.length - 1, Math.floor(draw() * pool.length))];
+  return { x: c.x + c.w * (0.3 + draw() * 0.4), top: c.y - 3 };
+}
+
 /** Sunrise and sunset when none are known (spec 3.3: without sun.sun, 7:00 AM and 7:00 PM), in minutes of the day. */
 export const DEFAULT_RISE = 7 * 60;
 export const DEFAULT_SET = 19 * 60;

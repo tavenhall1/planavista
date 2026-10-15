@@ -53,13 +53,15 @@ describe('the screensaver: where and when (milestone 11)', () => {
 
   it("reads motion changes on the page's own clock, whatever Home Assistant's says", () => {
     const ha = (ms: number) => new Date(ms - 600_000).toISOString(); // Home Assistant 10 minutes behind
+    // A first reading of no motion (the page loading, the sensor back after a restart) starts nothing.
     const first = seeMotion(null, { state: 'off', last_changed: ha(1_000_000) }, 1_000_000);
-    expect(first).toMatchObject({ on: false, at: 400_000 });
+    expect(first).toMatchObject({ on: false, at: 0 });
+    expect(seeMotion(null, { state: 'on', last_changed: ha(1_000_000) }, 1_000_000)).toMatchObject({ on: true, at: 400_000 });
     expect(seeMotion(first, { state: 'off', last_changed: ha(1_000_000) }, 1_005_000)).toBe(first);
     expect(seeMotion(first, { state: 'on', last_changed: ha(1_010_000) }, 1_010_000)).toMatchObject({ on: true, at: 1_010_000 });
     expect(seeMotion(first, { state: 'unavailable' }, 1_020_000)).toBeNull();
     // A clock ahead of the screen's never puts a change in the future.
-    expect(seeMotion(null, { state: 'off', last_changed: new Date(2_000_000).toISOString() }, 1_000_000)?.at).toBe(1_000_000);
+    expect(seeMotion(null, { state: 'on', last_changed: new Date(2_000_000).toISOString() }, 1_000_000)?.at).toBe(1_000_000);
   });
 
   it("offers Settings' picks by name, keeping a stored one Home Assistant doesn't list now", () => {
