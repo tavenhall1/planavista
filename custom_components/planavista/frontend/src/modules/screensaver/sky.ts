@@ -1,0 +1,326 @@
+import type { WeatherScene } from '../../core/screensaver';
+
+// The living sky's light (spec 3.3), ported from the approved mockup (v4): pure
+// rules with no DOM, so the scene only draws what these work out.
+
+/** A color as red, green, and blue from 0 to 255 (fractions allowed while mixing). */
+export type Rgb = [number, number, number];
+
+/** How far the sheets, stars, and weather are drawn past each side, so the slow drift never shows an edge (px). */
+export const SCENE_MARGIN = 56;
+
+/** Sunrise and sunset when none are known (spec 3.3: without sun.sun, 7:00 AM and 7:00 PM), in minutes of the day. */
+export const DEFAULT_RISE = 7 * 60;
+export const DEFAULT_SET = 19 * 60;
+
+/** A seeded random source (mulberry32): one seed always gives the same numbers, so the ranges keep their shape. */
+export function rng(seed: number): () => number {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** "#rrggbb" as a color. */
+export function hex(h: string): Rgb {
+  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+}
+
+/** From `a` toward `b` by `t` (0 is `a`, 1 is `b`). */
+export function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+/** A color as CSS, rounded, with its alpha. */
+export function rgba(c: Rgb, a = 1): string {
+  return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
+}
+
+/** Darker toward black (k below 0) or lighter toward white (k above 0), by the fraction k. */
+export function shade(c: Rgb, k: number): Rgb {
+  const f = (v: number) => (k < 0 ? v * (1 + k) : v + (255 - v) * k);
+  return [f(c[0]), f(c[1]), f(c[2])];
+}
+
+/** `v` kept within `a` to `b`. */
+export function clamp(v: number, a: number, b: number): number {
+  return Math.max(a, Math.min(b, v));
+}
+
+/** Smoothstep: eases 0 to 1 in and out. */
+export function smooth(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Midpoint displacement, a ridge's natural roughness: larger strokes first and
+ * finer ones after, scaled so the largest is 1. `n` is a power of two plus one.
+ */
+export function fractal(r: () => number, n: number, rough: number): Float32Array {
+  const v = new Float32Array(n);
+  v[0] = r() * 2 - 1;
+  v[n - 1] = r() * 2 - 1;
+  let step = n - 1;
+  let scale = 1;
+  while (step > 1) {
+    const half = step / 2;
+    for (let i = half; i < n; i += step) v[i] = (v[i - half] + v[i + half]) / 2 + (r() * 2 - 1) * scale;
+    scale *= rough;
+    step = half;
+  }
+  let max = 0;
+  for (const x of v) max = Math.max(max, Math.abs(x));
+  for (let i = 0; i < n; i++) v[i] /= max || 1;
+  return v;
+}
+
+const three = <T>(f: (j: number) => T): [T, T, T] => [f(0), f(1), f(2)];
+
+/** The light at one height of the sun: the sky's three stops, the glow, and each paper's color. */
+export interface LightKey {
+  /** The sun's height in degrees. */
+  e: number;
+  sky: [Rgb, Rgb, Rgb];
+  /** The glow's color and its strength. */
+  glow: [Rgb, number];
+  /** The farthest and nearest sheets' paper; those between are mixed. */
+  far: Rgb;
+  near: Rgb;
+  pine: Rgb;
+  snow: Rgb;
+  cloud: Rgb;
+  sun: Rgb;
+}
+
+interface RawKey {
+  e: number;
+  sky: [string, string, string];
+  glow: [string, number];
+  far: string;
+  near: string;
+  pine: string;
+  snow: string;
+  cloud: string;
+  sun: string;
+}
+
+const keyOf = (k: RawKey): LightKey => ({
+  e: k.e,
+  sky: three(j => hex(k.sky[j])),
+  glow: [hex(k.glow[0]), k.glow[1]],
+  far: hex(k.far),
+  near: hex(k.near),
+  pine: hex(k.pine),
+  snow: hex(k.snow),
+  cloud: hex(k.cloud),
+  sun: hex(k.sun),
+});
+
+/** The light keyed by the sun's height, deep night to midday (the hero's palette at midday). */
+export const KEYS: LightKey[] = ([
+  { e: -18, sky: ['#0a1322', '#122038', '#1b2b48'], glow: ['#3a4673', 0.10], far: '#33435f', near: '#0e1828', pine: '#0b1520', snow: '#3e4d6a', cloud: '#2b3956', sun: '#f2e8d4' },
+  { e: -6, sky: ['#25355c', '#5b5f8d', '#c99ba0'], glow: ['#f2a688', 0.42], far: '#8a88ab', near: '#2a395a', pine: '#22304a', snow: '#cac6dc', cloud: '#a096ba', sun: '#ffc39a' },
+  { e: 0, sky: ['#6e8ec0', '#c4a7c3', '#f9c49b'], glow: ['#ffae78', 0.85], far: '#cbb9cd', near: '#385d6c', pine: '#2c4a46', snow: '#f6e7e4', cloud: '#f5d3c6', sun: '#ffcd9b' },
+  { e: 8, sky: ['#8db5e0', '#cedbee', '#fbe2c4'], glow: ['#ffd8a6', 0.6], far: '#c4d7e1', near: '#30686c', pine: '#2d5446', snow: '#fcf8f3', cloud: '#fffaf2', sun: '#fff0d2' },
+  { e: 25, sky: ['#a7cdef', '#d6e8f8', '#fdf6ee'], glow: ['#fff0d4', 0.34], far: '#c9dee8', near: '#2c676b', pine: '#2f5d4a', snow: '#ffffff', cloud: '#ffffff', sun: '#fff7e6' },
+] as RawKey[]).map(keyOf);
+
+/** The greys that cloud cover mixes in: an overcast sky, a storm's sky, and clouds by kind of weather. */
+export const GREY: { sky: [Rgb, Rgb, Rgb]; storm: [Rgb, Rgb, Rgb]; cloud: Rgb; rain: Rgb; stormCloud: Rgb } = {
+  sky: three(j => hex(['#8f9cab', '#b2bbc6', '#d0d6dd'][j])),
+  storm: three(j => hex(['#525b69', '#717a87', '#8f96a1'][j])),
+  cloud: hex('#e2e6eb'),
+  rain: hex('#bcc4ce'),
+  stormCloud: hex('#5b6474'),
+};
+
+/** Where the sun (or by night the moon) is: up or not, how far through its day or night (0 to 1), and its height in degrees. */
+export interface SunState {
+  day: boolean;
+  p: number;
+  e: number;
+}
+
+/** The minute of the day for a local time, seconds included (so 6:30:30 AM is 390.5). */
+export function minuteOfDay(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes() + date.getSeconds() / 60 + date.getMilliseconds() / 60_000;
+}
+
+/** Sunrise and sunset as given, or the defaults when they can't make a day (missing, or sunset not after sunrise). */
+function dayOf(rise: number, set: number): [number, number] {
+  const usable = Number.isFinite(rise) && Number.isFinite(set) && rise >= 0 && set <= 1440 && set > rise && set - rise < 1440;
+  return usable ? [rise, set] : [DEFAULT_RISE, DEFAULT_SET];
+}
+
+/**
+ * The sun at a minute of the day, between sunrise and sunset (minutes of the
+ * day): up to 38 degrees at midday. The night, from sunset to the next sunrise,
+ * is the mockup's own: the moon's arc, down to 26 degrees below at its middle.
+ */
+export function sunAt(minute: number, rise: number, set: number): SunState {
+  const [r, s] = dayOf(rise, set);
+  const m = minute >= 0 && minute < 1440 ? minute : ((minute % 1440) + 1440) % 1440;
+  if (m >= r && m <= s) {
+    const p = (m - r) / (s - r);
+    return { day: true, p, e: 38 * Math.sin(Math.PI * p) };
+  }
+  const night = 1440 - (s - r);
+  const p = ((m - s + 1440) % 1440) / night;
+  return { day: false, p, e: -26 * Math.sin(Math.PI * p) };
+}
+
+/** The scene's light at one moment: the sky, the glow, every paper's color, how many stars show, and the fog. */
+export interface Light {
+  sun: SunState;
+  /** The sun's height the keys are read at (kept within -18 to 25 degrees). */
+  e: number;
+  sky: [Rgb, Rgb, Rgb];
+  glow: [Rgb, number];
+  far: Rgb;
+  near: Rgb;
+  pine: Rgb;
+  snow: Rgb;
+  cloud: Rgb;
+  sunColor: Rgb;
+  /** 0 to 1: none by day, all on a clear night, fewer through cloud. */
+  stars: number;
+  fog: number;
+}
+
+/**
+ * The light at a minute of the day for the weather (spec 3.3): the keys mixed
+ * by the sun's height, then greyed by the cloud cover (toward the storm's
+ * palette in a storm), clouds greyed for rain or storms, the ranges flattened.
+ */
+export function lightAt(minute: number, scene: WeatherScene, rise: number, set: number): Light {
+  const sun = sunAt(minute, rise, set);
+  const e = clamp(sun.e, -18, 25);
+  let i = 0;
+  while (i < KEYS.length - 2 && e > KEYS[i + 1].e) i++;
+  const a = KEYS[i];
+  const b = KEYS[i + 1];
+  const t = smooth(clamp((e - a.e) / (b.e - a.e), 0, 1));
+  const cover = clamp(scene.cover, 0, 1);
+  const storm = scene.storm;
+  const light: Light = {
+    sun,
+    e,
+    sky: three(j => mixRgb(a.sky[j], b.sky[j], t)),
+    glow: [mixRgb(a.glow[0], b.glow[0], t), a.glow[1] + (b.glow[1] - a.glow[1]) * t],
+    far: mixRgb(a.far, b.far, t),
+    near: mixRgb(a.near, b.near, t),
+    pine: mixRgb(a.pine, b.pine, t),
+    snow: mixRgb(a.snow, b.snow, t),
+    cloud: mixRgb(a.cloud, b.cloud, t),
+    sunColor: mixRgb(a.sun, b.sun, t),
+    stars: clamp((-4 - sun.e) / 10, 0, 1),
+    fog: scene.fog || 0,
+  };
+  const daylight = clamp((sun.e + 8) / 20, 0, 1);
+  const grey = storm ? GREY.storm : GREY.sky;
+  const k = cover * (storm ? 0.95 : 0.85);
+  light.sky = three(j => mixRgb(light.sky[j], shade(grey[j], -0.78 * (1 - daylight)), k));
+  light.glow[1] = Math.max(0, light.glow[1] * (1 - cover * 1.05));
+  const cloudTo = storm ? GREY.stormCloud : scene.rain > 0 ? GREY.rain : GREY.cloud;
+  light.cloud = mixRgb(light.cloud, shade(cloudTo, -0.7 * (1 - daylight)), clamp(Math.pow(cover, 1.5) * (storm ? 1 : 0.7), 0, 1));
+  const flat = cover * 0.3 + (storm ? 0.15 : 0);
+  const snowy = scene.snow > 0;
+  light.far = mixRgb(light.far, shade(light.far, snowy ? 0.15 : -0.1), flat);
+  light.near = mixRgb(light.near, shade(light.near, snowy ? 0.12 : -0.12), flat);
+  light.stars *= clamp(1 - cover * 1.4, 0, 1);
+  return light;
+}
+
+/** How far the household's night takes every color toward a warm near-black (spec 3.3, Night). */
+export const NIGHT_DIM = 0.45;
+const NIGHT_INK = hex('#0b0806');
+
+/** The household's night: the same light, darker overall and a little warmer; the moon dims less, the stars stay. */
+export function nightLight(light: Light): Light {
+  const dim = (c: Rgb, k = NIGHT_DIM): Rgb => mixRgb(c, NIGHT_INK, k);
+  return {
+    ...light,
+    sky: three(j => dim(light.sky[j])),
+    glow: [light.glow[0], light.glow[1] * 0.5],
+    far: dim(light.far),
+    near: dim(light.near),
+    pine: dim(light.pine),
+    snow: dim(light.snow),
+    cloud: dim(light.cloud),
+    sunColor: dim(light.sunColor, 0.15),
+  };
+}
+
+/** Where the horizon sits: lower on a tall screen, so the sky has room above the info. */
+export function horizonAt(width: number, height: number): number {
+  return height * (height > width ? 0.58 : 0.47);
+}
+
+/**
+ * The sun's (or moon's) center in the scene, from the left of the visible
+ * width: it rises at a tenth of the way across, below the far range, arcs up
+ * to a tenth of the height from the top, and sets at nine tenths across.
+ */
+export function sunPosition(minute: number, rise: number, set: number, width: number, height: number, horizon: number): { x: number; y: number } {
+  const { p } = sunAt(minute, rise, set);
+  const band = height - horizon;
+  return { x: width * (0.1 + 0.8 * p), y: horizon + band * 0.12 - Math.sin(Math.PI * p) * (horizon - height * 0.1) };
+}
+
+/** A new moon to count from (2000-01-06 18:14 UTC) and the mean lunar month in days. */
+const NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14);
+export const LUNAR_MONTH_DAYS = 29.530588853;
+
+/** How far the moon is through its month: 0 new, 0.25 first quarter, 0.5 full, 0.75 last quarter. */
+export function moonPhase(date: Date): number {
+  const p = ((date.getTime() - NEW_MOON_MS) / 86_400_000 / LUNAR_MONTH_DAYS) % 1;
+  return p < 0 ? p + 1 : p;
+}
+
+/** At or above this fog, the valleys fill with fog patches; below it, rain still leaves one in the far valley. */
+export const FOG_BANK = 0.5;
+
+/** The paper clouds for the weather: the seed of their layout, how many of each, and the fog patches per valley. */
+export interface CloudPlan {
+  seed: number;
+  /** High small clouds, then low ones, then the heavy cover's extra high ones (added in that order). */
+  high: number;
+  low: number;
+  more: number;
+  /** A storm's two tall clouds. */
+  towers: number;
+  /** Fog patches rising from the far, middle, and near valleys. */
+  fog: [number, number, number];
+}
+
+/** The mockup's weather presets in its order, which its cloud seeds count by. */
+function presetOf(scene: WeatherScene): number {
+  if (scene.storm) return 5;
+  if (scene.fog >= FOG_BANK) return 3;
+  if (scene.snow > 0) return 6;
+  if (scene.rain > 0) return 4;
+  if (scene.cover >= 0.6) return 2;
+  return scene.cover >= 0.2 ? 1 : 0;
+}
+
+/**
+ * The clouds for the weather, as the mockup lays them out: more and thicker as
+ * the cover grows, never long thin strips; fog fills the valleys, rain leaves
+ * one patch in the far valley. Its presets keep their own seeds, so the sky for
+ * "partly cloudy" at 35% is the one the mockup showed.
+ */
+export function cloudPlan(scene: WeatherScene): CloudPlan {
+  const cover = clamp(scene.cover, 0, 1);
+  const fog: [number, number, number] = scene.fog >= FOG_BANK ? [2, 2, 1] : scene.rain > 0 ? [1, 0, 0] : [0, 0, 0];
+  return {
+    seed: 55 + Math.round(cover * 20) + presetOf(scene) * 7,
+    high: Math.round(cover * 4),
+    low: 1 + Math.round(cover * 5),
+    more: cover > 0.55 ? Math.round((cover - 0.55) * 7) : 0,
+    towers: scene.storm ? 2 : 0,
+    fog,
+  };
+}
