@@ -53,7 +53,7 @@ Ported from mockup v4 (scratchpad screensaver/living-sky.html), as modules with 
 
 Settings, PINs and parent mode, Shared screens:
 - **Screensaver** switch, with the line "When nobody has touched a shared screen for a while, it shows the sky, the time, and today. A touch wakes it." Turning it on needs a shared screen (the section only shows once one exists).
-- While it is on: **Comes on after** (2, 5, 10, 15, 30 min, as a segmented control); **Night** ("From Sleep times: 10:30 PM to 6:15 AM" with **Set its own times**, a pair of time fields, and back to From Sleep times); then one row per shared account ("Kitchen · No screen picked"), each pushing a page with **Screen** (an entity picker of the domains above, with a line on what it does by day and at night) and **Motion** (binary_sensor or input_boolean), and the note that devices signed in with one account share these.
+- While it is on: **Comes on after** (2, 5, 10, 15, 30 min, as a segmented control); **Night** ("From Sleep times: 10:30 PM to 6:15 AM" with **Set its own times**, a pair of time fields, and back to From Sleep times); then a block per shared account (its name), with **Screen** (a pick of the domains above, with a line on what it does by day and at night) and **Motion** (binary_sensor or input_boolean), and the note that devices signed in with one account share these.
 - **Preview** ("Show it now") shows the screensaver on this screen at once, for a check; the same touch closes it.
 
 ## 4. Testing

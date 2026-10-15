@@ -68,6 +68,10 @@ export class HouseholdApi extends WsApi {
     parent_mode_minutes?: number;
     kiosk_enabled?: boolean;
     kiosk_top_bar?: 'hidden' | 'tabs';
+    screensaver_enabled?: boolean;
+    screensaver_after?: number;
+    screensaver_night?: { from: string; to: string } | null;
+    screensaver_screen?: { user: string; screen?: string | null; motion?: string | null };
   }): Promise<void> {
     return this.call('planavista/household/settings/save', settings);
   }
