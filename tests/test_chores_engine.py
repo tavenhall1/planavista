@@ -474,12 +474,13 @@ def test_a_one_off_chore_sent_back_after_its_date_is_missed_on_its_date() -> Non
     key = "sort_the_recycling|casey|once|0"
     assert engine.complete(SCENE, key=key, by="casey", source="tablet").result == "pending"
     engine.catch_up(at(10, 16, 9))
+    # Due by Thursday, it counts on Thursday, not on the day it was checked off (round 11: the same
+    # whether or not the check-off finished the chore).
     tuesday = _summary(engine, "casey", "day:2026-10-13")
-    assert (tuesday["due"], tuesday["pending"]) == (1, 1)
+    assert (tuesday["due"], tuesday["pending"]) == (0, 0)
     [request] = [r for r in engine.open_requests(at(10, 16, 10)) if r["occurrence"] == key]
     assert request["missed_if_sent_back"] is True
     engine.review(at(10, 16, 10), request_id=request["id"], allow=False, by="blair")
-    # Tuesday counted it only because it was checked off then: as if it never was.
     assert (tuesday["due"], tuesday["pending"]) == (0, 0) and key not in tuesday["keys"]
     thursday = _summary(engine, "casey", "day:2026-10-15")
     assert key in thursday["missed"] and thursday["closed"] is False
@@ -511,6 +512,94 @@ def test_excusing_a_past_day_by_the_action_closes_it() -> None:
     engine.excuse(at(10, 14, 10), chore="feed_the_fish", member="dana", by="blair", day=date(2026, 10, 13))
     tuesday = _summary(engine, "dana", "day:2026-10-13")
     assert (tuesday["due"], tuesday["closed"]) == (1, True)
+
+
+@pytest.mark.parametrize("policy", ["make_up", "carry_over"])
+def test_a_repeats_chores_last_time_sent_back_late_reopens_its_day(policy: str) -> None:
+    """Round 11 (r11a I1): its check-off finished the chore, so its day counted it only as a check-off;
+    sent back later, it left that day, whose ring stayed closed. The same chore with times to come reopened it."""
+    found = []
+    for count in (1, 3):
+        engine = sample_engine(activities=[repeats(
+            "water_the_ferns", "Water the ferns", ["dana"], f"FREQ=WEEKLY;BYDAY=TU;COUNT={count}", "2026-10-13", "day", 10,
+        )], settings={"auto_approve": "never", "missed": policy})
+        key = next(i.occ.key for i in engine.items(SCENE)["dana"] if i.occ.chore == "water_the_ferns")
+        engine.complete(SCENE, key=key, by="dana", source="tablet")
+        engine.catch_up(at(10, 16, 9))
+        [request] = engine.open_requests()
+        engine.review(at(10, 16, 9), request_id=request["id"], allow=False, by="blair")
+        tuesday = _summary(engine, "dana", "day:2026-10-13")
+        found.append({k: tuesday.get(k) for k in ("due", "done", "pending", "closed", "open", "missed", "carried")})
+    assert found[0] == found[1]
+    assert found[0]["closed"] is False
+
+
+def test_excusing_a_date_leaves_other_days_overdue_copies_alone() -> None:
+    """Round 11 (r11a I2): excuse_chore for Tuesday also excused Wednesday's overdue copy, and a date ahead today's."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 15, 9))
+    wednesdays = "feed_the_fish|dana|day:2026-10-14|0"
+    out = engine.excuse(at(10, 15, 10), chore="feed_the_fish", member="dana", by="blair", day=date(2026, 10, 13))
+    assert out.data["occurrences"] == [FISH]
+    wednesday = _summary(engine, "dana", "day:2026-10-14")
+    assert wednesday["closed"] is False and wednesdays in wednesday["carried"]
+    ahead = engine.excuse(at(10, 15, 10), chore="feed_the_fish", member="dana", by="blair", day=date(2026, 10, 17))
+    assert wednesdays not in ahead.data["occurrences"]
+
+
+def test_excusing_on_a_day_without_keys_closes_it_too() -> None:
+    """Round 11 (r11a M3): Excuse it in a chore's options skipped days written before they kept their keys."""
+    ferns = plan("water_the_ferns", "Water the ferns", ["dana"], 0.25, "week", days=["tue"])
+    engine = sample_engine(activities=[ferns, plan("make_your_bed", "Make your bed", ["dana"], 0.1, "day")])
+    key = "water_the_ferns|dana|week:2026-10-12|0"
+    engine.complete(SCENE, key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    tuesday.pop("keys")  # written before summaries kept their keys
+    assert key in tuesday["open"] and tuesday["due"] == 2
+    engine.override(at(10, 14, 10), key=key, by="blair", excused=True)
+    assert (tuesday["due"], tuesday["closed"]) == (1, True) and key in tuesday["excused"]
+
+
+def test_deleting_a_chore_takes_its_waiting_check_off_out_of_earlier_days() -> None:
+    """Round 11 (r11a M4): the day still counted it as waiting, while its sheet no longer listed it."""
+    engine = sample_engine(activities=[
+        plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day"),
+        plan("make_your_bed", "Make your bed", ["dana"], 0.1, "day"),
+    ], settings={"auto_approve": "never"})
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    engine.complete(SCENE, key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert (tuesday["due"], tuesday["pending"]) == (2, 2)
+    engine.delete_activity("feed_the_fish", now=at(10, 14, 10))
+    assert (tuesday["due"], tuesday["pending"], tuesday["closed"]) == (1, 1, True)
+
+
+def test_a_deleted_chores_stars_keep_its_name() -> None:
+    """Round 11 (r11a M5): Stars history said "A chore" once the chore was deleted."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")])
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    engine.catch_up(at(10, 14, 9))
+    engine.delete_activity("feed_the_fish", now=at(10, 14, 10))
+    assert [e["name"] for e in engine.star_history("dana") if e["reason"] == "chore"] == ["Feed the fish"]
+
+
+def test_a_missed_one_time_chore_stays_in_its_week() -> None:
+    """Round 11 (r11a M6): the rollover finished it, and the week's numbers forgot it the next day."""
+    engine = sample_engine(activities=[once("fix_the_porch_light", "Fix the porch light", ["alex"], on="2026-10-14")])
+    before = engine.board(at(10, 14, 10))["members"]["alex"]["week"]["due"]
+    engine.catch_up(at(10, 15, 9))
+    assert engine.activity("fix_the_porch_light")["finished_at"] is not None
+    assert engine.board(at(10, 15, 9))["members"]["alex"]["week"]["due"] == before == 1
+
+
+def test_excusing_a_days_only_miss_says_the_streak_holds() -> None:
+    """Round 11 (r11a M7): the day had nothing left to count, so it never read as closed."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "strict"})
+    engine.catch_up(at(10, 14, 9))
+    out = engine.excuse_missed(at(10, 14, 10), key=FISH, by="blair")
+    assert out.data["streak_holds"] is True
 
 
 def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
