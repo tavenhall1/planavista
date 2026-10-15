@@ -27,7 +27,7 @@ function tap(target: EventTarget, type: 'pointerdown' | 'click', detail = 1): Ev
 function setup(start = 1000) {
   let now = start;
   const host = new Host();
-  const guard = new PressGuard(host as never, () => now);
+  const guard = new PressGuard(host as never, { now: () => now });
   guard.hostConnected();
   const clicks: number[] = [];
   host.addEventListener('click', () => clicks.push(now));
@@ -75,6 +75,28 @@ describe('a sheet or toast ignores the tap of a finger that went down before it 
     expect(clicks).toHaveLength(1);
   });
 
+  // Round 5 (r5b B4): round 4's restart ate a briskly typed PIN, digits 120 to 150 ms apart
+  // never leaving the window; a double-tapped gear's second tap started it.
+  it('the keypad\'s guard ignores only the stray early press, then counts digits however fast', () => {
+    let now = 1000;
+    const host = new Host();
+    const guard = new PressGuard(host as never, { now: () => now, restart: false });
+    guard.hostConnected();
+    const clicks: number[] = [];
+    host.addEventListener('click', () => clicks.push(now));
+    now += 180;
+    tap(host, 'pointerdown');
+    tap(host, 'click');
+    expect(clicks).toEqual([]);
+    now += 250;
+    for (let i = 0; i < 4; i++) {
+      tap(host, 'pointerdown');
+      tap(host, 'click');
+      now += 130;
+    }
+    expect(clicks).toHaveLength(4);
+  });
+
   it('lets keyboard and programmatic clicks through (no pointer, detail 0)', () => {
     const { host, clicks } = setup();
     tap(host, 'click', 0);
@@ -107,7 +129,15 @@ describe('every sheet and the toast take the guard', () => {
   const sheets = files(src).filter(path => /\bsheetStyles\b/.test(readFileSync(path, 'utf-8')) && !path.endsWith(join('styles', 'sheet.ts')));
 
   it.each(sheets.map(path => [path.slice(src.length + 1), path]))('%s', (_name, path) => {
-    expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _pressGuard = new PressGuard\(this\);/);
+    expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _pressGuard = new PressGuard\(this(, \{ restart: false \})?\);/);
+  });
+
+  // Round 5 (r5b B3): a double tap on your face typed its second tap on the keypad that replaced the faces.
+  it('the keypad types fast, and starts its guard over when the faces turn into it', () => {
+    const pin = readFileSync(join(src, 'shell', 'pv-pin-sheet.ts'), 'utf-8').replace(/\r\n/g, '\n');
+    expect(pin).toMatch(/private readonly _pressGuard = new PressGuard\(this, \{ restart: false \}\);/);
+    const enter = pin.slice(pin.indexOf('  private _enterFor(member: Member): void {'));
+    expect(enter.slice(0, enter.indexOf('\n  }\n'))).toMatch(/this\._pressGuard\.arm\(\);/);
   });
 
   it('the toast, which starts over with each new toast', () => {

@@ -21,11 +21,24 @@ type GuardHost = ReactiveControllerHost & EventTarget;
 
 const CAPTURE = { capture: true } as const;
 
+export interface PressGuardOptions {
+  now?: () => number;
+  /**
+   * A tap inside the window starts it over (round 4), so a burst counts only after
+   * a pause. The PIN keypad turns it off (round 5): digits typed fast are real presses.
+   */
+  restart?: boolean;
+}
+
 export class PressGuard implements ReactiveController {
   private _since = 0;
   private _pressed = false;
+  private readonly now: () => number;
+  private readonly restart: boolean;
 
-  constructor(private readonly host: GuardHost, private readonly now: () => number = () => performance.now()) {
+  constructor(private readonly host: GuardHost, options: PressGuardOptions = {}) {
+    this.now = options.now ?? (() => performance.now());
+    this.restart = options.restart ?? true;
     host.addController(this);
   }
 
@@ -49,7 +62,7 @@ export class PressGuard implements ReactiveController {
   private _down = (): void => {
     const now = this.now();
     this._pressed = now - this._since >= PRESS_GRACE_MS;
-    if (!this._pressed) this._since = now;
+    if (!this._pressed && this.restart) this._since = now;
   };
 
   private _click = (event: Event): void => {
