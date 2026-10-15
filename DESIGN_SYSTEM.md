@@ -355,6 +355,17 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 
 - **The reveal's buttons are the celebration's own** (the one exception to 11.9's single button family): 56 px gold and frosted pills in a heavier weight, drawn on the reveal's dark layer in every theme and mode, so the moment reads as a celebration rather than a sheet. They keep 48 px targets, a visible focus ring, and the family's words. The gold is `--pv-present-gold`, a token of every theme.
 
+### 11.11 The screensaver
+
+`pv-screensaver` (shell) and `SkyScene` (modules/screensaver): when nobody has touched a shared screen for a while, a living sky in the hero's layered paper style covers the whole page, Home Assistant's bars included.
+
+- **The scene:** six cut-paper ridges (a distant range, a massif with snowfields, its shoulders, an alpine range with a tree line, forested foothills, the nearest hill) with shadows between the sheets and a paper fiber texture, paper clouds of varying thickness, fog as tall see-through vellum patches whose feet hide behind the next ridge, rain, snow, and a gentle storm. Never long thin clouds or mist bands.
+- **Light:** the sky, the ridges' tones, and the glow follow the real sun (sun.sun's rising and setting) and the weather entity's condition and cloud cover. The sun and moon move every frame from the clock; colors are re-lit once a minute in steps too small to see. The moon is drawn by its real phase.
+- **Words:** a large clock in cream paper letters, the date with the temperature and conditions, and the Today card (the icon's calendar card with its coral header and pegs) with the next events and a ring per person for today's chores. The words move to another place every 10 minutes. Labels are sentence case.
+- **Night:** from the latest bedtime to the earliest wake-up in Sleep times, the scene darkens to a warm near-black, drifts at a quarter speed, and shows only the dimmed clock.
+- **Motion:** transforms and opacity only (no blur or filters), one animation loop at 30 frames a second, stopped while the page is hidden. Lightning is a soft flash and a faint bolt, at least 9 seconds apart. Reduced motion keeps the light and the clock and drops drifting, rain, snow, and lightning.
+- **Waking:** a touch only wakes it; the page ignores that burst, so nothing beneath is pressed.
+
 ### 11.9 Controls: one for each kind of choice
 
 The shared styles live in `styles/controls.ts`; each site keeps its own buttons, inputs, and handlers.
@@ -400,6 +411,10 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-15: Added: the screensaver
+
+- A living sky over paper mountains for shared screens, lit by the real sun and weather, with the time and today written over it (11.11).
 
 ### 2026-10-14: Changed: people's colors
 

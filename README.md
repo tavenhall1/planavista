@@ -75,14 +75,11 @@ Make sure you have at least one calendar integration configured:
 3. Search for **PlanaVista**
 4. Follow the single-step setup (calendars are auto-discovered)
 
-### 4. Add the Card to a Dashboard
+### 4. Open PlanaVista
 
-1. Open your dashboard and click **Edit**
-2. Click **Add Card**
-3. Search for **PlanaVista**
-4. Save: setup appears on first load
+Adding the integration puts **PlanaVista** in Home Assistant's sidebar, with a dashboard of its own, and setup opens there by itself. It walks you through who lives here, your calendars, chores if you want them, and the look. No YAML required.
 
-Setup walks you through who lives here, your calendars, chores if you want them, and the look. No YAML required.
+The card works on any dashboard too: open the dashboard, click **Edit**, then **Add Card**, and search for **PlanaVista**. To take PlanaVista out of the sidebar, or put it back, use **Show PlanaVista in the sidebar** in Settings, under About.
 
 ### 5. Card YAML Options (Optional)
 
@@ -123,6 +120,8 @@ PlanaVista keeps a list of the people in your household. Anyone whose calendar i
 **Shared family screens.** A wall tablet that the whole family uses should sign in with its own Home Assistant account, one that isn't an admin. On that account, Settings asks for a parent's PIN first. Once a parent has a PIN, mark the tablet's account as a shared family screen in Settings, under PINs and parent mode. A non-admin account is safer on a shared screen because an admin account also opens Home Assistant's own settings, which no PlanaVista PIN can guard. An account that isn't linked to anyone and isn't an admin is treated as a shared screen too.
 
 **Kiosk mode.** On shared family screens, PlanaVista can hide Home Assistant's menus so the screen stays on PlanaVista: turn on Kiosk mode in Settings, under PINs and parent mode, once a shared screen exists. Home Assistant's sidebar goes, and so does its top bar (Top bar: Hidden), or all of it but the dashboard's tabs (Tabs only), for other screens the family uses on the same dashboard. A parent whose own Home Assistant login is an admin can tap Exit kiosk mode in parent mode; Home Assistant's menus come back until parent mode would end (no touches anywhere for Lock after no touches, Parent mode ends after, Lock, the screen sleeping, or a reload), then kiosk mode is back. If the parent leaves for Home Assistant's own pages and comes back, the card offers Back to kiosk mode. Only a Home Assistant admin, or a parent who is one, can turn kiosk mode on or off; an admin can do it from their own phone or laptop, and every shared screen follows. Kiosk mode tidies the screen, but it isn't a lock: a browser still has an address bar. For a lock, use the device's own kiosk feature, such as Guided Access on an iPad or a kiosk browser on Android.
+
+**Screensaver.** On shared family screens, PlanaVista can show a living sky when nobody has touched the screen for a while: paper mountains lit by the real sun and the weather, with the time, today's next events, and how everyone's chores are going. Turn it on in Settings, under PINs and parent mode, in Shared screens, and pick how long it waits (2 to 30 minutes). A touch wakes it and presses nothing. At night (from the latest bedtime to the earliest wake-up in Sleep times, or times you set) the sky goes dark and only the time shows. For each shared screen you can pick a **Screen** entity, such as a light, switch, or number that controls its backlight, so the screen dims while the screensaver shows and turns off at night, and a **Motion** sensor, so someone in front of the screen keeps it awake and wakes it. Show it now previews it. A Raspberry Pi with a touch monitor, an Android tablet, and an iPad all work; an iPad has no screen entity, so it relies on its own Auto-Lock.
 
 **PINs and parent mode.** Anyone can have a PIN of 4 to 6 digits; 6 is much harder to guess. PINs that are easy to guess are turned away: the same digit over and over, a run like 1234, or straight down the keypad like 2580. A parent's PIN starts parent mode on that screen: the top of the card shows whose it is, with a countdown and a Lock button. A child's PIN shows the same strip in their color while their changes are unlocked. Either ends once nobody has touched the screen for two minutes, when the screen sleeps, when the page reloads, when someone taps Lock, and in any case ten minutes after the PIN. Both times can be changed in Settings, under PINs and parent mode (Lock after no touches, and Parent mode ends after). After 5 wrong tries a PIN pauses for 30 seconds, and each pause after that is twice as long, up to 15 minutes. A parent can clear a pause. PlanaVista keeps PINs only as salted hashes, and never puts them in actions, events, or its logs.
 
