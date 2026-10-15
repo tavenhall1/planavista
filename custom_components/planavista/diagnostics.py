@@ -15,6 +15,7 @@ from .chores.runtime import DATA_CHORES
 from .const import CONF_CALENDARS, CONF_DISPLAY
 from .coordinator import PlanaVistaConfigEntry
 from .household.members import ordered
+from .household.screensaver import screensaver_diagnostics
 from .household.store import DATA_HOUSEHOLD
 from .refusals import recent_refusals
 
@@ -57,6 +58,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PlanaVi
                 "enabled": household.data["security"]["kiosk"]["enabled"],
                 "top_bar": household.data["security"]["kiosk"]["top_bar"],
             },
+            "screensaver": screensaver_diagnostics(household.data["security"]["screensaver"]),
             "modules": household.data["modules"],
             "setup": household.data["setup"],
         }

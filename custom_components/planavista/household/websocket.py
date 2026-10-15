@@ -34,6 +34,14 @@ from .members import (
     update_member,
 )
 from .kiosk import KIOSK_TOP_BARS, exit_refusal, may_change_kiosk
+from .screensaver import (
+    AFTER_CHOICES,
+    MOTION_DOMAINS,
+    SCREEN_DOMAINS,
+    entity_refusal,
+    follow_shared,
+    screensaver_view,
+)
 from .permissions import Account, SessionView, may_manage_pin, member_level, parent_level
 from .security import (
     PARENT_MODE_CHOICES,
@@ -251,6 +259,7 @@ def _view(hass: HomeAssistant, household: Household, user: User) -> dict[str, An
                 "enabled": household.data["security"]["kiosk"]["enabled"],
                 "top_bar": household.data["security"]["kiosk"]["top_bar"],
             },
+            "screensaver": screensaver_view(household.data["security"]["screensaver"], household.shared_users),
         },
         "modules": household.data["modules"],
         "setup": household.data["setup"],
@@ -469,6 +478,7 @@ async def ws_shared_screen(
             return
         users.append(connection.user.id)
     household.data["security"]["shared_users"] = users
+    follow_shared(household.data["security"]["screensaver"], users, {connection.user.id: connection.user.name})
     await household.async_save()
     connection.send_result(msg["id"])
 
@@ -481,6 +491,16 @@ async def ws_shared_screen(
         vol.Optional("parent_mode_minutes"): vol.In(PARENT_MODE_CHOICES),
         vol.Optional("kiosk_enabled"): bool,
         vol.Optional("kiosk_top_bar"): vol.In(KIOSK_TOP_BARS),
+        vol.Optional("screensaver_enabled"): bool,
+        vol.Optional("screensaver_after"): vol.In(AFTER_CHOICES),
+        vol.Optional("screensaver_night"): vol.Any(
+            None, {vol.Required("from"): vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$"), vol.Required("to"): vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$")}
+        ),
+        vol.Optional("screensaver_screen"): {
+            vol.Required("user"): str,
+            vol.Optional("screen"): vol.Any(None, str),
+            vol.Optional("motion"): vol.Any(None, str),
+        },
         vol.Optional("session"): str,
     }
 )
@@ -507,11 +527,36 @@ async def ws_settings_save(
     for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
         if key in msg:
             household.data["security"][key] = msg[key]
+    saver = household.data["security"]["screensaver"]
+    if msg.get("screensaver_enabled") and not household.shared_users:
+        send_refusal(connection, msg, "no_shared_screen", SCREENSAVER_REFUSALS["no_shared_screen"])
+        return
+    if "screensaver_screen" in msg:
+        pick = msg["screensaver_screen"]
+        if pick["user"] not in household.shared_users:
+            send_refusal(connection, msg, "not_shared", SCREENSAVER_REFUSALS["not_shared"])
+            return
+        if entity_refusal(pick.get("screen"), SCREEN_DOMAINS) or entity_refusal(pick.get("motion"), MOTION_DOMAINS):
+            send_refusal(connection, msg, "invalid_entity", SCREENSAVER_REFUSALS["invalid_entity"])
+            return
     kiosk = household.data["security"]["kiosk"]
     if "kiosk_enabled" in msg:
         kiosk["enabled"] = msg["kiosk_enabled"]
     if "kiosk_top_bar" in msg:
         kiosk["top_bar"] = msg["kiosk_top_bar"]
+    if "screensaver_enabled" in msg:
+        saver["enabled"] = msg["screensaver_enabled"]
+    if "screensaver_after" in msg:
+        saver["after_minutes"] = msg["screensaver_after"]
+    if "screensaver_night" in msg:
+        saver["night"] = msg["screensaver_night"]
+    if "screensaver_screen" in msg:
+        pick = msg["screensaver_screen"]
+        follow_shared(saver, household.shared_users, {})
+        entry = saver["screens"][pick["user"]]
+        for key in ("screen", "motion"):
+            if key in pick:
+                entry[key] = pick[key]
     await household.async_save()
     connection.send_result(msg["id"])
 
@@ -820,6 +865,12 @@ HOUSEHOLD_COMMANDS = (
 
 
 KIOSK_CHANGE_REFUSAL = "Only a Home Assistant admin, or a parent who is one, can change kiosk mode."
+
+SCREENSAVER_REFUSALS = {
+    "no_shared_screen": "The screensaver runs on shared screens. Mark this screen as shared first.",
+    "not_shared": "That account isn't a shared screen anymore.",
+    "invalid_entity": "Pick a light, switch, or number for the screen, and a motion sensor for motion.",
+}
 
 KIOSK_REFUSALS = {
     "pin_required": "Enter a parent's PIN to exit kiosk mode.",
