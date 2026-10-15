@@ -23,14 +23,16 @@ describe('round 6: screens', () => {
   // B5: a triple-tapped face typed its third tap (210 ms gaps) on the keypad.
   it('the keypad starts its window over for a burst at one spot, never for typing on other keys', () => {
     let now = 1000;
+    const page = new EventTarget();
     const host = new Host();
-    const guard = new PressGuard(host as never, { now: () => now, restart: 'same-spot' });
+    const guard = new PressGuard(host as never, { now: () => now, restart: 'same-spot', page });
     guard.hostConnected();
     const clicks: number[] = [];
     host.addEventListener('click', () => clicks.push(now));
     const tap = (x: number, y: number) => {
       const down = new Event('pointerdown');
       Object.defineProperties(down, { clientX: { value: x }, clientY: { value: y } });
+      page.dispatchEvent(down);
       host.dispatchEvent(down);
       const click = new Event('click', { cancelable: true });
       Object.defineProperty(click, 'detail', { value: 1 });
@@ -47,6 +49,38 @@ describe('round 6: screens', () => {
     now += 250;
     for (const [x, y] of [[120, 500], [220, 500], [320, 500], [120, 580]]) { tap(x, y); now += 120; }
     expect(clicks).toHaveLength(4);
+  });
+
+  // Round 7 (r7b B1): a triple tap on Looks good opened the keypad with tap 1, outside it, so the
+  // keypad's same-spot rule had nothing to compare tap 2 with, and tap 3 typed a 9 into Blair's PIN.
+  it("the keypad knows a burst that began on the page before it opened", () => {
+    let now = 1000;
+    const page = new EventTarget();
+    const host = new Host();
+    const guard = new PressGuard(host as never, { now: () => now, restart: 'same-spot', page });
+    guard.hostConnected();
+    const clicks: number[] = [];
+    host.addEventListener('click', () => clicks.push(now));
+    const down = (x: number, y: number) => {
+      const event = new Event('pointerdown');
+      Object.defineProperties(event, { clientX: { value: x }, clientY: { value: y } });
+      return event;
+    };
+    const click = () => {
+      const event = new Event('click', { cancelable: true });
+      Object.defineProperty(event, 'detail', { value: 1 });
+      host.dispatchEvent(event);
+    };
+    page.dispatchEvent(down(314, 760)); // tap 1: on Looks good, which opens the keypad
+    guard.arm();
+    for (let i = 0; i < 2; i++) {
+      now += 200;
+      const event = down(314, 760);
+      page.dispatchEvent(event); // the page hears every press first, as the window's capture does
+      host.dispatchEvent(event);
+      click();
+    }
+    expect(clicks).toEqual([]);
   });
 
   // B4: excusing the first of two missed chores sorted it below the second, which slid under the finger.

@@ -66,21 +66,64 @@ export interface PressGuardOptions {
    * a pause. The PIN keypad turns it off (round 5): digits typed fast are real presses.
    */
   restart?: boolean | 'same-spot';
+  /** Where the page's presses are heard (the window; a stand-in in tests). */
+  page?: EventTarget;
 }
 
 /** How near a press is to the last one to count as the same spot, a burst on one place (round 6). */
 export const SAME_SPOT_PX = 24;
+
+interface Press {
+  at: number;
+  x: number;
+  y: number;
+}
+
+/**
+ * The page's last two presses (round 7): a sheet that opened on a burst's first
+ * tap (Looks good opening the keypad) never saw that tap, so its same-spot rule had
+ * nothing to compare the next one with. One listener per page, in the capture
+ * phase, hears every press before any sheet does.
+ */
+class PagePresses {
+  prev: Press | null = null;
+  last: Press | null = null;
+
+  constructor(target: EventTarget, now: () => number) {
+    target.addEventListener('pointerdown', (event: Event) => {
+      const { clientX: x, clientY: y } = event as PointerEvent;
+      if (typeof x !== 'number' || typeof y !== 'number') return;
+      this.prev = this.last;
+      this.last = { at: now(), x, y };
+    }, CAPTURE);
+  }
+}
+
+const pages = new WeakMap<EventTarget, PagePresses>();
+
+function pagePresses(target: EventTarget | undefined, now: () => number): PagePresses | null {
+  if (!target) return null;
+  let found = pages.get(target);
+  if (!found) {
+    found = new PagePresses(target, now);
+    pages.set(target, found);
+  }
+  return found;
+}
 
 export class PressGuard implements ReactiveController {
   private _since = 0;
   private _pressed = false;
   private readonly now: () => number;
   private readonly restart: boolean | 'same-spot';
-  private _lastAt: { x: number; y: number } | null = null;
+  private readonly page: PagePresses | null;
 
   constructor(private readonly host: GuardHost, options: PressGuardOptions = {}) {
     this.now = options.now ?? (() => performance.now());
     this.restart = options.restart ?? true;
+    this.page = options.restart === 'same-spot'
+      ? pagePresses(options.page ?? (typeof window === 'undefined' ? undefined : window), this.now)
+      : null;
     host.addController(this);
   }
 
@@ -104,9 +147,10 @@ export class PressGuard implements ReactiveController {
   private _down = (event: Event): void => {
     const now = this.now();
     const { clientX: x, clientY: y } = event as PointerEvent;
-    const at = typeof x === 'number' && typeof y === 'number' ? { x, y } : null;
-    const sameSpot = !!(at && this._lastAt && Math.hypot(at.x - this._lastAt.x, at.y - this._lastAt.y) <= SAME_SPOT_PX);
-    this._lastAt = at;
+    // The press before this one anywhere on the page (the page heard this one already), if it was a moment ago.
+    const prev = this.page?.prev;
+    const sameSpot = typeof x === 'number' && typeof y === 'number' && !!prev
+      && now - prev.at < PRESS_GRACE_MS && Math.hypot(x - prev.x, y - prev.y) <= SAME_SPOT_PX;
     this._pressed = now - this._since >= PRESS_GRACE_MS;
     // The keypad starts over only for a burst at one spot (a face tapped three times), never for typing (round 6).
     if (!this._pressed && (this.restart === true || (this.restart === 'same-spot' && sameSpot))) this._since = now;
