@@ -28,6 +28,8 @@ export interface ScreensaverEnv {
   hide(): void;
   /** Parent mode ends as it shows: nobody is there. */
   lockParentMode(): void;
+  /** A parent looking at a preview, or the touch that ends it: parent mode counts it as a touch (review m12 J). */
+  keepParentMode(): void;
   /** Keeps the device awake (or lets it sleep), where the browser can. */
   wakeLock(hold: boolean): void;
   /** The page ignores the burst that woke it, so the tap presses nothing beneath. */
@@ -151,6 +153,8 @@ export class ScreensaverController {
         this.wake(now);
         return;
       }
+      // Until then a preview is a parent looking at it, so parent mode doesn't time out under it.
+      if (this._preview) this._env.keepParentMode();
       if (!this._preview && now - this._beatAt >= SHOWING_BEAT_MS) this._mark(true, now);
       this._nightNow = this.night(date);
       // A preview is a look at it: the screen's entity is left alone.
@@ -179,6 +183,8 @@ export class ScreensaverController {
 
   wake(now: number): void {
     if (!this._showing) return;
+    // The touch that ends a preview is a parent's touch: back in Settings, parent mode carries on.
+    if (this._preview) this._env.keepParentMode();
     this._showing = false;
     this._preview = false;
     this.trial = null;
@@ -335,6 +341,7 @@ const browserEnv: ScreensaverEnv = {
     else done();
   },
   lockParentMode: () => window.dispatchEvent(new CustomEvent('pv-screensaver-shown')),
+  keepParentMode: () => window.dispatchEvent(new CustomEvent('pv-screensaver-looked')),
   wakeLock: hold => {
     wantLock = hold;
     if (hold) void holdWakeLock();

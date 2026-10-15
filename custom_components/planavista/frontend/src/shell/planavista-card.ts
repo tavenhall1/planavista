@@ -254,6 +254,8 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
          inset, and in landscape the card pads its own bottom. */
       :host {
         display: block;
+        /* Every scrollbar in the card in the look's colors, dimmed with it at night (review m12b M5); it inherits. */
+        scrollbar-color: var(--pv-border, #D4D4D0) transparent;
         height: calc(100vh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
         height: calc(100dvh - var(--header-height, 56px) - var(--safe-area-inset-top, 0px) + var(--pv-under-status-bar, 0px));
         /* Kiosk mode with the top bar hidden: the card runs up under the status bar (milestone 9). */

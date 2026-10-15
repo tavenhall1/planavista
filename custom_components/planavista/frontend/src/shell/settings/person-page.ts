@@ -29,7 +29,7 @@ import type { PlanaVistaData } from '../../types';
 import '../../core/pv-member-avatar';
 import '../pv-notice-sheet';
 import './pin-actions';
-import { HelpState, helpBox, helpLabel, helpStyles } from '../../core/help';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../core/help';
 
 const PALETTE = PvColorSwatchPicker.PRESETS.map(preset => preset.color);
 
@@ -310,9 +310,10 @@ export class PvSettingsPerson extends LitElement {
 
   private _renderName() {
     return html`
-      <label class="field">
-        ${helpLabel(this._help, 'person_name', 'Name')}
+      <div class="field">
+        ${helpFor(this._help, 'person_name', 'Name', 'person-name')}
         <input
+          id="person-name"
           class="pv-input"
           type="text"
           maxlength="40"
@@ -320,7 +321,7 @@ export class PvSettingsPerson extends LitElement {
           .value=${this._draft.name}
           @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })}
         />
-      </label>
+      </div>
       ${helpBox(this._help, 'person_name')}
     `;
   }
@@ -515,16 +516,16 @@ export class PvSettingsPerson extends LitElement {
     return html`
       <fieldset class="field">
         <legend>Home Assistant</legend>
-        <label class="field">
-          ${helpLabel(this._help, 'person_ha_person', 'Person')}
-          <select class="pv-input pv-select" .value=${this._draft.person ?? ''}
+        <div class="field">
+          ${helpFor(this._help, 'person_ha_person', 'Person', 'person-ha-person')}
+          <select id="person-ha-person" class="pv-input pv-select" .value=${this._draft.person ?? ''}
             @change=${(e: Event) => this._linkPerson((e.target as HTMLSelectElement).value)}>
             <option value="" ?selected=${!this._draft.person}>None</option>
             ${persons.map(id => html`
               <option value=${id} ?selected=${this._draft.person === id}>${this.hass.states[id]?.attributes?.friendly_name ?? id}</option>
             `)}
           </select>
-        </label>
+        </div>
         ${helpBox(this._help, 'person_ha_person')}
         ${helpLabel(this._help, 'person_calendars', 'Calendars')}
         ${helpBox(this._help, 'person_calendars')}

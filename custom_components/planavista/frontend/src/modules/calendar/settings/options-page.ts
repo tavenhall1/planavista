@@ -10,7 +10,7 @@ import { HouseholdApi, errorCode } from '../../../core/household-client';
 import type { Layout } from '../../../core/layout';
 import { PAGE_ERROR, saveErrorMessage } from '../../../core/page-host';
 import type { DisplayConfig, PlanaVistaData } from '../../../types';
-import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-calendar-options-page: the calendar's display options (Settings,
@@ -70,7 +70,7 @@ export class PvCalendarOptionsPage extends LitElement {
       <div class="page-content">
         <!-- Time format -->
         <div class="field-group">
-          <label class="pv-label">${helpLabel(this._help, 'calendar_time_format', 'Time format')}</label>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_time_format', 'Time format')}</span>
           ${helpBox(this._help, 'calendar_time_format')}
           <div class="pv-seg" role="group" aria-label="Time format">
             <button
@@ -88,7 +88,7 @@ export class PvCalendarOptionsPage extends LitElement {
 
         <!-- First day of the week -->
         <div class="field-group">
-          <label class="pv-label">${helpLabel(this._help, 'calendar_first_day', 'First day of the week')}</label>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_first_day', 'First day of the week')}</span>
           ${helpBox(this._help, 'calendar_first_day')}
           <div class="pv-seg" role="group" aria-label="First day of week">
             <button
@@ -106,7 +106,7 @@ export class PvCalendarOptionsPage extends LitElement {
 
         <!-- Weather -->
         <div class="field-group">
-          <label class="pv-label" for="weather-select">${helpLabel(this._help, 'calendar_weather', 'Weather')}</label>
+          <span class="pv-label">${helpFor(this._help, 'calendar_weather', 'Weather', 'weather-select')}</span>
           ${helpBox(this._help, 'calendar_weather')}
           <select
             id="weather-select"
@@ -123,7 +123,7 @@ export class PvCalendarOptionsPage extends LitElement {
 
         <!-- Default view -->
         <div class="field-group">
-          <label class="pv-label">${helpLabel(this._help, 'calendar_default_view', 'Default view')}</label>
+          <span class="pv-label">${helpLabel(this._help, 'calendar_default_view', 'Default view')}</span>
           ${helpBox(this._help, 'calendar_default_view')}
           <div class="pv-seg stretch" role="group" aria-label="Default calendar view">
             ${([

@@ -180,13 +180,23 @@ export class PvSettingsScreens extends SettingRowsPage {
         max-width: 100%;
       }
 
-      /* Try it's picks scroll sideways on a phone rather than wrap a word at a time. */
-      .try .pv-seg {
+      /*
+       * A row of choices wider than the page scrolls sideways inside itself, never the page (review m12b M2),
+       * with a soft shadow at an edge that has more: the shadows stay put while the covers scroll with the choices.
+       */
+      .choice-row .pv-seg {
         overflow-x: auto;
+        overscroll-behavior-x: contain;
         scrollbar-width: none;
+        background:
+          linear-gradient(to right, var(--pv-seg, #ECECE8) 40%, transparent) left / 28px 100% no-repeat local,
+          linear-gradient(to left, var(--pv-seg, #ECECE8) 40%, transparent) right / 28px 100% no-repeat local,
+          radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.22), transparent) left / 12px 100% no-repeat scroll,
+          radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.22), transparent) right / 12px 100% no-repeat scroll,
+          var(--pv-seg, #ECECE8);
       }
 
-      .try .pv-seg::-webkit-scrollbar {
+      .choice-row .pv-seg::-webkit-scrollbar {
         display: none;
       }
 
@@ -249,7 +259,7 @@ export class PvSettingsScreens extends SettingRowsPage {
       <section>
         <h2>Night</h2>
         <div class="saver-row">
-          ${helpLabel(this._help, 'night', 'Hours', 'night-label')}
+          ${helpLabel(this._help, 'night', 'Hours', 'night-label', undefined, 'Night')}
           ${saver.night ? html`
             <span class="times">
               <pv-time-field .format=${format} .value=${saver.night.from} aria-label="Night starts"
@@ -301,7 +311,7 @@ export class PvSettingsScreens extends SettingRowsPage {
       <div class="screen">
         <h3>${screen.name ?? 'A shared screen'}</h3>
         <div class="saver-row">
-          ${helpLabel(this._help, 'screensaver_screen', 'Screen', `screen-label-${screen.user_id}`, screen.user_id)}
+          ${helpLabel(this._help, 'screensaver_screen', 'Screen', `screen-label-${screen.user_id}`, screen.user_id, `Screen for ${screen.name ?? 'this shared screen'}`)}
           <select id=${`screen-${screen.user_id}`} class="pv-input pv-select" ?disabled=${this._busy}
             aria-labelledby=${`screen-label-${screen.user_id}`}
             @change=${(e: Event) => pick('screen', (e.target as HTMLSelectElement).value)}>
@@ -311,7 +321,7 @@ export class PvSettingsScreens extends SettingRowsPage {
         </div>
         ${helpBox(this._help, 'screensaver_screen', screen.user_id)}
         <div class="saver-row">
-          ${helpLabel(this._help, 'screensaver_motion', 'Motion', `motion-label-${screen.user_id}`, screen.user_id)}
+          ${helpLabel(this._help, 'screensaver_motion', 'Motion', `motion-label-${screen.user_id}`, screen.user_id, `Motion for ${screen.name ?? 'this shared screen'}`)}
           <select id=${`motion-${screen.user_id}`} class="pv-input pv-select" ?disabled=${this._busy}
             aria-labelledby=${`motion-label-${screen.user_id}`}
             @change=${(e: Event) => pick('motion', (e.target as HTMLSelectElement).value)}>
@@ -326,18 +336,32 @@ export class PvSettingsScreens extends SettingRowsPage {
 
   /** Try it: Time, Weather, Season, then Show it now. Picks are this page's own; nothing is saved. */
   private _try() {
+    // One Tab stop per row and arrows between its choices, like every other choice row (review m12b M3).
     const pickRow = (label: string, id: string, choices: Array<{ value: string; label: string; spoken: string }>, chosen: string,
-      set: (value: string) => void) => html`
-      <div class="choice-row">
-        <span class="label" id=${id}>${label}</span>
-        <div class="pv-seg" role="radiogroup" aria-labelledby=${id}>
-          ${choices.map(choice => html`
-            <button type="button" role="radio" aria-label=${choice.spoken} aria-checked=${choice.value === chosen ? 'true' : 'false'}
-              @click=${() => set(choice.value)}>${choice.label}</button>
-          `)}
+      set: (value: string) => void) => {
+      const arrows = (event: KeyboardEvent): void => {
+        const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        const group = event.currentTarget as HTMLElement;
+        const index = Math.max(0, choices.findIndex(c => c.value === chosen));
+        const next = choices[(index + step + choices.length) % choices.length].value;
+        set(next);
+        void this.updateComplete.then(() => group.querySelector<HTMLElement>(`[data-value='${next}']`)?.focus());
+      };
+      return html`
+        <div class="choice-row">
+          <span class="label" id=${id}>${label}</span>
+          <div class="pv-seg" role="radiogroup" aria-labelledby=${id} @keydown=${arrows}>
+            ${choices.map(choice => html`
+              <button type="button" role="radio" data-value=${choice.value} aria-label=${choice.spoken}
+                aria-checked=${choice.value === chosen ? 'true' : 'false'} tabindex=${choice.value === chosen ? '0' : '-1'}
+                @click=${() => set(choice.value)}>${choice.label}</button>
+            `)}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    };
     return html`
       <div class="try">
         <h3>${helpLabel(this._help, 'screensaver_try', 'Try it', 'try-label')}</h3>

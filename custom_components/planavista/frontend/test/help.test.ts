@@ -78,3 +78,28 @@ describe('help in Settings', () => {
     expect(help).toMatch(/width: 44px;\n\s+height: 44px;/);
   });
 });
+
+// Review m12: a ? inside a <label> took the field's name; explainers squeezed beside a row's control.
+describe('the ? and its explainer in their places', () => {
+  const settings = SOURCES.filter(f => /settings/.test(f.path));
+
+  it('never puts a ? inside a <label>', () => {
+    const inLabel = /<label\b[^>]*>(?:(?!<\/label>)[\s\S])*?\$\{help(?:Label|Button)\(/;
+    for (const f of settings) expect(inLabel.test(f.text), f.path).toBe(false);
+  });
+
+  it("puts each explainer below its row, not in the row's text", () => {
+    for (const f of settings) expect(/class="row-text">[^\n]*\$\{helpBox\(/.test(f.text), f.path).toBe(false);
+  });
+
+  it('has words for the chore and reward editors\' names', () => {
+    for (const id of ['chore_name', 'chore_category', 'reward_name']) expect(id in HELP, id).toBe(true);
+  });
+
+  it('names each screen in its Screen and Motion ?, and Night in its own', () => {
+    const screens = read(join(SRC, 'shell', 'settings', 'screens-page.ts'));
+    expect(screens).toMatch(/`Screen for \$\{/);
+    expect(screens).toMatch(/`Motion for \$\{/);
+    expect(screens).toMatch(/'night', 'Hours', 'night-label', undefined, 'Night'\)/);
+  });
+});

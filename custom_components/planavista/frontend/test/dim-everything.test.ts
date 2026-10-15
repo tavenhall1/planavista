@@ -76,6 +76,10 @@ describe('colors the card does not dim itself', () => {
     expect(src('modules/chores/pv-surprise-reveal.ts')).toMatch(/\.reward \{[^}]*filter: var\(--pv-media-filter, none\)/);
   });
 
+  it("the card's scrollbars take the look's dimmed border color", () => {
+    expect(src('shell/planavista-card.ts')).toMatch(/scrollbar-color: var\(--pv-border, #D4D4D0\) transparent;/);
+  });
+
   it('literal whites and golds follow the level', () => {
     expect(src('modules/chores/pv-surprise-reveal.ts')).not.toMatch(/#FFFFFF;/);
     expect(src('modules/chores/surprise-derive.ts')).toMatch(/const GOLD = 'var\(--pv-present-gold, #F5B800\)'/);

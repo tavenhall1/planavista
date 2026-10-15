@@ -14,7 +14,7 @@ import { PERSON_CHANGE } from '../../../core/settings-registry';
 import type { ChoresService } from '../chores-service';
 import { awayText, goalChoices } from './person-derive';
 import { choresSettingsStyles } from './settings-styles';
-import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 const NEEDS_OK: Array<[string, string]> = [['all', 'Every chore'], ['marked', 'Marked chores'], ['none', 'No chores']];
 const MY_DAY: Array<[string, string]> = [['timeline', 'Timeline'], ['list', 'List'], ['pictures', 'Pictures']];
@@ -98,8 +98,9 @@ export class PvPersonChores extends LitElement {
       <div class="group">
         ${d.parent ? html`
           <div class="row">
-            <span class="row-text">${helpLabel(this._help, 'person_needs_approval', 'Needs approval for')}${helpBox(this._help, 'person_needs_approval')}<span class="row-sub">Never: a parent's check-offs count right away.</span></span>
+            <span class="row-text">${helpLabel(this._help, 'person_needs_approval', 'Needs approval for')}<span class="row-sub">Never: a parent's check-offs count right away.</span></span>
           </div>
+          ${helpBox(this._help, 'person_needs_approval')}
         ` : html`
           <div class="row">
             <div class="stack">
@@ -127,11 +128,12 @@ export class PvPersonChores extends LitElement {
           </div>
         </div>
         <div class="row toggle-row">
-          <span class="row-text">${helpLabel(this._help, 'person_earns_stars', 'Earns stars')}${helpBox(this._help, 'person_earns_stars')}</span>
+          <span class="row-text">${helpLabel(this._help, 'person_earns_stars', 'Earns stars')}</span>
           <div class="pv-toggle ${d.stars ? 'active' : ''}" role="switch" tabindex="0" aria-checked=${d.stars ? 'true' : 'false'}
             aria-label="Earns stars" @click=${() => this._change({ stars: !d.stars })}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._change({ stars: !d.stars }); } }}></div>
         </div>
+        ${helpBox(this._help, 'person_earns_stars')}
         ${this.member && stars !== null ? html`
           <button class="row" type="button" @click=${this._openStars}>
             <span class="row-text">Stars<span class="row-sub">History, and give or take stars with a reason</span></span>
@@ -140,14 +142,15 @@ export class PvPersonChores extends LitElement {
           </button>
         ` : nothing}
         ${d.stars ? html`
-          <label class="row">
-            <span class="row-text">${helpLabel(this._help, 'person_goal', 'Saving up for')}${helpBox(this._help, 'person_goal')}</span>
-            <select class="pv-input pv-select" .value=${d.goal ?? ''}
+          <div class="row">
+            <span class="row-text">${helpFor(this._help, 'person_goal', 'Saving up for', 'person-goal')}</span>
+            <select id="person-goal" class="pv-input pv-select" .value=${d.goal ?? ''}
               @change=${(e: Event) => this._change({ goal: (e.target as HTMLSelectElement).value || null })}>
               <option value="" ?selected=${!d.goal}>Nothing yet</option>
               ${goals.map(r => html`<option value=${r.id} ?selected=${d.goal === r.id}>${r.icon ? `${r.icon} ` : ''}${r.name}</option>`)}
             </select>
-          </label>
+          </div>
+          ${helpBox(this._help, 'person_goal')}
         ` : nothing}
         ${this._renderAway(d)}
       </div>
@@ -158,12 +161,13 @@ export class PvPersonChores extends LitElement {
   private _renderAway(d: PersonDraft) {
     return html`
       <div class="row">
-        <span class="row-text">${helpLabel(this._help, 'person_away', 'Away')}${helpBox(this._help, 'person_away')}<span class="row-sub">Pause chores for a few days. Nothing is due or missed, and streaks hold.</span></span>
+        <span class="row-text">${helpLabel(this._help, 'person_away', 'Away')}</span>
         ${!this._adding ? html`
           <button class="pv-btn pv-btn-secondary remove" type="button"
             @click=${() => { this._adding = { from: '', to: '', note: '' }; }}>Add a time away</button>
         ` : nothing}
       </div>
+      ${helpBox(this._help, 'person_away')}
       ${d.away.map((span, index) => html`
         <div class="row">
           <span class="row-text">${awayText(span)}</span>

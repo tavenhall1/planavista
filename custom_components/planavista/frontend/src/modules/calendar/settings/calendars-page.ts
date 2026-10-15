@@ -13,7 +13,7 @@ import { inOrder } from '../../../core/household';
 import { PvColorSwatchPicker } from '../../../core/color-swatch-picker';
 import type { PlanaVistaData } from '../../../types';
 import { CalendarRow, belongsTo, buildCalendarRows, toSavedCalendars, rowColor } from '../calendar-rows';
-import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-calendar-calendars-page: which calendars show, how each looks, and who
@@ -191,7 +191,7 @@ export class PvCalendarCalendarsPage extends LitElement {
           <div class="cal-details">
             <!-- Display name input -->
             <div class="cal-field">
-              <label class="pv-label" for="cal-name-${idx}">${helpLabel(this._help, 'calendar_name', 'Name', undefined, String(idx))}</label>
+              <span class="pv-label">${helpFor(this._help, 'calendar_name', 'Name', `cal-name-${idx}`, String(idx))}</span>
               ${helpBox(this._help, 'calendar_name', String(idx))}
               <input
                 id="cal-name-${idx}"
@@ -208,7 +208,7 @@ export class PvCalendarCalendarsPage extends LitElement {
 
             <!-- Person entity link -->
             <div class="cal-field">
-              <label class="pv-label" for="cal-person-${idx}">${helpLabel(this._help, 'calendar_person', 'Home Assistant person', undefined, String(idx))}</label>
+              <span class="pv-label">${helpFor(this._help, 'calendar_person', 'Home Assistant person', `cal-person-${idx}`, String(idx))}</span>
               ${helpBox(this._help, 'calendar_person', String(idx))}
               <select
                 id="cal-person-${idx}"
@@ -251,7 +251,7 @@ export class PvCalendarCalendarsPage extends LitElement {
     }
     return html`
       <div class="cal-field">
-        <label class="pv-label">${helpLabel(this._help, 'calendar_color', 'Color', undefined, String(idx))}</label>
+        <span class="pv-label">${helpLabel(this._help, 'calendar_color', 'Color', undefined, String(idx))}</span>
         ${helpBox(this._help, 'calendar_color', String(idx))}
         <pv-color-swatch-picker
           .value=${cal.color}
@@ -274,7 +274,7 @@ export class PvCalendarCalendarsPage extends LitElement {
     const owner = belongsTo(cal, members);
     return html`
       <div class="cal-field">
-        <label class="pv-label" for="cal-owner-${idx}">${helpLabel(this._help, 'calendar_belongs_to', 'Belongs to', undefined, String(idx))}</label>
+        <span class="pv-label">${helpFor(this._help, 'calendar_belongs_to', 'Belongs to', `cal-owner-${idx}`, String(idx))}</span>
         ${helpBox(this._help, 'calendar_belongs_to', String(idx))}
         <select
           id="cal-owner-${idx}"

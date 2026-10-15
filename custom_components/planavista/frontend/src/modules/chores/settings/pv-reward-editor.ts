@@ -21,7 +21,7 @@ import {
 import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
 import '../../../shell/pv-notice-sheet';
-import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 type Notice = 'discard' | 'delete' | 'changed';
 const PICTURES = ['🎬', '🎮', '📺', '🍦', '🍕', '🌙', '💵', '🍽️', '🎨', '📚', '⚽', '🎁', '🛝', '🧁', '🎟️', '🏊'];
@@ -208,12 +208,13 @@ export class PvRewardEditor extends LitElement {
       </div>
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
       <div class="group">
-        <label class="row name-row">
-          <span class="row-sub" style="width: 56px">Name</span>
-          <input type="text" maxlength="60" autocomplete="off" aria-label="Name" .value=${d.name}
+        <div class="row name-row">
+          <span class="row-sub" style="width: 56px">${helpFor(this._help, 'reward_name', 'Name', 'reward-name')}</span>
+          <input id="reward-name" type="text" maxlength="60" autocomplete="off" .value=${d.name}
             @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })} />
-        </label>
+        </div>
       </div>
+      ${helpBox(this._help, 'reward_name')}
       <h2 class="section-label">${helpLabel(this._help, 'reward_picture', 'Picture')}</h2>${helpBox(this._help, 'reward_picture')}
       <div class="group">
         <div class="pictures" role="group" aria-label="Picture">

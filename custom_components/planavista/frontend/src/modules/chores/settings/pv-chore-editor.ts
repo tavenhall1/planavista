@@ -29,7 +29,7 @@ import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
 import '../../../core/pv-recurrence-picker';
 import '../../../shell/pv-notice-sheet';
-import { HelpState, helpBox, helpButton, helpLabel, helpStyles } from '../../../core/help';
+import { HelpState, helpBox, helpFor, helpLabel, helpStyles } from '../../../core/help';
 
 type Notice = 'discard' | 'delete' | 'changed';
 
@@ -350,20 +350,22 @@ export class PvChoreEditor extends LitElement {
       ${this._pictures ? this._renderPictures() : nothing}
       ${this._problem ? html`<p class="problem" role="alert">${this._problem}</p>` : nothing}
       <div class="group">
-        <label class="row name-row">
-          <span class="row-sub" style="width: 56px">Name</span>
-          <input type="text" maxlength="60" autocomplete="off" .value=${d.name} aria-label="Name"
+        <div class="row name-row">
+          <span class="row-sub" style="width: 56px">${helpFor(this._help, 'chore_name', 'Name', 'chore-name')}</span>
+          <input id="chore-name" type="text" maxlength="60" autocomplete="off" .value=${d.name}
             @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })} />
-        </label>
+        </div>
       </div>
-      <div class="pv-seg stretch" role="group" aria-label="Schedule" style="margin-top: 14px">
+      ${helpBox(this._help, 'chore_name')}
+      <h2 class="section-label">${helpLabel(this._help, 'chore_schedule', 'Kind of chore', 'chore-schedule-label', undefined, 'Plan, Once, and Repeats')}</h2>
+      ${helpBox(this._help, 'chore_schedule')}
+      <div class="pv-seg stretch" role="group" aria-labelledby="chore-schedule-label">
         ${(['plan', 'once', 'repeats'] as Schedule[]).map(schedule => html`
           <button type="button" aria-pressed=${d.schedule === schedule ? 'true' : 'false'}
             @click=${() => this._change({ schedule })}>${schedule === 'plan' ? 'Plan' : schedule === 'once' ? 'Once' : 'Repeats'}</button>
         `)}
       </div>
-      <p class="hint">${SCHEDULE_LEADS[d.schedule]} ${helpButton(this._help, 'chore_schedule', 'Plan, Once, and Repeats')}</p>
-      ${helpBox(this._help, 'chore_schedule')}
+      <p class="hint">${SCHEDULE_LEADS[d.schedule]}</p>
       ${this._renderWho(members)}
       ${d.schedule === 'plan' ? this._renderPlan(board) : d.schedule === 'once' ? this._renderOnce(board) : this._renderRepeats(board)}
       ${this._renderBoard(board, members)}
@@ -651,14 +653,15 @@ export class PvChoreEditor extends LitElement {
             ${this._counter(d.stars, stars => this._change({ stars }), 'stars', `★ ${d.stars}`, 0, 100)}
           </div>
         ` : nothing}
-        <label class="row">
-          <span class="row-text">Category</span>
-          <select class="pv-input pv-select" .value=${d.category}
+        <div class="row">
+          <span class="row-text">${helpFor(this._help, 'chore_category', 'Category', 'chore-category')}</span>
+          <select id="chore-category" class="pv-input pv-select" .value=${d.category}
             @change=${(e: Event) => this._change({ category: (e.target as HTMLSelectElement).value })}>
             ${CATEGORIES.map(c => html`<option value=${c.id} ?selected=${d.category === c.id}>${c.label}</option>`)}
           </select>
-        </label>
+        </div>
       </div>
+      ${helpBox(this._help, 'chore_category')}
     `;
   }
 

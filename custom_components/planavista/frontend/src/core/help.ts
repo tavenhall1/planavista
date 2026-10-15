@@ -20,7 +20,7 @@ export const HELP = {
   },
   night: {
     what: 'The hours the household is asleep.',
-    how: "Shared screens dim to the night level, the screensaver goes dark with only the time, and a Screen picked below turns off. Night runs from the latest bedtime to the earliest wake-up in everyone's Sleep times, or at times you set here.",
+    how: "Shared screens dim to the night level, the screensaver's sky goes dark with just the time, date, and weather, and a Screen picked below turns off. Night runs from the latest bedtime to the earliest wake-up in everyone's Sleep times, or at times you set here.",
   },
   kiosk: {
     what: 'Keeps a wall screen on PlanaVista, so nobody wanders into the rest of Home Assistant by accident.',
@@ -32,7 +32,7 @@ export const HELP = {
   },
   screensaver: {
     what: 'Shows a calm living sky with the time, the weather, and today when nobody is using the screen.',
-    how: "It comes on after the wait below with no touches. Any touch wakes it at once, and that touch doesn't press anything underneath. At night the sky goes dark and only the time shows.",
+    how: "It comes on after the wait below with no touches. Any touch wakes it at once, and that touch doesn't press anything underneath. At night the sky goes dark and only the time, date, and weather show.",
   },
   screensaver_after: {
     what: 'How long the screen waits before the screensaver comes on.',
@@ -40,7 +40,7 @@ export const HELP = {
   },
   screensaver_screen: {
     what: 'The switch, plug, or light in Home Assistant that powers this screen, if it has one.',
-    how: "Pick this screen's own backlight or plug, not a room's light. A light or number is turned down while the screensaver shows; at night the screen is turned off or all the way down, and it comes back in the morning and at a touch. With None, the screen stays on and just goes dark.",
+    how: "Pick this screen's own backlight or plug, not a room's light. A light or number is turned down while the screensaver shows; at night the screen is turned off or all the way down, and it comes back in the morning and at a touch. With None, the screen stays on and shows the sky, dark at night.",
   },
   screensaver_motion: {
     what: "A motion sensor in front of this screen, such as the screen's own camera.",
@@ -220,7 +220,7 @@ export const HELP = {
   },
   calendar_weather: {
     what: 'The weather that shows in the header and on the screensaver.',
-    how: "Pick one of your Home Assistant weather services. The header shows today's high and low; tap it for the days ahead.",
+    how: "Pick one of your Home Assistant weather services. The header shows the weather now; tap it for the days ahead.",
   },
   calendar_default_view: {
     what: 'The view the calendar opens on.',
@@ -239,6 +239,14 @@ export const HELP = {
   chores_how_seen: {
     what: 'How a young child sees their chores: as picture tiles they can tell apart without reading.',
     how: "Each chore's picture is what they look for. Open their day to see My day the way they do.",
+  },
+  chore_name: {
+    what: 'What the chore is called on the board, in My day, and in reminders.',
+    how: 'Short and plain works best, like Feed the cat. Its picture comes from the name until you pick one.',
+  },
+  chore_category: {
+    what: 'What kind of chore this is, like kitchen or cleaning.',
+    how: "It sorts chores when a household plan is brought in from a file. It doesn't change when the chore is due or who does it.",
   },
   chore_schedule: {
     what: 'What kind of chore this is.',
@@ -316,6 +324,10 @@ export const HELP = {
     what: 'What stars can be spent on.',
     how: "Kids see these in Rewards on the board and can pin one as what they're saving up for. Reaching it waits for them as a wrapped surprise.",
   },
+  reward_name: {
+    what: 'What the reward is called in Rewards and on the surprise.',
+    how: 'Name the treat itself, like Ice cream trip, so kids know what they are saving up for.',
+  },
   reward_picture: {
     what: "The reward's picture, so it's easy to spot, even before reading.",
     how: 'Pick one that shows the reward. It shows on the reward and on the surprise when it opens.',
@@ -379,7 +391,14 @@ export function helpButton(state: HelpState, id: HelpId, name: string, instance?
   const key = keyOf(id, instance);
   const open = state.isOpen(key);
   return html`<button class="pv-q" type="button" aria-label=${`About ${name}`} aria-expanded=${open ? 'true' : 'false'}
-    aria-controls=${`help-${key}`} @click=${() => state.toggle(key)}></button>`;
+    aria-controls=${`help-${key}`} @click=${() => state.toggle(key)}
+    @keydown=${(e: KeyboardEvent) => {
+      // Escape closes this explainer first; a second Escape reaches the page (review m12b M4).
+      if (e.key !== 'Escape' || !state.isOpen(key)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      state.toggle(key);
+    }}></button>`;
 }
 
 /** The explainer under the setting's row, there only while its ? is open. */
@@ -392,9 +411,18 @@ export function helpBox(state: HelpState, id: HelpId, instance?: string) {
   </div>`;
 }
 
+/**
+ * A field's label with its ? beside it, never inside it (review m12 G): a
+ * button inside a <label> becomes the label's control, so the field lost its
+ * name and tapping the name opened the explainer.
+ */
+export function helpFor(state: HelpState, id: HelpId, name: string, forId: string, instance?: string) {
+  return html`<span class="pv-name-line"><label class="label" for=${forId}>${name}</label>${helpButton(state, id, name, instance)}</span>`;
+}
+
 /** A setting's name with its ?, for rows that draw their own controls. */
-export function helpLabel(state: HelpState, id: HelpId, name: string, labelId?: string, instance?: string) {
-  return html`<span class="pv-name-line"><span class="label" id=${labelId ?? nothing}>${name}</span>${helpButton(state, id, name, instance)}</span>`;
+export function helpLabel(state: HelpState, id: HelpId, name: string, labelId?: string, instance?: string, spoken?: string) {
+  return html`<span class="pv-name-line"><span class="label" id=${labelId ?? nothing}>${name}</span>${helpButton(state, id, spoken ?? name, instance)}</span>`;
 }
 
 export const helpStyles = css`
