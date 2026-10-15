@@ -712,7 +712,8 @@ class ChoresEngine:
                 missed = False
                 occ = self._past_occurrence(c["occurrence"])
                 # Sent back, an occurrence owed nothing stays that way (rounds 12 and 13): never missed.
-                owed = not self._owes_nothing(c["occurrence"], occ, self._day_of(c["at"]))
+                away = occ is not None and self._is_away(occ, self._day_of(c["at"]))
+                owed = not (away or self._excused(c["occurrence"]))
                 if owed and now is not None and self.period_over(c["occurrence"], now):
                     due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
                     missed = due_day is not None and self.policy_on(due_day) != "carry_over"
@@ -722,6 +723,7 @@ class ChoresEngine:
                     "occurrence": c["occurrence"], "at": c["at"], "stars": c["stars"],
                     "missed_if_sent_back": missed,
                     "stays_excused": not owed,
+                    "away": away,
                 })
         for r in self.log["requests"]:
             activity = self.activity(r["chore"])

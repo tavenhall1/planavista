@@ -60,6 +60,12 @@ export function whenText(at: string, today: string, format: '12h' | '24h', daySt
   return `${words[0].toUpperCase()}${words.slice(1)} at ${time}`;
 }
 
+/** What a skip is for: a daily chore's day ("today"), else this week (round 14: a daily chore said "this week"). */
+function skipWhen(occurrence: string | undefined, today: string): string {
+  const period = occurrence?.split('|')[2] ?? '';
+  return period.startsWith('day:') ? ` ${dayWords(period.slice(4), today)}` : ' this week';
+}
+
 /** The inbox in its three groups: Chores to check, Requests, and Rewards (spec 13.7). */
 export function inboxGroups(
   requests: ChoreRequest[], members: Member[], today: string, format: '12h' | '24h', dayStarts = '03:00',
@@ -76,7 +82,7 @@ export function inboxGroups(
       const excused = r.stays_excused === true;
       groups.chores.push({
         id: r.id, kind: r.kind, member, lead: doer ? `${doer} finished` : `${name} finished`, what: r.name,
-        tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format, dayStarts)}${stars}${late ? ' · Its day is over' : excused ? ' · Excused' : ''}`,
+        tail: doer ? ` for ${name}` : '', detail: `${whenText(r.at, today, format, dayStarts)}${stars}${late ? ' · Its day is over' : excused ? (r.away ? ' · Away' : ' · Excused') : ''}`,
         allow: 'Looks good', decline: late || excused ? 'Not done' : 'Send back', blocked: false, late, excused,
       });
     } else if (r.kind === 'more_time' || r.kind === 'skip') {
@@ -84,7 +90,7 @@ export function inboxGroups(
       groups.requests.push({
         id: r.id, kind: r.kind, member,
         lead: more ? `${name} asks for more time on` : `${name} asks to skip`,
-        what: r.name, tail: more ? '' : ' this week',
+        what: r.name, tail: more ? '' : skipWhen(r.occurrence, today),
         detail: more && r.until ? `Move the due date to ${dayWords(r.until, today)}` : 'It would be excused, so nothing is missed.',
         allow: 'Allow', decline: 'Not this time', blocked: false,
       });
@@ -103,8 +109,9 @@ export function inboxGroups(
 
 /** What the toast says once a parent answered. */
 /** The PIN sheet's question for an answer from the inbox (round 3: Send back and Decline asked "To approve"). */
-export function reviewQuestion(row: Pick<InboxRow, 'kind' | 'late'>, allow: boolean): string {
+export function reviewQuestion(row: Pick<InboxRow, 'kind' | 'late' | 'excused'>, allow: boolean): string {
   if (allow) return "Who's approving?";
+  if (row.kind === 'completion' && row.excused) return "Who's checking it?"; // it isn't sent back: it stays excused (round 14)
   if (row.kind === 'completion' && row.late) return "Who's counting it as missed?"; // round 10
   return row.kind === 'completion' ? "Who's sending it back?" : "Who's declining?";
 }
@@ -123,6 +130,11 @@ export function revealBy(box: { top: number; bottom: number }, room: { top: numb
   if (box.bottom > room.bottom) by = box.bottom - room.bottom;
   if (box.top - by < room.top) by = box.top - room.top;
   return by;
+}
+
+/** Whether a waiting check-off's occurrence was owed nothing, so sent back it stays excused (rounds 13 and 14). */
+export function excusedRequest(board: { requests: ChoreRequest[] } | null | undefined, id: string | null | undefined): boolean {
+  return !!id && !!board?.requests.some(r => r.id === id && r.stays_excused === true);
 }
 
 /** Quick reasons for Send back (spec 13.7); one whose day is over can't be done again (round 10). */

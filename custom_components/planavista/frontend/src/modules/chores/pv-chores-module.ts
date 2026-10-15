@@ -37,7 +37,7 @@ import { needsOk } from './overlay';
 import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
-import { InboxRow, answeredText, approveAllSummary, inboxGroups, lateRequest, reviewQuestion } from './inbox-derive';
+import { InboxRow, answeredText, approveAllSummary, excusedRequest, inboxGroups, lateRequest, reviewQuestion } from './inbox-derive';
 import type { ApproveAllAsk, ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorCode, errorMessage } from '../../core/ws-api';
@@ -962,6 +962,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         parent: parentAccess(this.household, this.session),
         credit: this._creditable(owner.id).length > 0,
         late: lateRequest(board, row.item.completion?.id),
+        excused: excusedRequest(board, row.item.completion?.id),
       }),
     };
   }
@@ -1082,12 +1083,13 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       case 'send_back': {
         const request = item.completion?.id;
         const late = lateRequest(board, request);
-        if (!request || !(await this.asParent(reviewQuestion({ kind: 'completion', late }, choice.id === 'approve')))) return;
+        const excused = excusedRequest(board, request);
+        if (!request || !(await this.asParent(reviewQuestion({ kind: 'completion', late, excused }, choice.id === 'approve')))) return;
         const allow = choice.id === 'approve';
         const note = choice.value ? `: ${choice.value}` : '';
         await this._run(
           () => api.review(request, allow ? 'allow' : 'decline', allow ? null : choice.value ?? null),
-          allow ? `${name}: looks good.` : late ? `${name} counts as missed that day${note}.` : `${name} went back${note}.`,
+          allow ? `${name}: looks good.` : excused ? `${name} stays excused${note}.` : late ? `${name} counts as missed that day${note}.` : `${name} went back${note}.`,
         );
         return;
       }

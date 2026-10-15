@@ -301,7 +301,7 @@ export class PvChoreOptions extends LitElement {
           <input type="text" maxlength="60" placeholder="Write a note…" aria-label="Write a note" .value=${this._note}
             @input=${(e: Event) => { this._note = (e.target as HTMLInputElement).value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' && this._note.trim()) this._choose(option.id, this._note.trim()); }} />
-          ${this._note.trim() ? html`<button class="chip" type="button" @click=${() => this._choose(option.id, this._note.trim())}>${option.late ? 'Count as missed' : 'Send back'}</button>` : nothing}
+          ${this._note.trim() ? html`<button class="chip" type="button" @click=${() => this._choose(option.id, this._note.trim())}>${option.excused ? 'Not done' : option.late ? 'Count as missed' : 'Send back'}</button>` : nothing}
         </div>
       `;
     }

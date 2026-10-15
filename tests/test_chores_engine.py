@@ -123,6 +123,7 @@ def test_approving_grants_the_stars() -> None:
         "name": "Feed the fish", "occurrence": FISH, "at": "2026-10-13T16:10:00-05:00", "stars": 1,
         "missed_if_sent_back": False,
         "stays_excused": False,
+        "away": False,
     }
     out = engine.review(SCENE + timedelta(minutes=20), request_id=request["id"], allow=True, by="alex", source="notification")
     assert out.result == "approved"
@@ -656,7 +657,7 @@ def test_a_check_off_on_an_away_day_sent_back_late_stays_away(policy: str) -> No
     engine.member("dana")["away"] = [{"from": "2026-10-13", "to": "2026-10-13", "note": "At Grandma's"}]
     engine.catch_up(at(10, 14, 9))
     [check_off] = [r for r in engine.open_requests(at(10, 14, 10)) if r["kind"] == "completion"]
-    assert check_off["missed_if_sent_back"] is False and check_off["stays_excused"] is True
+    assert check_off["missed_if_sent_back"] is False and check_off["stays_excused"] is True and check_off["away"] is True
     out = engine.review(at(10, 14, 10), request_id=check_off["id"], allow=False, by="blair")
     tuesday = _summary(engine, "dana", "day:2026-10-13")
     assert FISH not in tuesday["missed"] and FISH not in tuesday["carried"]

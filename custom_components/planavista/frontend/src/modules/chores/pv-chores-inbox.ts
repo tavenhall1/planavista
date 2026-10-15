@@ -59,6 +59,8 @@ export class PvChoresInbox extends LitElement {
    */
   @property({ type: Boolean, reflect: true }) short = false;
   private _room: ResizeObserver | null = null;
+  /** Works out `short` and lets go of held heights for a new room (rounds 12 to 14). */
+  private _fit: (() => void) | null = null;
   @property({ attribute: false }) groups!: InboxGroups;
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
@@ -352,6 +354,9 @@ export class PvChoresInbox extends LitElement {
       }
     };
     panel.addEventListener('focusin', this._focusIn);
+    // Turned while typing, the new room waits for the field to let go (round 14: iOS never resizes after).
+    this._fit = fit;
+    panel.addEventListener('focusout', () => requestAnimationFrame(() => this._fit?.()));
     this._room = new ResizeObserver(fit);
     this._room.observe(this);
     fit();
@@ -390,7 +395,8 @@ export class PvChoresInbox extends LitElement {
         this._rowsHeight = 0;
       }
       this._heldHeight = 0;
-    } else if (!this._heldHeight && panel.offsetHeight > 0) {
+    } else if (!this._heldHeight && panel.offsetHeight > 0 && !this._sendingBack) {
+      // Not with the reasons open: their height would stay as a band under Done (round 14).
       this._heldHeight = panel.offsetHeight;
       panel.style.height = `${this._heldHeight}px`;
     }

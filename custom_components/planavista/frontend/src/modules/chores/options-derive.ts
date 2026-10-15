@@ -32,6 +32,8 @@ export interface OptionModel {
   disabled?: boolean;
   /** Send back for a check-off whose day is over: it counts as missed (round 10). */
   late?: boolean;
+  /** Not done for a check-off of an occurrence owed nothing: it stays excused (round 14). */
+  excused?: boolean;
 }
 
 export interface OptionsContext {
@@ -47,6 +49,8 @@ export interface OptionsContext {
   credit?: boolean;
   /** Its check-off waits past its day: sending it back counts it as missed (round 10). */
   late?: boolean;
+  /** Its occurrence was owed nothing: sent back, it stays excused (round 14). */
+  excused?: boolean;
 }
 
 export interface OptionsModel {
@@ -204,7 +208,9 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   if (ctx.parent !== 'no') {
     if (status === 'pending') {
       parent.push({ id: 'approve', label: 'Looks good', tag: parentTag, hint: 'Approves it, and the stars are earned.' });
-      parent.push(ctx.late
+      parent.push(ctx.excused
+        ? { id: 'send_back', label: 'Not done', tag: parentTag, hint: 'It stays excused.', late: true, excused: true }
+        : ctx.late
         ? { id: 'send_back', label: 'Not done', tag: parentTag, hint: 'It counts as missed that day.', late: true }
         : { id: 'send_back', label: 'Send back', tag: parentTag, hint: 'It goes back on the list with a note.' });
     }
