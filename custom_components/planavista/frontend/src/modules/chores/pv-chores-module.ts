@@ -38,7 +38,7 @@ import { creditedText, dayWords, historyLines, itemOptions, whoDidItBody } from 
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
 import { InboxRow, answeredText, approveAllSummary, inboxGroups, reviewQuestion } from './inbox-derive';
-import type { ReviewDetail } from './pv-chores-inbox';
+import type { ApproveAllAsk, ReviewDetail } from './pv-chores-inbox';
 import { QuickAddDraft, activityFrom } from './quick-add';
 import { errorCode, errorMessage } from '../../core/ws-api';
 import './pv-surprise-present';
@@ -239,6 +239,36 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   /** Approve all: each chore to check approved on its own, so each is attributed and stands alone. */
+  /** Approve all's question, asked over the inbox (round 6). */
+  @state() private _approveAsk: ApproveAllAsk | null = null;
+
+  /** The rows it named, less any answered elsewhere since; none left (or the inbox gone), no question. */
+  private _renderApproveAsk() {
+    const ask = this._approveAsk;
+    if (!ask) return nothing;
+    const waiting = new Set(this.service?.board()?.requests.map(r => r.id) ?? []);
+    const rows = ask.rows.filter(row => waiting.has(row.id));
+    if (rows.length === 0 || this._sheet?.kind !== 'inbox') {
+      queueMicrotask(() => { if (this._approveAsk === ask) this._approveAsk = null; });
+      return nothing;
+    }
+    return html`
+      <pv-notice-sheet .layout=${this.layout} heading=${`Approve all ${rows.length}?`}
+        body="Each one counts as approved by you, with its stars."
+        .actions=${[{ id: 'approve', label: `Approve all ${rows.length}`, kind: 'primary' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+        @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onApproveAsk(e, ask, rows)}></pv-notice-sheet>
+    `;
+  }
+
+  private _onApproveAsk(event: CustomEvent<{ id: string }>, ask: ApproveAllAsk, rows: InboxRow[]): void {
+    event.stopPropagation();
+    this._approveAsk = null;
+    if (event.detail.id !== 'approve') return;
+    ask.start(rows);
+    const ids = rows.map(r => r.id);
+    void this._approveAll(rows, answered => ask.settled(ids, answered));
+  }
+
   /** Each row it named, past any answered elsewhere meanwhile; a cancelled PIN or a failure stops it (round 6). */
   private async _approveAll(rows: InboxRow[], settled?: (answered: string[]) => void): Promise<void> {
     let approved = 0;
@@ -347,6 +377,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       <pv-toast .toast=${this._toast} @pv-toast-gone=${() => { this._toast = null; }}
         @pv-toast-action=${this._onToastAction}></pv-toast>
       ${keyed(sheetKey(this._sheet), this._renderSheet())}
+      ${this._renderApproveAsk()}
     `;
   }
 
@@ -472,7 +503,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const members = inOrder(this.household?.members ?? []);
     const view = this._week;
     return html`
-      <pv-chores-week .view=${view} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
+      <pv-chores-week .view=${view} .excusing=${this._excusing} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
         .highlights=${view ? weekHighlights(view, members) : []} .shares=${view ? weekShares(view, members) : []}
         .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout} ?current=${this._weekOffset === 0}
         ?failed=${this._weekFailed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
@@ -1217,8 +1248,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       return html`
         <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
           @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}
-          @pv-approve-all=${(e: CustomEvent<{ ids: string[]; settled?: (answered: string[]) => void }>) =>
-            void this._approveAll(groups.chores.filter(r => e.detail.ids.includes(r.id)), e.detail.settled)}
+          @pv-approve-all-ask=${(e: CustomEvent<ApproveAllAsk>) => { this._approveAsk = e.detail; }}
           @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chores-inbox>
       `;
     }

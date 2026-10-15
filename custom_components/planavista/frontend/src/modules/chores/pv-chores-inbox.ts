@@ -16,7 +16,16 @@ import { ANSWERED_MS, answeredWords, withAnswered, type Answered, type InboxGrou
 import { SEND_BACK_REASONS } from './pv-chore-options';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
-import { PressGuard } from '../../core/press-guard';
+import { PressGuard, guardPageTaps } from '../../core/press-guard';
+
+/** Approve all's question, for the board to ask: its rows, and how the inbox follows the answer. */
+export interface ApproveAllAsk {
+  rows: InboxRow[];
+  /** The rows being approved now: held in place, "Saving...". */
+  start: (rows: readonly InboxRow[]) => void;
+  /** How it went: the ids it tried, and those approved. */
+  settled: (ids: readonly string[], answered: readonly string[]) => void;
+}
 
 export interface ReviewDetail {
   row: InboxRow;
@@ -51,8 +60,8 @@ export class PvChoresInbox extends LitElement {
   @state() private _sendingBack: string | null = null;
   /** Answered here: kept in place for a moment (round 5). */
   @state() private _answered = new Map<string, Answered>();
-  /** Approve all's question, with the rows it names, frozen when it opened (round 6). */
-  @state() private _confirmRows: InboxRow[] | null = null;
+  /** The panel's height in portrait, held while open so rows don't move under the finger (round 6). */
+  private _heldHeight = 0;
   /** What each group drew last, so answered rows keep their places. */
   private _shown: Record<'chores' | 'requests' | 'rewards', ShownRow[]> = { chores: [], requests: [], rewards: [] };
   private _settle?: number;
@@ -248,6 +257,18 @@ export class PvChoresInbox extends LitElement {
 
   protected updated(changed: PropertyValues): void {
     if (changed.has('groups') && this._sendingBack && !this._all().some(r => r.id === this._sendingBack)) this._sendingBack = null;
+    // A bottom sheet grows or shrinks at its top: a row arriving moved every row up, one leaving moved
+    // them down (round 6). In portrait it keeps the height it opened with (at least 60% of the screen),
+    // and scrolls; rows below one that leaves move up, as in any list.
+    const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
+    if (!panel) return;
+    if (this.layout === 'landscape') {
+      if (this._heldHeight) panel.style.height = '';
+      this._heldHeight = 0;
+    } else if (!this._heldHeight && panel.offsetHeight > 0) {
+      this._heldHeight = Math.max(panel.offsetHeight, Math.round(window.innerHeight * 0.6));
+      panel.style.height = `${this._heldHeight}px`;
+    }
   }
 
   disconnectedCallback(): void {
@@ -289,6 +310,9 @@ export class PvChoresInbox extends LitElement {
     const panel = this.renderRoot.querySelector<HTMLElement>('.panel')!;
     const backdrop = this.renderRoot.querySelector<HTMLElement>('.backdrop')!;
     if (this.layout === 'landscape') {
+      // Docked: it guards the page too, as every sheet does (round 6: a double tap on Done opened a chore).
+      this.style.pointerEvents = 'none';
+      guardPageTaps();
       const out = motionOf(this) === 'reduced'
         ? panel.animate({ opacity: [1, 0] }, { duration: 120, fill: 'forwards' })
         : panel.animate({ transform: ['translateX(0)', 'translateX(100%)'] }, { duration: 220, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
@@ -311,9 +335,6 @@ export class PvChoresInbox extends LitElement {
     const requests = this._rows('requests');
     const rewards = this._rows('rewards');
     const open = chores.filter(row => !row.answered);
-    // Its question keeps the rows it named, less any answered elsewhere since; none left, no question.
-    const confirm = this._confirmRows?.filter(row => open.some(o => o.id === row.id)) ?? null;
-    if (this._confirmRows && confirm?.length === 0) queueMicrotask(() => { this._confirmRows = null; });
     return html`
       <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal=${this.layout === 'landscape' ? 'false' : 'true'} aria-labelledby="inbox-title"
@@ -332,7 +353,7 @@ export class PvChoresInbox extends LitElement {
         ${chores.length ? html`
           <div class="group"><span>Chores to check</span>
             ${open.length > 1 ? html`<button class="link" type="button" ?disabled=${this.busy.size > 0}
-              @click=${() => { this._confirmRows = open; }}>Approve all (${open.length})</button>` : nothing}
+              @click=${() => this._askApproveAll(open)}>Approve all (${open.length})</button>` : nothing}
           </div>
           ${chores.map(row => this._row(row))}
         ` : nothing}
@@ -342,24 +363,21 @@ export class PvChoresInbox extends LitElement {
           <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
         </div>
       </div>
-      ${confirm ? html`
-        <pv-notice-sheet .layout=${this.layout} heading=${`Approve all ${confirm.length}?`}
-          body="Each one counts as approved by you, with its stars."
-          .actions=${[{ id: 'approve', label: `Approve all ${confirm.length}`, kind: 'primary' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
-          @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onConfirmAll(e, confirm)}></pv-notice-sheet>
-      ` : nothing}
     `;
   }
 
-  /** Approve all asks first: a bulk answer with no Undo (round 5), for the rows it named (round 6). */
-  private _onConfirmAll(event: CustomEvent<{ id: string }>, rows: readonly InboxRow[]): void {
-    event.stopPropagation();
-    this._confirmRows = null;
-    if (event.detail.id !== 'approve' || rows.length === 0) return;
-    this._markPending(rows, true);
-    const ids = rows.map(r => r.id);
-    const settled = (answered: string[]) => this._settleRows(ids, new Set(answered));
-    this.dispatchEvent(new CustomEvent('pv-approve-all', { detail: { ids, settled }, bubbles: true, composed: true }));
+  /**
+   * Approve all asks first, a bulk answer with no Undo (round 5), for the rows it
+   * named (round 6). The board shows the question, so it sits in the board's layers
+   * with toasts under it: drawn here, a toast covered its button (round 6).
+   */
+  private _askApproveAll(rows: readonly InboxRow[]): void {
+    const detail: ApproveAllAsk = {
+      rows: [...rows],
+      start: chosen => this._markPending(chosen, true),
+      settled: (ids, answered) => this._settleRows(ids, new Set(answered)),
+    };
+    this.dispatchEvent(new CustomEvent('pv-approve-all-ask', { detail, bubbles: true, composed: true }));
   }
 
   private _row(row: ShownRow) {

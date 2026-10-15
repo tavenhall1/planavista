@@ -52,7 +52,7 @@ export class PvPinSheet extends LitElement {
   /** Closes the sheet only after a press that began on the backdrop (core/backdrop). */
   private readonly _backdrop = backdropTap(() => this._cancel());
   private readonly _layer = new SheetLayer(this, true);
-  private readonly _pressGuard = new PressGuard(this, { restart: false });
+  private readonly _pressGuard = new PressGuard(this, { restart: 'same-spot' });
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) api!: HouseholdApi;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';

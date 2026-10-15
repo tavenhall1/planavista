@@ -1,4 +1,16 @@
 import type { Member } from '../../core/household';
+
+/**
+ * Items in the order they were shown, new ones after them (round 6): excusing the
+ * first of two missed chores sorted it below the second, which slid under the finger.
+ */
+export function keepOrder<T extends { key: string }>(items: readonly T[], before: readonly string[]): T[] {
+  const at = new Map(before.map((key, i) => [key, i]));
+  return items
+    .map((item, i) => ({ item, rank: at.get(item.key) ?? before.length + i }))
+    .sort((a, b) => a.rank - b.rank)
+    .map(entry => entry.item);
+}
 import { weekRangeLabel } from '../../utils/date-utils';
 import { dayDate, minutesText } from '../../core/status-map';
 import { FairShare, fairnessShares } from './fairness';

@@ -175,13 +175,13 @@ describe('every sheet and the toast take the guard', () => {
   const sheets = files(src).filter(path => /\bsheetStyles\b/.test(readFileSync(path, 'utf-8')) && !path.endsWith(join('styles', 'sheet.ts')));
 
   it.each(sheets.map(path => [path.slice(src.length + 1), path]))('%s', (_name, path) => {
-    expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _pressGuard = new PressGuard\(this(, \{ restart: false \})?\);/);
+    expect(readFileSync(path, 'utf-8')).toMatch(/private readonly _pressGuard = new PressGuard\(this(, \{ restart: 'same-spot' \})?\);/);
   });
 
   // Round 5 (r5b B3): a double tap on your face typed its second tap on the keypad that replaced the faces.
   it('the keypad types fast, and starts its guard over when the faces turn into it', () => {
     const pin = readFileSync(join(src, 'shell', 'pv-pin-sheet.ts'), 'utf-8').replace(/\r\n/g, '\n');
-    expect(pin).toMatch(/private readonly _pressGuard = new PressGuard\(this, \{ restart: false \}\);/);
+    expect(pin).toMatch(/private readonly _pressGuard = new PressGuard\(this, \{ restart: 'same-spot' \}\);/);
     const enter = pin.slice(pin.indexOf('  private _enterFor(member: Member): void {'));
     expect(enter.slice(0, enter.indexOf('\n  }\n'))).toMatch(/this\._pressGuard\.arm\(\);/);
   });

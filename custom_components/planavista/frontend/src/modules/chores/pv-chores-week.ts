@@ -5,6 +5,7 @@ import { defineElement } from '../../utils/define';
 import { buttonStyles } from '../../styles/shared';
 import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
+import { ANSWERED_MS } from './inbox-derive';
 import { swipeDirection } from '../../utils/gestures';
 import '../../core/pv-ring';
 import '../../core/pv-member-avatar';
@@ -37,6 +38,10 @@ export class PvChoresWeek extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Whether Excuse it shows (parents, or a screen that can ask for a parent's PIN). */
   @property({ type: Boolean }) canExcuse = false;
+  /** Being excused now: its link goes, and comes back if nothing was (round 6). */
+  @property({ attribute: false }) excusing: ReadonlySet<string> = new Set();
+  /** After Excuse it, the links take no second tap while the highlights reload (round 6). */
+  private _quietUntil = 0;
   @property({ type: Boolean }) current = true;
   @property({ type: Boolean }) failed = false;
   private _touch: { x: number; y: number } | null = null;
@@ -382,8 +387,8 @@ export class PvChoresWeek extends LitElement {
           <div class="card highlights">
             ${this.highlights.map(h => html`
               <p><strong>${h.member.name}</strong>${h.text.slice(h.member.name.length)}
-                ${h.excuse && this.canExcuse ? html`<button class="link" type="button"
-                  @click=${() => this._fire('pv-week-excuse', { occurrence: h.excuse!.occurrence, name: h.excuse!.name, member: h.member.id })}>Excuse it</button>` : nothing}
+                ${h.excuse && this.canExcuse && !this.excusing.has(h.excuse.occurrence) ? html`<button class="link" type="button"
+                  @click=${() => this._excuse(h.excuse!.occurrence, h.excuse!.name, h.member.id)}>Excuse it</button>` : nothing}
               </p>
             `)}
           </div>
@@ -465,6 +470,12 @@ export class PvChoresWeek extends LitElement {
     const direction = swipeDirection(touch.clientX - start.x, touch.clientY - start.y);
     if (direction) this._nav(direction === 'next' ? 1 : -1);
   };
+
+  private _excuse(occurrence: string, name: string, member: string): void {
+    if (performance.now() < this._quietUntil) return;
+    this._quietUntil = performance.now() + ANSWERED_MS;
+    this._fire('pv-week-excuse', { occurrence, name, member });
+  }
 
   private _fire(name: string, detail: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));

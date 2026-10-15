@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
+import { keepOrder } from './week-derive';
 import { buttonStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
@@ -141,6 +142,10 @@ export class PvChoresDaySheet extends LitElement {
 
   render() {
     const entry = this.day?.members[this.member?.id ?? ''];
+    // Rows keep the places they were shown in while the day reloads after Excuse it (round 6).
+    const place = `${this.member?.id}|${this.date}`;
+    const items = entry ? keepOrder(entry.items, this._order.place === place ? this._order.keys : []) : [];
+    if (entry) this._order = { place, keys: items.map(item => item.key) };
     const summary = entry?.summary;
     const sub = !this.day
       ? ''
@@ -157,9 +162,9 @@ export class PvChoresDaySheet extends LitElement {
         ${sub ? html`<p class="sub">${sub}</p>` : nothing}
         ${this.failed ? html`<p class="sub">Couldn't load this day. Try again in a moment.</p>` : !this.day ? html`
           <div aria-busy="true"><div class="bone" style="height:44px;margin-bottom:8px"></div><div class="bone" style="height:44px"></div></div>
-        ` : entry && entry.items.length ? html`
+        ` : entry && items.length ? html`
           <ul>
-            ${entry.items.map(item => {
+            ${items.map(item => {
               const badge = this._badge(item);
               return html`
                 <li>
@@ -178,6 +183,8 @@ export class PvChoresDaySheet extends LitElement {
       </div>
     `;
   }
+
+  private _order: { place: string; keys: string[] } = { place: '', keys: [] };
 
   private _excuse(item: PastItem): void {
     if (this.excusing.has(item.key)) return;

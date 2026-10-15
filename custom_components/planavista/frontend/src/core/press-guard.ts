@@ -65,14 +65,18 @@ export interface PressGuardOptions {
    * A tap inside the window starts it over (round 4), so a burst counts only after
    * a pause. The PIN keypad turns it off (round 5): digits typed fast are real presses.
    */
-  restart?: boolean;
+  restart?: boolean | 'same-spot';
 }
+
+/** How near a press is to the last one to count as the same spot, a burst on one place (round 6). */
+export const SAME_SPOT_PX = 24;
 
 export class PressGuard implements ReactiveController {
   private _since = 0;
   private _pressed = false;
   private readonly now: () => number;
-  private readonly restart: boolean;
+  private readonly restart: boolean | 'same-spot';
+  private _lastAt: { x: number; y: number } | null = null;
 
   constructor(private readonly host: GuardHost, options: PressGuardOptions = {}) {
     this.now = options.now ?? (() => performance.now());
@@ -97,10 +101,15 @@ export class PressGuard implements ReactiveController {
     this._pressed = false;
   }
 
-  private _down = (): void => {
+  private _down = (event: Event): void => {
     const now = this.now();
+    const { clientX: x, clientY: y } = event as PointerEvent;
+    const at = typeof x === 'number' && typeof y === 'number' ? { x, y } : null;
+    const sameSpot = !!(at && this._lastAt && Math.hypot(at.x - this._lastAt.x, at.y - this._lastAt.y) <= SAME_SPOT_PX);
+    this._lastAt = at;
     this._pressed = now - this._since >= PRESS_GRACE_MS;
-    if (!this._pressed && this.restart) this._since = now;
+    // The keypad starts over only for a burst at one spot (a face tapped three times), never for typing (round 6).
+    if (!this._pressed && (this.restart === true || (this.restart === 'same-spot' && sameSpot))) this._since = now;
   };
 
   private _click = (event: Event): void => {

@@ -49,7 +49,7 @@ describe('rows answered here stay in place for a moment', () => {
   });
 
   it('asks before approving them all, and the day sheet keeps its rows while it reloads', () => {
-    expect(src('modules/chores/pv-chores-inbox.ts')).toMatch(/heading=\$\{`Approve all \$\{/);
+    expect(src('modules/chores/pv-chores-module.ts')).toMatch(/heading=\$\{`Approve all \$\{/);
     expect(src('modules/chores/pv-chores-module.ts')).toMatch(/this\._openDay\(this\._sheet\.member, this\._sheet\.date, true\)/);
   });
 });
@@ -68,9 +68,9 @@ describe('Approve all and Excuse it follow what happened', () => {
   });
 
   it("freezes the rows its question names, and closes the question once they're gone", () => {
-    const inbox = src('modules/chores/pv-chores-inbox.ts');
-    expect(inbox).toMatch(/this\._confirmRows = open;/);
-    expect(inbox).toMatch(/heading=\$\{`Approve all \$\{confirm\.length\}\?`\}/);
+    // The board asks it (round 6, so toasts sit under it), for the rows the inbox named.
+    expect(src('modules/chores/pv-chores-inbox.ts')).toMatch(/@click=\$\{\(\) => this\._askApproveAll\(open\)\}/);
+    expect(src('modules/chores/pv-chores-module.ts')).toMatch(/const rows = ask\.rows\.filter\(row => waiting\.has\(row\.id\)\);/);
   });
 
   it("brings Excuse it back when nothing was excused (a cancelled PIN, a failed save)", () => {
