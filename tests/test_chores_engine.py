@@ -180,9 +180,9 @@ def test_deleting_a_chore_withdraws_its_waiting_check_offs() -> None:
     engine.catch_up(at(10, 14, 9))
     assert engine.balance("dana") == 0
     assert engine.chore_minutes("dana") == 0
-    # Added again under the same name (the same id), it starts fresh, not "waiting".
-    engine.save_activity(at(10, 14, 9), {"name": "Dust the shelf", "schedule": "once", "assignees": ["dana"], "once": {}}, by="alex", source="tablet")
-    assert _item(engine, "dust_the_shelf|dana|once|0", at(10, 14, 9)).status == "open"
+    # Added again under the same name, it gets its own id and starts fresh, not "waiting" (round 8).
+    out = engine.save_activity(at(10, 14, 9), {"name": "Dust the shelf", "schedule": "once", "assignees": ["dana"], "once": {}}, by="alex", source="tablet")
+    assert _item(engine, f"{out.data['activity']['id']}|dana|once|0", at(10, 14, 9)).status == "open"
 
 
 def test_a_check_off_unchecked_while_a_parent_answers_says_so() -> None:
@@ -194,6 +194,61 @@ def test_a_check_off_unchecked_while_a_parent_answers_says_so() -> None:
     with pytest.raises(ChoreError) as err:
         engine.review(SCENE, request_id=request["id"], allow=True, by="blair")
     assert err.value.code == "request_withdrawn"
+
+
+def test_a_chore_added_under_a_deleted_ones_name_starts_fresh() -> None:
+    """Round 8 (r8a A1): it took the deleted chore's id, and with it its check-offs, sent-back notes,
+    excuses, and open requests: it arrived done, couldn't be checked off, and finished itself at 3 AM."""
+    engine = sample_engine()
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    [request] = engine.open_requests()
+    engine.review(SCENE, request_id=request["id"], allow=False, by="blair", note="The lid")
+    engine.request(SCENE, kind="more_time", key=FISH, by="dana", until=date(2026, 10, 14))
+    engine.delete_activity("feed_the_fish", now=SCENE)
+    out = engine.save_activity(SCENE, {"name": "Feed the fish", "schedule": "plan", "assignees": ["dana"],
+                                       "minimum": {"hours": 5 / 60, "per": "day"}}, by="alex", source="tablet")
+    new_id = out.data["activity"]["id"]
+    assert new_id != "feed_the_fish"
+    item = _item(engine, f"{new_id}|dana|day:2026-10-13|0")
+    assert (item.status, engine.item_view(item, SCENE.date()).get("note")) == ("open", None)
+    assert engine.open_requests() == []
+    assert engine.complete(SCENE, key=item.occ.key, by="dana", source="tablet").result == "pending"
+
+
+def test_a_deleted_chore_done_today_leaves_the_board() -> None:
+    """Round 8 (r8a A4): it stayed on the board and the to-do list under its id, counted in the ring."""
+    engine = sample_engine()
+    assert engine.complete(SCENE, key=TRASH, by="casey", source="tablet").result == "done"
+    stars = engine.balance("casey")
+    engine.delete_activity("take_out_the_trash", now=SCENE)
+    assert TRASH not in keys(engine, "casey", SCENE)
+    assert engine.balance("casey") == stars
+
+
+def test_an_edit_that_leaves_something_owed_reopens_a_finished_chore() -> None:
+    """Round 8 (r8a A3): a finished Once chore given a second session stayed finished, off the board."""
+    engine = sample_engine(activities=[once("fix_the_gate", "Fix the gate", ["alex"], by="2026-10-16")])
+    engine.complete(SCENE, key="fix_the_gate|alex|once|0", by="alex", source="tablet")
+    assert engine.activity("fix_the_gate")["finished_at"] is not None
+    engine.save_activity(SCENE, {"once": {"by": "2026-10-16", "sessions": 2}}, by="alex", source="tablet", activity_id="fix_the_gate")
+    assert engine.activity("fix_the_gate")["finished_at"] is None
+    assert _item(engine, "fix_the_gate|alex|once|1").status == "open"
+    # An edit that leaves nothing owed keeps it finished.
+    engine.complete(SCENE, key="fix_the_gate|alex|once|1", by="alex", source="tablet")
+    engine.save_activity(SCENE, {"name": "Fix the garden gate"}, by="alex", source="tablet", activity_id="fix_the_gate")
+    assert engine.activity("fix_the_gate")["finished_at"] is not None
+
+
+def test_a_sent_back_chore_handed_to_someone_else_is_theirs_to_do_fresh() -> None:
+    """Round 8 (r8a A5): the new person's tile showed the first child's sent-back note."""
+    engine = sample_engine()
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    [request] = engine.open_requests()
+    engine.review(SCENE, request_id=request["id"], allow=False, by="blair", note="Dana, the lid")
+    engine.override(SCENE, key=FISH, by="blair", assignee="casey")
+    item = next(i for i in engine.items(SCENE)["casey"] if i.occ.key == FISH)
+    assert item.status == "open"
+    assert engine.item_view(item, SCENE.date()).get("note") is None
 
 
 def test_undo_reverses_only_what_that_check_off_earned() -> None:

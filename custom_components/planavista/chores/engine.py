@@ -395,6 +395,9 @@ class ChoresEngine:
         for occ in self._occurrences_on(day, index):
             section, moved = section_on(occ, day)
             completion = index.latest.get(occ.key)
+            # Handed to someone else: theirs to do fresh, not the first person's check-off or note (round 8).
+            if completion is not None and completion.get("member") != occ.member:
+                completion = None
             items[occ.member].append(
                 Item(
                     occ,
@@ -435,10 +438,11 @@ class ChoresEngine:
                 )
             )
             present.add(key)
-        # Check-offs from today whose occurrence the plan no longer makes (an edit since).
+        # Check-offs from today whose occurrence the plan no longer makes (an edit since); a deleted
+        # chore's leave the board with it (round 8), their stars kept.
         for completion in index.by_day.get(day, ()):
             key = completion["occurrence"]
-            if key in present or completion["member"] not in members:
+            if key in present or completion["member"] not in members or self.activity(completion["chore"]) is None:
                 continue
             parsed = parse_key(key)
             if parsed is None:
@@ -1544,16 +1548,35 @@ class ChoresEngine:
             self._check_dates(activity, existing, today)
             self._note_joined(activity, existing, now)
             activities[index] = activity
+            # An edit that leaves something owed (more sessions, a later end) puts a finished chore back (round 8).
+            if activity.get("finished_at") and activity.get("schedule") in ("once", "repeats"):
+                probe = {**activity, "finished_at": None}
+                if self._has_open(probe):
+                    activity["finished_at"] = None
         else:
             if len(activities) >= MAX_ACTIVITIES:
                 raise ChoreError("too_many")
             activity = build_activity(None, changes, members)
             self._check_dates(activity, None, today)
-            activity["id"] = make_id(activity["name"], (a["id"] for a in activities))
+            # Never a deleted chore's id: its check-offs, notes, excuses, and requests would be its own (round 8).
+            activity["id"] = make_id(activity["name"], {a["id"] for a in activities} | self._ids_in_log())
             activity["rev"] = 1
             activity["created"] = {"by": by, "source": source, "at": self._stamp(now)}
             activities.append(activity)
         return Outcome("saved", {"activity": dict(activity)}, changed={"plan"})
+
+    def _ids_in_log(self) -> set[str]:
+        """Every chore id the log still names: check-offs, requests, overrides, carried, and day summaries."""
+        used = {c["chore"] for c in self.log["completions"]}
+        used |= {r["chore"] for r in self.log["requests"]}
+        used |= {c["chore"] for c in self.log["carried"]}
+        for record in self.log["overrides"]:
+            parsed = parse_key(record.get("occurrence"))
+            if parsed:
+                used.add(parsed[0])
+        for summary in self.log.get("summaries", []):
+            used |= set((summary.get("chores") or {}).keys())
+        return used
 
     def _note_joined(self, activity: dict[str, Any], existing: Mapping[str, Any], now: datetime) -> None:
         """When each person an edit adds joined the chore: they owe nothing from before."""
