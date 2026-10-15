@@ -44,6 +44,8 @@ export class SessionController implements ReactiveController {
     this._host.addEventListener('pointerdown', this._onActivity, true);
     this._host.addEventListener('keydown', this._onActivity, true);
     document.addEventListener('visibilitychange', this._onVisibility);
+    // The screensaver came on: nobody is there (milestone 11).
+    window.addEventListener('pv-screensaver-shown', this._onScreensaver);
     this._followConnection();
   }
 
@@ -56,6 +58,7 @@ export class SessionController implements ReactiveController {
     this._host.removeEventListener('pointerdown', this._onActivity, true);
     this._host.removeEventListener('keydown', this._onActivity, true);
     document.removeEventListener('visibilitychange', this._onVisibility);
+    window.removeEventListener('pv-screensaver-shown', this._onScreensaver);
     this._connection.stop();
     this.lock();
   }
@@ -135,5 +138,9 @@ export class SessionController implements ReactiveController {
 
   private _onVisibility = (): void => {
     if (document.visibilityState === 'hidden') this.lock();
+  };
+
+  private _onScreensaver = (): void => {
+    this.lock();
   };
 }
