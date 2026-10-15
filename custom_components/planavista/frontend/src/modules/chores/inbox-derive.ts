@@ -87,6 +87,46 @@ export function reviewQuestion(row: Pick<InboxRow, 'kind'>, allow: boolean): str
   return row.kind === 'completion' ? "Who's sending it back?" : "Who's declining?";
 }
 
+/** How long a row answered here stays where it was, so nothing slides under the finger (round 5). */
+export const ANSWERED_MS = 1200;
+
+export interface Answered {
+  allow: boolean;
+  /** When it was answered (ms, the page's clock). */
+  at: number;
+}
+
+export type ShownRow = InboxRow & { answered?: 'allowed' | 'declined' };
+
+/**
+ * A group's rows as drawn (round 5, r5b B1): the board's rows in the order they
+ * were shown, with a row answered here kept in its place, without its buttons,
+ * for `ANSWERED_MS` (gone from the board or not); new rows join at the end. A
+ * double tap on Looks good approved everything: the bottom sheet shrank from the
+ * top and Approve all slid under the finger.
+ */
+export function withAnswered(
+  rows: readonly InboxRow[], before: readonly ShownRow[], answered: ReadonlyMap<string, Answered>, now: number,
+): ShownRow[] {
+  const fresh = new Map(rows.map(row => [row.id, row]));
+  const shown: ShownRow[] = [];
+  for (const row of before) {
+    const live = fresh.get(row.id);
+    fresh.delete(row.id);
+    const answer = answered.get(row.id);
+    if (answer && now - answer.at < ANSWERED_MS) shown.push({ ...(live ?? row), answered: answer.allow ? 'allowed' : 'declined' });
+    else if (live) shown.push(live);
+  }
+  return [...shown, ...rows.filter(row => fresh.has(row.id))];
+}
+
+/** What an answered row says in place of its buttons. */
+export function answeredWords(row: Pick<InboxRow, 'kind'>, answered: 'allowed' | 'declined'): string {
+  if (row.kind === 'completion') return answered === 'allowed' ? 'Approved' : 'Sent back';
+  if (row.kind === 'redemption') return answered === 'allowed' ? 'Approved' : 'Declined';
+  return answered === 'allowed' ? 'Allowed' : 'Not this time';
+}
+
 export function answeredText(row: InboxRow, allowed: boolean, note?: string | null): string {
   if (row.kind === 'completion') return allowed ? `${row.what}: looks good.` : `${row.what} went back${note ? `: ${note}` : ''}.`;
   if (row.kind === 'redemption') return allowed ? `${row.what} is ${row.member?.name ?? 'theirs'}'s.` : `${row.what}: declined.`;

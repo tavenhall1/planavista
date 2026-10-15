@@ -12,7 +12,7 @@ import type { Member } from '../../core/household';
 import { SMOOTH, motionOf, springEasing } from '../../core/motion';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
-import type { InboxGroups, InboxRow } from './inbox-derive';
+import { ANSWERED_MS, answeredWords, withAnswered, type Answered, type InboxGroups, type InboxRow, type ShownRow } from './inbox-derive';
 import { SEND_BACK_REASONS } from './pv-chore-options';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
@@ -47,6 +47,12 @@ export class PvChoresInbox extends LitElement {
   @property({ attribute: false }) busy: ReadonlySet<string> = new Set();
 
   @state() private _sendingBack: string | null = null;
+  /** Answered here: kept in place for a moment (round 5). */
+  @state() private _answered = new Map<string, Answered>();
+  @state() private _confirmAll = false;
+  /** What each group drew last, so answered rows keep their places. */
+  private _shown: Record<'chores' | 'requests' | 'rewards', ShownRow[]> = { chores: [], requests: [], rewards: [] };
+  private _settle?: number;
   @state() private _note = '';
   private _motion = new SheetMotion(this);
   private _detach: (() => void) | null = null;
@@ -170,6 +176,16 @@ export class PvChoresInbox extends LitElement {
         flex-shrink: 0;
       }
 
+      /* Answered here: its place kept for a moment, its buttons gone (round 5). */
+      .done-word {
+        display: inline-flex;
+        align-items: center;
+        min-height: 48px;
+        padding: 0 8px;
+        color: var(--pv-text-secondary, #5F6670);
+        font-weight: 700;
+      }
+
       .answers button {
         min-height: 48px;
         padding: 0 14px;
@@ -234,6 +250,21 @@ export class PvChoresInbox extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._detach?.();
+    window.clearTimeout(this._settle);
+  }
+
+  private _rows(group: 'chores' | 'requests' | 'rewards'): ShownRow[] {
+    this._shown[group] = withAnswered(this.groups[group], this._shown[group], this._answered, performance.now());
+    return this._shown[group];
+  }
+
+  private _markAnswered(rows: readonly InboxRow[], allow: boolean): void {
+    const at = performance.now();
+    const next = new Map(this._answered);
+    for (const row of rows) next.set(row.id, { allow, at });
+    this._answered = next;
+    window.clearTimeout(this._settle);
+    this._settle = window.setTimeout(() => this.requestUpdate(), ANSWERED_MS + 50);
   }
 
   async close(): Promise<void> {
@@ -260,6 +291,10 @@ export class PvChoresInbox extends LitElement {
   render() {
     const g = this.groups;
     if (!g) return nothing;
+    const chores = this._rows('chores');
+    const requests = this._rows('requests');
+    const rewards = this._rows('rewards');
+    const open = chores.filter(row => !row.answered);
     return html`
       <div class="backdrop" @pointerdown=${this._backdrop.down} @click=${this._backdrop.click}></div>
       <div class="panel" role="dialog" aria-modal=${this.layout === 'landscape' ? 'false' : 'true'} aria-labelledby="inbox-title"
@@ -275,25 +310,52 @@ export class PvChoresInbox extends LitElement {
             <p>Check-offs that need a parent's approval, requests, and rewards land here.</p>
           </div>
         ` : nothing}
-        ${g.chores.length ? html`
+        ${chores.length ? html`
           <div class="group"><span>Chores to check</span>
-            <button class="link" type="button" ?disabled=${this.busy.size > 0}
-              @click=${() => this.dispatchEvent(new CustomEvent('pv-approve-all', { bubbles: true, composed: true }))}>Approve all (${g.chores.length})</button>
+            ${open.length > 1 ? html`<button class="link" type="button" ?disabled=${this.busy.size > 0}
+              @click=${() => { this._confirmAll = true; }}>Approve all (${open.length})</button>` : nothing}
           </div>
-          ${g.chores.map(row => this._row(row))}
+          ${chores.map(row => this._row(row))}
         ` : nothing}
-        ${g.requests.length ? html`<div class="group"><span>Requests</span></div>${g.requests.map(row => this._row(row))}` : nothing}
-        ${g.rewards.length ? html`<div class="group"><span>Rewards</span></div>${g.rewards.map(row => this._row(row))}` : nothing}
+        ${requests.length ? html`<div class="group"><span>Requests</span></div>${requests.map(row => this._row(row))}` : nothing}
+        ${rewards.length ? html`<div class="group"><span>Rewards</span></div>${rewards.map(row => this._row(row))}` : nothing}
         <div class="actions">
           <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
         </div>
       </div>
+      ${this._confirmAll ? html`
+        <pv-notice-sheet .layout=${this.layout} heading=${`Approve all ${open.length}?`}
+          body="Each one counts as approved by you, with its stars."
+          .actions=${[{ id: 'approve', label: `Approve all ${open.length}`, kind: 'primary' }, { id: 'cancel', label: 'Cancel', kind: 'secondary' }]}
+          @pv-sheet-action=${(e: CustomEvent<{ id: string }>) => this._onConfirmAll(e, open)}></pv-notice-sheet>
+      ` : nothing}
     `;
   }
 
-  private _row(row: InboxRow) {
+  /** Approve all asks first: a bulk answer with no Undo (round 5). */
+  private _onConfirmAll(event: CustomEvent<{ id: string }>, rows: readonly InboxRow[]): void {
+    event.stopPropagation();
+    this._confirmAll = false;
+    if (event.detail.id !== 'approve' || rows.length === 0) return;
+    this._markAnswered(rows, true);
+    this.dispatchEvent(new CustomEvent('pv-approve-all', { detail: { ids: rows.map(r => r.id) }, bubbles: true, composed: true }));
+  }
+
+  private _row(row: ShownRow) {
     const busy = this.busy.has(row.id);
     const member = row.member;
+    if (row.answered) {
+      return html`
+        <div class="row answered">
+          ${member ? html`<pv-member-avatar .member=${{ ...member, color: this.colorOf(member) }} .hass=${this.hass} size="32"></pv-member-avatar>` : nothing}
+          <div class="words">
+            <div class="what">${row.lead} <strong>${row.what}</strong>${row.tail}</div>
+            <div class="detail">${row.detail}</div>
+          </div>
+          <div class="answers"><span class="done-word" role="status">✓ ${answeredWords(row, row.answered)}</span></div>
+        </div>
+      `;
+    }
     return html`
       <div class="row" aria-busy=${busy ? 'true' : 'false'}>
         ${member ? html`<pv-member-avatar .member=${{ ...member, color: this.colorOf(member) }} .hass=${this.hass} size="32"></pv-member-avatar>` : nothing}
@@ -332,6 +394,7 @@ export class PvChoresInbox extends LitElement {
 
   private _review(row: InboxRow, allow: boolean, note?: string | null): void {
     this._sendingBack = null;
+    this._markAnswered([row], allow);
     this.dispatchEvent(new CustomEvent<ReviewDetail>('pv-review', { detail: { row, allow, note }, bubbles: true, composed: true }));
   }
 

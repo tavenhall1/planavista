@@ -470,10 +470,12 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     this._loadWeek(offset === 0 && this._weekFailed);
   }
 
-  private _openDay(member: string, date: string): void {
+  /** `keep`: the day shown stays while it reloads, so rows don't move under the finger (round 5). */
+  private _openDay(member: string, date: string, keep = false): void {
     const api = this.service?.api;
     if (!api) return;
-    const sheet = { kind: 'day' as const, member, date, day: null, failed: false };
+    const shown = keep && this._sheet?.kind === 'day' && this._sheet.date === date ? this._sheet.day : null;
+    const sheet = { kind: 'day' as const, member, date, day: shown, failed: false };
     this._sheet = sheet;
     api.day(date).then(
       day => {
@@ -494,7 +496,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       const who = this._member(member)?.name;
       this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${who ? ` ${who}'s streak holds.` : ''}` });
       this._loadWeek(true);
-      if (this._sheet?.kind === 'day') this._openDay(this._sheet.member, this._sheet.date);
+      if (this._sheet?.kind === 'day') this._openDay(this._sheet.member, this._sheet.date, true);
     } catch (err) {
       this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
     }
@@ -1186,7 +1188,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       return html`
         <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
           @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}
-          @pv-approve-all=${() => void this._approveAll(groups.chores)}
+          @pv-approve-all=${(e: CustomEvent<{ ids: string[] }>) => void this._approveAll(groups.chores.filter(r => e.detail.ids.includes(r.id)))}
           @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chores-inbox>
       `;
     }
