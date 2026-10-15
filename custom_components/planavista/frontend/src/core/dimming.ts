@@ -1,15 +1,16 @@
 import type { Member } from './household';
-import { fromLinear, parseHex, relativeLuminance, toHex, toLinear } from './color';
+import { contrastRatio, fromLinear, parseHex, relativeLuminance, toHex, toLinear } from './color';
 import { nightWindow } from './screensaver';
 
 /**
  * Dimming for shared screens (0.12.0, spec D2 to D5). Wall screens mostly
  * can't dim themselves, so PlanaVista draws its own colors darker and warmer:
  * every color is scaled in real (linear) light by the level, so 30% gives off
- * about 30% of the light. Light text scales by the square root of the level,
- * so it stays easy to read; dark text dims with its background, which keeps
- * their contrast. The evening fade runs 30 minutes and ends as night begins;
- * the morning comes back up over 10 minutes as it ends.
+ * about 30% of the light. Words keep their contrast with what they sit on
+ * (4.5:1, 3:1 for muted words, or the theme's own when lower): light words
+ * dim less, dark words more. Light surfaces go no darker than a quarter.
+ * The evening fade runs 30 minutes and ends as night begins; the morning
+ * comes back up over 10 minutes as it ends.
  */
 
 /** The household's levels as whole percents, as the view sends them. */
@@ -53,16 +54,23 @@ export function dimLevel(
   dim: DimSettings,
 ): { level: number; fading: boolean } {
   const day = dim.day / 100;
-  const dark = dim.night / 100;
+  // A night set brighter than the day ("100%, no dimming" with a dimmer day) keeps the day's level (review m12 D).
+  const dark = Math.min(day, dim.night / 100);
   if (day === dark) return { level: day, fading: false };
   const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const tonight = nightWindow(members, night, today);
-  const last = nightWindow(members, night, yesterday);
+  const on = (offset: number) => nightWindow(members, night, new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset));
+  const last = on(-1);
+  const tonight = on(0);
+  const next = on(1);
   let level = day;
   let fading = false;
-  for (const { from, to } of [{ from: last.from - 1440, to: last.to - 1440 }, tonight]) {
+  // Tomorrow's night too: one set to start at or just after midnight fades in before midnight (review m12 C).
+  const nights = [
+    { from: last.from - 1440, to: last.to - 1440 },
+    tonight,
+    { from: next.from + 1440, to: next.to + 1440 },
+  ];
+  for (const { from, to } of nights) {
     if (minutes >= from && minutes < to) return { level: dark, fading: false };
     if (minutes >= from - EVENING_FADE_MIN && minutes < from) {
       level = Math.min(level, fadeBetween(day, dark, (minutes - (from - EVENING_FADE_MIN)) / EVENING_FADE_MIN));
@@ -81,12 +89,58 @@ function warmth(level: number): [number, number, number] {
   return [1, 1 - 0.13 * w, 1 - 0.42 * w];
 }
 
-function dimChannels(rgb: [number, number, number], level: number, text: boolean): [number, number, number] {
-  // Light text dims less (the square root of the level); dark text dims with what's behind it.
-  const light = text && relativeLuminance(toHex(...rgb)) > 0.18;
-  const k = light ? Math.sqrt(level) : level;
+/** Scale a color's light by `k`, warmed for the screen's `level`. */
+function scaled(rgb: [number, number, number], k: number, level: number): [number, number, number] {
   const m = warmth(level);
   return rgb.map((c, i) => fromLinear(toLinear(c) * k * m[i])) as [number, number, number];
+}
+
+function dimChannels(rgb: [number, number, number], level: number, text: boolean): [number, number, number] {
+  // A small mark with no known background (a star, the sun in the sky) dims by the square root of the level.
+  const light = text && relativeLuminance(toHex(...rgb)) > 0.18;
+  return scaled(rgb, light ? Math.sqrt(level) : level, level);
+}
+
+/**
+ * Light surfaces go no darker than this (review m12 A): below it, even black
+ * words can't keep 4.5:1 on a dimmed white or a pale tint (the flare in the
+ * contrast formula), so a light look at 8% draws at a quarter, and so does a
+ * dark look's light toast.
+ */
+export const LIGHT_FLOOR = 0.25;
+/** A surface this light (relative luminance) keeps the floor in a dark look too. */
+const LIGHT_SURFACE = 0.4;
+
+/** The level a look's surfaces (and people's colors) are drawn at. */
+export function surfaceLevel(level: number, mode: 'light' | 'dark'): number {
+  return mode === 'light' && level < 1 ? Math.max(level, LIGHT_FLOOR) : level;
+}
+
+/**
+ * Words at the level, keeping their contrast with what they sit on (review I1):
+ * light words dim less until they reach `target` against their dimmed
+ * background, dark words dim more; never more contrast than the theme gave
+ * them. `level` is the surfaces' level, `bg` the background as drawn.
+ */
+export function inkOn(text: string, bg: string, bgFull: string, level: number, target: number): string {
+  if (level >= 1) return text;
+  const rgb = parseHex(text);
+  if (!rgb || !parseHex(bg) || !parseHex(bgFull)) return dimColor(text, level, true);
+  const goal = Math.min(target, contrastRatio(text, bgFull));
+  // Which side of its background the theme put it on (dimmed, grey words can end up level with a dimmed white).
+  const light = relativeLuminance(text) > relativeLuminance(bgFull);
+  const at = (k: number) => toHex(...scaled(rgb, k, level));
+  // Light words: the least light that reaches the goal, from the level up to full. Dark words: the most.
+  let lo = light ? level : 0;
+  let hi = light ? 1 : level;
+  if (contrastRatio(at(light ? level : hi), bg) >= goal) return at(light ? level : hi);
+  for (let i = 0; i < 18; i++) {
+    const mid = (lo + hi) / 2;
+    const ok = contrastRatio(at(mid), bg) >= goal;
+    if (light === ok) hi = mid;
+    else lo = mid;
+  }
+  return at(light ? hi : lo);
 }
 
 /** 0 to 255 channels at the level (the screensaver's light model uses these); `text` for small marks. */
@@ -118,12 +172,56 @@ export function dimValue(value: string, level: number, text = false): string {
 /** Letters and small marks: they keep the text rule. */
 const TEXT_TOKEN = /^--pv-text|-ink$|-text$|-muted$|^--pv-star$|^--pv-now-color$|^--pv-toast-action$/;
 
-/** The theme's tokens at the level; the same object at full. */
-export function dimTokens<T extends Record<string, string>>(tokens: T, level: number): T {
+/**
+ * Each word token's background and the contrast it keeps (review I1): 4.5:1
+ * for words, 3:1 for muted words and small marks, or the theme's own when lower.
+ */
+const INK: Record<string, [background: string, target: number]> = {
+  '--pv-text': ['--pv-card-bg', 4.5],
+  '--pv-text-secondary': ['--pv-card-bg', 4.5],
+  '--pv-text-muted': ['--pv-card-bg', 3],
+  '--pv-accent-ink': ['--pv-card-bg', 4.5],
+  '--pv-danger-ink': ['--pv-card-bg', 4.5],
+  '--pv-now-color': ['--pv-card-bg', 3],
+  '--pv-star': ['--pv-card-bg', 3],
+  '--pv-accent-text': ['--pv-accent', 4.5],
+  '--pv-accent-tint-ink': ['--pv-accent-tint', 4.5],
+  '--pv-warn-ink': ['--pv-warn-bg', 4.5],
+  '--pv-bad-ink': ['--pv-bad-bg', 4.5],
+  '--pv-header-text': ['--pv-header-gradient', 4.5],
+  '--pv-header-muted': ['--pv-header-gradient', 3],
+  '--pv-toast-text': ['--pv-toast-bg', 4.5],
+  '--pv-toast-action': ['--pv-toast-bg', 4.5],
+};
+
+/** A value's first color, for a background given as a gradient. */
+const firstHex = (value: string | undefined): string | undefined => value?.match(HEX)?.[0];
+
+/**
+ * The theme's tokens at the level for the look's mode; the same object at full.
+ * Surfaces dim by the level (a light look no lower than LIGHT_FLOOR), words keep
+ * their contrast with their own background.
+ */
+export function dimTokens<T extends Record<string, string>>(tokens: T, level: number, mode: 'light' | 'dark' = 'dark'): T {
   if (level >= 1) return tokens;
+  const surfaces = surfaceLevel(level, mode);
+  const levelOf = (hex: string | undefined) =>
+    hex && relativeLuminance(hex) > LIGHT_SURFACE ? Math.max(surfaces, LIGHT_FLOOR) : surfaces;
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(tokens)) {
-    out[name] = name.startsWith('--pv-') ? dimValue(value, level, TEXT_TOKEN.test(name)) : value;
+    if (!name.startsWith('--pv-')) {
+      out[name] = value;
+      continue;
+    }
+    const ink = INK[name];
+    const bgFull = ink ? firstHex(tokens[ink[0]]) : undefined;
+    if (ink && bgFull && parseHex(value)) {
+      const under = levelOf(bgFull);
+      out[name] = inkOn(value, dimColor(bgFull, under), bgFull, under, ink[1]);
+      continue;
+    }
+    const text = TEXT_TOKEN.test(name);
+    out[name] = dimValue(value, text ? surfaces : levelOf(firstHex(value)), text);
   }
   return out as T;
 }

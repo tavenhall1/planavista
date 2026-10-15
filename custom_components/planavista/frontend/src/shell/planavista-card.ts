@@ -202,7 +202,9 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
   /** On a shared screen, what its dimming follows (0.12.0); elsewhere nothing dims. */
   private _dimming() {
     const view = this._household.view;
-    if (!view?.account.shared) return null;
+    // Until the household answers, the last level stands (review m12 F).
+    if (!view) return 'waiting' as const;
+    if (!view.account.shared) return null;
     const saver = view.security.screensaver;
     return { settings: saver?.dim ?? DIM_DEFAULT, members: view.members, night: saver?.night ?? null };
   }

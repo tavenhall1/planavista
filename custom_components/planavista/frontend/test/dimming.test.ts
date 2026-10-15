@@ -7,9 +7,12 @@ import {
   dimLevel,
   dimTokens,
   fadeBetween,
+  LIGHT_FLOOR,
   mediaBrightness,
+  surfaceLevel,
 } from '../src/core/dimming';
 import { contrastRatio } from '../src/core/color';
+import { Look, Mode, ThemePair, themeTokens } from '../src/styles/theme-pairs';
 import type { Member } from '../src/core/household';
 
 const LEVELS = { day: 100, night: 30 };
@@ -82,6 +85,29 @@ describe('dimLevel', () => {
   });
 });
 
+describe('dimLevel at the edges (review m12)', () => {
+  const none: Member[] = [];
+  it('fades in before a set night that starts at or just after midnight', () => {
+    const midnight = { from: '00:00', to: '06:00' };
+    const fade = dimLevel(at(23, 45), none, midnight, LEVELS);
+    expect(fade.fading).toBe(true);
+    expect(fade.level).toBeLessThan(1);
+    expect(fade.level).toBeGreaterThan(0.3);
+    expect(dimLevel(at(23, 29), none, midnight, LEVELS)).toEqual({ level: 1, fading: false });
+    expect(dimLevel(at(0, 10), none, midnight, LEVELS)).toEqual({ level: 0.3, fading: false });
+    const late = { from: '00:20', to: '06:00' };
+    expect(dimLevel(at(0, 0), none, late, LEVELS).fading).toBe(true);
+    expect(dimLevel(at(23, 55), none, late, LEVELS).fading).toBe(true);
+  });
+
+  it('never brightens at night: 100 at night keeps the day level all night', () => {
+    const levels = { day: 85, night: 100 };
+    for (const [h, m] of [[14, 0], [21, 45], [22, 0], [23, 30], [3, 0], [6, 35], [7, 0]]) {
+      expect(dimLevel(at(h, m), none, null, levels), `${h}:${m}`).toEqual({ level: 0.85, fading: false });
+    }
+  });
+});
+
 describe('dimColor', () => {
   it('leaves colors alone at full and scales them in real light', () => {
     expect(dimColor('#5B5BD6', 1)).toBe('#5B5BD6');
@@ -106,8 +132,65 @@ describe('dimColor', () => {
     expect(contrastRatio(dimColor('#E9E9E6', 0.08), dimColor('#111214', 0.08))).toBeLessThan(4.5);
   });
 
-  it('dims dark text with its background, so dark on light keeps its contrast', () => {
-    expect(dimColor('#1A1B1E', 0.3, true)).toBe(dimColor('#1A1B1E', 0.3));
+});
+
+// Review m12 A: every word token keeps its contrast with what it sits on, in every look, at every level.
+describe('words on a dimmed screen', () => {
+  const PAIRS: ThemePair[] = ['planavista', 'minimal', 'vibrant'];
+  const MODES: Mode[] = ['light', 'dark'];
+  const look = (pair: ThemePair): Look => ({ pair, light: {}, dark: {}, shape: {} });
+  const PAIRS_OF: [string, string, number][] = [
+    ['--pv-text', '--pv-card-bg', 4.5],
+    ['--pv-text-secondary', '--pv-card-bg', 4.5],
+    ['--pv-text-muted', '--pv-card-bg', 3],
+    ['--pv-accent-ink', '--pv-card-bg', 4.5],
+    ['--pv-danger-ink', '--pv-card-bg', 4.5],
+    ['--pv-now-color', '--pv-card-bg', 3],
+    ['--pv-star', '--pv-card-bg', 3],
+    ['--pv-accent-text', '--pv-accent', 4.5],
+    ['--pv-accent-tint-ink', '--pv-accent-tint', 4.5],
+    ['--pv-warn-ink', '--pv-warn-bg', 4.5],
+    ['--pv-bad-ink', '--pv-bad-bg', 4.5],
+    ['--pv-header-text', '--pv-header-gradient', 4.5],
+    ['--pv-toast-text', '--pv-toast-bg', 4.5],
+    ['--pv-toast-action', '--pv-toast-bg', 4.5],
+  ];
+  const first = (v: string | undefined) => v?.match(/#[0-9a-fA-F]{6}/)?.[0];
+
+  it('keep 4.5:1 (3:1 for muted words and marks), or what the theme gave them', () => {
+    let checked = 0;
+    for (const pair of PAIRS) for (const mode of MODES) {
+      const full = themeTokens(look(pair), mode);
+      for (const level of [0.85, 0.7, 0.5, 0.3, 0.15, 0.08]) {
+        const dim = dimTokens(full, level, mode);
+        for (const [ink, bg, target] of PAIRS_OF) {
+          const text = first(full[ink]);
+          const back = first(full[bg]);
+          if (!text || !back || full[ink] !== text) continue;
+          const goal = Math.min(target, contrastRatio(text, back)) - 0.02;
+          expect(contrastRatio(dim[ink], first(dim[bg])!), `${pair} ${mode} ${level} ${ink} on ${bg}`).toBeGreaterThanOrEqual(goal);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(300);
+  });
+
+  it('still dim: words no brighter than the theme drew them, surfaces at the level', () => {
+    const full = themeTokens(look('planavista'), 'dark');
+    const dim = dimTokens(full, 0.08, 'dark');
+    expect(dim['--pv-card-bg']).toBe(dimColor(full['--pv-card-bg'], 0.08));
+    expect(contrastRatio(dim['--pv-text'], '#000000')).toBeLessThan(contrastRatio(full['--pv-text'], '#000000'));
+  });
+
+  it("a light look's surfaces go no darker than the floor", () => {
+    expect(LIGHT_FLOOR).toBe(0.25);
+    expect(surfaceLevel(0.08, 'light')).toBe(0.25);
+    expect(surfaceLevel(0.3, 'light')).toBe(0.3);
+    expect(surfaceLevel(0.08, 'dark')).toBe(0.08);
+    expect(surfaceLevel(1, 'light')).toBe(1);
+    const full = themeTokens(look('minimal'), 'light');
+    expect(dimTokens(full, 0.08, 'light')['--pv-bg']).toBe(dimColor(full['--pv-bg'], 0.25));
   });
 });
 
@@ -124,6 +207,7 @@ describe('dimTokens', () => {
     };
     const dimmed = dimTokens(tokens, 0.3);
     expect(dimmed['--pv-bg']).toBe(dimColor('#111214', 0.3));
+    // With no card background among these tokens, text keeps the plain rule.
     expect(dimmed['--pv-text']).toBe(dimColor('#E9E9E6', 0.3, true));
     expect(dimmed['--pv-backdrop']).toBe('rgba(0, 0, 0, 0.6)');
     expect(dimmed['--pv-today-bg']).toMatch(/^rgba\(\d+, \d+, \d+, 0\.08\)$/);

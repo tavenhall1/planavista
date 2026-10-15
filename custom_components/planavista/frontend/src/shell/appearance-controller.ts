@@ -13,7 +13,7 @@ import {
   withCardTheme,
 } from '../core/appearance';
 import { AppearanceEdits } from '../core/appearance-edits';
-import { DIM_STEP_MS, DimSettings, dimLevel, dimTokens, mediaBrightness } from '../core/dimming';
+import { DIM_STEP_MS, DimSettings, dimLevel, dimTokens, mediaBrightness, surfaceLevel } from '../core/dimming';
 import type { Member } from '../core/household';
 import { Motion, resolveMotion, ringTokens } from '../core/motion';
 import { Look, Mode, applyTokens, themeTokens } from '../styles/theme-pairs';
@@ -30,8 +30,43 @@ export interface AppearanceSource {
   haDark: boolean;
   /** A sheet, Settings, setup, or a module's dialog is open. */
   overlayOpen: boolean;
-  /** On a shared screen: the household's levels and its night (0.12.0); otherwise nothing dims. */
-  dimming?: { settings: DimSettings; members: Member[]; night: { from: string; to: string } | null } | null;
+  /**
+   * On a shared screen: the household's levels and its night (0.12.0); otherwise nothing dims.
+   * 'waiting' until the household answers: the last level drawn stands meanwhile.
+   */
+  dimming?: { settings: DimSettings; members: Member[]; night: { from: string; to: string } | null } | null | 'waiting';
+}
+
+/**
+ * The level this page (or, after a reload, this browser) last drew, so a card
+ * Home Assistant re-creates at night doesn't flash full before the household
+ * answers (review m12 F). Older than LAST_DIM_MS it's forgotten.
+ */
+const LAST_DIM_KEY = 'planavista.dim';
+const LAST_DIM_MS = 10 * 60_000;
+let lastDim: { level: number; at: number } | null = null;
+
+function rememberDim(level: number, at: number): void {
+  if (lastDim?.level === level && at - lastDim.at < 30_000) return;
+  lastDim = { level, at };
+  try {
+    localStorage.setItem(LAST_DIM_KEY, JSON.stringify(lastDim));
+  } catch {
+    // No storage (a private window): this page still remembers.
+  }
+}
+
+function rememberedDim(now: number): number {
+  let last = lastDim;
+  if (!last) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAST_DIM_KEY) ?? 'null') as { level?: unknown; at?: unknown } | null;
+      if (saved && typeof saved.level === 'number' && typeof saved.at === 'number') last = { level: saved.level, at: saved.at };
+    } catch {
+      last = null;
+    }
+  }
+  return last && now - last.at < LAST_DIM_MS && last.level > 0 && last.level <= 1 ? last.level : 1;
 }
 
 type Host = ReactiveControllerHost & HTMLElement;
@@ -56,8 +91,13 @@ export class AppearanceController implements ReactiveController {
   look: Look = lookOf(this.settings);
   /** Automatic follows the sun, but Home Assistant has no sun.sun (spec 15.4). */
   sunMissing = false;
-  /** How bright a shared screen is drawn now, 0 to 1 (0.12.0); 1 elsewhere. */
+  /**
+   * How bright this card's surfaces and people's colors are drawn now, 0 to 1
+   * (0.12.0); 1 elsewhere. A light look goes no lower than LIGHT_FLOOR.
+   */
   dim = 1;
+  /** The household's level now, before the look's floor. */
+  private _level = 1;
   /** A level Settings is showing for a moment. */
   private _preview: { level: number; until: number } | null = null;
 
@@ -133,16 +173,22 @@ export class AppearanceController implements ReactiveController {
     const now = Date.now();
     if (this._preview && this._preview.until <= now) this._preview = null;
     if (this._preview) {
-      this.dim = this._preview.level;
+      this._level = this._preview.level;
       return new Date(this._preview.until - 1000 + 1);
     }
+    if (dimming === 'waiting') {
+      this._level = rememberedDim(now);
+      return null;
+    }
     if (!dimming) {
-      this.dim = 1;
+      this._level = 1;
+      rememberDim(1, now);
       return null;
     }
     const step = new Date(Math.floor(now / DIM_STEP_MS) * DIM_STEP_MS);
     const { level, fading } = dimLevel(step, dimming.members, dimming.night, dimming.settings);
-    this.dim = level;
+    this._level = level;
+    rememberDim(level, now);
     // nextLookAt adds a second to a change's time; the next step's start is what's wanted.
     return fading ? new Date(step.getTime() + DIM_STEP_MS - 1000) : null;
   }
@@ -196,9 +242,10 @@ export class AppearanceController implements ReactiveController {
     this.mode = mode;
     this._shown = mode;
     // A dimmed shared screen draws every color of its look at the level (0.12.0); pictures follow by a filter.
+    this.dim = surfaceLevel(this._level, mode);
     const dimmed = this.dim < 1;
     applyTokens(this._host, {
-      ...dimTokens(themeTokens(this.look, mode), this.dim),
+      ...dimTokens(themeTokens(this.look, mode), this._level, mode),
       '--pv-motion': this.motion,
       ...ringTokens(this.motion),
       '--pv-dim': String(Math.round(this.dim * 1000) / 1000),
