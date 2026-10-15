@@ -565,7 +565,10 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
     }
     // An admin on first run goes straight into setup (PlanaVista's own dashboard, 2026-10-14).
     const firstRun = this._data()?.onboarding_complete === false && !this._onboardingDone;
-    if (opensSetupByItself(firstRun, this._access(), setupOpenedOnPage) && !this._wizardOpen) {
+    if (opensSetupByItself({
+      firstRun, access: this._access(),
+      admin: !!this.hass?.user?.is_admin, opened: setupOpenedOnPage, busy: this._settingsOpen || !!this._sheet,
+    }) && !this._wizardOpen) {
       setupOpenedOnPage = true;
       this._wizardOpen = true;
     }

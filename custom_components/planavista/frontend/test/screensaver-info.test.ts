@@ -35,11 +35,18 @@ describe('the screensaver: what it writes over the sky (spec 3.3)', () => {
     ];
     const info = screensaverInfo({ now: at(15, 20), format: '12h', events, members: [], board: null });
     expect(info.events.map(e => [e.when, e.title, e.now])).toEqual([
-      ['Now', 'Swim lesson', true], ['4:30 PM', 'Piano', false], ['6:00 PM', 'Dinner', false],
+      ['Until 4:00 PM', 'Swim lesson', true], ['4:30 PM', 'Piano', false], ['6:00 PM', 'Dinner', false],
     ]);
     expect(info.nothingElse).toBe(false);
     expect(screensaverInfo({ now: at(21), format: '12h', events, members: [], board: null }).nothingElse).toBe(true);
     expect(screensaverInfo({ now: at(21), format: '12h', events: [], members: [], board: null }).nothingElse).toBe(false);
+  });
+
+  it('lists an event on two calendars once, as the calendar draws it', () => {
+    const blairs = { ...event('Test 2', at(9, 45), at(10), 'blair'), calendar: 'calendar.test_blair' };
+    const events = [event('Test 2', at(9, 45), at(10), 'alex'), blairs, event('Test 3', at(11, 45), at(12)), event('Test 4', at(13), at(14))];
+    const info = screensaverInfo({ now: at(9), format: '12h', events, members: [], board: null });
+    expect(info.events.map(e => e.title)).toEqual(['Test 2', 'Test 3', 'Test 4']);
   });
 
   it('draws a ring for each person with chores today, counting waiting as done', () => {

@@ -61,10 +61,19 @@ export function screensaverInfo(input: InfoInput): ScreensaverInfo {
   const weather = usable
     ? [Number.isFinite(temperature) ? `${Math.round(temperature)}°` : '', conditionWords(w.state)].filter(Boolean).join(' ')
     : null;
-  const left = input.events.filter(e => e.end > now);
+  // An event on two people's calendars is one event, as the calendar draws it (sameEventKey).
+  const seen = new Set<string>();
+  const unique = input.events.filter(e => {
+    const key = `${e.title}|${e.start.getTime()}|${e.end.getTime()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const left = unique.filter(e => e.end > now);
   const events = left.slice(0, EVENTS_SHOWN).map(e => ({
     key: `${e.calendar}|${e.start.getTime()}|${e.title}`,
-    when: e.start <= now ? 'Now' : clockTime(e.start, format, format === '12h'),
+    // What's on now says when it ends; its badge says Now.
+    when: e.start <= now ? `Until ${clockTime(e.end, format, format === '12h')}` : clockTime(e.start, format, format === '12h'),
     title: e.title,
     member: e.member,
     now: e.start <= now,
@@ -80,6 +89,6 @@ export function screensaverInfo(input: InfoInput): ScreensaverInfo {
   }
   return {
     time, ampm: format === '12h' ? (hour >= 12 ? 'PM' : 'AM') : null, date, weather,
-    events, nothingElse: input.events.length > 0 && left.length === 0, rings,
+    events, nothingElse: unique.length > 0 && left.length === 0, rings,
   };
 }

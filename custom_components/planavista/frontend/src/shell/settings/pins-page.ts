@@ -12,7 +12,7 @@ import type { PlanaVistaData } from '../../types';
 import type { Session } from '../../core/session';
 import { mayChangeKiosk } from '../../core/kiosk';
 import {
-  SCREEN_DOMAINS, type ScreenEntities, motionCandidate, nightText, nightWindow,
+  SCREEN_DOMAINS, type ScreenEntities, entityChoices, motionCandidate, nightText, nightWindow,
 } from '../../core/screensaver';
 import { screensaver } from '../screensaver-controller';
 import '../../core/pv-time-field';
@@ -300,7 +300,7 @@ export class PvSettingsPins extends LitElement {
         <p class="hint">
           ${saver.night ? 'Night runs at these times.' : tonight.source === 'sleep'
             ? 'From the latest bedtime to the earliest wake-up in Sleep times.'
-            : 'Nobody has Sleep times yet, so night runs at these times.'}
+            : 'Nobody has a bedtime in Sleep times yet, so night runs at these times.'}
           At night the sky goes dark and only the time shows.
         </p>
         <button class="pv-btn pv-btn-secondary" type="button" ?disabled=${this._busy}
@@ -314,9 +314,8 @@ export class PvSettingsPins extends LitElement {
   }
 
   private _screenRow(screen: ScreenEntities) {
-    const options = (fits: (s: { entity_id: string; attributes: Record<string, unknown> }) => boolean) => Object.values(this.hass?.states ?? {})
-      .filter(fits)
-      .sort((a, b) => String(a.attributes.friendly_name ?? a.entity_id).localeCompare(String(b.attributes.friendly_name ?? b.entity_id)));
+    const options = (fits: (s: { entity_id: string; attributes: Record<string, unknown> }) => boolean, current: string | null) =>
+      entityChoices(this.hass?.states ?? {}, fits, current);
     const pick = (field: 'screen' | 'motion', value: string) =>
       void this._run(() => this.api.saveSecurity({ screensaver_screen: { user: screen.user_id, [field]: value || null } }));
     return html`
@@ -324,19 +323,19 @@ export class PvSettingsPins extends LitElement {
         <h3>${screen.name ?? 'A shared screen'}</h3>
         <div class="saver-row">
           <label class="label" for=${`screen-${screen.user_id}`}>Screen</label>
-          <select id=${`screen-${screen.user_id}`} class="pv-select" ?disabled=${this._busy}
+          <select id=${`screen-${screen.user_id}`} class="pv-input pv-select" ?disabled=${this._busy}
             @change=${(e: Event) => pick('screen', (e.target as HTMLSelectElement).value)}>
             <option value="" ?selected=${!screen.screen}>None</option>
-            ${options(s => (SCREEN_DOMAINS as readonly string[]).includes(s.entity_id.split('.', 1)[0])).map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === screen.screen}>${s.attributes.friendly_name ?? s.entity_id}</option>`)}
+            ${options(s => (SCREEN_DOMAINS as readonly string[]).includes(s.entity_id.split('.', 1)[0]), screen.screen).map(s => html`<option value=${s.id} ?selected=${s.id === screen.screen}>${s.name}</option>`)}
           </select>
         </div>
-        <p class="hint">A light or number is dimmed while the screensaver shows; at night the screen is turned off or all the way down, and it comes back on a touch.</p>
+        <p class="hint">Pick this screen's own backlight or plug, not a room's light. A light or number is dimmed while the screensaver shows; at night the screen is turned off or all the way down, and it comes back in the morning and on a touch.</p>
         <div class="saver-row">
           <label class="label" for=${`motion-${screen.user_id}`}>Motion</label>
-          <select id=${`motion-${screen.user_id}`} class="pv-select" ?disabled=${this._busy}
+          <select id=${`motion-${screen.user_id}`} class="pv-input pv-select" ?disabled=${this._busy}
             @change=${(e: Event) => pick('motion', (e.target as HTMLSelectElement).value)}>
             <option value="" ?selected=${!screen.motion}>None</option>
-            ${options(s => motionCandidate(s.entity_id, s.attributes)).map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === screen.motion}>${s.attributes.friendly_name ?? s.entity_id}</option>`)}
+            ${options(s => motionCandidate(s.entity_id, s.attributes), screen.motion).map(s => html`<option value=${s.id} ?selected=${s.id === screen.motion}>${s.name}</option>`)}
           </select>
         </div>
         <p class="hint">Someone in front of the screen keeps it awake and wakes it. Devices signed in with this account share these.</p>

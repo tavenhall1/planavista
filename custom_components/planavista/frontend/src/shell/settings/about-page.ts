@@ -11,6 +11,8 @@ interface DashboardState {
   shown: boolean;
   url_path: string | null;
   available: boolean;
+  /** Shown, but both of its addresses belong to other dashboards. */
+  taken?: boolean;
 }
 
 /**
@@ -112,6 +114,13 @@ export class PvSettingsAbout extends LitElement {
     }
   }
 
+  private _sidebarHint(dashboard: DashboardState): string {
+    if (dashboard.taken) {
+      return "It can't be added: /planavista and /planavista-home both belong to other dashboards. Rename one in Home Assistant's Dashboards, then turn this on.";
+    }
+    return `A dashboard of its own${dashboard.url_path ? ` at /${dashboard.url_path}` : ''}, with this card. Hidden, it stays at its address for screens that use it, with your changes.`;
+  }
+
   private _sidebar() {
     const dashboard = this._dashboard;
     if (!this.hass?.user?.is_admin || !dashboard?.available) return nothing;
@@ -124,7 +133,7 @@ export class PvSettingsAbout extends LitElement {
           aria-labelledby="about-sidebar" aria-disabled=${this._busy ? 'true' : 'false'} @click=${toggle}
           @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}></div>
       </div>
-      <p class="hint">A dashboard of its own${dashboard.url_path ? ` at /${dashboard.url_path}` : ''}, with this card. Your changes to it are kept while it's hidden.</p>
+      <p class="hint">${this._sidebarHint(dashboard)}</p>
     `;
   }
 

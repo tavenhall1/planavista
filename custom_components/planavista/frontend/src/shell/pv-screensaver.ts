@@ -1,10 +1,13 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { getPlanaVistaData } from '../utils/ha-utils';
 import type { HouseholdView } from '../core/household';
 import { infoCorner, weatherScene } from '../core/screensaver';
+import { appearanceSettings } from '../core/appearance';
+import { resolveMotion } from '../core/motion';
 import { ChoresSubscription } from '../modules/chores/chores-client';
 import type { Board } from '../modules/chores/chores-types';
 import { eventsOn } from '../modules/chores/calendar-ties';
@@ -62,6 +65,23 @@ export class PvScreensaver extends LitElement {
       --coral: #fb8072;
       --cream: #fff8ec;
     }
+    /* A modal dialog, so it sits in the top layer above Home Assistant's own dialogs (0.11.0 review). */
+    dialog.saver {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      background: #a8cdee;
+      color: inherit;
+      outline: none;
+    }
+    dialog.saver::backdrop { background: transparent; }
     .scene {
       position: absolute;
       inset: 0;
@@ -77,15 +97,17 @@ export class PvScreensaver extends LitElement {
       display: grid;
       grid-template-columns: 1fr auto;
       align-items: start;
+      align-content: start;
       gap: 4vw;
       pointer-events: none;
-      transition: transform 6s ease;
+      animation: pvs-arrive 4s ease both;
     }
-    /* It moves every 10 minutes, so nothing stays in one place on the screen for hours. */
+    @keyframes pvs-arrive { from { opacity: 0; } }
+    /* It moves to the next corner every 10 minutes, so nothing stays in one place on the screen for hours. */
     .info.mirrored { grid-template-columns: auto 1fr; }
     .info.mirrored .time { order: 2; justify-self: end; text-align: right; }
     .info.mirrored .clock { justify-content: flex-end; }
-    .info.lower { transform: translateY(3vh); }
+    .info.lower { align-content: end; align-items: end; padding-bottom: max(6vh, env(safe-area-inset-bottom, 0px)); }
     .clock {
       display: flex;
       align-items: baseline;
@@ -204,6 +226,7 @@ export class PvScreensaver extends LitElement {
     @media (orientation: portrait) {
       .info, .info.mirrored { grid-template-columns: 1fr; gap: 3vh; padding-top: max(6vh, env(safe-area-inset-top, 0px)); }
       .info.mirrored .time { order: 0; }
+      .info.mirrored { justify-items: end; }
       .clock { font-size: clamp(84px, 21vw, 300px); }
       .line { font-size: clamp(16px, 3.4vw, 40px); }
       .card { width: min(100%, 62vw, 640px); font-size: clamp(14px, 2.2vw, 26px); margin-top: 0; }
@@ -212,7 +235,11 @@ export class PvScreensaver extends LitElement {
       .card { width: 100%; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .info, .clock, .line, .card, .ring .arc { transition: none; }
+      .info, .clock, .line, .card, .ring .arc { transition: none; animation: none; }
+    }
+    :host([reduced]) .info, :host([reduced]) .clock, :host([reduced]) .line, :host([reduced]) .card, :host([reduced]) .ring .arc {
+      transition: none;
+      animation: none;
     }
   `];
 
@@ -237,9 +264,19 @@ export class PvScreensaver extends LitElement {
     this._scene = null;
   }
 
+  /** Closes its dialog, which gives focus back to what had it, before the controller takes it away. */
+  dismiss(): void {
+    this.renderRoot.querySelector<HTMLDialogElement>('dialog')?.close();
+  }
+
   firstUpdated(): void {
+    this.renderRoot.querySelector<HTMLDialogElement>('dialog')?.showModal();
     const root = this.renderRoot.querySelector<HTMLElement>('.scene')!;
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // PlanaVista's Motion setting, as the card has it (it reaches the card through --pv-motion; this sits outside).
+    const hass = hassNow();
+    const data = hass ? getPlanaVistaData(hass) : null;
+    const reduced = resolveMotion(appearanceSettings(data?.display).motion, matchMedia('(prefers-reduced-motion: reduce)').matches) === 'reduced';
+    this.toggleAttribute('reduced', reduced);
     this._scene = new SkyScene(root, { reducedMotion: reduced });
     // The paper's fibers, for the card too.
     const tex = root.style.getPropertyValue('--tex');
@@ -304,8 +341,9 @@ export class PvScreensaver extends LitElement {
     const corner = infoCorner(now.getTime());
     const shortDate = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     return html`
+      <dialog class="saver" @cancel=${(e: Event) => e.preventDefault()}>
       <div class="scene" aria-hidden="true"></div>
-      <div class="info ${night ? 'night' : ''} ${corner.endsWith('right') ? 'mirrored' : ''} ${corner.startsWith('bottom') ? 'lower' : ''}"
+      ${keyed(corner, html`<div class="info ${night ? 'night' : ''} ${corner.endsWith('right') ? 'mirrored' : ''} ${corner.startsWith('bottom') ? 'lower' : ''}"
         role="img" aria-label=${`${info.time}${info.ampm ? ` ${info.ampm}` : ''}, ${info.date}. Touch to wake.`}>
         <div class="time">
           <div class="clock"><span class="hm">${info.time}</span>${info.ampm ? html`<span class="ampm">${info.ampm}</span>` : nothing}</div>
@@ -346,7 +384,8 @@ export class PvScreensaver extends LitElement {
             ` : nothing}
           </div>
         ` : nothing}
-      </div>
+      </div>`)}
+      </dialog>
     `;
   }
 }

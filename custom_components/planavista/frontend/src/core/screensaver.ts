@@ -21,6 +21,27 @@ export const SCREEN_DOMAINS = ['light', 'switch', 'input_boolean', 'number', 'in
 export const MOTION_DOMAINS = ['binary_sensor', 'input_boolean'] as const;
 const MOTION_CLASSES = new Set(['motion', 'occupancy', 'presence', 'moving']);
 
+/**
+ * What Settings offers for a Screen or Motion pick, by name. The stored pick is
+ * kept, first, when Home Assistant doesn't list it now or it no longer fits,
+ * so the select never says None for something picked (0.11.0 review).
+ */
+export function entityChoices(
+  states: Record<string, { entity_id: string; attributes: Record<string, unknown> }>,
+  fits: (state: { entity_id: string; attributes: Record<string, unknown> }) => boolean,
+  current: string | null,
+): Array<{ id: string; name: string }> {
+  const nameOf = (s: { entity_id: string; attributes: Record<string, unknown> }) => String(s.attributes.friendly_name ?? s.entity_id);
+  const choices = Object.values(states).filter(fits)
+    .map(s => ({ id: s.entity_id, name: nameOf(s) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (current && !choices.some(c => c.id === current)) {
+    const found = states[current];
+    choices.unshift({ id: current, name: found ? nameOf(found) : `${current} (not found)` });
+  }
+  return choices;
+}
+
 /** Whether an entity can be a screen's Motion: a motion, occupancy, or presence sensor, or a helper toggle. */
 export function motionCandidate(entityId: string, attributes: Record<string, unknown>): boolean {
   const domain = entityId.split('.', 1)[0];
@@ -39,6 +60,29 @@ export function screensaverHere(view: HouseholdView | null | undefined): { setti
   const settings = view?.security.screensaver;
   if (!view?.available || !view.account.shared || !settings?.enabled) return null;
   return { settings, mine: settings.screens.find(s => s.user_id === view.account.user_id) ?? null };
+}
+
+/** The motion entity as this page saw it change: `at` is on the page's own clock, which Home Assistant's may not match. */
+export interface MotionSeen {
+  on: boolean;
+  changed: string;
+  at: number;
+}
+
+/**
+ * The motion entity's reading, timed by this page (0.11.0 review: a screen
+ * whose clock ran ahead of Home Assistant's never woke on motion). A change is
+ * timed when the page first sees it, within its one-second tick; the first
+ * reading takes Home Assistant's time, never later than now.
+ */
+export function seeMotion(
+  prev: MotionSeen | null, state: { state: string; last_changed?: string } | undefined, now: number,
+): MotionSeen | null {
+  const reading = motionReading(state);
+  if (!reading) return null;
+  const changed = state?.last_changed ?? '';
+  if (prev && prev.changed === changed && prev.on === reading.on) return prev;
+  return { on: reading.on, changed, at: prev ? now : Math.min(now, reading.since || now) };
 }
 
 /** The motion entity as the idle clock reads it: on, and since when it last changed (ms). */
@@ -68,6 +112,9 @@ const clock = (text: string): number => {
   return h * 60 + m;
 };
 
+/** Bedtimes from here to noon are someone sleeping by day. */
+const DAY_SLEEP_FROM = 4 * 60;
+
 /** A night as minutes from the midnight that starts its evening's date (so 1:00 AM after it is 1500). */
 export interface NightWindow {
   from: number;
@@ -85,7 +132,9 @@ function windowOf(from: string, to: string, source: NightWindow['source']): Nigh
 /**
  * The night that starts on `evening`'s date (spec D3): from the latest bedtime to
  * the earliest wake-up (a bedtime plus that person's hours of sleep; Friday and
- * Saturday nights use weekend bedtimes). A bedtime before noon is after midnight.
+ * Saturday nights use weekend bedtimes). A bedtime before 4:00 AM is after
+ * midnight; one from 4:00 AM to noon is left out. Bedtimes count without hours
+ * of sleep too; with nobody's hours, night ends at the usual 6:30 AM.
  */
 export function nightWindow(members: Member[], night: { from: string; to: string } | null, evening: Date): NightWindow {
   if (night) return windowOf(night.from, night.to, 'set');
@@ -94,13 +143,18 @@ export function nightWindow(members: Member[], night: { from: string; to: string
   let earliest = Infinity;
   for (const m of members) {
     const time = m.bedtime ? (weekend ? m.bedtime.weekend : m.bedtime.weeknight) : null;
-    if (!time || !m.sleep_hours) continue;
+    if (!time) continue;
     let bed = clock(time);
-    if (bed < 12 * 60) bed += 1440;
+    // A bedtime from 4:00 AM to noon is a day's sleep (a night shift's): the screen's night isn't theirs.
+    if (bed >= DAY_SLEEP_FROM && bed < 12 * 60) continue;
+    if (bed < DAY_SLEEP_FROM) bed += 1440;
     latest = Math.max(latest, bed);
-    earliest = Math.min(earliest, bed + Math.round(m.sleep_hours * 60));
+    if (m.sleep_hours) earliest = Math.min(earliest, bed + Math.round(m.sleep_hours * 60));
   }
-  if (latest < 0 || earliest <= latest) return windowOf(DEFAULT_NIGHT.from, DEFAULT_NIGHT.to, 'default');
+  if (latest < 0) return windowOf(DEFAULT_NIGHT.from, DEFAULT_NIGHT.to, 'default');
+  // Bedtimes without hours of sleep end at the usual morning.
+  if (earliest === Infinity) earliest = 1440 + clock(DEFAULT_NIGHT.to);
+  if (earliest <= latest) return windowOf(DEFAULT_NIGHT.from, DEFAULT_NIGHT.to, 'default');
   return { from: latest, to: earliest, source: 'sleep' };
 }
 
@@ -140,38 +194,83 @@ export interface ServiceCall {
 const domainOf = (entityId: string): string => entityId.split('.', 1)[0];
 const LEVELS = new Set(['number', 'input_number']);
 const SWITCHES = new Set(['switch', 'input_boolean']);
-const usable = (state: EntityState | undefined): state is EntityState =>
+/** A light's full brightness, in Home Assistant's 0 to 255. */
+const FULL_LIGHT = 255;
+
+/** An entity whose state is known (not unavailable or unknown). */
+export const knownState = (state: EntityState | undefined): state is EntityState =>
   !!state && state.state !== 'unavailable' && state.state !== 'unknown';
 
+/** What the screensaver changed on this screen and how it was before, kept across a reload (0.11.0 review). */
+export interface ScreenHold {
+  entity: string;
+  before: EntityState;
+}
+
+/** The part of a state a hold keeps: on, off, or the value, and a light's brightness. */
+export function holdOf(entity: string, state: EntityState): ScreenHold {
+  const brightness = state.attributes.brightness;
+  return { entity, before: { state: state.state, attributes: typeof brightness === 'number' ? { brightness } : {} } };
+}
+
+/** A hold as the browser stored it, or null for anything else. */
+export function readHold(raw: string | null): ScreenHold | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as { entity?: unknown; before?: { state?: unknown; attributes?: unknown } } | null;
+    if (!value || typeof value.entity !== 'string' || typeof value.before?.state !== 'string') return null;
+    const attributes = value.before.attributes;
+    return holdOf(value.entity, {
+      state: value.before.state,
+      attributes: attributes && typeof attributes === 'object' ? (attributes as Record<string, unknown>) : {},
+    });
+  } catch {
+    return null;
+  }
+}
+
 /**
- * What the screensaver does to this screen's Screen entity (spec 3.2): by day a
- * light or number is dimmed to 40% of its range and a switch is left alone; at
- * night a light or switch is turned off and a number set to its minimum.
+ * What the screensaver does to this screen's Screen entity (spec 3.2), from how
+ * it was before the screensaver changed it and how it is now: by day a light or
+ * number is dimmed to 40% of its range (never brighter than it was) and a switch
+ * is as it was; at night a light or switch is off and a number at its minimum.
+ * When night ends while it shows, the day's state comes back. Null when there is
+ * nothing to do, or nothing known to put back.
  */
-export function screenAction(entityId: string, phase: 'day' | 'night', state: EntityState | undefined): ServiceCall | null {
-  if (!usable(state)) return null;
+export function screenAction(
+  entityId: string, phase: 'day' | 'night', before: EntityState | undefined, now: EntityState | undefined,
+): ServiceCall | null {
+  if (!knownState(before) || !knownState(now)) return null;
   const domain = domainOf(entityId);
   const target = { entity_id: entityId };
   if (domain === 'light') {
-    if (phase === 'night') return state.state === 'on' ? { domain, service: 'turn_off', data: target } : null;
-    return state.state === 'on' ? { domain, service: 'turn_on', data: { ...target, brightness_pct: DAY_LEVEL * 100 } } : null;
+    if (phase === 'night' || before.state !== 'on') return now.state === 'on' ? { domain, service: 'turn_off', data: target } : null;
+    const was = before.attributes.brightness;
+    // A light that only turns on and off stays on by day.
+    if (typeof was !== 'number') return now.state === 'on' ? null : { domain, service: 'turn_on', data: target };
+    const level = Math.min(was, Math.round(FULL_LIGHT * DAY_LEVEL));
+    return now.state === 'on' && now.attributes.brightness === level ? null : { domain, service: 'turn_on', data: { ...target, brightness: level } };
   }
   if (SWITCHES.has(domain)) {
-    return phase === 'night' && state.state === 'on' ? { domain, service: 'turn_off', data: target } : null;
+    const want = phase === 'night' ? 'off' : before.state;
+    if (want !== 'on' && want !== 'off') return null;
+    return now.state === want ? null : { domain, service: want === 'on' ? 'turn_on' : 'turn_off', data: target };
   }
   if (LEVELS.has(domain)) {
-    const min = Number(state.attributes.min ?? 0);
-    const max = Number(state.attributes.max ?? 100);
-    const step = Number(state.attributes.step ?? 1) || 1;
-    const value = phase === 'night' ? min : Math.round((min + (max - min) * DAY_LEVEL) / step) * step;
-    return Number(state.state) === value ? null : { domain, service: 'set_value', data: { ...target, value } };
+    const was = Number(before.state);
+    if (!Number.isFinite(was)) return null;
+    const min = Number(now.attributes.min ?? 0);
+    const max = Number(now.attributes.max ?? 100);
+    const step = Number(now.attributes.step ?? 1) || 1;
+    const value = phase === 'night' ? min : Math.min(was, Math.round((min + (max - min) * DAY_LEVEL) / step) * step);
+    return Number(now.state) === value ? null : { domain, service: 'set_value', data: { ...target, value } };
   }
   return null;
 }
 
 /** Back to what it was before the screensaver changed it: on or off, its brightness or its value. */
 export function screenRestore(entityId: string, before: EntityState | undefined): ServiceCall | null {
-  if (!usable(before)) return null;
+  if (!knownState(before)) return null;
   const domain = domainOf(entityId);
   const target = { entity_id: entityId };
   if (domain === 'light') {
