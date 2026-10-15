@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ScreensaverController, type ScreensaverEnv } from '../src/shell/screensaver-controller';
-import type { EntityState, ScreenHold, ServiceCall } from '../src/core/screensaver';
+import type { EntityState, ScreenRecord, ServiceCall } from '../src/core/screensaver';
 import type { HouseholdView } from '../src/core/household';
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(`../src/${path}`, import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
@@ -25,21 +25,31 @@ function view(screens: { screen?: string | null; motion?: string | null } = {}, 
   } as unknown as HouseholdView;
 }
 
-/** A page with Home Assistant's entities, which answer the calls as Home Assistant would. */
+/** What one browser keeps for every page of the login: the record and the last touch on any of them. */
+class Browser {
+  record: ScreenRecord = { showing: false, holds: [] };
+  touchedAt = 0;
+  entities: Record<string, EntityState & { last_changed?: string }> = {};
+}
+
+/** A page with Home Assistant's entities, which answer the calls as Home Assistant would (skipping unavailable ones). */
 class FakePage implements ScreensaverEnv {
   shown = false;
   calls: ServiceCall[] = [];
   locks = 0;
   guards = 0;
   wake: boolean[] = [];
-  /** What the browser's storage keeps across a reload. */
-  stored: ScreenHold | null = null;
-  entities: Record<string, EntityState & { last_changed?: string }> = {};
-  states() { return this.entities; }
+  hidden = false;
+  constructor(readonly browser = new Browser()) {}
+  get entities() { return this.browser.entities; }
+  set entities(value) { this.browser.entities = value; }
+  get record() { return this.browser.record; }
+  states() { return this.browser.entities; }
   call(call: ServiceCall) {
     this.calls.push(call);
     const id = String(call.data.entity_id);
     const was = this.entities[id];
+    if (!was || was.state === 'unavailable') return Promise.resolve(); // Home Assistant skips it and answers done
     if (call.service === 'turn_off') this.entities[id] = { state: 'off', attributes: { ...was?.attributes, brightness: null } };
     if (call.service === 'turn_on') {
       const brightness = call.data.brightness ?? was?.attributes.brightness;
@@ -53,8 +63,11 @@ class FakePage implements ScreensaverEnv {
   lockParentMode() { this.locks += 1; }
   wakeLock(hold: boolean) { this.wake.push(hold); }
   guardTaps() { this.guards += 1; }
-  loadHold() { return this.stored; }
-  saveHold(hold: ScreenHold | null) { this.stored = hold; }
+  loadRecord() { return structuredClone(this.browser.record); }
+  saveRecord(record: ScreenRecord) { this.browser.record = structuredClone(record); }
+  lastTouchAnywhere() { return this.browser.touchedAt; }
+  shareTouch(now: number) { this.browser.touchedAt = Math.max(this.browser.touchedAt, now); }
+  visible() { return !this.hidden; }
 }
 
 const noon = (minutes = 0) => new Date(2026, 9, 15, 12, minutes);
@@ -146,7 +159,7 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.touch(start + 30 * MIN);
     expect(page.calls.at(-1)).toEqual({ domain: 'light', service: 'turn_on', data: { entity_id: 'light.planar', brightness: 230 } });
     expect(page.wake.at(-1)).toBe(true);
-    expect(page.stored).toBeNull();
+    expect(page.record).toEqual({ showing: false, holds: [] });
   });
 
   it('brings the screen back by itself when night ends while it shows', () => {
@@ -174,7 +187,7 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.calls).toEqual([]);
   });
 
-  it('puts the screen back after the page reloads while it shows', () => {
+  it('after a reload while it shows, comes back up as it was, and a touch puts the screen back', () => {
     const page = new FakePage();
     const start = evening(23).getTime();
     const before = new ScreensaverController(page, start);
@@ -182,17 +195,89 @@ describe('the screensaver controller (spec 3.2)', () => {
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
     before.tick(start + 5 * MIN, new Date(start + 5 * MIN));
     expect(page.entities['light.planar'].state).toBe('off');
-    // The page reloads: a new controller on the same page, with what the browser kept.
+    // The page reloads (a kiosk browser's own reload, a crash): nobody touched it, so it shows again at once.
     page.shown = false;
     const after = new ScreensaverController(page, start + 6 * MIN);
+    after.tick(start + 6 * MIN, new Date(start + 6 * MIN));
+    expect(page.shown).toBe(false); // not before the household says it still runs here
     after.setView(view({ screen: 'light.planar' }), start + 6 * MIN);
     after.tick(start + 6 * MIN, new Date(start + 6 * MIN));
+    expect(page.shown).toBe(true);
+    expect(page.entities['light.planar'].state).toBe('off');
+    after.touch(start + 7 * MIN);
     expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 230 } });
-    expect(page.stored).toBeNull();
-    // Next time it shows, it starts from the screen as it really was.
-    after.tick(start + 11 * MIN, new Date(start + 11 * MIN));
-    after.touch(start + 12 * MIN);
-    expect(page.calls.at(-1)).toEqual({ domain: 'light', service: 'turn_on', data: { entity_id: 'light.planar', brightness: 230 } });
+    expect(page.record).toEqual({ showing: false, holds: [] });
+  });
+
+  it('a reload after it was woken puts back what it still held', () => {
+    const page = new FakePage();
+    page.browser.record = { showing: false, holds: [{ entity: 'light.planar', before: { state: 'on', attributes: { brightness: 230 } } }] };
+    page.entities['light.planar'] = { state: 'off', attributes: {} };
+    const saver = new ScreensaverController(page, noon().getTime());
+    saver.setView(view({ screen: 'light.planar' }), noon().getTime());
+    saver.tick(noon().getTime(), noon());
+    expect(page.shown).toBe(false);
+    expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 230 } });
+  });
+
+  it('keeps what it changed until the Screen can be put back (Home Assistant skips an unavailable one)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 200 } };
+    saver.tick(start + 5 * MIN, noon(5));
+    expect(page.entities['light.planar'].attributes.brightness).toBe(102);
+    page.entities['light.planar'] = { state: 'unavailable', attributes: {} };
+    saver.touch(start + 6 * MIN);
+    expect(page.shown).toBe(false);
+    expect(page.record.holds).toHaveLength(1);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 102 } };
+    saver.tick(start + 6 * MIN + 2000, noon(6));
+    expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 200 } });
+    expect(page.record.holds).toEqual([]);
+  });
+
+  it('two pages of the shared login in one browser: a touch on either counts for both, and the Screen comes back as it was', () => {
+    const browser = new Browser();
+    const a = new FakePage(browser);
+    const b = new FakePage(browser);
+    const start = noon().getTime();
+    browser.entities['light.planar'] = { state: 'on', attributes: { brightness: 200 } };
+    const tabA = new ScreensaverController(a, start);
+    const tabB = new ScreensaverController(b, start);
+    tabA.setView(view({ screen: 'light.planar' }), start);
+    tabB.setView(view({ screen: 'light.planar' }), start);
+    // Someone uses page A; page B, idle, keeps the screensaver off.
+    for (let m = 1; m <= 10; m += 1) {
+      tabA.touch(start + m * MIN);
+      tabB.tick(start + m * MIN + 1000, noon(m));
+    }
+    expect(b.shown).toBe(false);
+    expect(browser.entities['light.planar'].attributes.brightness).toBe(200);
+    // Both idle: both show, and the one record keeps the Screen as it really was.
+    tabA.tick(start + 16 * MIN, noon(16));
+    tabB.tick(start + 16 * MIN, noon(16));
+    expect([a.shown, b.shown]).toEqual([true, true]);
+    expect(browser.record.holds).toEqual([{ entity: 'light.planar', before: { state: 'on', attributes: { brightness: 200 } } }]);
+    // A touch on page A wakes page B too.
+    tabA.touch(start + 17 * MIN);
+    tabB.tick(start + 17 * MIN + 1000, noon(17));
+    expect([a.shown, b.shown]).toEqual([false, false]);
+    expect(browser.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 200 } });
+  });
+
+  it('never comes up on a page that is hidden', () => {
+    const page = new FakePage();
+    page.hidden = true;
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view(), start);
+    saver.tick(start + 30 * MIN, noon(30));
+    expect(page.shown).toBe(false);
+    page.hidden = false;
+    saver.tick(start + 31 * MIN, noon(31));
+    expect(page.shown).toBe(true);
   });
 
   it('puts the screen back when the setting goes off or the screen stops being shared', () => {
@@ -224,6 +309,26 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.entities['input_number.backlight'].state).toBe('102');
     saver.touch(start + 7 * MIN);
     expect(page.entities['input_number.backlight'].state).toBe('200');
+  });
+
+  it('a new pick while the old Screen is unavailable: the new one starts at once, the old one goes back when it can', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    page.entities['input_number.backlight'] = { state: '200', attributes: { min: 0, max: 255, step: 1 } };
+    saver.tick(start + 5 * MIN, noon(5));
+    page.entities['light.planar'] = { state: 'unavailable', attributes: {} };
+    saver.setView(view({ screen: 'input_number.backlight' }), start + 6 * MIN);
+    saver.tick(start + 6 * MIN, noon(6));
+    expect(page.entities['input_number.backlight'].state).toBe('102');
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 102 } };
+    saver.tick(start + 6 * MIN + 2000, noon(6));
+    expect(page.entities['light.planar'].attributes.brightness).toBe(230);
+    saver.touch(start + 7 * MIN);
+    expect(page.entities['input_number.backlight'].state).toBe('200');
+    expect(page.record.holds).toEqual([]);
   });
 
   it("never touches a Screen whose state it doesn't know, and takes it once it does", () => {
@@ -268,11 +373,13 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(src('shell/screensaver-controller.ts')).toMatch(/guardTaps: \(\) => \{\n\s+guardPageTaps\(\);/);
   });
 
-  it("the waking key presses nothing beneath, and what it changed is kept in the browser's storage", () => {
+  it("the waking touch or key presses nothing beneath, and what it changed is kept in the browser's storage", () => {
     const controller = src('shell/screensaver-controller.ts');
     expect(controller).toMatch(/if \(screensaver\.touch\(Date\.now\(\)\)\) swallowWakingKey\(event, window\);/);
+    expect(controller).toMatch(/if \(screensaver\.touch\(Date\.now\(\)\)\) swallowWakingPress\(event, window\);/);
     expect(controller).toMatch(/window\.addEventListener\('keydown', keyed, true\);/);
-    expect(controller).toMatch(/localStorage\.setItem\(HOLD_KEY, JSON\.stringify\(hold\)\)/);
-    expect(controller).toMatch(/readHold\(localStorage\.getItem\(HOLD_KEY\)\)/);
+    expect(controller).toMatch(/window\.addEventListener\('pointerdown', pressed, true\);/);
+    expect(controller).toMatch(/localStorage\.setItem\(RECORD_KEY, JSON\.stringify\(record\)\)/);
+    expect(controller).toMatch(/readRecord\(localStorage\.getItem\(RECORD_KEY\)\)/);
   });
 });

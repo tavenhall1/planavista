@@ -48,6 +48,17 @@ export interface InfoInput {
   board: Board | null;
 }
 
+/** When what's on now ends: "Until 4:30 PM", "Until midnight", "Until tomorrow 5:00 PM", "Until Sat 5:00 PM", "Until Oct 30". */
+export function untilWords(end: Date, now: Date, format: '12h' | '24h'): string {
+  const day = (offset: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+  const time = clockTime(end, format, format === '12h');
+  if (end.getTime() === day(1).getTime()) return 'Until midnight';
+  if (end < day(1)) return `Until ${time}`;
+  if (end < day(2)) return `Until tomorrow ${time}`;
+  if (end < day(7)) return `Until ${end.toLocaleDateString('en-US', { weekday: 'short' })} ${time}`;
+  return `Until ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
 export function screensaverInfo(input: InfoInput): ScreensaverInfo {
   const { now, format } = input;
   const hour = now.getHours();
@@ -73,7 +84,7 @@ export function screensaverInfo(input: InfoInput): ScreensaverInfo {
   const events = left.slice(0, EVENTS_SHOWN).map(e => ({
     key: `${e.calendar}|${e.start.getTime()}|${e.title}`,
     // What's on now says when it ends; its badge says Now.
-    when: e.start <= now ? `Until ${clockTime(e.end, format, format === '12h')}` : clockTime(e.start, format, format === '12h'),
+    when: e.start <= now ? untilWords(e.end, now, format) : clockTime(e.start, format, format === '12h'),
     title: e.title,
     member: e.member,
     now: e.start <= now,

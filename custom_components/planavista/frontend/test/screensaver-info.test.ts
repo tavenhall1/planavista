@@ -42,6 +42,18 @@ describe('the screensaver: what it writes over the sky (spec 3.3)', () => {
     expect(screensaverInfo({ now: at(21), format: '12h', events: [], members: [], board: null }).nothingElse).toBe(false);
   });
 
+  it("says when what's on now ends, naming the day when it isn't today", () => {
+    const tomorrow = new Date(2026, 9, 16, 17);
+    const saturday = new Date(2026, 9, 17, 17);
+    const later = new Date(2026, 9, 30, 9);
+    const when = (end: Date) => screensaverInfo({ now: at(15), format: '12h', events: [event('Trip', at(9), end)], members: [], board: null }).events[0].when;
+    expect(when(at(16, 30))).toBe('Until 4:30 PM');
+    expect(when(new Date(2026, 9, 16))).toBe('Until midnight');
+    expect(when(tomorrow)).toBe('Until tomorrow 5:00 PM');
+    expect(when(saturday)).toBe('Until Sat 5:00 PM');
+    expect(when(later)).toBe('Until Oct 30');
+  });
+
   it('lists an event on two calendars once, as the calendar draws it', () => {
     const blairs = { ...event('Test 2', at(9, 45), at(10), 'blair'), calendar: 'calendar.test_blair' };
     const events = [event('Test 2', at(9, 45), at(10), 'alex'), blairs, event('Test 3', at(11, 45), at(12)), event('Test 4', at(13), at(14))];

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_NIGHT, LIGHTNING_GAP_MS, entityChoices, holdOf, infoCorner, isNight, motionCandidate, motionReading, nextLightning,
-  nightText, nightWindow, readHold, screenAction, screenRestore, screensaverHere, seeMotion, showsAt, weatherScene,
+  nightText, nightWindow, readRecord, screenAction, screenRestore, screensaverHere, seeMotion, showsAt, weatherScene,
 } from '../src/core/screensaver';
 import type { HouseholdView, Member } from '../src/core/household';
 
@@ -75,11 +75,14 @@ describe('the screensaver: where and when (milestone 11)', () => {
     expect(entityChoices(states, lights, 'light.b')).toHaveLength(2);
   });
 
-  it('reads a stored hold, and nothing else', () => {
+  it('reads the stored record, and nothing else', () => {
     const hold = holdOf('light.planar', { state: 'on', attributes: { brightness: 230, friendly_name: 'Planar' } });
     expect(hold).toEqual({ entity: 'light.planar', before: { state: 'on', attributes: { brightness: 230 } } });
-    expect(readHold(JSON.stringify(hold))).toEqual(hold);
-    for (const raw of [null, '', '{', '[]', '{"entity":3}', '{"entity":"light.planar","before":{}}']) expect(readHold(raw), String(raw)).toBeNull();
+    const record = { showing: true, holds: [hold] };
+    expect(readRecord(JSON.stringify(record))).toEqual(record);
+    // Holds that can't be read are left out; anything else reads as nothing held.
+    expect(readRecord(JSON.stringify({ showing: false, holds: [hold, { entity: 3 }, { entity: 'light.x', before: {} }] }))).toEqual({ showing: false, holds: [hold] });
+    for (const raw of [null, '', '{', '[]', '{"showing":"yes"}']) expect(readRecord(raw), String(raw)).toEqual({ showing: false, holds: [] });
   });
 
   it('reads a motion entity, and treats an unavailable one as none', () => {

@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { swallowWakingKey } from '../src/core/wake-keys';
+import { WAKING_MAX_MS, WAKING_TAIL_MS, swallowWakingKey, swallowWakingPress } from '../src/core/wake-keys';
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(`../src/${path}`, import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
 const keyEvent = (type: string, key: string, repeat = false) => Object.assign(new Event(type, { cancelable: true }), { key, repeat });
 const click = (detail: number) => Object.assign(new Event('click', { cancelable: true }), { detail });
+const pointer = (type: string, pointerId: number) => Object.assign(new Event(type, { cancelable: true }), { pointerId });
 
 describe('the key that wakes the screensaver presses nothing (0.11.0 review)', () => {
   afterEach(() => vi.useRealTimers());
@@ -28,15 +29,68 @@ describe('the key that wakes the screensaver presses nothing (0.11.0 review)', (
     expect(heard).toEqual(['click1', 'keydown']);
   });
 
-  it('lets keyboard clicks through again after a moment', () => {
+  it('keeps stopping a held key until it lifts, then lets keyboard clicks through after a moment', () => {
     vi.useFakeTimers();
     const page = new EventTarget();
     swallowWakingKey(keyEvent('keydown', ' '), page);
-    const heard: number[] = [];
-    page.addEventListener('click', e => heard.push((e as Event & { detail: number }).detail));
-    vi.advanceTimersByTime(1000);
+    const heard: string[] = [];
+    page.addEventListener('keydown', () => heard.push('keydown'));
+    page.addEventListener('click', e => heard.push(`click${(e as Event & { detail: number }).detail}`));
+    // Held for over a second: its repeats still press nothing.
+    vi.advanceTimersByTime(1200);
+    page.dispatchEvent(keyEvent('keydown', ' ', true));
+    page.dispatchEvent(keyEvent('keyup', ' '));
+    page.dispatchEvent(click(0)); // Space's click comes with its keyup
+    expect(heard).toEqual([]);
+    vi.advanceTimersByTime(WAKING_TAIL_MS + 10);
     page.dispatchEvent(click(0));
-    expect(heard).toEqual([0]);
+    expect(heard).toEqual(['click0']);
+  });
+
+  it('never keeps a key forever', () => {
+    vi.useFakeTimers();
+    const page = new EventTarget();
+    swallowWakingKey(keyEvent('keydown', 'Enter'), page);
+    const heard: string[] = [];
+    page.addEventListener('keydown', () => heard.push('keydown'));
+    vi.advanceTimersByTime(WAKING_MAX_MS + 10);
+    page.dispatchEvent(keyEvent('keydown', 'Enter', true));
+    expect(heard).toEqual(['keydown']);
+  });
+});
+
+describe('the touch that wakes the screensaver presses nothing (0.11.0 re-review)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('a palm or a second finger landing as it wakes reaches nothing, nor any click, until every finger lifts', () => {
+    vi.useFakeTimers();
+    const page = new EventTarget();
+    swallowWakingPress(pointer('pointerdown', 1), page);
+    const heard: string[] = [];
+    for (const type of ['pointerdown', 'click']) page.addEventListener(type, () => heard.push(type));
+    vi.advanceTimersByTime(30);
+    page.dispatchEvent(pointer('pointerdown', 2));
+    vi.advanceTimersByTime(3500); // a long hold: Safari's lifting click still presses nothing
+    page.dispatchEvent(pointer('pointerup', 1));
+    page.dispatchEvent(click(1));
+    page.dispatchEvent(pointer('pointerup', 2));
+    page.dispatchEvent(click(1));
+    expect(heard).toEqual([]);
+    vi.advanceTimersByTime(WAKING_TAIL_MS + 10);
+    page.dispatchEvent(pointer('pointerdown', 3));
+    page.dispatchEvent(click(1));
+    expect(heard).toEqual(['pointerdown', 'click']);
+  });
+
+  it('never keeps the page for longer than its limit, should a lift go unheard', () => {
+    vi.useFakeTimers();
+    const page = new EventTarget();
+    swallowWakingPress(pointer('pointerdown', 1), page);
+    const heard: string[] = [];
+    page.addEventListener('pointerdown', () => heard.push('pointerdown'));
+    vi.advanceTimersByTime(WAKING_MAX_MS + 10);
+    page.dispatchEvent(pointer('pointerdown', 2));
+    expect(heard).toEqual(['pointerdown']);
   });
 });
 
@@ -74,5 +128,11 @@ describe("Settings' screensaver picks (0.11.0 review)", () => {
 
   it("says the Screen should be the screen's own", () => {
     expect(page).toMatch(/Pick this screen's own backlight or plug, not a room's light\./);
+  });
+
+  it('turns back a night that starts when it ends, where it was changed, and says why there', () => {
+    expect(page).toMatch(/if \(next\.from === next\.to\) \{\n\s+field\.value = night\[part\];\n\s+this\._nightProblem = 'Night needs a start and an end that differ\.';/);
+    expect(page).toMatch(/\$\{this\._nightProblem \? html`<p class="message" role="alert">\$\{this\._nightProblem\}<\/p>` : nothing\}/);
+    expect(page).toMatch(/@change=\$\{\(e: Event\) => this\._nightPart\('from', e\.target as HTMLInputElement\)\}/);
   });
 });

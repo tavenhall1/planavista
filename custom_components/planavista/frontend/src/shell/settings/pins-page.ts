@@ -62,6 +62,8 @@ export class PvSettingsPins extends LitElement {
 
   @state() private _message = '';
   @state() private _busy = false;
+  /** Why night's own times were turned back, shown beside them. */
+  @state() private _nightProblem = '';
 
   static styles = [
     baseStyles,
@@ -290,13 +292,14 @@ export class PvSettingsPins extends LitElement {
           ${saver.night ? html`
             <span class="times">
               <pv-time-field .format=${format} .value=${saver.night.from} aria-label="Night starts"
-                @change=${(e: Event) => this._night({ from: (e.target as HTMLInputElement).value, to: saver.night!.to })}></pv-time-field>
+                @change=${(e: Event) => this._nightPart('from', e.target as HTMLInputElement)}></pv-time-field>
               <span>to</span>
               <pv-time-field .format=${format} .value=${saver.night.to} aria-label="Night ends"
-                @change=${(e: Event) => this._night({ from: saver.night!.from, to: (e.target as HTMLInputElement).value })}></pv-time-field>
+                @change=${(e: Event) => this._nightPart('to', e.target as HTMLInputElement)}></pv-time-field>
             </span>
           ` : html`<span>${nightText(tonight, format)}</span>`}
         </div>
+        ${this._nightProblem ? html`<p class="message" role="alert">${this._nightProblem}</p>` : nothing}
         <p class="hint">
           ${saver.night ? 'Night runs at these times.' : tonight.source === 'sleep'
             ? 'From the latest bedtime to the earliest wake-up in Sleep times.'
@@ -348,6 +351,20 @@ export class PvSettingsPins extends LitElement {
     if (!saver) return;
     void this._run(() => this.api.saveSecurity({ screensaver_enabled: !saver.enabled }));
   };
+
+  /** One end of night's own times changed; a night that would start when it ends goes back, saying why there. */
+  private _nightPart(part: 'from' | 'to', field: HTMLInputElement): void {
+    const night = this.household?.security.screensaver?.night;
+    if (!night) return;
+    const next = { ...night, [part]: field.value };
+    if (next.from === next.to) {
+      field.value = night[part];
+      this._nightProblem = 'Night needs a start and an end that differ.';
+      return;
+    }
+    this._nightProblem = '';
+    this._night(next);
+  }
 
   private _night(night: { from: string; to: string } | null): void {
     if (night && (!night.from || !night.to)) return;

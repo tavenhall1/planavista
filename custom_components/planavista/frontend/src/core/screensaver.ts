@@ -207,25 +207,43 @@ export interface ScreenHold {
   before: EntityState;
 }
 
+/**
+ * The browser's one record for every page of this login (0.11.0 re-review):
+ * whether the screensaver shows (a reload while it shows comes back up), and
+ * each Screen entity it changed, kept until that entity can be put back.
+ */
+export interface ScreenRecord {
+  showing: boolean;
+  /** When the page that shows it last said so (a closed page stops). */
+  at?: number;
+  holds: ScreenHold[];
+}
+
 /** The part of a state a hold keeps: on, off, or the value, and a light's brightness. */
 export function holdOf(entity: string, state: EntityState): ScreenHold {
   const brightness = state.attributes.brightness;
   return { entity, before: { state: state.state, attributes: typeof brightness === 'number' ? { brightness } : {} } };
 }
 
-/** A hold as the browser stored it, or null for anything else. */
-export function readHold(raw: string | null): ScreenHold | null {
-  if (!raw) return null;
+/** The record as the browser stored it; holds that can't be read are left out, and anything else is nothing held. */
+export function readRecord(raw: string | null): ScreenRecord {
+  const none: ScreenRecord = { showing: false, holds: [] };
+  if (!raw) return none;
   try {
-    const value = JSON.parse(raw) as { entity?: unknown; before?: { state?: unknown; attributes?: unknown } } | null;
-    if (!value || typeof value.entity !== 'string' || typeof value.before?.state !== 'string') return null;
-    const attributes = value.before.attributes;
-    return holdOf(value.entity, {
-      state: value.before.state,
-      attributes: attributes && typeof attributes === 'object' ? (attributes as Record<string, unknown>) : {},
+    const value = JSON.parse(raw) as { showing?: unknown; holds?: unknown } | null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return none;
+    const holds = (Array.isArray(value.holds) ? value.holds : []).flatMap((hold: { entity?: unknown; before?: { state?: unknown; attributes?: unknown } }) => {
+      if (!hold || typeof hold.entity !== 'string' || typeof hold.before?.state !== 'string') return [];
+      const attributes = hold.before.attributes;
+      return [holdOf(hold.entity, {
+        state: hold.before.state,
+        attributes: attributes && typeof attributes === 'object' ? (attributes as Record<string, unknown>) : {},
+      })];
     });
+    const at = (value as { at?: unknown }).at;
+    return value.showing === true && typeof at === 'number' ? { showing: true, at, holds } : { showing: value.showing === true, holds };
   } catch {
-    return null;
+    return none;
   }
 }
 
