@@ -114,6 +114,8 @@ export class PvSetup extends LitElement {
     buttonStyles,
     css`
       :host {
+        /* People's colors here are the household's own: drawn at the card's level (review m12 B). */
+        --pv-people-dim: var(--pv-dim, 1);
         position: relative;
         display: flex;
         flex-direction: column;

@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, svg, PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { defineElement } from '../utils/define';
-import { contrastText } from './color';
+import { onColor } from './dimming';
 import { BOUNCY, motionOf, springEasing } from './motion';
 
 /**
@@ -172,7 +172,7 @@ export class PvRing extends LitElement {
         <div class="inside" style="width:${inner}px;height:${inner}px"><slot></slot></div>
         ${this.closed ? html`
           <span class="badge" aria-hidden="true"
-            style="width:${badge}px;height:${badge}px;background:${this.color};color:${contrastText(this.color)}">
+            style="width:${badge}px;height:${badge}px;background:${this.color};color:${onColor(this.color)}">
             <svg width=${Math.round(badge * 0.6)} height=${Math.round(badge * 0.6)} viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12.5l4.5 4.5L19 7.5"></path>

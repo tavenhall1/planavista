@@ -18,7 +18,7 @@ import {
   filterVisibleEvents,
 } from '../utils/event-utils';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
-import { contrastText } from '../../../core/color';
+import { onColor } from '../../../core/dimming';
 import { stripStart } from '../../../core/people-strip';
 import { groupSameEvents, sameEventKey } from '../calendar-derive';
 import type { Layout } from '../../../core/layout';
@@ -170,7 +170,7 @@ export class PVViewDay extends LitElement {
         border-radius: 9999px;
         font-size: 0.8125rem;
         font-weight: 600;
-        color: white;
+        color: var(--pv-white, #FFFFFF);
         transition: all 200ms ease;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -281,7 +281,7 @@ export class PVViewDay extends LitElement {
         justify-content: center;
         font-size: 1.375rem;
         font-weight: 700;
-        color: white;
+        color: var(--pv-white, #FFFFFF);
         flex-shrink: 0;
       }
 
@@ -493,7 +493,7 @@ export class PVViewDay extends LitElement {
         justify-content: center;
         font-size: 0.5rem;
         font-weight: 700;
-        color: white;
+        color: var(--pv-white, #FFFFFF);
         flex-shrink: 0;
       }
 
@@ -786,7 +786,7 @@ export class PVViewDay extends LitElement {
             ? html`<img class="event-participant-avatar" src="${avatar}" alt="${name}"
                 style="--participant-color: ${p.calendar_color}" />`
             : html`<div class="event-participant-initial"
-                style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}"
+                style="background: ${p.calendar_color}; --participant-color: ${p.calendar_color}; color: ${onColor(p.calendar_color)}"
               >${name[0]?.toUpperCase() || '?'}</div>`;
         })}
       </div>
@@ -860,7 +860,7 @@ export class PVViewDay extends LitElement {
                     tabindex="0"
                     @click=${() => this._onEventClick(e)}
                     @keydown=${(ev: KeyboardEvent) => this._onEventKey(ev, e)}
-                  ><span class="all-day-pill" style="background: ${e.calendar_color}; color: ${contrastText(e.calendar_color)}">
+                  ><span class="all-day-pill" style="background: ${e.calendar_color}; color: ${onColor(e.calendar_color)}">
                     <span class="all-day-name">${e.summary}</span>
                     ${copies.length > 1 ? this._faces(copies.map(c => this._participant(c, visibleCalendars))) : nothing}
                   </span></div>
@@ -887,7 +887,7 @@ export class PVViewDay extends LitElement {
               const picture = avatar
                 ? html`<img class="person-avatar" src="${avatar}" alt="${name}"
                     style="${borderColor ? `--pv-avatar-border: ${borderColor}` : ''}" />`
-                : html`<div class="person-initial" style="background: ${color}; color: ${contrastText(color)}">${name[0]?.toUpperCase() || '?'}</div>`;
+                : html`<div class="person-initial" style="background: ${color}; color: ${onColor(color)}">${name[0]?.toUpperCase() || '?'}</div>`;
               const ring = isCurrentDay && cal?.member_id && this.progress ? dayRing(name, this.progress(cal.member_id)) : null;
               return html`
                 <div class="person-header">
@@ -966,7 +966,7 @@ export class PVViewDay extends LitElement {
     const color = cal?.color || '#6366F1';
     const picture = avatar
       ? html`<img class="person-avatar" src="${avatar}" alt="" />`
-      : html`<div class="person-initial" style="background: ${color}; color: ${contrastText(color)}">${name[0]?.toUpperCase() || '?'}</div>`;
+      : html`<div class="person-initial" style="background: ${color}; color: ${onColor(color)}">${name[0]?.toUpperCase() || '?'}</div>`;
     return { name, color, picture };
   }
 
@@ -1076,7 +1076,7 @@ export class PVViewDay extends LitElement {
                 left: ${left};
                 --event-color: ${event.calendar_color};
                 --event-color-light: ${event.calendar_color_light || ''};
-                --event-text: ${contrastText(event.calendar_color_light || event.calendar_color)};
+                --event-text: ${onColor(event.calendar_color_light || event.calendar_color)};
               "
               role="button"
               tabindex="0"

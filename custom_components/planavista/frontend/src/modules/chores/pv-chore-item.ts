@@ -3,7 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { defineElement } from '../../utils/define';
 import { HOLD_MS, HoldGesture, MOVE_CANCEL_PX } from '../../core/hold';
 import { BOUNCY, motionOf, springEasing } from '../../core/motion';
-import { contrastText } from '../../core/color';
+import { onColor } from '../../core/dimming';
 import { choresStyles } from './chores-styles';
 import type { RowModel } from './board-derive';
 import { rowChange } from './hold-state';
@@ -440,7 +440,7 @@ export class PvChoreItem extends LitElement {
             ${done ? svg`
               <g class="check" style="transform-origin: 13px 13px">
                 <circle cx="13" cy="13" r="12.5" fill=${color}></circle>
-                <path class="mark" d="M7.5 13.4l3.6 3.6 7.4-7.6" fill="none" stroke=${contrastText(color)} stroke-width="2.6"
+                <path class="mark" d="M7.5 13.4l3.6 3.6 7.4-7.6" fill="none" style="stroke: ${onColor(color)}" stroke-width="2.6"
                   stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="24"></path>
               </g>
               <circle cx="13" cy="13" r="15.5" fill="none" stroke=${color} stroke-width="2.4" stroke-linecap="round"
@@ -449,7 +449,7 @@ export class PvChoreItem extends LitElement {
             ` : svg`
               <circle cx="13" cy="13" r=${R} fill="none" stroke=${color} stroke-width="2.4"
                 stroke-dasharray=${pending ? '3.2 3.2' : 'none'} opacity=${pending ? 0.9 : 1}></circle>
-              ${pending ? svg`<text x="13" y="17.2" text-anchor="middle" font-size="11">⏳</text>` : nothing}
+              ${pending ? svg`<text class="emo" x="13" y="17.2" text-anchor="middle" font-size="11">⏳</text>` : nothing}
               <circle cx="13" cy="13" r=${R} fill="none" stroke=${color} stroke-width="3.4" stroke-linecap="round"
                 stroke-dasharray=${LENGTH} stroke-dashoffset=${LENGTH * (1 - fill)}
                 transform="rotate(-90 13 13)" opacity=${fill > 0 ? 1 : 0}></circle>

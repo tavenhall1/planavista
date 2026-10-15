@@ -6,6 +6,7 @@ import '../../../core/pv-date-field';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
+import { atLevel } from '../../../core/dimming';
 import { HouseholdView, Member, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
@@ -410,7 +411,7 @@ export class PvChoreEditor extends LitElement {
           ${members.map(member => {
             const on = d.assignees.includes(member.id);
             return html`
-              <button class="pv-person-chip" type="button" aria-pressed=${on ? 'true' : 'false'} style="--member:${member.color}"
+              <button class="pv-person-chip" type="button" aria-pressed=${on ? 'true' : 'false'} style="--member:${atLevel(member.color)}"
                 @click=${() => this._toggleMember(member.id)}>
                 <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>${member.name}
               </button>

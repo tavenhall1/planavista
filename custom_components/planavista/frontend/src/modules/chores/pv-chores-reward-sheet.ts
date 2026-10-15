@@ -216,7 +216,7 @@ export class PvChoresRewardSheet extends LitElement {
     if (!card) return nothing;
     const reward = card.reward;
     return html`
-      <div class="icon" aria-hidden="true">${pictureOf(reward.icon)}</div>
+      <div class="icon emo" aria-hidden="true">${pictureOf(reward.icon)}</div>
       <h2 class="heading" id="reward-title" tabindex="-1">${reward.name}</h2>
       <div class="cost">★ ${reward.cost}${reward.needs_ok ? ' · needs a parent\'s approval' : ''}</div>
       ${card.people.map(p => html`

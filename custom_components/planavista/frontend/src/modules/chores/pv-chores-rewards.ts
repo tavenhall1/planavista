@@ -228,7 +228,7 @@ export class PvChoresRewards extends LitElement {
                 <span class="stars num" aria-label=${`${b.member.name}: ${b.stars} stars`}>★ ${b.stars}</span>
                 <div class="goal">
                   ${b.goal ? html`
-                    Goal: ${pictureOf(b.goal.reward.icon)} ${b.goal.reward.name} · ${goalWords(b.goal)}
+                    Goal: <span class="emo">${pictureOf(b.goal.reward.icon)}</span> ${b.goal.reward.name} · ${goalWords(b.goal)}
                     <div class="bar"><span style="width:${Math.round(b.goal.progress * 100)}%"></span></div>
                   ` : html`No goal yet`}
                   ${b.surprise && !b.surprise.opened ? html`
@@ -266,7 +266,7 @@ export class PvChoresRewards extends LitElement {
       <div class="card">
         ${card.goals.length ? html`<span class="pv-tag goal-tag">${card.goals.map(m => `${m.name}'s goal`).join(', ')}</span>` : nothing}
         <button class="open" type="button" @click=${() => this._fire('pv-reward-open', { reward: reward.id })}>
-          <span class="icon" aria-hidden="true">${pictureOf(reward.icon)}</span>
+          <span class="icon emo" aria-hidden="true">${pictureOf(reward.icon)}</span>
           <span class="name">${reward.name}</span>
           <span class="cost num">★ ${reward.cost}</span>
         </button>

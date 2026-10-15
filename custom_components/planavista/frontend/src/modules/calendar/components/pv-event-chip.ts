@@ -4,7 +4,7 @@ import { defineElement } from '../../../utils/define';
 import { HomeAssistant } from 'custom-card-helpers';
 import { CalendarConfig } from '../../../types';
 import { SharedEvent, buildStripeGradient, getOrganizerCalendar, isAllDayEvent, isEventPast } from '../utils/event-utils';
-import { contrastText } from '../../../core/color';
+import { onColor } from '../../../core/dimming';
 import { formatTime } from '../../../utils/date-utils';
 import { timeOnDay } from '../event-words';
 import { getPersonAvatar, getPersonName } from '../../../utils/ha-utils';
@@ -112,7 +112,7 @@ export class PVEventChip extends LitElement {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        border: 2px solid rgba(255,255,255,0.8);
+        border: 2px solid color-mix(in srgb, var(--pv-white, #FFFFFF) 80%, transparent);
         margin-left: -6px;
         object-fit: cover;
         flex-shrink: 0;
@@ -126,14 +126,14 @@ export class PVEventChip extends LitElement {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        border: 2px solid rgba(255,255,255,0.8);
+        border: 2px solid color-mix(in srgb, var(--pv-white, #FFFFFF) 80%, transparent);
         margin-left: -6px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 0.625rem;
         font-weight: 700;
-        color: white;
+        color: var(--pv-white, #FFFFFF);
         flex-shrink: 0;
       }
 
@@ -145,7 +145,7 @@ export class PVEventChip extends LitElement {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        border: 2px solid rgba(255,255,255,0.8);
+        border: 2px solid color-mix(in srgb, var(--pv-white, #FFFFFF) 80%, transparent);
         margin-left: -6px;
         display: flex;
         align-items: center;
@@ -223,7 +223,7 @@ export class PVEventChip extends LitElement {
     const textBg = this.showStripes
       ? (cals[0]?.color_light || event.calendar_color_light || event.calendar_color)
       : '#FFFFFF';
-    const textColor = this.showStripes ? contrastText(textBg) : 'var(--pv-text)';
+    const textColor = this.showStripes ? onColor(textBg) : 'var(--pv-text)';
 
     const past = isEventPast(event) ? ' past' : '';
     const chipClass = (this.compact ? 'chip chip--compact' : 'chip') + past;
@@ -271,7 +271,7 @@ export class PVEventChip extends LitElement {
           if (avatar) {
             return html`<img class="chip-avatar" src="${avatar}" alt="${name}" />`;
           }
-          return html`<div class="chip-initial" style="background: ${cal.color}; color: ${contrastText(cal.color)}">${name[0]?.toUpperCase() || '?'}</div>`;
+          return html`<div class="chip-initial" style="background: ${cal.color}; color: ${onColor(cal.color)}">${name[0]?.toUpperCase() || '?'}</div>`;
         })}
         ${overflow > 0 ? html`<div class="chip-overflow">+${overflow}</div>` : nothing}
       </div>

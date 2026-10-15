@@ -51,6 +51,11 @@ export class PvNavBar extends LitElement {
   static styles = [
     segmentedStyles,
     css`
+    /* A dimmed shared screen (0.12.0): a button's emoji by the level. */
+    .emo {
+      filter: var(--pv-media-filter, none);
+    }
+
     :host {
       display: block;
       position: relative;
@@ -490,7 +495,7 @@ export class PvNavBar extends LitElement {
               return html`
                 <button type="button" class="action ${action.tone === 'act' ? 'act' : ''}" aria-label=${action.label}
                   @click=${() => this._fire('pv-module-action', { id: action.id })}>
-                  <span>${action.glyph ? html`<span class="glyph" aria-hidden="true">${action.glyph}</span>` : nothing}${text}</span>
+                  <span>${action.glyph ? html`<span class="glyph emo" aria-hidden="true">${action.glyph}</span>` : nothing}${text}</span>
                 </button>
               `;
             })}

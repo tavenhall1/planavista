@@ -1,5 +1,5 @@
 import type { Member } from './household';
-import { contrastRatio, fromLinear, parseHex, relativeLuminance, toHex, toLinear } from './color';
+import { WHITE, contrastRatio, contrastText, fromLinear, parseHex, relativeLuminance, toHex, toLinear } from './color';
 import { nightWindow } from './screensaver';
 
 /**
@@ -232,4 +232,27 @@ export function dimTokens<T extends Record<string, string>>(tokens: T, level: nu
  */
 export function mediaBrightness(level: number): number {
   return level >= 1 ? 1 : level ** (1 / 2.2);
+}
+
+/**
+ * A color drawn at the card's level in CSS (review m12 B): `color-mix` in
+ * linear light with black scales its light by the level, as dimColor does,
+ * for colors the card doesn't dim itself (Settings' people, literals).
+ * `variable` holds the level; unset, it's full.
+ */
+export function atLevel(color: string, variable = '--pv-dim'): string {
+  return `color-mix(in srgb-linear, ${color} calc(var(${variable}, 1) * 100%), #000000)`;
+}
+
+/**
+ * Letters on a person's color, as drawn (review m12 B): near-black stays;
+ * white dims by the text rule (`--pv-ink-level`, the square root of the
+ * level) but stays bright enough for 4.5:1 on that color. Full where nothing
+ * dims.
+ */
+export function onColor(bg: string): string {
+  const ink = contrastText(bg);
+  if (ink !== WHITE || !parseHex(bg)) return ink;
+  const needed = Math.min(1, Math.max(0, 4.5 * (relativeLuminance(bg) + 0.05) - 0.05));
+  return `color-mix(in srgb-linear, ${WHITE} calc(max(var(--pv-ink-level, 1), ${needed.toFixed(3)}) * 100%), #000000)`;
 }

@@ -147,6 +147,11 @@ export class PvPinSheet extends LitElement {
     buttonStyles,
     sheetStyles,
     css`
+      /* People's colors here are the household's own: drawn at the card's level (review m12 B). */
+      :host {
+        --pv-people-dim: var(--pv-dim, 1);
+      }
+
       .people {
         display: flex;
         flex-wrap: wrap;

@@ -10,7 +10,7 @@ import { deleteEvent, refreshPlanaVista, getEventOrganizer } from '../../../util
 import { buttonStyles } from '../../../styles/shared';
 import { sheetStyles } from '../../../styles/sheet';
 import { statusStyles } from '../../../styles/status';
-import { contrastText } from '../../../core/color';
+import { onColor } from '../../../core/dimming';
 import { SheetController } from '../../../shell/sheet-controller';
 import type { NoticeAction } from '../../../shell/pv-notice-sheet';
 import '../../../shell/pv-notice-sheet';
@@ -210,7 +210,7 @@ export class PVEventPopup extends LitElement {
         <h2 class="heading" id="event-title" tabindex="-1">${event.summary?.trim() || 'Untitled event'}</h2>
         <div class="people">
           ${people.map(p => html`
-            <span class="person" style="background: ${p.calendar_color}; color: ${contrastText(p.calendar_color)}">${p.calendar_name}</span>
+            <span class="person" style="background: ${p.calendar_color}; color: ${onColor(p.calendar_color)}">${p.calendar_name}</span>
             ${people.length > 1 && p.entity_id === this._organizerEntityId ? html`<span class="pv-tag muted">Organizer</span>` : nothing}
           `)}
         </div>

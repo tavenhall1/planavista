@@ -3,6 +3,7 @@ import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../utils/define';
 import { buttonStyles } from '../styles/shared';
+import { atLevel } from '../core/dimming';
 import { Member } from '../core/household';
 import type { ModuleAction } from '../core/module-registry';
 import { SESSION_IDLE_MS, sessionWords } from '../core/session';
@@ -86,10 +87,10 @@ export class PvParentStrip extends LitElement {
     const member = this.member;
     if (!member) return nothing;
     return html`
-      <div class="strip" style="--strip-color: ${member.color}">
+      <div class="strip" style="--strip-color: ${atLevel(member.color, '--pv-people-dim')}">
         <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>
         <span class="who">${member.name} <span class="mode">· ${sessionWords(this.parent).mode}</span></span>
-        <pv-session-ring .endsAt=${this.endsAt} .span=${this.span} .parent=${this.parent} color=${member.color}></pv-session-ring>
+        <pv-session-ring .endsAt=${this.endsAt} .span=${this.span} .parent=${this.parent} color=${atLevel(member.color, '--pv-people-dim')}></pv-session-ring>
         ${(this.parent ? this.actions : []).map(action => html`
           <button class="pv-btn pv-btn-primary action" type="button" @click=${() => this._action(action.id)}>
             ${action.glyph ? `${action.glyph} ` : ''}${action.label}

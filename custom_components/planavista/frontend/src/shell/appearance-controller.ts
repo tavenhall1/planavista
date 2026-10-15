@@ -13,7 +13,8 @@ import {
   withCardTheme,
 } from '../core/appearance';
 import { AppearanceEdits } from '../core/appearance-edits';
-import { DIM_STEP_MS, DimSettings, dimLevel, dimTokens, mediaBrightness, surfaceLevel } from '../core/dimming';
+import { setPageDim } from './page-dim';
+import { DIM_STEP_MS, DimSettings, dimColor, dimLevel, dimTokens, mediaBrightness, surfaceLevel } from '../core/dimming';
 import type { Member } from '../core/household';
 import { Motion, resolveMotion, ringTokens } from '../core/motion';
 import { Look, Mode, applyTokens, themeTokens } from '../styles/theme-pairs';
@@ -134,6 +135,7 @@ export class AppearanceController implements ReactiveController {
     document.removeEventListener('visibilitychange', this._onVisibility);
     this._reduced?.removeEventListener('change', this._onReducedChange);
     clearTimeout(this._timer);
+    setPageDim(this._host, null);
     // A card that comes back draws at once, without a change to play.
     this._shown = null;
   }
@@ -244,6 +246,8 @@ export class AppearanceController implements ReactiveController {
     // A dimmed shared screen draws every color of its look at the level (0.12.0); pictures follow by a filter.
     this.dim = surfaceLevel(this._level, mode);
     const dimmed = this.dim < 1;
+    // Home Assistant's own bars follow (review m12 I).
+    setPageDim(this._host, this.dim);
     applyTokens(this._host, {
       ...dimTokens(themeTokens(this.look, mode), this._level, mode),
       '--pv-motion': this.motion,
@@ -251,6 +255,9 @@ export class AppearanceController implements ReactiveController {
       '--pv-dim': String(Math.round(this.dim * 1000) / 1000),
       '--pv-media-filter': dimmed ? `brightness(${mediaBrightness(this.dim).toFixed(3)})` : 'none',
       '--pv-ink-filter': dimmed ? `brightness(${mediaBrightness(Math.sqrt(this.dim)).toFixed(3)})` : 'none',
+      // Letters on people's colors and white marks (review m12 B): the text rule's level, and white at it.
+      '--pv-ink-level': dimmed ? Math.sqrt(this.dim).toFixed(3) : '1',
+      '--pv-white': dimmed ? dimColor('#FFFFFF', this.dim, true) : '#FFFFFF',
     });
     this._host.setAttribute('appearance', mode);
     this._host.setAttribute('motion', this.motion);

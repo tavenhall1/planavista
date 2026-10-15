@@ -4,6 +4,7 @@ import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { animationStyles, baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
 import { settingsPageStyles } from '../../../styles/settings';
+import { atLevel } from '../../../core/dimming';
 import type { HouseholdView, Member } from '../../../core/household';
 import { HouseholdApi, errorCode } from '../../../core/household-client';
 import type { Layout } from '../../../core/layout';
@@ -240,7 +241,7 @@ export class PvCalendarCalendarsPage extends LitElement {
           <span class="pv-label">${helpLabel(this._help, 'calendar_color', 'Color', undefined, String(idx))}</span>
           ${helpBox(this._help, 'calendar_color', String(idx))}
           <div class="cal-owned-color">
-            <span class="cal-color-dot" style="background: ${owner.color}" aria-hidden="true"></span>
+            <span class="cal-color-dot" style="background: ${atLevel(owner.color)}" aria-hidden="true"></span>
             <span class="cal-owned-name">${owner.name}'s color</span>
             <button class="pv-btn pv-btn-secondary" type="button"
               @click=${() => this._openPerson(owner)}>Set in People</button>

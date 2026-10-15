@@ -4,6 +4,7 @@ import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { defineElement } from '../../../utils/define';
 import { baseStyles, buttonStyles, formStyles } from '../../../styles/shared';
+import { atLevel } from '../../../core/dimming';
 import { HouseholdView, inOrder } from '../../../core/household';
 import type { Layout } from '../../../core/layout';
 import type { ModuleService } from '../../../core/module-registry';
@@ -247,7 +248,7 @@ export class PvRewardEditor extends LitElement {
           <button class="chip" type="button" aria-pressed=${d.who.length === 0 ? 'true' : 'false'}
             @click=${() => this._change({ who: [] })}>Everyone</button>
           ${earners.map(member => html`
-            <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(member.id) ? 'true' : 'false'} style="--member:${member.color}"
+            <button class="pv-person-chip" type="button" aria-pressed=${d.who.includes(member.id) ? 'true' : 'false'} style="--member:${atLevel(member.color)}"
               @click=${() => this._change({ who: d.who.includes(member.id) ? d.who.filter(id => id !== member.id) : [...d.who, member.id] })}>
               <pv-member-avatar .member=${member} .hass=${this.hass} size="28"></pv-member-avatar>${member.name}
             </button>

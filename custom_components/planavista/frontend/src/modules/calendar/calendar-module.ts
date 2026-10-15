@@ -16,7 +16,7 @@ import { ForecastEntry } from '../../utils/weather-subscription';
 import { CalendarStoreController } from './calendar-store';
 import { CalendarDerived, deriveCalendarData, eventForPopup } from './calendar-derive';
 import { withModeColors } from './mode-colors';
-import { contrastText } from '../../core/color';
+import { onColor } from '../../core/dimming';
 import type { ModuleService } from '../../core/module-registry';
 import { GONE, Presence, nextPresence } from '../../core/sheet-presence';
 import { deepActiveElement } from '../../core/focus';
@@ -882,7 +882,7 @@ export class PvCalendarModule extends LitElement {
                 return html`
                   <div
                     class="pvc-filter-item ${isActive ? 'active' : ''}"
-                    style="--item-color: ${cal.color}; --item-ink: ${contrastText(cal.color)}"
+                    style="--item-color: ${cal.color}; --item-ink: ${onColor(cal.color)}"
                     role="checkbox"
                     tabindex="0"
                     aria-checked=${isActive ? 'true' : 'false'}
@@ -918,7 +918,7 @@ export class PvCalendarModule extends LitElement {
                 class="pvc-cal-chip ${isActive ? 'active' : ''}"
                 type="button"
                 aria-pressed=${isActive ? 'true' : 'false'}
-                style="--chip-color: ${cal.color}; --chip-ink: ${contrastText(cal.color)}"
+                style="--chip-color: ${cal.color}; --chip-ink: ${onColor(cal.color)}"
                 @click=${() => this._pv.store.toggleCalendar(cal.entity_id)}
               >
                 <div

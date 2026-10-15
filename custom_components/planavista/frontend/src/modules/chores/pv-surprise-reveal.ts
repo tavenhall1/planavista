@@ -112,6 +112,7 @@ export class PvSurpriseReveal extends LitElement {
     }
 
     .reward {
+      filter: var(--pv-media-filter, none);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -130,7 +131,7 @@ export class PvSurpriseReveal extends LitElement {
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      color: #FFFFFF;
+      color: var(--pv-white, #FFFFFF);
       text-align: center;
       opacity: 0;
     }
@@ -182,7 +183,7 @@ export class PvSurpriseReveal extends LitElement {
 
     .later {
       background: rgba(255, 255, 255, 0.14);
-      color: #FFFFFF;
+      color: var(--pv-white, #FFFFFF);
     }
 
     /* Waiting for approval: quiet, so a child doesn't keep pressing it (round 3). */
@@ -194,7 +195,7 @@ export class PvSurpriseReveal extends LitElement {
     }
 
     button:focus-visible {
-      outline: 3px solid #FFFFFF;
+      outline: 3px solid var(--pv-white, #FFFFFF);
       outline-offset: 3px;
     }
 

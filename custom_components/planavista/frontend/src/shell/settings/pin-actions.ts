@@ -51,7 +51,7 @@ export class PvPinActions extends LitElement {
       }
 
       .status.needs {
-        color: #B45309;
+        color: color-mix(in srgb-linear, #B45309 calc(var(--pv-ink-level, 1) * 100%), #000000);
         font-weight: 600;
       }
 

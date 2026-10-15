@@ -380,7 +380,7 @@ export class PvChoresColumn extends LitElement {
         <div class="stickers">
           ${stickersLabel(stickers)}
           <div class="row" role="img" aria-label=${`${stickers} ${stickers === 1 ? 'star' : 'stars'} this week`}>
-            ${Array.from({ length: Math.min(STICKERS, stickers) }, () => html`<span aria-hidden="true">⭐</span>`)}
+            ${Array.from({ length: Math.min(STICKERS, stickers) }, () => html`<span class="emo" aria-hidden="true">⭐</span>`)}
             ${stickers > STICKERS ? html`<span class="meta">+${stickers - STICKERS}</span>` : nothing}
             ${stickers === 0 ? html`<span class="meta">Stars show up here.</span>` : nothing}
           </div>
