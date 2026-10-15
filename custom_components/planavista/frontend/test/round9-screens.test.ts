@@ -106,7 +106,7 @@ describe('round 9: screens', () => {
     const inbox = src('modules/chores/pv-chores-inbox.ts');
     // B1: the reasons scroll into view above the pinned row.
     expect(inbox).toMatch(/panel\.style\.scrollPaddingBottom = `\$\{actions\.offsetHeight \+ 8\}px`;/);
-    expect(inbox).toMatch(/\.reasons'\)\?\.scrollIntoView\(\{ block: 'nearest'/);
+    expect(inbox).toMatch(/if \(this\._sendingBack\) void this\.updateComplete\.then\(\(\) => this\._revealReasons\(\)\);/); // round 12: revealBy
     // M2: the rows' held height doesn't keep the reasons' height once they close.
     expect(inbox).toMatch(/if \(!this\._sendingBack && rows\.offsetHeight > this\._rowsHeight\)/);
     // M3: the grab handle and the title stay pinned together at the very top.

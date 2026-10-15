@@ -49,11 +49,10 @@ export function whenText(at: string, today: string, format: '12h' | '24h', daySt
   if (ago === 0) return `${early ? 'Tonight' : 'Today'} at ${time}`;
   if (ago === 1) return `${early ? 'Last night' : 'Yesterday'} at ${time}`;
   if (early) {
-    // Further back, the calendar's own day (round 11: Wednesday 1:30 AM read "Tuesday at 1:30 AM").
-    const named = ago <= 7
-      ? date.toLocaleDateString('en-US', { weekday: 'long' })
-      : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${named} at ${time}`;
+    // Further back, the calendar's own day (round 11: Wednesday 1:30 AM read "Tuesday at 1:30 AM"), in the
+    // words any other time that day gets (round 12: "Oct 8" beside "October 8").
+    const named = dayWords(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`, today);
+    return `${named[0].toUpperCase()}${named.slice(1)} at ${time}`;
   }
   const words = dayWords(day, today);
   return `${words[0].toUpperCase()}${words.slice(1)} at ${time}`;
@@ -110,6 +109,17 @@ export function reviewQuestion(row: Pick<InboxRow, 'kind' | 'late'>, allow: bool
 /** Whether a check-off waiting for approval is past its day, so sending it back counts it as missed (round 10). */
 export function lateRequest(board: { requests: ChoreRequest[] } | null | undefined, id: string | null | undefined): boolean {
   return !!id && !!board?.requests.some(r => r.id === id && r.missed_if_sent_back === true);
+}
+
+/**
+ * How far to scroll so a box (Send back's reasons) shows within the room (below the sticky head, above a
+ * pinned Done): up until its bottom shows, but never past its top, which comes first (round 12).
+ */
+export function revealBy(box: { top: number; bottom: number }, room: { top: number; bottom: number }): number {
+  let by = 0;
+  if (box.bottom > room.bottom) by = box.bottom - room.bottom;
+  if (box.top - by < room.top) by = box.top - room.top;
+  return by;
 }
 
 /** Quick reasons for Send back (spec 13.7); one whose day is over can't be done again (round 10). */

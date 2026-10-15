@@ -111,6 +111,7 @@ export class PvChoresDaySheet extends LitElement {
       }
 
       li .pic {
+        flex: none;
         width: 28px;
         text-align: center;
       }
@@ -184,7 +185,8 @@ export class PvChoresDaySheet extends LitElement {
           <ul>
             ${items.map(item => {
               const badge = this._badge(item);
-              const below = badgeBelow(badge, false);
+              // One long badge puts every badge under its name, so the list keeps one column (round 12).
+              const below = items.some(item => badgeBelow(this._badge(item), false));
               const shown = badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing;
               return html`
                 <li>

@@ -34,10 +34,13 @@ export function guardPageTaps(
 ): () => void {
   let since = now();
   let pressed = false;
-  const down = (): void => {
+  const down = (event: Event): void => {
     const at = now();
     pressed = at - since >= PRESS_GRACE_MS;
-    if (!pressed) since = at;
+    if (pressed) return;
+    since = at;
+    // A field under the burst's next tap would take focus, and a phone's keyboard would come up (round 12).
+    if (editable(event)) event.preventDefault();
   };
   const click = (event: Event): void => {
     if ((event as MouseEvent).detail === 0) return;
@@ -57,6 +60,11 @@ export function guardPageTaps(
   target.addEventListener('pointerdown', down, CAPTURE);
   target.addEventListener('click', click, CAPTURE);
   return stop;
+}
+
+function editable(event: Event): boolean {
+  const el = (event.composedPath?.()[0] ?? event.target) as { tagName?: string; isContentEditable?: boolean } | null;
+  return !!el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName ?? '') || el.isContentEditable === true);
 }
 
 export interface PressGuardOptions {

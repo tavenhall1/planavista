@@ -7,13 +7,13 @@ import { buttonStyles } from '../../styles/shared';
 import { sheetStyles } from '../../styles/sheet';
 import { statusStyles } from '../../styles/status';
 import { trapTab } from '../../core/focus';
-import type { Layout } from '../../core/layout';
+import { type Layout, SHORT_MAX_HEIGHT } from '../../core/layout';
 import type { Member } from '../../core/household';
 import { SMOOTH, motionOf, springEasing } from '../../core/motion';
 import { SheetMotion } from '../../shell/sheet-motion';
 import '../../core/pv-member-avatar';
 import {
-  ANSWERED_MS, answeredWords, heldArrivals, isHeld, sendBackReasons, withAnswered,
+  ANSWERED_MS, answeredWords, heldArrivals, isHeld, revealBy, sendBackReasons, withAnswered,
   type Answered, type InboxGroups, type InboxRow, type ShownRow,
 } from './inbox-derive';
 import { backdropTap } from '../../core/backdrop';
@@ -53,8 +53,12 @@ export class PvChoresInbox extends LitElement {
   private readonly _layer = new SheetLayer(this);
   private readonly _pressGuard = new PressGuard(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
-  /** The card is under 500 px tall (the card's LayoutController). */
+  /**
+   * The sheet has under 500 px of room: a card's (a sideways phone) or a window's (a sections view,
+   * where the sheet fills the window, round 12). Worked out from its own box, never set from outside.
+   */
   @property({ type: Boolean, reflect: true }) short = false;
+  private _room: ResizeObserver | null = null;
   @property({ attribute: false }) groups!: InboxGroups;
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
@@ -332,13 +336,19 @@ export class PvChoresInbox extends LitElement {
       }
     } else {
       this._motion.open(panel, backdrop);
-      this._detach = this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
+      this._detach = this._dragFrom(panel);
     }
+    const fit = (): void => {
+      this.short = this.getBoundingClientRect().height < SHORT_MAX_HEIGHT;
+    };
+    this._room = new ResizeObserver(fit);
+    this._room.observe(this);
+    fit();
     this.renderRoot.querySelector<HTMLElement>('#inbox-title')?.focus();
   }
 
   protected updated(changed: PropertyValues): void {
-    if (changed.has('groups') && this._sendingBack && !this._all().some(r => r.id === this._sendingBack)) this._sendingBack = null;
+    if (changed.has('groups') && this._sendingBack && !this._all().some(r => r.id === this._sendingBack)) this._setSendingBack(null);
     // A bottom sheet grows or shrinks at its top: a row arriving moved every row up, one leaving moved
     // them down (round 6). In portrait it keeps the height it opened with (at least 60% of the screen),
     // and scrolls; rows below one that leaves move up, as in any list.
@@ -351,13 +361,13 @@ export class PvChoresInbox extends LitElement {
       this._rowsHeight = 0;
       panel.style.height = '';
       this._heldHeight = 0;
+      // Turned into a bottom sheet, its handle drags (round 12: attached only when it opened as one).
+      this._detach?.();
+      this._detach = this.layout === 'landscape' ? null : this._dragFrom(panel);
     }
     // Scrolling something into view keeps it above the pinned Done row (round 9).
     const actions = this.renderRoot.querySelector<HTMLElement>('.actions');
     if (actions) panel.style.scrollPaddingBottom = `${actions.offsetHeight + 8}px`;
-    // And below the sticky head: reasons taller than the room left scrolled under it (round 11).
-    const head = this.renderRoot.querySelector<HTMLElement>('.head');
-    if (head) panel.style.scrollPaddingTop = `${head.offsetHeight + 8}px`;
     // The rows keep the most height they have had, so one leaving at the end never pulls the scroll back
     // (round 7); open Send back reasons don't count, or a gap stays once they close (round 9).
     if (!this._sendingBack && rows.offsetHeight > this._rowsHeight) {
@@ -378,8 +388,13 @@ export class PvChoresInbox extends LitElement {
     }
   }
 
+  private _dragFrom(panel: HTMLElement): () => void {
+    return this._motion.attachDrag(this.renderRoot.querySelector<HTMLElement>('.grab-zone')!, panel, () => void this.close());
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this._room?.disconnect();
     this._detach?.();
     window.clearTimeout(this._settle);
   }
@@ -551,21 +566,45 @@ export class PvChoresInbox extends LitElement {
 
   private _decline(row: InboxRow): void {
     if (row.kind === 'completion') {
-      this._sendingBack = this._sendingBack === row.id ? null : row.id;
+      this._setSendingBack(this._sendingBack === row.id ? null : row.id);
       this._note = '';
       // Opened on the last row, the reasons fell under the pinned Done (round 9): bring them up.
-      if (this._sendingBack) {
-        // The reasons scroll into view under the finger: the burst's next tap presses none of them (round 11).
-        guardPageTaps();
-        void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.reasons')?.scrollIntoView({ block: 'nearest', behavior: motionOf(this) === 'reduced' ? 'auto' : 'smooth' }));
-      }
+      if (this._sendingBack) void this.updateComplete.then(() => this._revealReasons());
       return;
     }
     this._review(row, false);
   }
 
+  /**
+   * Opening or closing Send back's reasons moves the rows under the finger (200 px of reasons): the
+   * burst's next tap presses nothing (round 11 for opening; round 12: answering from the last row's
+   * reasons closed them, the scroll clamped, and the second tap opened the row above).
+   */
+  private _setSendingBack(id: string | null): void {
+    if (id === this._sendingBack) return;
+    this._sendingBack = id;
+    guardPageTaps();
+  }
+
+  /** The reasons in view, below the sticky head and above a pinned Done, their top first (round 12: no scroll padding). */
+  private _revealReasons(): void {
+    const panel = this.renderRoot.querySelector<HTMLElement>('.panel');
+    const reasons = this.renderRoot.querySelector<HTMLElement>('.reasons');
+    if (!panel || !reasons) return;
+    const head = this.renderRoot.querySelector<HTMLElement>('.head');
+    const actions = this.renderRoot.querySelector<HTMLElement>('.actions');
+    const pinned = !!actions && getComputedStyle(actions).position === 'sticky';
+    const box = panel.getBoundingClientRect();
+    const shown = reasons.getBoundingClientRect();
+    const by = revealBy(
+      { top: shown.top, bottom: shown.bottom },
+      { top: box.top + (head?.offsetHeight ?? 0) + 8, bottom: box.bottom - (pinned ? actions!.offsetHeight : 0) - 8 },
+    );
+    if (by) panel.scrollBy({ top: by, behavior: motionOf(this) === 'reduced' ? 'auto' : 'smooth' });
+  }
+
   private _review(row: InboxRow, allow: boolean, note?: string | null): void {
-    this._sendingBack = null;
+    this._setSendingBack(null);
     this._markPending([row], allow);
     const settled = (ok: boolean) => this._settleRows([row.id], new Set(ok ? [row.id] : []));
     this.dispatchEvent(new CustomEvent<ReviewDetail>('pv-review', { detail: { row, allow, note, settled }, bubbles: true, composed: true }));

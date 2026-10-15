@@ -19,15 +19,14 @@ describe('round 11: screens', () => {
   // I1: a double tap on Not done pressed a reason chip that scrolled under the finger.
   it("ignores the burst that opened Send back's reasons", () => {
     const inbox = src('modules/chores/pv-chores-inbox.ts');
-    expect(inbox).toMatch(/if \(this\._sendingBack\) \{\n\s+\/\/ [^\n]*\n\s+guardPageTaps\(\);/);
-    // Taller than the room below the sticky head, the reasons scrolled under it (found on the dev copy).
-    expect(inbox).toMatch(/if \(head\) panel\.style\.scrollPaddingTop = `\$\{head\.offsetHeight \+ 8\}px`;/);
+    // Round 12 guards closing too, through _setSendingBack, and scrolls the reasons in below the head itself.
+    expect(inbox).toMatch(/private _setSendingBack\(id: string \| null\): void \{/);
   });
 
   // I2: a long note crushed the chore's name and pushed Excuse it off the day sheet.
   it("puts a long badge under the name on the day sheet, where it wraps", () => {
     const sheet = src('modules/chores/pv-chores-day-sheet.ts');
-    expect(sheet).toMatch(/const below = badgeBelow\(badge, false\);/);
+    expect(sheet).toMatch(/const below = items\.some\(item => badgeBelow\(this\._badge\(item\), false\)\);/); // round 12: one column
     expect(sheet).toMatch(/<span class="name \$\{below \? 'below' : ''\}">/);
     expect(block(sheet, '      li .name.below .badge')).toMatch(/white-space: normal;/);
     expect(block(sheet, '      li .link')).toMatch(/flex: none;/);
@@ -42,7 +41,7 @@ describe('round 11: screens', () => {
   // M1: Wednesday 1:30 AM, two chore days back, read "Tuesday at 1:30 AM".
   it('names the calendar day for an early-hours check-off two or more days back', () => {
     expect(whenText('2026-10-14T01:30:00-05:00', '2026-10-15', '12h')).toBe('Wednesday at 1:30 AM');
-    expect(whenText('2026-10-06T01:30:00-05:00', '2026-10-15', '12h')).toBe('Oct 6 at 1:30 AM');
+    expect(whenText('2026-10-06T01:30:00-05:00', '2026-10-15', '12h')).toBe('October 6 at 1:30 AM');
     expect(whenText('2026-10-15T01:30:00-05:00', '2026-10-15', '12h')).toBe('Last night at 1:30 AM');
   });
 
@@ -73,7 +72,5 @@ describe('round 11: screens', () => {
     expect(block(inbox, '      :host([short]) .actions')).toMatch(/position: static;/);
     expect(block(inbox, '      :host([short]) .head-done')).toMatch(/display: inline-flex;/);
     expect(inbox).toMatch(/@property\(\{ type: Boolean, reflect: true \}\) short = false;/);
-    expect(src('modules/chores/pv-chores-module.ts')).toMatch(/<pv-chores-inbox \.layout=\$\{this\.layout\} \?short=\$\{this\.short\}/);
-    expect(src('shell/planavista-card.ts')).toMatch(/class="pv-module"\n\s+layout=\$\{this\._layout\.layout\}\n\s+\?short=\$\{this\._layout\.short\}/);
   });
 });
