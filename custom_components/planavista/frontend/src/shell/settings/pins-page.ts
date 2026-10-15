@@ -12,7 +12,7 @@ import type { PlanaVistaData } from '../../types';
 import type { Session } from '../../core/session';
 import { mayChangeKiosk } from '../../core/kiosk';
 import {
-  MOTION_DOMAINS, SCREEN_DOMAINS, type ScreenEntities, nightText, nightWindow,
+  SCREEN_DOMAINS, type ScreenEntities, motionCandidate, nightText, nightWindow,
 } from '../../core/screensaver';
 import { screensaver } from '../screensaver-controller';
 import '../../core/pv-time-field';
@@ -314,8 +314,8 @@ export class PvSettingsPins extends LitElement {
   }
 
   private _screenRow(screen: ScreenEntities) {
-    const options = (domains: readonly string[]) => Object.values(this.hass?.states ?? {})
-      .filter(s => domains.includes(s.entity_id.split('.', 1)[0]))
+    const options = (fits: (s: { entity_id: string; attributes: Record<string, unknown> }) => boolean) => Object.values(this.hass?.states ?? {})
+      .filter(fits)
       .sort((a, b) => String(a.attributes.friendly_name ?? a.entity_id).localeCompare(String(b.attributes.friendly_name ?? b.entity_id)));
     const pick = (field: 'screen' | 'motion', value: string) =>
       void this._run(() => this.api.saveSecurity({ screensaver_screen: { user: screen.user_id, [field]: value || null } }));
@@ -327,7 +327,7 @@ export class PvSettingsPins extends LitElement {
           <select id=${`screen-${screen.user_id}`} class="pv-select" ?disabled=${this._busy}
             @change=${(e: Event) => pick('screen', (e.target as HTMLSelectElement).value)}>
             <option value="" ?selected=${!screen.screen}>None</option>
-            ${options(SCREEN_DOMAINS).map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === screen.screen}>${s.attributes.friendly_name ?? s.entity_id}</option>`)}
+            ${options(s => (SCREEN_DOMAINS as readonly string[]).includes(s.entity_id.split('.', 1)[0])).map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === screen.screen}>${s.attributes.friendly_name ?? s.entity_id}</option>`)}
           </select>
         </div>
         <p class="hint">A light or number is dimmed while the screensaver shows; at night the screen is turned off or all the way down, and it comes back on a touch.</p>
@@ -336,7 +336,7 @@ export class PvSettingsPins extends LitElement {
           <select id=${`motion-${screen.user_id}`} class="pv-select" ?disabled=${this._busy}
             @change=${(e: Event) => pick('motion', (e.target as HTMLSelectElement).value)}>
             <option value="" ?selected=${!screen.motion}>None</option>
-            ${options(MOTION_DOMAINS).map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === screen.motion}>${s.attributes.friendly_name ?? s.entity_id}</option>`)}
+            ${options(s => motionCandidate(s.entity_id, s.attributes)).map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === screen.motion}>${s.attributes.friendly_name ?? s.entity_id}</option>`)}
           </select>
         </div>
         <p class="hint">Someone in front of the screen keeps it awake and wakes it. Devices signed in with this account share these.</p>

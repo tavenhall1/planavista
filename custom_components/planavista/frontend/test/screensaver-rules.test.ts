@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_NIGHT, LIGHTNING_GAP_MS, infoCorner, isNight, motionReading, nextLightning, nightText, nightWindow,
+  DEFAULT_NIGHT, LIGHTNING_GAP_MS, infoCorner, isNight, motionCandidate, motionReading, nextLightning, nightText, nightWindow,
   screenAction, screenRestore, screensaverHere, showsAt, weatherScene,
 } from '../src/core/screensaver';
 import type { HouseholdView, Member } from '../src/core/household';
@@ -40,6 +40,15 @@ describe('the screensaver: where and when (milestone 11)', () => {
     // Motion went off after the last touch: the wait starts then.
     expect(showsAt(1000, { on: false, since: 4000 }, 2)).toBe(4000 + 2 * 60_000);
     expect(showsAt(9000, { on: false, since: 4000 }, 2)).toBe(9000 + 2 * 60_000);
+  });
+
+  it("offers motion, occupancy, and presence sensors for Motion, not PlanaVista's own", () => {
+    expect(motionCandidate('binary_sensor.kitchen_motion', { device_class: 'motion' })).toBe(true);
+    expect(motionCandidate('binary_sensor.hall', { device_class: 'occupancy' })).toBe(true);
+    expect(motionCandidate('binary_sensor.planar_presence', { device_class: 'presence' })).toBe(true);
+    expect(motionCandidate('input_boolean.someone_here', {})).toBe(true);
+    expect(motionCandidate('binary_sensor.casey_chores_done', {})).toBe(false);
+    expect(motionCandidate('binary_sensor.front_door', { device_class: 'door' })).toBe(false);
   });
 
   it('reads a motion entity, and treats an unavailable one as none', () => {

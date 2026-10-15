@@ -19,6 +19,14 @@ export interface ScreensaverSettings {
 export const AFTER_CHOICES = [2, 5, 10, 15, 30] as const;
 export const SCREEN_DOMAINS = ['light', 'switch', 'input_boolean', 'number', 'input_number'] as const;
 export const MOTION_DOMAINS = ['binary_sensor', 'input_boolean'] as const;
+const MOTION_CLASSES = new Set(['motion', 'occupancy', 'presence', 'moving']);
+
+/** Whether an entity can be a screen's Motion: a motion, occupancy, or presence sensor, or a helper toggle. */
+export function motionCandidate(entityId: string, attributes: Record<string, unknown>): boolean {
+  const domain = entityId.split('.', 1)[0];
+  if (domain === 'input_boolean') return true;
+  return domain === 'binary_sensor' && MOTION_CLASSES.has(String(attributes.device_class ?? ''));
+}
 /** With no Sleep times anywhere and none set, night runs 10:00 PM to 6:30 AM (spec D3). */
 export const DEFAULT_NIGHT = { from: '22:00', to: '06:30' };
 /** How bright a light or number is kept while the day's screensaver shows (spec 3.2). */
