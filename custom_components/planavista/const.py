@@ -3,7 +3,7 @@ from typing import Final
 
 DOMAIN: Final = "planavista"
 NAME: Final = "PlanaVista"
-VERSION: Final = "0.11.2"
+VERSION: Final = "0.12.0"
 
 # Event fetching range
 EVENT_RANGE_PAST_DAYS: Final = 30
