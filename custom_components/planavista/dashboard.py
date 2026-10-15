@@ -36,7 +36,7 @@ DEFAULT_LAYOUT: dict[str, Any] = {
     "views": [{"title": "PlanaVista", "path": "home", "type": "panel", "cards": [{"type": "custom:planavista-card"}]}],
 }
 DATA_DASHBOARD = "planavista_dashboard"
-# Home Assistant 2026.3 to 2026.8 hide a panel from the sidebar by leaving out its title.
+# Home Assistant versions without show_in_sidebar hide a panel from the sidebar by leaving out its title.
 _SIDEBAR_FLAG = "show_in_sidebar" in inspect.signature(frontend.async_register_built_in_panel).parameters
 
 
