@@ -53,6 +53,8 @@ export class PvChoresInbox extends LitElement {
   private readonly _layer = new SheetLayer(this);
   private readonly _pressGuard = new PressGuard(this);
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** The card is under 500 px tall (the card's LayoutController). */
+  @property({ type: Boolean, reflect: true }) short = false;
   @property({ attribute: false }) groups!: InboxGroups;
   @property({ attribute: false }) hass?: HomeAssistant;
   @property({ attribute: false }) colorOf: (member: Member) => string = m => m.color;
@@ -179,17 +181,19 @@ export class PvChoresInbox extends LitElement {
         display: none;
       }
 
-      /* A phone held sideways: pinned, Done and the word covered most rows (round 9). */
-      @media (max-height: 500px) {
-        .actions {
-          position: static;
-        }
-        .head-done {
-          display: inline-flex;
-        }
-        .actions .done {
-          display: none;
-        }
+      /*
+       * A short card (a phone held sideways, a short card in a sections view): pinned, Done and the
+       * word covered most rows (round 9), so Done moves to the head (round 10). The card's own height
+       * decides, not the window's (round 11).
+       */
+      :host([short]) .actions {
+        position: static;
+      }
+      :host([short]) .head-done {
+        display: inline-flex;
+      }
+      :host([short]) .actions .done {
+        display: none;
       }
 
       /* Rows that came in after it opened: shown on the parent's word (round 7). */
@@ -548,6 +552,8 @@ export class PvChoresInbox extends LitElement {
       this._note = '';
       // Opened on the last row, the reasons fell under the pinned Done (round 9): bring them up.
       if (this._sendingBack) {
+        // The reasons scroll into view under the finger: the burst's next tap presses none of them (round 11).
+        guardPageTaps();
         void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.reasons')?.scrollIntoView({ block: 'nearest', behavior: motionOf(this) === 'reduced' ? 'auto' : 'smooth' }));
       }
       return;

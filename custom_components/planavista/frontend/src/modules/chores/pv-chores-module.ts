@@ -100,6 +100,8 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @property({ attribute: false }) mode: Mode = 'light';
   @property({ attribute: false }) view: string | undefined;
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
+  /** The card is under 500 px tall (round 11: To approve's Done goes to its head). */
+  @property({ type: Boolean, reflect: true }) short = false;
   @property({ attribute: false }) household: HouseholdView | null = null;
   @property({ attribute: false }) session: Session | null = null;
   @property({ attribute: false }) services: Record<string, ModuleService> = {};
@@ -206,7 +208,11 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   }
 
   private async _openInbox(): Promise<void> {
-    if (await this.asParent("Who's approving?")) this._sheet = { kind: 'inbox' };
+    if (await this.asParent("Who's approving?")) {
+      this._sheet = { kind: 'inbox' };
+      // A double tap on the bar's button would close it again at once (round 11).
+      guardPageTaps();
+    }
   }
 
   private async _openQuickAdd(): Promise<void> {
@@ -1272,7 +1278,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       if (!board) return nothing;
       const groups = inboxGroups(board.requests, inOrder(this.household?.members ?? []), board.today, this.display?.time_format ?? '12h', board.settings?.day_starts);
       return html`
-        <pv-chores-inbox .layout=${this.layout} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
+        <pv-chores-inbox .layout=${this.layout} ?short=${this.short} .groups=${groups} .hass=${this.hass} .colorOf=${this._colorOf} .busy=${this._reviewing}
           @pv-review=${(e: CustomEvent<ReviewDetail>) => void this._review(e.detail)}
           @pv-approve-all-ask=${(e: CustomEvent<ApproveAllAsk>) => { this._approveAsk = e.detail; }}
           @pv-sheet-close=${() => { if (this._sheet === sheet) this._sheet = null; }}></pv-chores-inbox>

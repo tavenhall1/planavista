@@ -1129,6 +1129,7 @@ export class PlanaVistaCard extends LitElement implements ServiceHost {
       <${tag}
         class="pv-module"
         layout=${this._layout.layout}
+        ?short=${this._layout.short}
         .hass=${this.hass}
         .cardConfig=${this._config}
         .data=${data}

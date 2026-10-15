@@ -144,10 +144,10 @@ describe('round 10: screens', () => {
   it('closes To approve from the bar, and puts Done in the head on a short screen', () => {
     const inbox = src('modules/chores/pv-chores-inbox.ts');
     expect(inbox).toMatch(/<button class="pv-btn pv-btn-secondary head-done" type="button"/);
-    expect(inbox).toMatch(/@media \(max-height: 500px\) \{\n\s+\.actions \{\n\s+position: static;\n\s+\}\n\s+\.head-done \{\n\s+display: inline-flex;\n\s+\}\n\s+\.actions \.done \{\n\s+display: none;/);
+    expect(inbox).toMatch(/:host\(\[short\]\) \.actions \{\n\s+position: static;\n\s+\}\n\s+:host\(\[short\]\) \.head-done \{\n\s+display: inline-flex;\n\s+\}\n\s+:host\(\[short\]\) \.actions \.done \{\n\s+display: none;/);
     // The base rule comes first, or it hides the head's Done on a short screen too.
     expect(inbox.search(/\n {6}\.head-done \{\n {8}display: none;/)).toBeGreaterThan(-1);
-    expect(inbox.search(/\n {6}\.head-done \{\n {8}display: none;/)).toBeLessThan(inbox.indexOf('@media (max-height: 500px)'));
+    expect(inbox.search(/\n {6}\.head-done \{\n {8}display: none;/)).toBeLessThan(inbox.indexOf(':host([short]) .actions'));
     const module = src('modules/chores/pv-chores-module.ts');
     expect(module).toMatch(/if \(this\._sheet\?\.kind === 'inbox'\) void this\.renderRoot\.querySelector<HTMLElement & \{ close\(\): Promise<void> \}>\('pv-chores-inbox'\)\?\.close\(\);/);
   });

@@ -7,7 +7,7 @@ import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
-import { StatusBadge, itemBadge, pastBadge } from '../../core/status-map';
+import { StatusBadge, badgeBelow, itemBadge, pastBadge } from '../../core/status-map';
 import { SheetMotion } from '../../shell/sheet-motion';
 import { choresStyles } from './chores-styles';
 import type { DayView, ItemView, PastItem } from './chores-types';
@@ -92,6 +92,24 @@ export class PvChoresDaySheet extends LitElement {
         min-width: 0;
       }
 
+      /* A long badge (a parent's note) goes under the name and wraps, as on the board (round 11). */
+      li .name.below {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
+        padding: 6px 0;
+      }
+
+      li .name.below .badge {
+        white-space: normal;
+        text-align: left;
+      }
+
+      li .link {
+        flex: none;
+      }
+
       li .pic {
         width: 28px;
         text-align: center;
@@ -166,11 +184,13 @@ export class PvChoresDaySheet extends LitElement {
           <ul>
             ${items.map(item => {
               const badge = this._badge(item);
+              const below = badgeBelow(badge, false);
+              const shown = badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing;
               return html`
                 <li>
                   <span class="pic" aria-hidden="true">${chorePicture(item.icon, item.name)}</span>
-                  <span class="name">${item.name}</span>
-                  ${badge ? html`<span class="badge ${badge.tone}">${badge.glyph ? `${badge.glyph} ` : ''}${badge.words}</span>` : nothing}
+                  <span class="name ${below ? 'below' : ''}">${item.name}${below ? shown : nothing}</span>
+                  ${below ? nothing : shown}
                   ${isPast(item) && item.status === 'missed' && this.canExcuse && !this.excusing.has(item.key) ? html`
                     <button class="link" type="button" @click=${() => this._excuse(item)}>Excuse it</button>
                   ` : nothing}

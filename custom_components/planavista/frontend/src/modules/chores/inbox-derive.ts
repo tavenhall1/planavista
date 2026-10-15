@@ -48,6 +48,13 @@ export function whenText(at: string, today: string, format: '12h' | '24h', daySt
   const ago = daysBetween(day, today);
   if (ago === 0) return `${early ? 'Tonight' : 'Today'} at ${time}`;
   if (ago === 1) return `${early ? 'Last night' : 'Yesterday'} at ${time}`;
+  if (early) {
+    // Further back, the calendar's own day (round 11: Wednesday 1:30 AM read "Tuesday at 1:30 AM").
+    const named = ago <= 7
+      ? date.toLocaleDateString('en-US', { weekday: 'long' })
+      : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${named} at ${time}`;
+  }
   const words = dayWords(day, today);
   return `${words[0].toUpperCase()}${words.slice(1)} at ${time}`;
 }

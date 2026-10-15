@@ -113,7 +113,7 @@ describe('round 9: screens', () => {
     expect(block(inbox, '      .head')).toMatch(/position: sticky;\n\s+top: 0;/);
     expect(inbox).toMatch(/<div class="head">\n\s+<div class="grab-zone"/);
     // M6: on a short screen Done ends the list instead of covering it.
-    expect(inbox).toMatch(/@media \(max-height: 500px\) \{\n\s+\.actions \{\n\s+position: static;/);
+    expect(inbox).toMatch(/:host\(\[short\]\) \.actions \{\n\s+position: static;/);
   });
 
   // B3: "Excused X. Y's streak holds." while the day still had another miss.

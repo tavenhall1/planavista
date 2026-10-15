@@ -250,7 +250,7 @@ export class PvChoreOptions extends LitElement {
           <h2 id="options-title" tabindex="-1">${model.title}</h2>
           <div class="meta-line">${model.meta}</div>
           ${model.added ? html`<div class="added">${model.added}</div>` : nothing}
-          ${model.note ? html`<div class="note"><span class="badge ${model.note.startsWith('Sent back') ? 'bad' : 'act'}">${model.note}</span></div>` : nothing}
+          ${model.note ? html`<div class="note"><span class="badge ${model.noteTone ?? 'act'}">${model.note}</span></div>` : nothing}
         </div>
         ${model.member.filter(option => !option.destructive).map(option => this._option(option))}
         ${model.parent.some(option => !option.destructive)

@@ -12,7 +12,7 @@ export interface PinGate {
 
 /** The verbs the card's questions use, as the line under the keypad says them. */
 const VERBS: Record<string, string> = {
-  adding: 'add', approving: 'approve', asking: 'ask', changing: 'change', checking: 'check', declining: 'decline', deleting: 'delete', doing: 'do',
+  adding: 'add', approving: 'approve', asking: 'ask', changing: 'change', checking: 'check', counting: 'count', declining: 'decline', deleting: 'delete', doing: 'do',
   excusing: 'excuse', finishing: 'finish', getting: 'get', giving: 'give', handing: 'hand', opening: 'open', planning: 'plan',
   sending: 'send', setting: 'set', starting: 'start', unchecking: 'uncheck',
 };

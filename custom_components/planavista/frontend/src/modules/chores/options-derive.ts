@@ -57,6 +57,8 @@ export interface OptionsModel {
   added: string | null;
   /** "Sent back: edges", or a request still waiting. */
   note: string | null;
+  /** The note's color: bad for sent back or overdue, act for a request waiting (round 11). */
+  noteTone?: 'bad' | 'act';
   member: OptionModel[];
   parent: OptionModel[];
 }
@@ -237,6 +239,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       // Overdue from an earlier day (round 10: the sheet didn't say so).
       overdue && open ? `Overdue since ${shortDay(item.overdue_since!, today)}` : null,
     ].filter(Boolean).join(' · ') || null,
+    noteTone: status === 'sent_back' || (overdue && open) ? 'bad' : 'act',
     member,
     parent,
   };
