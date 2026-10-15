@@ -188,7 +188,7 @@ class ChoresTodoList(ChoresEntity, TodoListEntity):
                     )
                 )
             else:
-                await self._run(lambda e, _now, c=chore_id: e.delete_activity(c))
+                await self._run(lambda e, now, c=chore_id: e.delete_activity(c, now))
 
 
 async def async_setup_entry(

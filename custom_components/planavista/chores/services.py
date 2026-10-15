@@ -257,7 +257,7 @@ async def _remove_chore(call: ServiceCall) -> ServiceResponse:
     runtime, account = await _caller(call)
     parent_by(account)
     chore = _chore(runtime.engine, call.data["chore"])
-    await _run(runtime, lambda e, _now: e.delete_activity(chore))
+    await _run(runtime, lambda e, now: e.delete_activity(chore, now))
     return {"result": "removed"}
 
 

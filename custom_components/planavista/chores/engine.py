@@ -45,6 +45,8 @@ AUTO = "auto"
 RETENTION = timedelta(days=90)
 REPEAT_WINDOW = timedelta(seconds=60)
 CREDITED = ("done", "pending")
+# Check-offs that count for nothing: unchecked, or withdrawn when their chore was deleted (round 7).
+VOID = ("undone", "withdrawn")
 OPEN = ("open", "sent_back")
 SECTIONS = ("overdue", "today", "week")
 HISTORY_WEEKS = 6
@@ -299,7 +301,7 @@ class ChoresEngine:
         latest: dict[str, dict[str, Any]] = {}
         by_day: dict[date, list[dict[str, Any]]] = defaultdict(list)
         for completion in self.log["completions"]:
-            if completion.get("state") != "undone":
+            if completion.get("state") not in VOID:
                 latest[completion["occurrence"]] = completion
                 if completion.get("state") in CREDITED:
                     by_day[self._day_of(completion["at"])].append(completion)
@@ -1221,7 +1223,7 @@ class ChoresEngine:
             if (
                 completion["chore"] == chore
                 and completion["member"] == member
-                and completion.get("state") != "undone"
+                and completion.get("state") not in VOID
                 and timedelta(0) <= now - _at(completion["at"]) < REPEAT_WINDOW
             ):
                 return completion
@@ -1310,8 +1312,16 @@ class ChoresEngine:
                 self._credit(completion["done_by"], -float(completion["credit_minutes"]))
                 out.events.append(ChoreEvent("sent_back", completion["member"], self._event_data(completion, "sent_back")))
                 out.result = "sent_back"
+                # Its check-off may have finished a Once chore (or a Repeats chore's last time): it's open again,
+                # as an Undo does (round 7: it left every list for good).
+                activity = self.activity(completion["chore"])
+                if activity is not None and activity.get("finished_at"):
+                    activity["finished_at"] = None
+                    out.changed.add("plan")
             out.data = {"occurrence": completion["occurrence"]}
             return out
+        if completion is not None and completion.get("state") in VOID:
+            raise ChoreError("request_withdrawn")  # unchecked meanwhile, or its chore deleted (round 7)
         request = next((r for r in self.log["requests"] if r["id"] == request_id), None)
         if request is not None and request.get("state") == "lapsed":
             raise ChoreError("request_closed")
@@ -1628,10 +1638,20 @@ class ChoresEngine:
             out.merge(self.save_settings(now, settings))
         return out
 
-    def delete_activity(self, chore_id: str) -> Outcome:
-        """Delete a chore: it leaves the board at once; past weeks and earned stars stay."""
+    def delete_activity(self, chore_id: str, now: datetime | None = None) -> Outcome:
+        """Delete a chore: it leaves the board at once; past weeks and earned stars stay.
+
+        Its check-offs still waiting for a parent are withdrawn (round 7): they earned
+        nothing yet, and they stayed in To approve under the chore's id, where approving
+        them (or the 3 AM approval) gave their stars.
+        """
         if self.activity(chore_id) is None:
             raise ChoreError("unknown_chore")
+        for completion in self.log["completions"]:
+            if completion["chore"] == chore_id and completion.get("state") == "pending":
+                completion["state"] = "withdrawn"
+                completion["withdrawn"] = {"at": self._stamp(now) if now else None, "reason": "deleted"}
+                self._credit(completion["done_by"], -float(completion["credit_minutes"]))
         self.plan["activities"] = [a for a in self.plan["activities"] if a["id"] != chore_id]
         self.log["carried"] = [c for c in self.log["carried"] if c["chore"] != chore_id]
         return Outcome("deleted", {"chore": chore_id}, changed={"plan", "log"})

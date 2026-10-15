@@ -415,7 +415,7 @@ async def ws_activity_delete(hass: HomeAssistant, connection: websocket_api.Acti
     runtime = _runtime(hass, connection, msg)
     if runtime is None or parent_for(hass, connection, msg, needs_file=False) is None:
         return
-    out = await _apply(connection, msg, runtime, lambda e, _now: e.delete_activity(msg["activity_id"]))
+    out = await _apply(connection, msg, runtime, lambda e, now: e.delete_activity(msg["activity_id"], now))
     if out is not None:
         connection.send_result(msg["id"])
 

@@ -10,7 +10,7 @@ from custom_components.planavista.chores import engine as engine_module
 from custom_components.planavista.chores.engine import ChoresEngine, with_away, without_away
 from custom_components.planavista.chores.model import ChoreError
 
-from .chores_sample import MEMBERS, SCENE, TZ, at, keys, once, plan, sample_engine
+from .chores_sample import MEMBERS, SCENE, TZ, at, keys, once, plan, repeats, sample_engine
 
 TRASH = "take_out_the_trash|casey|week:2026-10-12|0"
 FISH = "feed_the_fish|dana|day:2026-10-13|0"
@@ -144,6 +144,56 @@ def test_sending_back_reopens_it_with_the_note() -> None:
     assert engine.description(item, SCENE.date()) == "Sent back: edges"
     assert engine.chore_minutes("dana") == 0
     assert engine.complete(SCENE + timedelta(minutes=5), key=FISH, by="dana", source="tablet").result == "pending"
+
+
+@pytest.mark.parametrize("chore", [
+    once("sort_the_socks", "Sort the socks", ["dana"]),
+    once("wash_the_car", "Wash the car", ["dana"], sessions=2),
+    repeats("water_the_fern", "Water the fern", ["dana"], "FREQ=DAILY;COUNT=1", "2026-10-13", "day", 10),
+])
+def test_sending_back_a_once_or_last_repeat_reopens_it(chore: dict) -> None:
+    """Round 7 (r7a A1): a waiting check-off finished a Once chore (or a Repeats chore's last time),
+    and sending it back never reopened it, so it left every list and could never be redone."""
+    engine = sample_engine(activities=[chore])
+    mine = [k for k in keys(engine, "dana", SCENE) if k.startswith(chore["id"])]
+    for key in mine:
+        assert engine.complete(SCENE, key=key, by="dana", source="tablet").result == "pending"
+    last = mine[-1]
+    request = next(r for r in engine.open_requests() if r["occurrence"] == last)
+    assert engine.review(SCENE, request_id=request["id"], allow=False, by="blair", note="Not finished").result == "sent_back"
+    assert engine.activity(chore["id"])["finished_at"] is None
+    assert _item(engine, last).status == "sent_back"
+    assert engine.complete(SCENE + timedelta(minutes=5), key=last, by="dana", source="tablet").result == "pending"
+
+
+def test_deleting_a_chore_withdraws_its_waiting_check_offs() -> None:
+    """Round 7 (r7a A2): it stayed in To approve under its id, and approving it, or the 3 AM
+    approval, still gave its stars."""
+    engine = sample_engine(activities=[once("dust_the_shelf", "Dust the shelf", ["dana"])], settings={"auto_approve": "day_end"})
+    engine.complete(SCENE, key="dust_the_shelf|dana|once|0", by="dana", source="tablet")
+    [request] = engine.open_requests()
+    engine.delete_activity("dust_the_shelf", now=SCENE)
+    assert engine.open_requests() == []
+    with pytest.raises(ChoreError) as err:
+        engine.review(SCENE, request_id=request["id"], allow=True, by="blair")
+    assert err.value.code == "request_withdrawn"
+    engine.catch_up(at(10, 14, 9))
+    assert engine.balance("dana") == 0
+    assert engine.chore_minutes("dana") == 0
+    # Added again under the same name (the same id), it starts fresh, not "waiting".
+    engine.save_activity(at(10, 14, 9), {"name": "Dust the shelf", "schedule": "once", "assignees": ["dana"], "once": {}}, by="alex", source="tablet")
+    assert _item(engine, "dust_the_shelf|dana|once|0", at(10, 14, 9)).status == "open"
+
+
+def test_a_check_off_unchecked_while_a_parent_answers_says_so() -> None:
+    """Round 7 (r7a A4): a check-off the child unchecked during the PIN was "already answered"."""
+    engine = sample_engine()
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    [request] = engine.open_requests()
+    engine.undo(SCENE, key=FISH, by="dana", source="tablet")
+    with pytest.raises(ChoreError) as err:
+        engine.review(SCENE, request_id=request["id"], allow=True, by="blair")
+    assert err.value.code == "request_withdrawn"
 
 
 def test_undo_reverses_only_what_that_check_off_earned() -> None:
