@@ -8,17 +8,21 @@ import type { PlanaVistaData } from '../../../types';
 import { PERSON_CHANGE } from '../../../core/settings-registry';
 import { sleepText } from './person-derive';
 import { choresSettingsStyles } from './settings-styles';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-person-sleep: bedtimes and sleep (spec 14.2, 7.2). My day starts after
  * sleep and ends at bedtime; an imported plan fills these in.
  */
 export class PvPersonSleep extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) draft!: PersonDraft;
   /** For the household's 12- or 24-hour times. */
   @property({ attribute: false }) data?: PlanaVistaData;
 
   static styles = [
+    helpStyles,
     baseStyles,
     formStyles,
     choresSettingsStyles,
@@ -62,7 +66,8 @@ export class PvPersonSleep extends LitElement {
     if (!d) return nothing;
     const sleep = d.sleep_hours;
     return html`
-      <span class="legend">Sleep</span>
+      <span class="legend">${helpLabel(this._help, 'person_sleep', 'Sleep')}</span>
+      ${helpBox(this._help, 'person_sleep')}
       <div class="group">
         <label class="row">
           <span class="row-text">Bedtime, weeknights</span>
@@ -85,7 +90,6 @@ export class PvPersonSleep extends LitElement {
           </span>
         </div>
       </div>
-      <p class="hint">My day starts after sleep and ends at bedtime.</p>
     `;
   }
 }

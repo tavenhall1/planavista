@@ -15,6 +15,7 @@ import type { PlanaVistaData } from '../../types';
 import { AppearancePageController } from './appearance-page-controller';
 import '../../core/color-swatch-picker';
 import '../pv-notice-sheet';
+import { HelpId, HelpState, helpBox, helpLabel, helpStyles } from '../../core/help';
 
 /** The colors a household can set, with the token that shows each one. */
 const ROWS: Array<{ key: ColorKey; label: string; token: string }> = [
@@ -51,7 +52,12 @@ const CUSTOM_BORDER = '#4D8FD9';
  * versions share, a one-tap fix for any color that would be hard to read,
  * and Reset (spec 12.4). Pushed from Appearance; it applies as you tap.
  */
+/** Each shape choice's explainer (0.12.0). */
+const SHAPE_HELP: Record<string, HelpId> = { corner_style: 'custom_corners', shadow_depth: 'custom_shadows', event_style: 'custom_events' };
+
 export class PvSettingsCustomize extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -67,6 +73,7 @@ export class PvSettingsCustomize extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    helpStyles,
     segmentedStyles,
     buttonStyles,
     formStyles,
@@ -270,7 +277,7 @@ export class PvSettingsCustomize extends LitElement {
     const hasColors = Object.keys(current.colors_light).length + Object.keys(current.colors_dark).length > 0;
     return html`
       <section>
-        <h2 class="section-heading">Colors</h2>
+        <h2 class="section-heading">${helpLabel(this._help, 'custom_colors', 'Colors')}</h2>${helpBox(this._help, 'custom_colors')}
         <div class="issues" aria-live="polite">${issues.map(issue => html`
           <p class="issue">
             <span>⚠ ${issue.message}</span>
@@ -279,7 +286,6 @@ export class PvSettingsCustomize extends LitElement {
           </p>
         `)}</div>
         ${this._renderColors(look)}
-        <p class="help">Dark colors follow your light ones until you change them. Matched means PlanaVista picks a dark color that goes with your light one; choose Matched again to go back.</p>
       </section>
       <section>
         <h2 class="section-heading">Shape, for both versions</h2>
@@ -389,7 +395,8 @@ export class PvSettingsCustomize extends LitElement {
           const chosen = shape[group.key] ?? (group.key === 'event_style' ? 'stripes' : '');
           return html`
             <div>
-              <span class="shape-label">${group.label}</span>
+              <span class="shape-label">${helpLabel(this._help, SHAPE_HELP[group.key], group.label)}</span>
+              ${helpBox(this._help, SHAPE_HELP[group.key])}
               <div class="pv-seg" role="group" aria-label=${group.label}>
                 ${group.options.map(([value, label]) => html`
                   <button type="button"
@@ -401,7 +408,8 @@ export class PvSettingsCustomize extends LitElement {
           `;
         })}
         <div>
-          <span class="shape-label">Avatar border</span>
+          <span class="shape-label">${helpLabel(this._help, 'custom_avatar_border', 'Avatar border')}</span>
+          ${helpBox(this._help, 'custom_avatar_border')}
           <div class="pv-seg" role="group" aria-label="Avatar border">
             <button type="button"
               aria-pressed=${border === 'primary' ? 'true' : 'false'}

@@ -15,6 +15,7 @@ import type { ChoresService } from '../chores-service';
 import { choresSettingsStyles } from './settings-styles';
 import { fileTooBig } from './import-derive';
 import '../../../shell/pv-notice-sheet';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 type Mode = 'import' | 'restore';
 const PASTED = 'Pasted text';
@@ -27,6 +28,8 @@ const PASTED = 'Pasted text';
  * needs a look (spec 15.3), it says so first and offers Start over too.
  */
 export class PvImportExportPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -45,6 +48,7 @@ export class PvImportExportPage extends LitElement {
   private _mode: Mode = 'import';
 
   static styles = [
+    helpStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -155,14 +159,14 @@ export class PvImportExportPage extends LitElement {
           @pv-sheet-action=${this._onStartOver}></pv-notice-sheet>
       ` : nothing}
       <input type="file" accept=".json,application/json,text/plain" @change=${this._onFile} />
-      <h2 class="section-label">Import a plan</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'data_import', 'Import a plan')}</h2>${helpBox(this._help, 'data_import')}
       <div class="group">
         <div class="row"><span class="row-sub">A Household Hours plan (version 1) brings its people, bedtimes, and activities. You see where everything goes before anything is saved.</span></div>
         ${this._renderActions('import')}
       </div>
       ${this._problem?.mode === 'import' ? this._renderProblem() : nothing}
 
-      <h2 class="section-label">Export</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'data_export', 'Export')}</h2>${helpBox(this._help, 'data_export')}
       <div class="group">
         <div class="row"><span class="row-sub">Saves people, chores, rewards, and rules as a PlanaVista file that other tools can read. PINs, stars, and history aren't in it; Home Assistant backups keep those.</span></div>
         <div class="actions">
@@ -173,7 +177,7 @@ export class PvImportExportPage extends LitElement {
         </div>
       </div>
 
-      <h2 class="section-label">Restore</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'data_restore', 'Restore')}</h2>${helpBox(this._help, 'data_restore')}
       <div class="group">
         <div class="row"><span class="row-sub">Bring a household back from a PlanaVista file, such as after rebuilding Home Assistant. It shows the same review first.</span></div>
         ${this._renderActions('restore')}

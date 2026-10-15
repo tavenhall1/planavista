@@ -30,6 +30,7 @@ import { Look, Mode, ThemePair, Tokens, personColors, themeTokens } from '../../
 import type { PlanaVistaData } from '../../types';
 import { AppearancePageController } from './appearance-page-controller';
 import './pv-settings-customize';
+import { HelpId, HelpState, helpBox, helpLabel, helpStyles } from '../../core/help';
 
 /** Three people's colors for the little pictures of the card. */
 const SAMPLE_PEOPLE = ['#4D8FD9', '#F3722C', '#43AA8B'];
@@ -67,6 +68,8 @@ function picture(tokens: Tokens, mode: Mode) {
  * (spec 14.7).
  */
 export class PvAppearanceEditor extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -78,6 +81,7 @@ export class PvAppearanceEditor extends LitElement {
   private _page = new AppearancePageController(this);
 
   static styles = [
+    helpStyles,
     choiceStyles,
     segmentedStyles,
     buttonStyles,
@@ -381,18 +385,18 @@ export class PvAppearanceEditor extends LitElement {
     const look = lookOf(current);
     return html`
       <section>
+        ${this._heading('Light or dark', 'mode-heading', 'appearance_mode')}
         ${this._renderModes(look, current.appearance)}
       </section>
       ${current.appearance === 'automatic' ? html`
         <section>
-          ${this._heading('When to switch', 'switch-heading')}
+          ${this._heading('When to switch', 'switch-heading', 'appearance_switch')}
           ${this._renderSwitch(current.appearance_switch, current.light_from, current.dark_from)}
         </section>
       ` : nothing}
       <section>
-        ${this._heading('Theme', 'theme-heading')}
+        ${this._heading('Theme', 'theme-heading', 'appearance_theme')}
         ${this._renderThemes(look)}
-        <p class="help">Every theme has a light and a dark version. Automatic moves between them.</p>
       </section>
       ${this.mode === 'settings' ? html`
         <section>
@@ -405,16 +409,16 @@ export class PvAppearanceEditor extends LitElement {
           </button>
         </section>
         <section>
-          ${this._heading('Motion', 'motion-heading')}
+          ${this._heading('Motion', 'motion-heading', 'appearance_motion')}
           ${this._renderMotion(current.motion)}
-          <p class="help">Reduced swaps movement for quick fades. Follow the device uses this screen's own setting.</p>
         </section>
       ` : nothing}
     `;
   }
 
-  private _heading(text: string, id: string) {
-    return html`<h2 class="section-heading" id=${id}>${text}</h2>`;
+  /** A section's heading with its ?; the id names the radio group it heads (0.12.0). */
+  private _heading(text: string, id: string, help: HelpId) {
+    return html`<h2 class="section-heading">${helpLabel(this._help, help, text, id)}</h2>${helpBox(this._help, help)}`;
   }
 
   private _renderModes(look: Look, chosen: AppearanceMode) {

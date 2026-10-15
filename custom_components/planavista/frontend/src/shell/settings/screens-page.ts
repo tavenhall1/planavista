@@ -190,7 +190,7 @@ export class PvSettingsScreens extends SettingRowsPage {
         display: none;
       }
 
-      .try .label {
+      .try .choice-row .label {
         font-weight: 600;
         color: var(--pv-text-secondary, #5F6670);
       }
@@ -249,7 +249,7 @@ export class PvSettingsScreens extends SettingRowsPage {
       <section>
         <h2>Night</h2>
         <div class="saver-row">
-          ${helpLabel(this._help, 'night', 'Night', 'night-label')}
+          ${helpLabel(this._help, 'night', 'Hours', 'night-label')}
           ${saver.night ? html`
             <span class="times">
               <pv-time-field .format=${format} .value=${saver.night.from} aria-label="Night starts"

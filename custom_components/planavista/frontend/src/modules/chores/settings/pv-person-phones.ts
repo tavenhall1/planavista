@@ -14,6 +14,7 @@ import { memberEntities } from './entities';
 import { phoneChoices } from './person-derive';
 import { choresSettingsStyles } from './settings-styles';
 import type { PlanaVistaData } from '../../../types';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 const MAX_PHONES = 5;
 
@@ -23,6 +24,8 @@ const MAX_PHONES = 5;
  * buttons; then Use in automations, the person's entity ids.
  */
 export class PvPersonPhones extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -34,6 +37,7 @@ export class PvPersonPhones extends LitElement {
   @state() private _copied = false;
 
   static styles = [
+    helpStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -103,7 +107,8 @@ export class PvPersonPhones extends LitElement {
     const evening = board?.settings.evening_check ?? null;
     const timeFormat = this.data?.display?.time_format ?? '12h';
     return html`
-      <span class="legend">Phones</span>
+      <span class="legend">${helpLabel(this._help, 'person_phones', 'Phones')}</span>
+      ${helpBox(this._help, 'person_phones')}
       <div class="group">
         ${choices.length ? html`
           <div class="phones chips" role="group" aria-label="Phones">

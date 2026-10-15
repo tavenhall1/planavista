@@ -13,9 +13,12 @@ import type { Reward } from '../chores-types';
 import { pictureFor } from '../picture-words';
 import { rewardLine } from './reward-draft';
 import { choresSettingsStyles } from './settings-styles';
+import { HelpState, helpBox, helpButton, helpStyles } from '../../../core/help';
 
 /** pv-rewards-page: the rewards catalog (spec 14.5, 8.15), a list like Chores; each opens its editor. */
 export class PvRewardsPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -24,6 +27,7 @@ export class PvRewardsPage extends LitElement {
   @property({ type: Number }) revision = 0;
 
   static styles = [
+    helpStyles,
     baseStyles,
     buttonStyles,
     choresSettingsStyles,
@@ -78,7 +82,8 @@ export class PvRewardsPage extends LitElement {
           `)}
         </ul>
       ` : html`<p class="empty">No rewards yet. Add a few things worth saving stars for, like a movie night pick or 30 minutes of screen time.</p>`}
-      ${rewards.length ? html`<p class="hint">Kids see these in Rewards on the board and can pin one as what they're saving up for.</p>` : nothing}
+      ${rewards.length ? html`<p class="hint">Kids see these in Rewards on the board and can pin one as what they're saving up for. ${helpButton(this._help, 'rewards_list', 'rewards')}</p>
+        ${helpBox(this._help, 'rewards_list')}` : nothing}
     `;
   }
 

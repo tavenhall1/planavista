@@ -17,6 +17,7 @@ import { ReminderRow, namesText, notifyOf, phoneName, reminderRows, requestRows 
 import { eveningChoices } from './rules-derive';
 import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-reminders-page: reminders (spec 14.5, 9.9, 10.5): the evening check on
@@ -24,6 +25,8 @@ import '../../../core/pv-member-avatar';
  * Approval requests. They apply as the parent taps.
  */
 export class PvRemindersPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -35,6 +38,7 @@ export class PvRemindersPage extends LitElement {
   @state() private _evening: string | null | undefined = undefined;
 
   static styles = [
+    helpStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -69,7 +73,7 @@ export class PvRemindersPage extends LitElement {
     const reminders = reminderRows(members);
     const requests = requestRows(members);
     return html`
-      <h2 class="section-label">Evening check</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'reminders_evening', 'Evening check')}</h2>${helpBox(this._help, 'reminders_evening')}
       <div class="group">
         <div class="row toggle-row">
           <span class="row-text">Evening check on the screen</span>
@@ -88,7 +92,7 @@ export class PvRemindersPage extends LitElement {
         ? `At ${at}, the board says who still has chores, like "Casey has 2 chores left", and their column pulses once.`
         : 'Turn it on to have the board say who still has chores in the evening.'}</p>
 
-      <h2 class="section-label">Phone reminders</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'reminders_phones', 'Phone reminders')}</h2>${helpBox(this._help, 'reminders_phones')}
       ${reminders.rows.length ? html`
         <div class="group">${reminders.rows.map(row => this._phoneRow(row, at
           ? `At ${at}, only if chores are left`
@@ -101,7 +105,7 @@ export class PvRemindersPage extends LitElement {
         <p class="hint">Phones are set on each person's page, for people linked to a Home Assistant person.</p>
       ` : nothing}
 
-      <h2 class="section-label">Approval requests</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'reminders_requests', 'Approval requests')}</h2>${helpBox(this._help, 'reminders_requests')}
       ${requests.rows.length ? html`
         <div class="group">${requests.rows.map(row => this._phoneRow(row, 'Requests come with Looks good and Send back buttons', 'requests', true))}</div>
       ` : nothing}

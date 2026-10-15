@@ -28,6 +28,7 @@ import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
 import '../../../core/pv-recurrence-picker';
 import '../../../shell/pv-notice-sheet';
+import { HelpState, helpBox, helpButton, helpLabel, helpStyles } from '../../../core/help';
 
 type Notice = 'discard' | 'delete' | 'changed';
 
@@ -59,6 +60,8 @@ function step(minutes: number, up: boolean): number {
  * with it, so a version another screen saved is noticed.
  */
 export class PvChoreEditor extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -128,6 +131,7 @@ export class PvChoreEditor extends LitElement {
   }
 
   static styles = [
+    helpStyles,
     personChipStyles,
     segmentedStyles,
     baseStyles,
@@ -357,7 +361,8 @@ export class PvChoreEditor extends LitElement {
             @click=${() => this._change({ schedule })}>${schedule === 'plan' ? 'Plan' : schedule === 'once' ? 'Once' : 'Repeats'}</button>
         `)}
       </div>
-      <p class="hint">${SCHEDULE_LEADS[d.schedule]}</p>
+      <p class="hint">${SCHEDULE_LEADS[d.schedule]} ${helpButton(this._help, 'chore_schedule', 'Plan, Once, and Repeats')}</p>
+      ${helpBox(this._help, 'chore_schedule')}
       ${this._renderWho(members)}
       ${d.schedule === 'plan' ? this._renderPlan(board) : d.schedule === 'once' ? this._renderOnce(board) : this._renderRepeats(board)}
       ${this._renderBoard(board, members)}
@@ -399,7 +404,7 @@ export class PvChoreEditor extends LitElement {
     const d = this._draft;
     const shared = d.schedule === 'plan' && d.assignees.length > 1;
     return html`
-      <h2 class="section-label">Who</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_who', 'Who')}</h2>${helpBox(this._help, 'chore_who')}
       <div class="group">
         <div class="pv-person-chips who" role="group" aria-label="Who">
           ${members.map(member => {
@@ -461,7 +466,7 @@ export class PvChoreEditor extends LitElement {
     const members = inOrder(this.household?.members ?? []);
     const unit = d.per === 'day' ? 'day' : 'week';
     return html`
-      <h2 class="section-label">How much</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_how_much', 'How much')}</h2>${helpBox(this._help, 'chore_how_much')}
       <div class="group">
         <div class="row">
           <span class="row-text">Time</span>
@@ -480,7 +485,7 @@ export class PvChoreEditor extends LitElement {
         </div>
       </div>
       <p class="hint">${worthText(d, board.settings, members)}</p>
-      <h2 class="section-label">When</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_when', 'When')}</h2>${helpBox(this._help, 'chore_when')}
       <div class="group">
         <div class="row">
           <div class="stack">
@@ -518,7 +523,7 @@ export class PvChoreEditor extends LitElement {
     const members = inOrder(this.household?.members ?? []);
     const other = this._otherEstimate || !ESTIMATES.includes(d.estimate);
     return html`
-      <h2 class="section-label">How long</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_how_long', 'How long')}</h2>${helpBox(this._help, 'chore_how_long')}
       <div class="group">
         <div class="row">
           <div class="stack">
@@ -548,7 +553,7 @@ export class PvChoreEditor extends LitElement {
   private _renderOnce(board: Board) {
     const d = this._draft;
     return html`
-      <h2 class="section-label">When</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_once_when', 'When')}</h2>${helpBox(this._help, 'chore_once_when')}
       <div class="group">
         <div class="row">
           <div class="pv-seg stretch" role="group" aria-label="When">
@@ -587,11 +592,11 @@ export class PvChoreEditor extends LitElement {
     const d = this._draft;
     const freq = d.recurrence.freq;
     return html`
-      <h2 class="section-label">Repeats</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_repeats', 'Repeats')}</h2>${helpBox(this._help, 'chore_repeats')}
       <pv-recurrence-picker .value=${d.recurrence}
         @pv-recurrence-change=${(e: CustomEvent) => this._change({ recurrence: e.detail })}></pv-recurrence-picker>
       ${freq !== 'DAILY' ? html`
-        <h2 class="section-label">Each time</h2>
+        <h2 class="section-label">${helpLabel(this._help, 'chore_each_time', 'Each time')}</h2>${helpBox(this._help, 'chore_each_time')}
         <div class="pv-seg stretch" role="group" aria-label="Each time">
           <button type="button" aria-pressed=${d.window === 'day' ? 'true' : 'false'} @click=${() => this._change({ window: 'day' })}>On the day</button>
           <button type="button" aria-pressed=${d.window === 'period' ? 'true' : 'false'} @click=${() => this._change({ window: 'period' })}>
@@ -623,7 +628,7 @@ export class PvChoreEditor extends LitElement {
     const ok = d.needs_ok || d.needs_ok_always;
     const automatic = checkoffStars({ ...asActivity(d), stars: null }, board.settings.minutes_per_star);
     return html`
-      <h2 class="section-label">On the board</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_on_board', 'On the board')}</h2>${helpBox(this._help, 'chore_on_board')}
       <div class="group">
         ${d.schedule === 'plan'
           ? this._toggle(d.on_board, 'Show on the board', () => this._change({ on_board: !d.on_board }),
@@ -661,7 +666,7 @@ export class PvChoreEditor extends LitElement {
     const example = automationExample(activity.id, owner?.id);
     const todo = owner ? memberEntities(this.hass?.states, owner)[0].entity_id : null;
     return html`
-      <h2 class="section-label">Use in automations</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'chore_automations', 'Use in automations')}</h2>${helpBox(this._help, 'chore_automations')}
       <div class="group">
         <div class="row">
           <span class="row-text">Chore ID<code>${activity.id}</code></span>

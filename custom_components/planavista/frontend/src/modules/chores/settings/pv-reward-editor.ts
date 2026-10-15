@@ -20,6 +20,7 @@ import {
 import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
 import '../../../shell/pv-notice-sheet';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 type Notice = 'discard' | 'delete' | 'changed';
 const PICTURES = ['🎬', '🎮', '📺', '🍦', '🍕', '🌙', '💵', '🍽️', '🎨', '📚', '⚽', '🎁', '🛝', '🧁', '🎟️', '🏊'];
@@ -29,6 +30,8 @@ const PICTURES = ['🎬', '🎮', '📺', '🍦', '🍕', '🌙', '💵', '🍽�
  * needs approval, and who can get it. Cancel and Save, like the other editors.
  */
 export class PvRewardEditor extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -87,6 +90,7 @@ export class PvRewardEditor extends LitElement {
   }
 
   static styles = [
+    helpStyles,
     personChipStyles,
     baseStyles,
     buttonStyles,
@@ -209,7 +213,7 @@ export class PvRewardEditor extends LitElement {
             @input=${(e: Event) => this._change({ name: (e.target as HTMLInputElement).value })} />
         </label>
       </div>
-      <h2 class="section-label">Picture</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'reward_picture', 'Picture')}</h2>${helpBox(this._help, 'reward_picture')}
       <div class="group">
         <div class="pictures" role="group" aria-label="Picture">
           ${PICTURES.map(picture => html`
@@ -217,7 +221,7 @@ export class PvRewardEditor extends LitElement {
           `)}
         </div>
       </div>
-      <h2 class="section-label">Cost</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'reward_cost', 'Cost')}</h2>${helpBox(this._help, 'reward_cost')}
       <div class="group">
         <div class="row">
           <span class="row-text">Stars</span>
@@ -237,7 +241,7 @@ export class PvRewardEditor extends LitElement {
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._change({ needs_ok: !d.needs_ok }); } }}></div>
         </div>
       </div>
-      <h2 class="section-label">Who can get it</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'reward_who', 'Who can get it')}</h2>${helpBox(this._help, 'reward_who')}
       <div class="group">
         <div class="pv-person-chips" role="group" aria-label="Who can get it">
           <button class="chip" type="button" aria-pressed=${d.who.length === 0 ? 'true' : 'false'}

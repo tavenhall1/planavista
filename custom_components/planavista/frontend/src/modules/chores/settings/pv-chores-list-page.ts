@@ -13,6 +13,7 @@ import type { ChoresService } from '../chores-service';
 import { ChoreRow, choresList } from './chores-list-derive';
 import { choresSettingsStyles } from './settings-styles';
 import '../../../core/pv-member-avatar';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-chores-list-page: every chore, grouped by rhythm (spec 14.3), with a
@@ -20,6 +21,8 @@ import '../../../core/pv-member-avatar';
  * child a preview of how they see their chores. Rows open the chore editor.
  */
 export class PvChoresListPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -32,6 +35,7 @@ export class PvChoresListPage extends LitElement {
   @state() private _showFinished = false;
 
   static styles = [
+    helpStyles,
     baseStyles,
     buttonStyles,
     formStyles,
@@ -148,6 +152,8 @@ export class PvChoresListPage extends LitElement {
         `)}
       </div>
       ${list.groups.length === 0 ? this._renderEmpty(list.total > 0) : nothing}
+      <p class="hint">${helpLabel(this._help, 'chores_list', 'How chores are listed')}</p>
+      ${helpBox(this._help, 'chores_list')}
       <div class="groups">
         ${list.groups.map(group => html`
           <section class="rhythm-group" aria-label=${group.label}>
@@ -210,7 +216,8 @@ export class PvChoresListPage extends LitElement {
         ? html`<p class="hint">Every chore of ${member.name}'s needs approval${member.age_group === 'young_child' ? `, because ${member.name} is a young child` : ''}.</p>`
         : nothing}
       ${member.age_group === 'young_child' && tiles.length ? html`
-        <h2 class="section-label">How ${member.name} sees them</h2>
+        <h2 class="section-label">${helpLabel(this._help, 'chores_how_seen', `How ${member.name} sees them`)}</h2>
+        ${helpBox(this._help, 'chores_how_seen')}
         <div class="tiles">
           ${tiles.map(row => html`<div class="tile"><span class="emoji" aria-hidden="true">${row.picture}</span>${row.name}</div>`)}
         </div>

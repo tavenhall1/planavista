@@ -15,6 +15,7 @@ import type { ChoresService } from '../chores-service';
 import type { ChoresSettings } from '../chores-types';
 import { POLICIES, dayStartChoices, nextMinutesPerStar } from './rules-derive';
 import { choresSettingsStyles } from './settings-styles';
+import { HelpState, helpBox, helpLabel, helpStyles } from '../../../core/help';
 
 /**
  * pv-rules-page: the house rules (spec 14.5): what happens to a missed
@@ -22,6 +23,8 @@ import { choresSettingsStyles } from './settings-styles';
  * per minutes, and sound. They apply as the parent taps.
  */
 export class PvRulesPage extends LitElement {
+  /** Which settings' explainers are open (0.12.0, core/help.ts). */
+  private readonly _help = new HelpState(this);
   @property({ attribute: false }) hass!: HomeAssistant;
   @property({ attribute: false }) data!: PlanaVistaData;
   @property({ attribute: false }) household: HouseholdView | null = null;
@@ -33,6 +36,7 @@ export class PvRulesPage extends LitElement {
   @state() private _pending: Partial<ChoresSettings> = {};
 
   static styles = [
+    helpStyles,
     choiceStyles,
     baseStyles,
     buttonStyles,
@@ -63,7 +67,7 @@ export class PvRulesPage extends LitElement {
     const timeFormat = this.data?.display?.time_format ?? '12h';
     const firstDay = this.data?.display?.first_day === 'sunday' ? 'Sunday' : 'Monday';
     return html`
-      <h2 class="section-label">If a chore is missed</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'rules_missed', 'If a chore is missed')}</h2>${helpBox(this._help, 'rules_missed')}
       <div class="pv-choices" role="radiogroup" aria-label="If a chore is missed">
         ${POLICIES.map(policy => html`
           <label class="pv-choice">
@@ -77,9 +81,8 @@ export class PvRulesPage extends LitElement {
           </label>
         `)}
       </div>
-      <p class="hint">A change starts with the next chore day. A parent can excuse a sick day under any rule.</p>
 
-      <h2 class="section-label">Days and weeks</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'rules_days', 'Days and weeks')}</h2>${helpBox(this._help, 'rules_days')}
       <div class="group">
         <label class="row">
           <span class="row-text">A chore day starts at</span>
@@ -92,16 +95,14 @@ export class PvRulesPage extends LitElement {
           <span class="row-value">${firstDay}</span>
         </div>
       </div>
-      <p class="hint">Late-night check-offs count for the day before. Weeks follow the calendar's setting in Calendar options.</p>
 
-      <h2 class="section-label">Waiting for approval</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'rules_approval', 'Waiting for approval')}</h2>${helpBox(this._help, 'rules_approval')}
       <div class="group">
         ${this._toggle(settings.auto_approve === 'day_end', 'Approve at the end of the day',
           () => this._save({ auto_approve: settings.auto_approve === 'day_end' ? 'never' : 'day_end' }))}
       </div>
-      <p class="hint">Anything still waiting when the chore day ends is approved. On time means when it was done, not when it was approved.</p>
 
-      <h2 class="section-label">Stars</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'rules_stars', 'Stars')}</h2>${helpBox(this._help, 'rules_stars')}
       <div class="group">
         <div class="row">
           <span class="row-text">1 star for every</span>
@@ -114,9 +115,8 @@ export class PvRulesPage extends LitElement {
           </span>
         </div>
       </div>
-      <p class="hint">A chore can set its own stars instead. A change applies to stars earned from then on.</p>
 
-      <h2 class="section-label">Sound</h2>
+      <h2 class="section-label">${helpLabel(this._help, 'rules_sound', 'Sound')}</h2>${helpBox(this._help, 'rules_sound')}
       <div class="group">
         ${this._toggle(settings.sound, 'Play a sound when a chore is done', () => this._save({ sound: !settings.sound }))}
       </div>
