@@ -72,6 +72,9 @@ export class HouseholdApi extends WsApi {
     screensaver_after?: number;
     screensaver_night?: { from: string; to: string } | null;
     screensaver_screen?: { user: string; screen?: string | null; motion?: string | null };
+    /** Brightness by day and at night on shared screens, whole percents (0.12.0). */
+    dim_day?: number;
+    dim_night?: number;
   }): Promise<void> {
     return this.call('planavista/household/settings/save', settings);
   }

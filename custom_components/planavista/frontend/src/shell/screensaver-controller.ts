@@ -11,7 +11,7 @@ import type { HouseholdView } from '../core/household';
 import { guardPageTaps } from '../core/press-guard';
 import {
   EntityState, MotionSeen, ScreenHold, ScreenRecord, ServiceCall, holdOf, isNight, knownState, readRecord, screenAction,
-  screenRestore, screensaverHere, seeMotion, showsAt,
+  screenRestore, screensaverHere, seeMotion, showsAt, type Trial,
 } from '../core/screensaver';
 import { swallowWakingKey, swallowWakingPress } from '../core/wake-keys';
 import type { HouseholdConnection } from '../core/household-client';
@@ -142,6 +142,7 @@ export class ScreensaverController {
       // Show it now, left up for the wait without a touch: nobody is looking any more.
       if (this._preview && now >= touched + here.settings.after_minutes * 60_000) {
         this._preview = false;
+        this.trial = null;
         this._env.lockParentMode();
         this._mark(true, now);
       }
@@ -165,15 +166,21 @@ export class ScreensaverController {
     if (at !== null && now >= at) this._show(now, date, false);
   }
 
-  /** Settings' Show it now: at once, on this screen, until a touch. */
-  preview(date: Date): void {
-    if (!this._showing) this._show(date.getTime(), date, true);
+  /** What Try it asked for, while its preview shows (0.12.0). */
+  trial: Trial | null = null;
+
+  /** Settings' Show it now: at once, on this screen, until a touch; Try it's choices with it. */
+  preview(date: Date, trial: Trial | null = null): void {
+    if (this._showing) return;
+    this.trial = trial;
+    this._show(date.getTime(), date, true);
   }
 
   wake(now: number): void {
     if (!this._showing) return;
     this._showing = false;
     this._preview = false;
+    this.trial = null;
     this._lastTouch = now;
     this._env.hide();
     this._env.guardTaps();

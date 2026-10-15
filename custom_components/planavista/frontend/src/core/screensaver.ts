@@ -19,6 +19,16 @@ export interface ScreensaverSettings {
 }
 
 export const AFTER_CHOICES = [1, 2, 5, 10, 15, 30] as const;
+
+/** Settings' Try it (0.12.0, spec 3.5): show it now at another time, in other weather, or in another season. */
+export type TrialTime = 'morning' | 'afternoon' | 'evening' | 'night';
+export type TrialSeason = 'spring' | 'summer' | 'autumn' | 'winter';
+export interface Trial {
+  time?: TrialTime;
+  /** A Home Assistant condition; after_rain is clear skies with the rainbow out. */
+  weather?: string;
+  season?: TrialSeason;
+}
 export const SCREEN_DOMAINS = ['light', 'switch', 'input_boolean', 'number', 'input_number'] as const;
 export const MOTION_DOMAINS = ['binary_sensor', 'input_boolean'] as const;
 const MOTION_CLASSES = new Set(['motion', 'occupancy', 'presence', 'moving']);

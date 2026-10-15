@@ -138,8 +138,8 @@ describe('the screensaver on the kitchen screen (0.11.1, from the Pi)', () => {
   });
 });
 
-describe("Settings' screensaver picks (0.11.0 review)", () => {
-  const page = src('shell/settings/pins-page.ts');
+describe("Settings' screensaver picks (0.11.0 review; Shared screens since 0.12.0)", () => {
+  const page = src('shell/settings/screens-page.ts');
 
   it('draws its selects like every other select, and keeps a stored pick it cannot list', () => {
     expect(page).not.toMatch(/class="pv-select"/);
@@ -155,8 +155,8 @@ describe("Settings' screensaver picks (0.11.0 review)", () => {
     expect(page).toMatch(/AFTER_CHOICES\.filter\(c => OFFERED_AFTER\.includes\(c\.value\) \|\| c\.value === saver\.after_minutes\)/);
   });
 
-  it("says the Screen should be the screen's own", () => {
-    expect(page).toMatch(/Pick this screen's own backlight or plug, not a room's light\./);
+  it("says the Screen should be the screen's own (in its ?)", () => {
+    expect(src('core/help.ts')).toMatch(/Pick this screen's own backlight or plug, not a room's light\./);
   });
 
   it('turns back a night that starts when it ends, where it was changed, and says why there', () => {

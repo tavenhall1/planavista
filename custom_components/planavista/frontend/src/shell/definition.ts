@@ -47,6 +47,20 @@ export const shellSettingsPages: SettingsPage[] = [
     },
   },
   {
+    id: 'screens',
+    label: 'Shared screens',
+    group: 'appearance',
+    order: 450,
+    tag: 'pv-settings-screens',
+    applies: ({ household }) => household !== null,
+    // Names the switch on the page (milestone 8): this screen, shared or not; then its screensaver (0.12.0).
+    summary: ({ household }) => {
+      if (!household?.account.shared) return 'This screen: not shared';
+      const saver = household.security.screensaver;
+      return saver?.enabled ? `This screen: shared · Screensaver after ${saver.after_minutes} min` : 'This screen: shared family screen';
+    },
+  },
+  {
     id: 'pins',
     label: 'PINs and parent mode',
     group: 'security',
@@ -55,9 +69,9 @@ export const shellSettingsPages: SettingsPage[] = [
     applies: ({ household }) => household !== null,
     summary: ({ household }) => {
       const pins = household?.members.filter(m => m.has_pin).length ?? 0;
-      // Names the switch on the page (milestone 8): this screen, shared or not.
-      const screen = household?.account.shared ? 'This screen: shared family screen' : 'This screen: not shared';
-      return pins > 0 ? `${screen} · ${count(pins, 'PIN', 'PINs')}` : screen;
+      const idle = household?.security.session_idle_seconds ?? 120;
+      const lock = idle < 60 ? `Lock after ${idle} sec` : `Lock after ${Math.round(idle / 60)} min`;
+      return pins > 0 ? `${count(pins, 'PIN', 'PINs')} · ${lock}` : `No PINs yet · ${lock}`;
     },
   },
   {

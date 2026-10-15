@@ -20,6 +20,7 @@ import '../pv-parent-strip';
 import './people-page';
 import './person-page';
 import './pins-page';
+import './screens-page';
 import './about-page';
 import './appearance-page';
 

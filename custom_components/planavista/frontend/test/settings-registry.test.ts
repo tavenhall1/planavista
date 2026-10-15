@@ -48,7 +48,7 @@ describe('settings registry', () => {
     expect(groups.map(g => [g.group.id, g.group.label, g.pages.map(p => p.id)])).toEqual([
       ['people', null, ['people']],
       ['calendar', 'Calendar', ['calendars', 'calendar-options']],
-      ['appearance', null, ['appearance']],
+      ['appearance', null, ['appearance', 'screens']],
       ['security', null, ['pins']],
       ['about', null, ['about']],
     ]);
@@ -69,7 +69,8 @@ describe('settings registry', () => {
       calendars: '2 calendars',
       'calendar-options': 'Week · 12-hour',
       appearance: 'Dark · PlanaVista',
-      pins: 'This screen: shared family screen · 1 PIN',
+      screens: 'This screen: shared family screen',
+      pins: '1 PIN · Lock after 2 min',
       about: `Version ${version}`,
     });
     const quiet = context({
@@ -77,7 +78,8 @@ describe('settings registry', () => {
       account: { kind: 'admin', shared: false, parent_level: true } as unknown as HouseholdView['account'],
     });
     expect(settings.pages(quiet).find(p => p.id === 'people')?.summary?.(quiet)).toBe('No one yet');
-    expect(settings.pages(quiet).find(p => p.id === 'pins')?.summary?.(quiet)).toBe('This screen: not shared');
+    expect(settings.pages(quiet).find(p => p.id === 'screens')?.summary?.(quiet)).toBe('This screen: not shared');
+    expect(settings.pages(quiet).find(p => p.id === 'pins')?.summary?.(quiet)).toBe('No PINs yet · Lock after 2 min');
   });
 
   it('leaves out People and PINs when there is no household', () => {
