@@ -602,6 +602,50 @@ def test_excusing_a_days_only_miss_says_the_streak_holds() -> None:
     assert out.data["streak_holds"] is True
 
 
+def test_an_allowed_skip_stays_excused_when_its_check_off_is_sent_back_late() -> None:
+    """Round 12 (r12a I1): the parent allowed the skip, the check-off was sent back the next day,
+    and the day reopened with it missed, the streak lost and a missed event."""
+    engine = sample_engine(activities=[
+        plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day"),
+        plan("make_your_bed", "Make your bed", ["dana"], 0.1, "day"),
+    ], settings={"auto_approve": "never"})
+    engine.request(SCENE, kind="skip", key=FISH, by="dana")
+    engine.complete(SCENE, key=FISH, by="dana", source="tablet")
+    engine.complete(SCENE, key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    [skip] = [r for r in engine.open_requests() if r["kind"] == "skip"]
+    engine.review(SCENE, request_id=skip["id"], allow=True, by="blair")
+    engine.catch_up(at(10, 14, 9))
+    tuesday = _summary(engine, "dana", "day:2026-10-13")
+    assert tuesday["closed"] is True
+    [check_off] = [r for r in engine.open_requests(at(10, 14, 10)) if r["kind"] == "completion" and r["occurrence"] == FISH]
+    assert check_off["missed_if_sent_back"] is False
+    out = engine.review(at(10, 14, 10), request_id=check_off["id"], allow=False, by="blair")
+    assert tuesday["closed"] is True and FISH not in tuesday["missed"] and FISH not in tuesday["carried"]
+    assert "missed" not in [e.type for e in out.events]
+
+
+def test_a_one_time_chore_finished_early_counts_on_its_due_day() -> None:
+    """Round 12 (r12a M1): finished before its day, it counted on no day at all."""
+    recycling = once("sort_the_recycling", "Sort the recycling", ["casey"], by="2026-10-15")
+    engine = sample_engine(activities=[recycling])
+    engine.complete(SCENE, key="sort_the_recycling|casey|once|0", by="casey", source="tablet")
+    assert engine.activity("sort_the_recycling")["finished_at"] is not None
+    engine.catch_up(at(10, 16, 9))
+    thursday = _summary(engine, "casey", "day:2026-10-15")
+    assert (thursday["due"], thursday["done"] + thursday["pending"]) == (1, 1)
+
+
+def test_last_weeks_overdue_copy_done_this_week_stays_out_of_its_numbers() -> None:
+    """Round 12 (r12a M2): under Carry it over, Sunday's copy done on Monday joined this week overnight."""
+    engine = sample_engine(activities=[plan("feed_the_fish", "Feed the fish", ["dana"], 0.1, "day")], settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 19, 9))
+    engine.complete(at(10, 19, 10), key="feed_the_fish|dana|day:2026-10-18|0", by="dana", source="tablet")
+    monday = engine.board(at(10, 19, 11))["members"]["dana"]["week"]
+    engine.catch_up(at(10, 20, 9))
+    tuesday = engine.board(at(10, 20, 9))["members"]["dana"]["week"]
+    assert (tuesday["due"], tuesday["done"]) == (monday["due"], monday["done"])
+
+
 def test_a_request_withdrawn_by_a_hand_off_says_so() -> None:
     """Round 10 (r10a M2): it was refused with the words for an unchecked check-off."""
     engine = sample_engine()

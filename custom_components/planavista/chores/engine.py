@@ -325,12 +325,14 @@ class ChoresEngine:
         members = set(self.member_ids())
         found: dict[str, Occurrence] = {}
         for activity in self.plan["activities"]:
+            after_finish = False
             if not on_board(activity):
                 # A finished chore's occurrences still were, on days that began before it finished (round 11:
                 # its check-off's day counted it only as a check-off, and a missed one left its week).
                 finished = activity.get("finished_at")
-                if not finished or not on_board({**activity, "finished_at": None}) or _at(finished) <= clock.day_start(day):
+                if not finished or not on_board({**activity, "finished_at": None}):
                     continue
+                after_finish = _at(finished) <= clock.day_start(day)
                 activity = {**activity, "finished_at": None}
             for kind, start in gen.periods_on(activity, day):
                 for owner in activity["assignees"]:
@@ -338,8 +340,16 @@ class ChoresEngine:
                         continue
                     for occ in gen.period_occurrences(activity, owner, kind, start):
                         occ = with_overrides(occ, index.overrides.get(occ.key, {}), members, clock)
-                        if visible_on(occ, day, clock):
-                            found[occ.key] = occ
+                        if not visible_on(occ, day, clock):
+                            continue
+                        if after_finish:
+                            # After it finished, only a done one's own due day still has it, so a chore done
+                            # early counts there, as it would unfinished (round 12: it counted nowhere).
+                            done = index.latest.get(occ.key)
+                            if not (done and done.get("state") in CREDITED and occ.due is not None
+                                    and clock.due_day(occ.due) == day):
+                                continue
+                        found[occ.key] = occ
         # Occurrences kept on the board past their period by a later due date.
         for key, changes in index.overrides.items():
             if key in found or "due" not in changes or key in index.carried:
@@ -463,9 +473,13 @@ class ChoresEngine:
             parsed = parse_key(key)
             if parsed is None:
                 continue
+            # An overdue copy checked off after its record went keeps its own day's due, so it never
+            # joins a later week (round 12: Sunday's copy done Monday joined that week overnight).
+            period_day = _day(parsed[2][4:]) if parsed[2].startswith("day:") else None
+            own_day = period_day if period_day is not None and period_day < day else day
             occ = Occurrence(
                 key=key, chore=completion["chore"], owner=parsed[1], member=completion["member"],
-                period=parsed[2], n=parsed[3], appears=day, planned=day, due=clock.day_end(day),
+                period=parsed[2], n=parsed[3], appears=day, planned=own_day, due=clock.day_end(own_day),
                 band=None, credit_minutes=float(completion["credit_minutes"]),
                 stars=int(completion["stars"]), window="day",
             )
@@ -680,7 +694,7 @@ class ChoresEngine:
             if c.get("state") == "pending" and c["member"] in members:
                 activity = self.activity(c["chore"])
                 missed = False
-                if now is not None and self.period_over(c["occurrence"], now):
+                if now is not None and self.period_over(c["occurrence"], now) and not self._excused(c["occurrence"]):
                     occ = self._past_occurrence(c["occurrence"])
                     due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
                     missed = due_day is not None and self.policy_on(due_day) != "carry_over"
@@ -1553,6 +1567,15 @@ class ChoresEngine:
         done_day = self._day_of(completion["at"])
         if done_day >= today:
             return  # its day is still going: the board shows it again
+        if self._excused(key):
+            # Excused (a skip allowed, a sick day): it was never owed, so sent back it stays excused, and
+            # the days that counted it waiting count it no more (round 12: it turned into a miss).
+            for summary in self.log["summaries"]:
+                mark = (summary.get("keys") or {}).get(key)
+                if mark is not None and mark[0] in CREDITED:
+                    self._restate(summary, key, "excused")
+                    summary["excused"] = list(dict.fromkeys(summary["excused"]))
+            return
         occ = self._past_occurrence(key)
         over = self.period_over(key, now)
         due_day = self.clock.due_day(occ.due) if occ is not None and occ.due is not None else None
@@ -1700,6 +1723,13 @@ class ChoresEngine:
             tally = summary["chores"].setdefault(parsed[0], {"due": 0, "done": 0})
             tally["due"] += 1
         summary["closed"] = False
+
+    def _excused(self, key: str) -> bool:
+        """Whether an occurrence stands excused (a skip allowed, Excuse it), by the latest word on it."""
+        for record in reversed(self.log["overrides"]):
+            if record.get("occurrence") == key and "excused" in record:
+                return bool(record["excused"])
+        return False
 
     def _excuse_counted(self, key: str) -> list[dict[str, Any]]:
         """A late excuse: every summary that counted the occurrence as not done stops counting it.
