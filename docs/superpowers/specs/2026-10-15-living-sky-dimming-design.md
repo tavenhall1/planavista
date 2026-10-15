@@ -28,7 +28,7 @@ The screensaver (0.11.0) works, but it comes in all at once and sits still on a 
 ### 3.2 The level (card, `core/dimming.ts`, pure)
 
 - `dimLevel(now, members, night, dim)` gives the level as a fraction: the day level, the night level in the night window (last night's or tonight's), and the fades between. Fades run evenly by eye: interpolated in the cube root of the level, eased with smoothstep.
-- `dimColor(hex, level, text)` scales a color in linear light by the level; text scales by the square root of the level, so it stays readable (5:1 at 8% in the dark PlanaVista look). It turns warmer as it dims: green down to 87% and blue to 58% at the darkest, nothing at full.
+- `dimColor(hex, level, text)` scales a color in linear light by the level; a mark with no known background scales by the square root of the level. Word tokens go through `inkOn` against their own background (review: 4.5:1, 3:1 for muted words and marks, or the theme's own), and light surfaces stop at `LIGHT_FLOOR` (a quarter). It turns warmer as it dims: green down to 87% and blue to 58% at the darkest, nothing at full.
 - `dimTokens(tokens, level)` dims every color in the theme's tokens (hex and rgba, inside gradients too); the text tokens use the text rule.
 - `mediaBrightness(level)` is the CSS brightness that scales a picture's light by the level (photos, emoji pictures, weather icons).
 - `DIM_STEP_MS` (15 s): during a fade the card repaints this often; each step is too small to see.

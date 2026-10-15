@@ -56,7 +56,7 @@ export const HELP = {
   },
   dim_night: {
     what: "How dim shared screens get at night, so a lit screen doesn't light up the room.",
-    how: 'Half an hour before night begins, the screen fades slowly down to this level and turns a little warmer, like a lamp. Text dims less than the rest, so it stays easy to read. A touch at night keeps the night level, and in the morning it comes back up over 10 minutes. 100% means no dimming. Tap a level to see it here for a few seconds.',
+    how: 'Half an hour before night begins, the screen fades slowly down to this level and turns a little warmer, like a lamp. Words dim less than the rest, so they stay easy to read, and light looks stay at a quarter at the lowest levels so dark words can. A touch at night keeps the night level, and in the morning it comes back up over 10 minutes. 100% means no dimming. Tap a level to see it here for a few seconds.',
   },
 
   // ---- PINs and parent mode -------------------------------------------------
