@@ -28,7 +28,7 @@ def _night(value: object) -> dict[str, str] | None:
     if not isinstance(value, Mapping):
         return None
     start, end = value.get("from"), value.get("to")
-    if isinstance(start, str) and isinstance(end, str) and _CLOCK.fullmatch(start) and _CLOCK.fullmatch(end):
+    if isinstance(start, str) and isinstance(end, str) and _CLOCK.fullmatch(start) and _CLOCK.fullmatch(end) and start != end:
         return {"from": start, "to": end}
     return None
 

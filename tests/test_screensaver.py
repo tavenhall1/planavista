@@ -143,6 +143,29 @@ async def test_refusals_say_why(
     assert household.data["security"]["screensaver"]["screens"][kitchen_shared]["screen"] is None
 
 
+async def test_a_refused_save_changes_nothing(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, kitchen_shared: str
+) -> None:
+    client = await ws_client_for(hass, hass_ws_client, accounts["admin"])
+    shuffle = household.data["security"]["shuffle_keypad"]
+    refused = await ws_command(client, {
+        "type": SAVE, "shuffle_keypad": not shuffle, "screensaver_after": 15, "screensaver_screen": {"user": "someone"},
+    })
+    assert not refused["success"]
+    assert household.data["security"]["shuffle_keypad"] is shuffle
+    assert household.data["security"]["screensaver"]["after_minutes"] == 5
+
+
+async def test_a_night_needs_a_start_and_an_end(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, kitchen_shared: str
+) -> None:
+    client = await ws_client_for(hass, hass_ws_client, accounts["admin"])
+    refused = await ws_command(client, {"type": SAVE, "screensaver_night": {"from": "22:00", "to": "22:00"}})
+    assert not refused["success"] and refused["error"]["code"] == "invalid_night"
+    assert household.data["security"]["screensaver"]["night"] is None
+    assert normalize_screensaver({"night": {"from": "22:00", "to": "22:00"}})["night"] is None
+
+
 async def test_it_needs_a_shared_screen(
     hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any
 ) -> None:

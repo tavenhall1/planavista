@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
 from custom_components.planavista.const import DOMAIN
-from custom_components.planavista.dashboard import DASHBOARD_ID, DEFAULT_LAYOUT, STORE_KEY
+from custom_components.planavista.dashboard import DASHBOARD_ID, DEFAULT_LAYOUT, STORE_KEY, dashboard_for
 
 from .conftest import ws_client_for, ws_command
 
@@ -75,8 +75,13 @@ async def test_hide_show_and_a_restart_keep_the_layout(hass: HomeAssistant, love
     await hass.data[LOVELACE_DATA].dashboards["planavista"].async_save(edited)
     client = await hass_ws_client(hass)
     hidden = await ws_command(client, {"type": "planavista/dashboard/set", "shown": False})
-    assert hidden["result"] == {"shown": False, "url_path": "planavista", "available": True}
-    assert _panel(hass, "planavista") is None
+    assert hidden["result"] == {"shown": False, "url_path": "planavista", "available": True, "taken": False}
+    # Out of the sidebar only: a kiosk screen on it keeps it, at its address.
+    assert _panel(hass, "planavista").show_in_sidebar is False
+    assert await _layout(hass, "planavista") == edited
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _panel(hass, "planavista").show_in_sidebar is False
     shown = await ws_command(client, {"type": "planavista/dashboard/set", "shown": True})
     assert shown["result"]["shown"] is True
     assert await _layout(hass, "planavista") == edited
@@ -85,7 +90,41 @@ async def test_hide_show_and_a_restart_keep_the_layout(hass: HomeAssistant, love
     assert _panel(hass, "planavista") is not None
     assert await _layout(hass, "planavista") == edited
     got = await ws_command(client, {"type": "planavista/dashboard/get"})
-    assert got["result"] == {"shown": True, "url_path": "planavista", "available": True}
+    assert got["result"] == {"shown": True, "url_path": "planavista", "available": True, "taken": False}
+    assert _panel(hass, "planavista").show_in_sidebar is True
+
+
+async def test_home_assistants_dashboards_list_leaves_it_out(hass: HomeAssistant, lovelace: None, hass_ws_client: Any) -> None:
+    """Home Assistant's Dashboards page can't edit or delete it, so it isn't listed there (spec 3)."""
+    await _add_planavista(hass)
+    client = await hass_ws_client(hass)
+    listed = await ws_command(client, {"type": "lovelace/dashboards/list"})
+    assert all(item.get("url_path") != "planavista" for item in listed["result"])
+    config = await ws_command(client, {"type": "lovelace/config", "url_path": "planavista"})
+    assert config["result"] == DEFAULT_LAYOUT
+
+
+async def test_a_household_dashboard_at_planavista_own_keeps_its_layout(
+    hass: HomeAssistant, lovelace: None, hass_ws_client: Any, hass_storage: dict[str, Any]
+) -> None:
+    await _add_planavista(hass)
+    client = await hass_ws_client(hass)
+    made = await ws_command(client, {"type": "lovelace/dashboards/create", "url_path": "planavista-own", "title": "Ours", "mode": "storage"})
+    assert made["success"], made
+    theirs = {"views": [{"title": "Ours", "cards": []}]}
+    assert (await ws_command(client, {"type": "lovelace/config/save", "url_path": "planavista-own", "config": theirs}))["success"]
+    # Each in its own file, so a restart reads each one's own.
+    assert hass_storage["lovelace.planavista_own"]["data"]["config"] == theirs
+    assert hass_storage[f"lovelace.{DASHBOARD_ID}"]["data"]["config"] == DEFAULT_LAYOUT
+
+
+async def test_with_both_addresses_taken_the_switch_says_so(hass: HomeAssistant, lovelace: None, hass_ws_client: Any) -> None:
+    frontend.async_register_built_in_panel(hass, "iframe", "One", frontend_url_path="planavista")
+    frontend.async_register_built_in_panel(hass, "iframe", "Two", frontend_url_path="planavista-home")
+    await _add_planavista(hass)
+    client = await hass_ws_client(hass)
+    got = await ws_command(client, {"type": "planavista/dashboard/get"})
+    assert got["result"] == {"shown": False, "url_path": None, "available": True, "taken": True}
 
 
 async def test_an_install_from_before_can_add_it(
@@ -119,3 +158,7 @@ async def test_removing_planavista_removes_its_dashboard(hass: HomeAssistant, lo
     assert "planavista" not in hass.data[LOVELACE_DATA].dashboards
     assert f"lovelace.{DASHBOARD_ID}" not in hass_storage
     assert STORE_KEY not in hass_storage
+    # Nothing of it is left to answer with, and adding PlanaVista again starts over at /planavista.
+    assert dashboard_for(hass).view() == {"shown": False, "url_path": None, "available": True, "taken": False}
+    await _add_planavista(hass)
+    assert _panel(hass, "planavista").sidebar_title == "PlanaVista"

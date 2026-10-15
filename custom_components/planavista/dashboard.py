@@ -10,6 +10,7 @@ shows and where (docs/superpowers/specs/2026-10-14-onboarding-design.md).
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import Any
 
@@ -25,8 +26,9 @@ _LOGGER = logging.getLogger(__name__)
 
 STORE_KEY = "planavista.dashboard"
 STORE_VERSION = 1
-# Its own storage name, so a dashboard of the household's at /planavista keeps its own layout file.
-DASHBOARD_ID = "planavista_own"
+# Its own storage name. Home Assistant names a dashboard's file from its address, which must hold a
+# hyphen, so theirs always have an underscore and never meet this one (a dashboard at /planavista-own).
+DASHBOARD_ID = "planavista"
 URL_PATHS = ("planavista", "planavista-home")
 TITLE = "PlanaVista"
 ICON = "mdi:calendar-heart"
@@ -34,6 +36,32 @@ DEFAULT_LAYOUT: dict[str, Any] = {
     "views": [{"title": "PlanaVista", "path": "home", "type": "panel", "cards": [{"type": "custom:planavista-card"}]}],
 }
 DATA_DASHBOARD = "planavista_dashboard"
+# Home Assistant 2026.3 to 2026.8 hide a panel from the sidebar by leaving out its title.
+_SIDEBAR_FLAG = "show_in_sidebar" in inspect.signature(frontend.async_register_built_in_panel).parameters
+
+
+class _OwnStorage(LovelaceStorage):
+    """The dashboard's layout, out of Home Assistant's Dashboards list (which lists the ones with a config).
+
+    That page could neither edit nor delete it ("Unable to find dashboard_id"); PlanaVista's Settings shows
+    and hides it, and removing PlanaVista removes it.
+    """
+
+    def __init__(self, hass: HomeAssistant, item: dict[str, Any]) -> None:
+        self._url: str = item["url_path"]
+        super().__init__(hass, item)
+
+    @property  # type: ignore[override]
+    def config(self) -> None:
+        return None
+
+    @config.setter
+    def config(self, _value: Any) -> None:
+        """Home Assistant keeps a listed dashboard's item here; this one has none."""
+
+    @property
+    def url_path(self) -> str:
+        return self._url
 
 
 class Dashboard:
@@ -43,6 +71,11 @@ class Dashboard:
         self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORE_VERSION, STORE_KEY)
         self.shown = False
+        # Made once it was first shown. Hidden, it stays at its address with no sidebar entry, so a
+        # screen on it (kiosk mode) keeps it; only removing PlanaVista removes it.
+        self.made = False
+        # Shown, but /planavista and /planavista-home both belong to other dashboards.
+        self.taken = False
         self.url_path: str | None = None
         self._registered: str | None = None
         self._loaded = False
@@ -53,7 +86,10 @@ class Dashboard:
         return self.hass.data.get(LOVELACE_DATA) is not None
 
     def view(self) -> dict[str, Any]:
-        return {"shown": self.shown, "url_path": self.url_path, "available": self.available}
+        return {
+            "shown": self.shown and self._registered is not None, "url_path": self._registered,
+            "available": self.available, "taken": self.taken,
+        }
 
     async def async_start(self, offered: bool) -> None:
         """At entry setup: the first setup of a new entry shows it; after that, as it was left."""
@@ -61,21 +97,21 @@ class Dashboard:
             data = await self._store.async_load()
             self._loaded = True
             if data is None:
-                self.shown = offered
+                self.shown = self.made = offered
                 await self._async_save()
             else:
                 self.shown = bool(data.get("shown"))
+                self.made = bool(data.get("made", self.shown))
                 url = data.get("url_path")
                 self.url_path = url if isinstance(url, str) and url in URL_PATHS else None
-        if self.shown:
+        if self.made:
             await self._async_register()
 
     async def async_set(self, shown: bool) -> None:
         self.shown = shown
-        if shown:
+        self.made = self.made or shown
+        if self.made:
             await self._async_register()
-        else:
-            self.async_unregister()
         await self._async_save()
 
     @callback
@@ -91,11 +127,14 @@ class Dashboard:
             lovelace.dashboards.pop(url, None)
 
     async def async_remove(self) -> None:
-        """PlanaVista was removed: the dashboard and its layout go too."""
+        """PlanaVista was removed: the dashboard and its layout go too, and nothing of it is remembered."""
+        url = self._registered or self.url_path or URL_PATHS[0]
         self.async_unregister()
-        await LovelaceStorage(self.hass, self._item(self.url_path or URL_PATHS[0])).async_delete()
+        await LovelaceStorage(self.hass, self._item(url)).async_delete()
         await self._store.async_remove()
         self._loaded = False
+        self.shown = self.made = self.taken = False
+        self.url_path = None
 
     def _free(self, url: str) -> bool:
         lovelace = self.hass.data[LOVELACE_DATA]
@@ -107,19 +146,29 @@ class Dashboard:
             "mode": "storage", "require_admin": False, "show_in_sidebar": True,
         }
 
+    def _panel(self, url: str, update: bool) -> None:
+        """Its panel: in the sidebar while shown, and at its address either way."""
+        sidebar: dict[str, Any] = {"show_in_sidebar": self.shown} if _SIDEBAR_FLAG else {}
+        frontend.async_register_built_in_panel(
+            self.hass, "lovelace", sidebar_title=TITLE if self.shown or _SIDEBAR_FLAG else None,
+            sidebar_icon=ICON, frontend_url_path=url, config={"mode": "storage"}, require_admin=False,
+            update=update, **sidebar,
+        )
+
     async def _async_register(self) -> None:
-        if self._registered is not None or not self.available:
+        if not self.available:
+            return
+        if self._registered is not None:
+            self._panel(self._registered, update=True)
             return
         url = self.url_path if self.url_path and self._free(self.url_path) else next((u for u in URL_PATHS if self._free(u)), None)
+        self.taken = url is None
         if url is None:
             _LOGGER.warning("PlanaVista's dashboard wasn't added: /%s and /%s are taken", *URL_PATHS)
             return
-        store = LovelaceStorage(self.hass, self._item(url))
+        store = _OwnStorage(self.hass, self._item(url))
         self.hass.data[LOVELACE_DATA].dashboards[url] = store
-        frontend.async_register_built_in_panel(
-            self.hass, "lovelace", sidebar_title=TITLE, sidebar_icon=ICON, frontend_url_path=url,
-            config={"mode": "storage"}, require_admin=False,
-        )
+        self._panel(url, update=False)
         self._registered = url
         if self.url_path != url:
             self.url_path = url
@@ -128,7 +177,7 @@ class Dashboard:
             await store.async_save(DEFAULT_LAYOUT)
 
     async def _async_save(self) -> None:
-        await self._store.async_save({"shown": self.shown, "url_path": self.url_path})
+        await self._store.async_save({"shown": self.shown, "made": self.made, "url_path": self.url_path})
 
 
 def dashboard_for(hass: HomeAssistant) -> Dashboard:

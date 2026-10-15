@@ -524,10 +524,12 @@ async def ws_settings_save(
         ):
             send_refusal(connection, msg, "not_admin", KIOSK_CHANGE_REFUSAL)
             return
-    for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
-        if key in msg:
-            household.data["security"][key] = msg[key]
+    # Every check before any change, so a refused save changes nothing.
     saver = household.data["security"]["screensaver"]
+    night = msg.get("screensaver_night")
+    if night and night["from"] == night["to"]:
+        send_refusal(connection, msg, "invalid_night", SCREENSAVER_REFUSALS["invalid_night"])
+        return
     if msg.get("screensaver_enabled") and not household.shared_users:
         send_refusal(connection, msg, "no_shared_screen", SCREENSAVER_REFUSALS["no_shared_screen"])
         return
@@ -539,6 +541,9 @@ async def ws_settings_save(
         if entity_refusal(pick.get("screen"), SCREEN_DOMAINS) or entity_refusal(pick.get("motion"), MOTION_DOMAINS):
             send_refusal(connection, msg, "invalid_entity", SCREENSAVER_REFUSALS["invalid_entity"])
             return
+    for key in ("shuffle_keypad", "session_idle_seconds", "parent_mode_minutes"):
+        if key in msg:
+            household.data["security"][key] = msg[key]
     kiosk = household.data["security"]["kiosk"]
     if "kiosk_enabled" in msg:
         kiosk["enabled"] = msg["kiosk_enabled"]
@@ -870,6 +875,7 @@ SCREENSAVER_REFUSALS = {
     "no_shared_screen": "The screensaver runs on shared screens. Mark this screen as shared first.",
     "not_shared": "That account isn't a shared screen anymore.",
     "invalid_entity": "Pick a light, switch, or number for the screen, and a motion sensor for motion.",
+    "invalid_night": "Night needs a start and an end that differ.",
 }
 
 KIOSK_REFUSALS = {
