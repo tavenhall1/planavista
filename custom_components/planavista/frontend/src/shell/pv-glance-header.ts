@@ -94,11 +94,6 @@ export class PvGlanceHeader extends LitElement {
       margin-left: 3px;
     }
 
-    /* The weather icon draws its own colors: a dimmed shared screen turns it down by its level (0.12.0). */
-    .weather svg {
-      filter: var(--pv-media-filter, none);
-    }
-
     .weather {
       justify-self: start;
       display: inline-flex;

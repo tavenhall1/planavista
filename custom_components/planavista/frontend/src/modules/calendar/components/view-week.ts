@@ -143,11 +143,6 @@ export class PVViewWeek extends LitElement {
         outline-offset: -4px;
       }
 
-      /* A dimmed shared screen (0.12.0): the forecast's colors by the level. */
-      .day-weather svg {
-        filter: var(--pv-media-filter, none);
-      }
-
       .day-weather {
         display: flex;
         align-items: center;

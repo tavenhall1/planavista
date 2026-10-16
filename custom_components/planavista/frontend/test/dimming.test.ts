@@ -257,8 +257,10 @@ describe("people's colors on a dimmed screen", () => {
     expect(src('shell/planavista-card.ts')).toMatch(/\.dim=\$\{this\._appearance\.dim\}/);
     expect(src('modules/chores/pv-chores-module.ts')).toMatch(/\.mode=\$\{this\.mode\} \.dim=\$\{this\.dim\}/);
     for (const file of ['core/pv-member-avatar.ts', 'modules/chores/pv-chore-tile.ts', 'modules/chores/pv-chores-my-day.ts',
-      'modules/chores/pv-chores-day-sheet.ts', 'shell/pv-glance-header.ts']) {
+      'modules/chores/pv-chores-day-sheet.ts']) {
       expect(src(file), file).toMatch(/filter: var\(--pv-media-filter, none\)/);
     }
+    // The header's weather icon dims its own fixed colors and draws the rest in the words' color (0.13.0).
+    expect(src('shell/pv-glance-header.ts')).not.toMatch(/filter: var\(--pv-media-filter, none\)/);
   });
 });

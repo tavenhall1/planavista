@@ -430,6 +430,7 @@ hide_header: false
 
 - The mountains are drawn from new seeds each time the screensaver comes on (11.11).
 - The screensaver rests, lights when someone walks up, goes dark after Dark after, and opens the card only on a touch (11.11).
+- Weather icons draw their clouds, moon, fog, and wind in the color of the words around them, so they read on any header; rain, snow, the sun, and lightning keep their colors, dimmed by the level. Clear night's moon is a real crescent.
 
 ### 2026-10-15: Added: the living sky, dimming, and help in Settings
 
