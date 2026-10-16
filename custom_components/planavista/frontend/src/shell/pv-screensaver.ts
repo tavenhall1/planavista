@@ -16,7 +16,7 @@ import { eventsOn } from '../modules/chores/calendar-ties';
 import { screensaverInfo } from '../modules/screensaver/info';
 import { SkyScene } from '../modules/screensaver/sky-scene';
 import {
-  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropFrom, rainbowStrength, rainbowWeather, seasonAt, springEase, pickLandscape,
+  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropDistance, dropEase, dropFrom, rainbowStrength, rainbowWeather, seasonAt, pickLandscape,
 } from '../modules/screensaver/sky';
 import { skyStyles } from '../modules/screensaver/sky-styles';
 import { onPageHousehold } from './page-household';
@@ -26,7 +26,6 @@ import { screensaver } from './screensaver-controller';
 const hassNow = (): HomeAssistant | undefined =>
   (document.querySelector('home-assistant') as (HTMLElement & { hass?: HomeAssistant }) | null)?.hass;
 
-const BOUNCY = springEase(260, 13, 1000);
 
 /** sun.sun's next rising or setting as a minute of the day, or the fallback (spec 3.3: 7:00 AM and 7:00 PM). */
 function minuteOf(text: unknown, fallback: number): number {
@@ -386,7 +385,9 @@ export class PvScreensaver extends LitElement {
     const above = (el: Element | null | undefined) => dropFrom(el?.getBoundingClientRect().bottom ?? window.innerHeight);
     const clock = info?.querySelector('.clock');
     const card = info?.querySelector('.card');
-    go(clock, [{ translate: above(clock) }, { translate: '0 0' }], ENTRANCE.clock, BOUNCY);
+    // The clock bounces as much as in the mockups however far it falls (0.13.2: in a bottom corner it fell off the screen).
+    const box = clock?.getBoundingClientRect();
+    if (box) go(clock, [{ translate: above(clock) }, { translate: '0 0' }], ENTRANCE.clock, dropEase(dropDistance(box.bottom), box.height));
     go(info?.querySelector('.line'), [{ opacity: 0, translate: '0 -0.7em' }, { opacity: 1, translate: '0 0' }], ENTRANCE.line, 'ease-out');
     go(card, [
       { translate: above(card), rotate: '-8deg' },

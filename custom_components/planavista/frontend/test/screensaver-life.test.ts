@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ENTRANCE, ENTRANCE_PACE, LIFE, SUN_FRAMES, dropFrom, firefliesOut, RAINBOW_MS, RAIN_CONDITIONS, cloudPlan, dimLight, gustAt, hex, lightAt, moonPixels,
+  ENTRANCE, ENTRANCE_PACE, LIFE, SUN_FRAMES, dropDistance, dropEase, dropFrom, firefliesOut, RAINBOW_MS, RAIN_CONDITIONS, cloudPlan, dimLight, gustAt, hex, lightAt, moonPixels,
   rainbowStrength, rainbowWeather, seasonAt, seasonGround, snowFor, springEase, swayAt,
 } from '../src/modules/screensaver/sky';
 import { trialTime, weatherScene } from '../src/core/screensaver';
@@ -166,6 +166,48 @@ describe('the entrance shows nothing before its turn', () => {
     const source = readFileSync(new URL('../src/shell/pv-screensaver.ts', import.meta.url), 'utf8');
     expect(source).toMatch(/dropFrom\(el\?\.getBoundingClientRect\(\)\.bottom/);
     expect(source).not.toMatch(/'0 -70vh'|'0 -150%'/);
+  });
+});
+
+// 0.13.2: the kitchen's clock, landing in a bottom corner, fell off the bottom of the screen and sprang back up.
+// A spring passes its spot by a share of how far it travels, and from just above the screen that is most of it.
+describe("the clock's bounce, in every corner", () => {
+  const points = (ease: string) => ease.slice('linear('.length, -1).split(', ').map(Number);
+  /** How far below its spot the clock goes, in px, for a drop of `distance`. */
+  const passes = (ease: string, distance: number) => (Math.max(...points(ease)) - 1) * distance;
+  const MOCKUP = springEase(260, 13, 1000);
+
+  it('is the mockups\' bounce where they dropped it from: half again its own height, or less', () => {
+    expect(dropEase(360, 240)).toBe(MOCKUP);
+    expect(dropEase(348, 240)).toBe(MOCKUP);
+    expect(dropDistance(120)).toBe(168);
+    expect(dropDistance(-10)).toBe(48);
+  });
+
+  it('never passes its spot by more than the mockups did, however far it falls, and still bounces', () => {
+    const mockup = passes(MOCKUP, 360);
+    for (const distance of [500, 973, 1400, 2200]) {
+      const over = passes(dropEase(distance, 240), distance);
+      expect(over).toBeLessThanOrEqual(mockup * 1.03);
+      expect(over).toBeGreaterThan(mockup * 0.85);
+      expect(points(dropEase(distance, 240)).at(-1)).toBe(1);
+    }
+  });
+
+  it("keeps the kitchen's bottom-right clock on the screen (its box ends at 925 of 1080)", () => {
+    const distance = dropDistance(925);
+    expect(925 + passes(MOCKUP, distance)).toBeGreaterThan(1080);
+    expect(925 + passes(dropEase(distance, 238), distance)).toBeLessThan(1080);
+  });
+
+  it('a clock not laid out yet still gets a spring, not NaN', () => {
+    expect(points(dropEase(900, 0)).every(Number.isFinite)).toBe(true);
+  });
+
+  it('the screensaver gives the clock its bounce from where it ends', async () => {
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(new URL('../src/shell/pv-screensaver.ts', import.meta.url), 'utf8');
+    expect(source).toMatch(/dropEase\(dropDistance\(box\.bottom\), box\.height\)/);
   });
 });
 
