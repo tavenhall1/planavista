@@ -58,7 +58,7 @@ async def test_subscribe_describes_the_account(
         "shuffle_keypad": False, "shared_screens": 1, "session_idle_seconds": 120, "parent_mode_minutes": 10,
         "kiosk": {"enabled": False, "top_bar": "hidden"},
         "screensaver": {
-            "enabled": False, "after_minutes": 5, "night": None,
+            "enabled": False, "after_minutes": 5, "dark_minutes": 10, "night": None,
             "screens": [{"user_id": accounts["kitchen"].id, "name": None, "screen": None, "motion": None}],
             "dim": {"day": 100, "night": 30},
         },

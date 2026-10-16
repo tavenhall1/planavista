@@ -4,8 +4,9 @@ When nobody has touched a shared screen for a while, the card shows a living
 sky with the time and today. Each shared account may name a Home Assistant
 entity that dims or turns off its screen, and one that senses motion in front
 of it. Shared screens are drawn darker at night (0.12.0): the brightness by day
-and at night, in whole percents. These rules are pure; the WebSocket layer
-works out the facts.
+and at night, in whole percents. Since 0.13.0 the sky goes dark after it has
+shown a while (Dark after, 0 for Never). These rules are pure; the WebSocket
+layer works out the facts.
 """
 from __future__ import annotations
 
@@ -14,6 +15,9 @@ import re
 from typing import Any
 
 AFTER_CHOICES = (1, 2, 5, 10, 15, 30)
+# Minutes the sky shows before the screen goes dark; 0 is Never (0.13.0).
+DARK_CHOICES = (0, 5, 10, 15, 30, 60)
+DARK_DEFAULT = 10
 DIM_DAY_CHOICES = (100, 85, 70)
 # 100 at night means no dimming.
 DIM_NIGHT_CHOICES = (100, 50, 30, 15, 8)
@@ -26,8 +30,8 @@ _ENTITY = re.compile(r"[a-z_]+\.[a-z0-9_]+")
 
 
 def default_screensaver() -> dict[str, Any]:
-    """Off; on after 5 minutes; night from Sleep times; no screen's entities picked; 100% by day, 30% at night."""
-    return {"enabled": False, "after_minutes": 5, "night": None, "screens": {}, "dim": dict(DIM_DEFAULT)}
+    """Off; on after 5 minutes, dark 10 minutes later; night from Sleep times; no screen's entities picked; 100% by day, 30% at night."""
+    return {"enabled": False, "after_minutes": 5, "dark_minutes": DARK_DEFAULT, "night": None, "screens": {}, "dim": dict(DIM_DEFAULT)}
 
 
 def _level(value: object, choices: tuple[int, ...], default: int) -> int:
@@ -71,6 +75,7 @@ def normalize_screensaver(value: object) -> dict[str, Any]:
         saver["enabled"] = False
     if saver.get("after_minutes") not in AFTER_CHOICES or isinstance(saver.get("after_minutes"), bool):
         saver["after_minutes"] = 5
+    saver["dark_minutes"] = _level(saver.get("dark_minutes"), DARK_CHOICES, DARK_DEFAULT)
     saver["night"] = _night(saver.get("night"))
     screens = saver.get("screens")
     saver["screens"] = (
@@ -112,6 +117,7 @@ def screensaver_view(saver: Mapping[str, Any], shared_users: list[str]) -> dict[
     return {
         "enabled": saver["enabled"],
         "after_minutes": saver["after_minutes"],
+        "dark_minutes": saver["dark_minutes"],
         "night": saver["night"],
         "screens": [
             {"user_id": user, "name": (screens.get(user) or {}).get("name"),
@@ -130,6 +136,7 @@ def screensaver_diagnostics(saver: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "enabled": saver["enabled"],
         "after_minutes": saver["after_minutes"],
+        "dark_minutes": saver["dark_minutes"],
         "night": saver["night"],
         "screens": [
             {"screen": domain(entry.get("screen")), "motion": domain(entry.get("motion"))}
