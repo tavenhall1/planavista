@@ -79,6 +79,8 @@ const SHEETS: Sheet[] = [
   { a: 0.82, b: 0.94, kind: 'rolling', haze: 0, group: 3, clusters: 10, scale: 1.35, floor: true },
 ];
 const GROUPS = 4;
+/** The ridges' noise samples, the same at every width (review m13 I3). */
+const NOISE_SIZE = 257;
 
 /** A dominant peak's top, the lowest point toward its left neighbor (l), and toward its right (v). */
 interface Apex {
@@ -138,7 +140,10 @@ export function ridgeGeometry(
     const span = bottom - top;
     const step = 6;
     const n = Math.ceil(width / step) + 3;
-    const size = 2 ** Math.ceil(Math.log2(n)) + 1;
+    // One noise size for every screen: the noise draws first from the seed, so a size that grew with the
+    // width moved every peak drawn after it, and the kitchen's 1920 never showed the ranges chosen in the
+    // Mountain Picker (review m13 I3). 257 is the size the picker drew at.
+    const size = NOISE_SIZE;
     const noise = fractal(r, size, s.kind === 'alpine' ? 0.56 : 0.5);
     const at = (i: number) => noise[Math.floor((i / n) * (size - 1))];
     const pts: Point[] = [];
