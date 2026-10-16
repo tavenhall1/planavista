@@ -696,3 +696,82 @@ describe('the stages after review m13b', () => {
     expect(src('shell/screensaver-controller.ts')).toMatch(/if \(document\.visibilityState === 'visible'\) \{\n\s+screensaver\.present\(Date\.now\(\)\);/);
   });
 });
+
+describe('a page load in the dark (0.13.1, the kitchen screen reloading at 3:45 AM)', () => {
+  const darkKitchen = (page: FakePage, start: number) => {
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 5 * MIN, new Date(start + 5 * MIN));
+    saver.tick(start + 15 * MIN, new Date(start + 15 * MIN));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, new Date(start + 15 * MIN));
+    expect(page.entities['light.planar'].state).toBe('off');
+    expect(page.record.dark).toBe(true);
+    return saver;
+  };
+
+  it('comes back dark with the Screen kept off, even when the record went quiet (timers slowed in the dark)', () => {
+    const page = new FakePage();
+    const start = evening(22, 20).getTime();
+    darkKitchen(page, start);
+    // An hour later the page reloads; the old page's last word is minutes old.
+    page.browser.record = { ...page.record, at: start + 15 * MIN + DARK_FADE_MS };
+    page.shown = false;
+    page.stages = [];
+    const later = start + 75 * MIN;
+    const after = new ScreensaverController(page, later);
+    after.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), later);
+    const calls = page.calls.length;
+    after.tick(later, new Date(later));
+    after.tick(later + 2000, new Date(later));
+    after.tick(later + 10 * MIN, new Date(later));
+    expect([page.shown, page.stages]).toEqual([true, [['dark', 0]]]);
+    expect(page.calls).toHaveLength(calls);
+    expect(page.entities['light.planar'].state).toBe('off');
+    // Someone walking up still brings it back.
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(later + 11 * MIN).toISOString() };
+    after.tick(later + 11 * MIN, new Date(later));
+    expect(page.now).toBe('lit');
+    expect(page.entities['light.planar'].state).toBe('on');
+  });
+
+  it("the page coming into view while its panel is powered off is nobody there: it stays dark", () => {
+    const page = new FakePage();
+    const start = evening(22, 20).getTime();
+    const saver = darkKitchen(page, start);
+    const calls = page.calls.length;
+    saver.present(start + 20 * MIN);
+    saver.tick(start + 20 * MIN + 1000, new Date(start + 20 * MIN));
+    expect(page.now).toBe('dark');
+    expect(page.calls).toHaveLength(calls);
+    // A fresh page that loads in the dark, then becomes visible, stays dark too.
+    page.shown = false;
+    page.stages = [];
+    const next = new ScreensaverController(page, start + 30 * MIN);
+    next.present(start + 30 * MIN);
+    next.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start + 30 * MIN);
+    next.tick(start + 30 * MIN + 1000, new Date(start + 30 * MIN));
+    next.tick(start + 31 * MIN, new Date(start + 31 * MIN));
+    expect(page.stages).toEqual([['dark', 0]]);
+    expect(page.calls).toHaveLength(calls);
+  });
+});
+
+describe("a page load after 0.12.0 turned the Screen off at night (0.13.1, the kitchen's upgrade reload)", () => {
+  it('comes back dark with the Screen kept off: a Screen held off means it was dark, whatever wrote the record', () => {
+    const page = new FakePage();
+    const start = evening(23, 19).getTime();
+    // 0.12.0's record: showing, said a moment ago, no quiet or dark, and the light it turned off at 22:20.
+    page.browser.record = { showing: true, at: start - 18_000, holds: [{ entity: 'light.planar', before: { state: 'on', attributes: { brightness: 230 } } }] };
+    page.entities['light.planar'] = { state: 'off', attributes: {} };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - 64 * MIN).toISOString() };
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start);
+    saver.tick(start + 3000, new Date(start));
+    saver.tick(start + 15 * MIN, new Date(start));
+    expect([page.shown, page.stages]).toEqual([true, [['dark', 0]]]);
+    expect(page.calls).toEqual([]);
+    expect(page.entities['light.planar'].state).toBe('off');
+  });
+});

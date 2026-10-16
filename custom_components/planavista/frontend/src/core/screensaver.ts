@@ -308,6 +308,8 @@ export interface ScreenRecord {
   quiet?: number;
   /** When this showing's sky came on, for a walk-by's dark wait after a reload (review m13 M2). */
   since?: number;
+  /** It was dark (0.13.1): a page that loads and finds it so comes back dark, the Screen kept off. */
+  dark?: boolean;
   holds: ScreenHold[];
 }
 
@@ -336,7 +338,8 @@ export function readRecord(raw: string | null): ScreenRecord {
     const { quiet, since } = value as { quiet?: unknown; since?: unknown };
     if (value.showing !== true || typeof at !== 'number') return { showing: value.showing === true, holds };
     const number = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-    return { showing: true, at, ...(number(quiet) ? { quiet } : {}), ...(number(since) ? { since } : {}), holds };
+    const dark = (value as { dark?: unknown }).dark === true;
+    return { showing: true, at, ...(number(quiet) ? { quiet } : {}), ...(number(since) ? { since } : {}), ...(dark ? { dark } : {}), holds };
   } catch {
     return none;
   }
