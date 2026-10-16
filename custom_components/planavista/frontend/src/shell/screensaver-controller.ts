@@ -107,7 +107,9 @@ export class ScreensaverController {
 
   constructor(private readonly _env: ScreensaverEnv, now: number) {
     const record = _env.loadRecord();
-    this._resumeDark = record.showing && record.dark === true;
+    // A Screen still held off means it was dark too, whatever wrote the record: the kitchen's reload onto
+    // 0.13.0 found 0.12.0's record (no quiet, the light it turned off at night) and lit the room (0.13.1).
+    this._resumeDark = record.showing && (record.dark === true || record.holds.length > 0);
     this._resume = shows(record, now) || this._resumeDark;
     this._lastTouch = this._resume && typeof record.quiet === 'number' ? Math.min(record.quiet, now) : now;
     if (this._resume && typeof record.since === 'number') this._resumeSince = Math.min(record.since, now);

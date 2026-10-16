@@ -757,3 +757,21 @@ describe('a page load in the dark (0.13.1, the kitchen screen reloading at 3:45 
     expect(page.calls).toHaveLength(calls);
   });
 });
+
+describe("a page load after 0.12.0 turned the Screen off at night (0.13.1, the kitchen's upgrade reload)", () => {
+  it('comes back dark with the Screen kept off: a Screen held off means it was dark, whatever wrote the record', () => {
+    const page = new FakePage();
+    const start = evening(23, 19).getTime();
+    // 0.12.0's record: showing, said a moment ago, no quiet or dark, and the light it turned off at 22:20.
+    page.browser.record = { showing: true, at: start - 18_000, holds: [{ entity: 'light.planar', before: { state: 'on', attributes: { brightness: 230 } } }] };
+    page.entities['light.planar'] = { state: 'off', attributes: {} };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - 64 * MIN).toISOString() };
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start);
+    saver.tick(start + 3000, new Date(start));
+    saver.tick(start + 15 * MIN, new Date(start));
+    expect([page.shown, page.stages]).toEqual([true, [['dark', 0]]]);
+    expect(page.calls).toEqual([]);
+    expect(page.entities['light.planar'].state).toBe('off');
+  });
+});
