@@ -1,6 +1,6 @@
 import { WeatherScene, nextLightning } from '../../core/screensaver';
 import { dimRgb } from '../../core/dimming';
-import { boltSource,
+import { APPROVED_LANDSCAPE, boltSource, type Landscape,
   CROWNS, ENTRANCE, ENTRANCE_PACE, LEAFY, LIFE, Light, Rgb, SCENE_MARGIN, Season, clamp, cloudPlan, dimLight, fractal, gustAt,
   hex, horizonAt, lightAt, minuteOfDay, mixRgb, moonPhase, moonPixels, nightLight, rgba, rng, seasonGround, shade, snowFor,
   springEase, sunPosition, swayAt, SUN_FRAMES, firefliesOut,
@@ -121,16 +121,18 @@ function yAt(edge: Point[], x: number): number {
 
 /**
  * The six sheets for a scene of this visible size (pure, no DOM). Each sheet
- * has its own fixed seed and the draws follow the mockup's order exactly, so
- * the ranges keep the approved shapes.
+ * draws from its own seed in the landscape, in the mockup's order, so the
+ * approved landscape keeps the approved shapes.
  */
-export function ridgeGeometry(W: number, H: number, season: Season = 'summer'): { horizon: number; band: number; sheets: SheetGeometry[] } {
+export function ridgeGeometry(
+  W: number, H: number, season: Season = 'summer', landscape: Landscape = APPROVED_LANDSCAPE,
+): { horizon: number; band: number; sheets: SheetGeometry[] } {
   const portrait = H > W;
   const horizon = horizonAt(W, H);
   const band = H - horizon;
   const width = W + 2 * M;
   const sheets = SHEETS.map((s, d): SheetGeometry => {
-    const r = rng(211 + d * 31);
+    const r = rng(landscape.shapes[d] ?? APPROVED_LANDSCAPE.shapes[d]);
     const top = horizon + band * s.a;
     const bottom = horizon + band * s.b;
     const span = bottom - top;
@@ -221,7 +223,7 @@ export function ridgeGeometry(W: number, H: number, season: Season = 'summer'): 
     }
     pines.sort((p, q) => p.y - q.y);
     // Which are broadleaf, from their own seed, so the land itself never moves (0.12.0).
-    const rk = rng(907 + d);
+    const rk = rng(landscape.trees[d] ?? APPROVED_LANDSCAPE.trees[d]);
     for (const t of pines) {
       t.leafy = rk() < (LEAFY[d] || 0);
       t.tone = Math.floor(rk() * 1000);
@@ -445,6 +447,8 @@ export class SkyScene {
   /** Calm-day life: with Motion Full only. */
   private readonly _life: boolean;
   private _season: Season = 'summer';
+  /** The land's seeds for this scene's life (0.13.0). */
+  private _landscape: Landscape;
   private _rainbowShown = -1;
   private _raysR = 0;
   private _flocks: Flock[] = [];
@@ -489,8 +493,9 @@ export class SkyScene {
   private _resizeTimer: ReturnType<typeof setTimeout> | undefined;
   private _destroyed = false;
 
-  constructor(root: HTMLElement, options: { reducedMotion: boolean }) {
+  constructor(root: HTMLElement, options: { reducedMotion: boolean; landscape?: Landscape }) {
     this._root = root;
+    this._landscape = options.landscape ?? APPROVED_LANDSCAPE;
     this._reduced = options.reducedMotion;
     this._life = !options.reducedMotion;
     this._wrap = div(this._reduced ? 'pvs-scene pvs-still' : 'pvs-scene');
@@ -572,6 +577,13 @@ export class SkyScene {
     this._running = false;
     cancelAnimationFrame(this._raf);
     this._raf = 0;
+  }
+
+  /** Draws other land (0.13.0): the scene's own pick stays for its life, so this is for looking at seeds. */
+  setLandscape(landscape: Landscape): void {
+    if (this._destroyed) return;
+    this._landscape = landscape;
+    this._rebuild();
   }
 
   /** Rebuilds for the root's size, when it has changed. */
@@ -658,7 +670,7 @@ export class SkyScene {
     this._w = W;
     this._h = H;
     this._dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-    const geometry = ridgeGeometry(W, H, this._season);
+    const geometry = ridgeGeometry(W, H, this._season, this._landscape);
     this._horizon = geometry.horizon;
     this._band = geometry.band;
     this._geo = geometry.sheets;

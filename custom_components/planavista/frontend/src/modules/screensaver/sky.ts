@@ -42,6 +42,22 @@ export function rng(seed: number): () => number {
   };
 }
 
+/**
+ * The land's seeds, sheet by sheet back to front (0.13.0): each sheet's shape,
+ * and which of its trees are broadleaf. A new set each time the screensaver
+ * opens gives new ranges with the same rules.
+ */
+export interface Landscape {
+  shapes: readonly number[];
+  trees: readonly number[];
+}
+
+/** The approved mockup's land (v15), the one every screensaver drew before 0.13.0. */
+export const APPROVED_LANDSCAPE: Landscape = {
+  shapes: [211, 242, 273, 304, 335, 366],
+  trees: [907, 908, 909, 910, 911, 912],
+};
+
 /** "#rrggbb" as a color. */
 export function hex(h: string): Rgb {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
