@@ -58,6 +58,26 @@ export const APPROVED_LANDSCAPE: Landscape = {
   trees: [907, 908, 909, 910, 911, 912],
 };
 
+/** The massif with the tallest peak (sheet 1): the shapes the owner picked in the Mountain Picker, today's first. */
+export const TOP_SEEDS: readonly number[] = [242, 595380, 557009, 614891, 264828, 39358, 60862];
+/** The range in front of it (sheet 2), the same way. */
+export const SECOND_SEEDS: readonly number[] = [273, 348899, 712769, 239700, 623634, 300407, 235294, 680635, 145242, 185318];
+
+/**
+ * The land for one showing (spec D2): the two snowy ranges from the owner's
+ * lists, the other sheets and every sheet's trees at random.
+ */
+export function pickLandscape(random: () => number = Math.random): Landscape {
+  const any = () => Math.floor(random() * 1_000_000);
+  const from = (list: readonly number[]) => list[Math.min(list.length - 1, Math.floor(random() * list.length))];
+  const top = from(TOP_SEEDS);
+  const second = from(SECOND_SEEDS);
+  return {
+    shapes: [any(), top, second, any(), any(), any()],
+    trees: [any(), any(), any(), any(), any(), any()],
+  };
+}
+
 /** "#rrggbb" as a color. */
 export function hex(h: string): Rgb {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];

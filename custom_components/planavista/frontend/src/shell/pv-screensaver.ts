@@ -16,7 +16,7 @@ import { eventsOn } from '../modules/chores/calendar-ties';
 import { screensaverInfo } from '../modules/screensaver/info';
 import { SkyScene } from '../modules/screensaver/sky-scene';
 import {
-  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropFrom, rainbowStrength, rainbowWeather, seasonAt, springEase,
+  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropFrom, rainbowStrength, rainbowWeather, seasonAt, springEase, pickLandscape,
 } from '../modules/screensaver/sky';
 import { skyStyles } from '../modules/screensaver/sky-styles';
 import { onPageHousehold } from './page-household';
@@ -299,7 +299,8 @@ export class PvScreensaver extends LitElement {
     const data = hass ? getPlanaVistaData(hass) : null;
     const reduced = resolveMotion(appearanceSettings(data?.display).motion, matchMedia('(prefers-reduced-motion: reduce)').matches) === 'reduced';
     this.toggleAttribute('reduced', reduced);
-    this._scene = new SkyScene(root, { reducedMotion: reduced });
+    // New land each showing (0.13.0): the snowy ranges from the owner's picks, the rest at random.
+    this._scene = new SkyScene(root, { reducedMotion: reduced, landscape: pickLandscape() });
     // The paper's fibers, for the card too.
     const tex = root.style.getPropertyValue('--tex');
     if (tex) this.style.setProperty('--tex', tex);
