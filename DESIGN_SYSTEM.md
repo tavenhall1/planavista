@@ -359,7 +359,7 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 
 `pv-screensaver` (shell) and `SkyScene` (modules/screensaver): when nobody has touched a shared screen for a while, a living sky in the hero's layered paper style covers the whole page, Home Assistant's bars included.
 
-- **The scene:** six cut-paper ridges (a distant range, a massif with snowfields, its shoulders, an alpine range with a tree line, forested foothills, the nearest hill) with shadows between the sheets and a paper fiber texture, paper clouds of varying thickness, fog as tall see-through vellum patches whose feet hide behind the next ridge, rain, snow, and a gentle storm. Never long thin clouds or mist bands.
+- **The scene:** six cut-paper ridges (a distant range, a massif with snowfields, its shoulders, an alpine range with a tree line, forested foothills, the nearest hill) drawn from new seeds each time it comes on: the massif and its shoulders from a short list of chosen shapes, the rest at random by the same rules, the tallest peak always where the light sits; with shadows between the sheets and a paper fiber texture, paper clouds of varying thickness, fog as tall see-through vellum patches whose feet hide behind the next ridge, rain, snow, and a gentle storm. Never long thin clouds or mist bands.
 - **Light:** the sky, the ridges' tones, and the glow follow the real sun (sun.sun's rising and setting) and the weather entity's condition and cloud cover. The sun and moon move every frame from the clock; colors are re-lit once a minute in steps too small to see. The moon is one sphere lit from the sun's side for tonight's phase: a sharp rim, a soft terminator, its dark side a shade lighter than the sky, on a solid disc of night sky with a soft edge so no star shows through; clouds dim it by its colors, never by seeing through it.
 - **Seasons:** by the month and Home Assistant's latitude (south of the equator, six months on). On the two nearer sheets some trees are broadleaf: fresh green and blossom in spring, deep green in summer, orange, red, and gold in autumn, bare branches in winter, when snow also lies on the pines, the near ground, and further down the peaks. Fireflies glow low among the near trees on dry summer evenings. Nothing falls past the viewer: the land changes, not the air.
 - **Weather extras:** wind races the clouds in gusts and birds glide with it; for about 20 minutes after rain, by day, a paper rainbow of six muted bands stands across from the sun, its feet behind the far range.
@@ -368,7 +368,8 @@ The calendar's event details (`pv-event-popup`) and New event and Edit event (`p
 - **The entrance:** about four and a half seconds, a little paper theater: the sky fades over the card, the ranges rise far to near on springs with their mist, the sun or moon swings up from behind the peaks, clouds slide in from the nearer side, the clock drops in with a bounce and the day's words follow, the Today card drops and swings on its pegs, and a rainbow that is already out comes last. Reduced motion: one fade.
 - **Calm-day life** (Motion Full): the sun's rays turn once in four minutes, the sun and its glow breathe over seven seconds, three fair-weather puffs drift even on a clear day, the ranges sway 6 to 28 px on slow cycles, a flock of paper birds crosses every few minutes by day, and a shooting star now and then at night.
 - **Motion:** transforms and opacity only (no blur or filters), one animation loop at 30 frames a second, stopped while the page is hidden. Lightning is a soft flash and a faint bolt, at least 9 seconds apart, always out of the base of a cloud on screen (a storm's tall cloud first); with no cloud in view it waits. Reduced motion (PlanaVista's Motion setting, or the device's when it says Device) keeps the light and the clock and drops drifting, rain, snow, and lightning.
-- **Waking:** a touch or a key only wakes it, with a 260 ms fade back to the card; the page ignores that burst, so nothing beneath is pressed. It is a modal dialog in the top layer, above Home Assistant's own dialogs.
+- **Stages** (0.13.0): like a phone's lock screen. Resting: with a motion sensor, a black shade at 45% over everything while nobody is near. Lit: no shade, while someone is in front of it or with no motion sensor. Dark: after the Dark after wait, the shade fades to black over 5 s, the Screen entity turns off, and the scene stops drawing. Walking up lights it in 0.8 s (5 s on a slow-start curve from a panel it turned off, which can take seconds to show a picture); walking away settles it back over 4 s. The shade moves by opacity only.
+- **Waking:** a touch or a key opens the card, in any stage, with a 260 ms fade; motion only lights the sky. The page ignores that burst, so nothing beneath is pressed. It is a modal dialog in the top layer, above Home Assistant's own dialogs.
 - **Try it:** Settings shows it at another time of day (by the home's own sun), in other weather, or in another season; nothing is saved.
 
 ### 11.12 Dimming
@@ -424,6 +425,11 @@ hide_header: false
 ---
 
 ## 12. Design changelog
+
+### 2026-10-15: Added: new land each time, and the sky that wakes like a phone
+
+- The mountains are drawn from new seeds each time the screensaver comes on (11.11).
+- The screensaver rests, lights when someone walks up, goes dark after Dark after, and opens the card only on a touch (11.11).
 
 ### 2026-10-15: Added: the living sky, dimming, and help in Settings
 

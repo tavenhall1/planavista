@@ -20,7 +20,7 @@ export const HELP = {
   },
   night: {
     what: 'The hours the household is asleep.',
-    how: "Shared screens dim to the night level, the screensaver's sky goes dark with just the time, date, and weather, and a Screen picked below turns off. Night runs from the latest bedtime to the earliest wake-up in everyone's Sleep times, or at times you set here.",
+    how: "Shared screens dim to the night level, and the screensaver shows a night sky with just the time, date, and weather. Night runs from the latest bedtime to the earliest wake-up in everyone's Sleep times, or at times you set here.",
   },
   kiosk: {
     what: 'Keeps a wall screen on PlanaVista, so nobody wanders into the rest of Home Assistant by accident.',
@@ -32,19 +32,23 @@ export const HELP = {
   },
   screensaver: {
     what: 'Shows a calm living sky with the time, the weather, and today when nobody is using the screen.',
-    how: "It comes on after the wait below with no touches. Any touch wakes it at once, and that touch doesn't press anything underneath. At night the sky goes dark and only the time, date, and weather show.",
+    how: "It comes on after the wait below with no touches, and the screen goes dark after Dark after. With a Motion sensor picked, it rests a little dimmer and brightens when someone walks up. Only a touch opens PlanaVista again, and that touch doesn't press anything underneath. At night the sky shows only the time, date, and weather.",
   },
   screensaver_after: {
     what: 'How long the screen waits before the screensaver comes on.',
     how: 'The wait starts at the last touch. With a Motion sensor picked below, it also waits until nobody has moved in front of the screen for this long.',
   },
+  screensaver_dark: {
+    what: 'How long the sky shows before the screen goes dark, the way a phone turns its screen off.',
+    how: 'It counts from when the screensaver comes on. The sky fades to black, and a Screen picked below turns off. With a Motion sensor picked, walking up brings the sky back; a touch opens PlanaVista. Never keeps the sky showing.',
+  },
   screensaver_screen: {
     what: 'The switch, plug, or light in Home Assistant that powers this screen, if it has one.',
-    how: "Pick this screen's own backlight or plug, not a room's light. A light or number is turned down while the screensaver shows; at night the screen is turned off or all the way down, and it comes back in the morning and at a touch. With None, the screen stays on and shows the sky, dark at night.",
+    how: "Pick this screen's own backlight or plug, not a room's light. It turns off, or all the way down, when the screen goes dark, and comes back when someone walks up or touches the screen. With None, PlanaVista draws the screen black instead.",
   },
   screensaver_motion: {
     what: "A motion sensor in front of this screen, such as the screen's own camera.",
-    how: 'Someone in front of the screen keeps it awake, and walking up wakes it before anyone touches it. Devices signed in with this account share these.',
+    how: "Someone in front of the screen keeps the screensaver away. Once it shows, it rests a little dimmer, and walking up brightens it, even from dark, without leaving it; only a touch opens PlanaVista. Devices signed in with this account share these.",
   },
   screensaver_try: {
     what: 'Shows the screensaver right now as it would look at another time of day, in other weather, or in another season.',

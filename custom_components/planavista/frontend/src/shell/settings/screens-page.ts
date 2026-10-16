@@ -39,6 +39,16 @@ const AFTER_CHOICES = [
 ] as const;
 /** The waits offered: five fit a phone's Settings in one row; a household that chose 15 minutes keeps it shown. */
 const OFFERED_AFTER = [1, 2, 5, 10, 30];
+/** Dark after (0.13.0): how long the sky shows before the screen goes dark; 0 is Never. */
+const DARK_CHOICES = [
+  { value: 5, label: '5 min', spoken: '5 minutes' },
+  { value: 10, label: '10 min', spoken: '10 minutes' },
+  { value: 15, label: '15 min', spoken: '15 minutes' },
+  { value: 30, label: '30 min', spoken: '30 minutes' },
+  { value: 60, label: '1 hour', spoken: '1 hour' },
+  { value: 0, label: 'Never', spoken: 'Never' },
+] as const;
+const OFFERED_DARK = [5, 10, 30, 60, 0];
 const DAY_CHOICES = [100, 85, 70].map(v => ({ value: v, label: `${v}%`, spoken: `${v} percent` }));
 const NIGHT_CHOICES = [100, 50, 30, 15, 8].map(v => ({ value: v, label: `${v}%`, spoken: v === 100 ? '100 percent, no dimming' : `${v} percent` }));
 const TRY_TIMES: Array<{ value: TrialTime | 'now'; label: string; spoken: string }> = [
@@ -295,6 +305,9 @@ export class PvSettingsScreens extends SettingRowsPage {
           ${this._choices('Comes on after', 'saver-after-label',
             AFTER_CHOICES.filter(c => OFFERED_AFTER.includes(c.value) || c.value === saver.after_minutes), saver.after_minutes as 1 | 2 | 5 | 10 | 15 | 30,
             value => this.api.saveSecurity({ screensaver_after: value }), 'screensaver_after')}
+          ${this._choices('Dark after', 'saver-dark-label',
+            DARK_CHOICES.filter(c => OFFERED_DARK.includes(c.value) || c.value === (saver.dark_minutes ?? 0)), (saver.dark_minutes ?? 0) as 0 | 5 | 10 | 15 | 30 | 60,
+            value => this.api.saveSecurity({ screensaver_dark: value }), 'screensaver_dark')}
           ${saver.screens.map(screen => this._screenRow(screen))}
           ${this._try()}
         ` : nothing}
