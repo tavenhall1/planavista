@@ -199,3 +199,28 @@ describe('the stages on the screen (0.13.0, spec D8)', () => {
     expect(element).toMatch(/new SkyScene\(root, \{ reducedMotion: reduced, landscape: pickLandscape\(\) \}\)/);
   });
 });
+
+describe('the waking touch on a panel still coming back (review m13 I1)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('keeps every press from the page until the panel has had time to show the picture', () => {
+    vi.useFakeTimers();
+    const page = new EventTarget();
+    swallowWakingPress(pointer('pointerdown', 1), page, WAKING_TAIL_MS, WAKING_MAX_MS, 6000);
+    const heard: string[] = [];
+    for (const type of ['pointerdown', 'click']) page.addEventListener(type, () => heard.push(type));
+    page.dispatchEvent(pointer('pointerup', 1));
+    vi.advanceTimersByTime(1500);
+    page.dispatchEvent(pointer('pointerdown', 2));
+    page.dispatchEvent(click(1));
+    page.dispatchEvent(pointer('pointerup', 2));
+    vi.advanceTimersByTime(2500);
+    page.dispatchEvent(pointer('pointerdown', 3));
+    page.dispatchEvent(pointer('pointerup', 3));
+    expect(heard).toEqual([]);
+    // Once the picture is back, presses count again (no longer than the wait plus the tail).
+    vi.advanceTimersByTime(2400);
+    page.dispatchEvent(pointer('pointerdown', 4));
+    expect(heard).toEqual(['pointerdown']);
+  });
+});

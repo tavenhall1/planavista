@@ -40,7 +40,7 @@ export const HELP = {
   },
   screensaver_dark: {
     what: 'How long the sky shows before the screen goes dark, the way a phone turns its screen off.',
-    how: 'It counts from when the screensaver comes on. The sky fades to black, and a Screen picked below turns off. With a Motion sensor picked, walking up brings the sky back; a touch opens PlanaVista. Never keeps the sky showing.',
+    how: 'It counts from when the screensaver comes on, or from when someone last walked away. The sky fades to black, and a Screen picked below turns off; it stays dark until someone walks up (with a Motion sensor picked) or touches the screen. A touch opens PlanaVista. Never keeps the sky showing.',
   },
   screensaver_screen: {
     what: 'The switch, plug, or light in Home Assistant that powers this screen, if it has one.',

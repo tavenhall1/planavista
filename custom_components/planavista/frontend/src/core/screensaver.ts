@@ -52,10 +52,14 @@ export const PANEL_WAKE_EASE = 'linear(0, 0.04 50%, 0.3 80%, 1)';
  */
 export function skyStage(
   now: number, lastTouch: number, motion: MotionReading | null, afterMinutes: number, darkMinutes: number | undefined,
+  shownAt?: number,
 ): SkyStage {
   const shows = showsAt(lastTouch, motion, afterMinutes);
   if (shows === null) return 'lit';
-  if (darkMinutes && now >= shows + darkMinutes * 60_000) return 'dark';
+  // A walk-by while the sky shows starts only the dark wait over (review m13 M2): the sky is already up.
+  const quiet = shows - afterMinutes * 60_000;
+  const from = shownAt !== undefined && quiet > shownAt ? quiet : shows;
+  if (darkMinutes && now >= from + darkMinutes * 60_000) return 'dark';
   return motion ? 'rest' : 'lit';
 }
 
@@ -160,7 +164,8 @@ export function seeMotion(
   const reading = motionReading(state);
   if (!reading) return null;
   const changed = state?.last_changed ?? '';
-  if (prev && prev.changed === changed && prev.on === reading.on) return prev;
+  // The same reading under a new last_changed is a sensor back after a drop, not motion (review m13 I2).
+  if (prev && prev.on === reading.on) return prev.changed === changed ? prev : { ...prev, changed };
   if (prev) return { on: reading.on, changed, at: now };
   // A first reading (the page loading, or the sensor back after Home Assistant restarts) of no
   // motion starts nothing: only a change to off this page saw starts the wait (the kitchen screen).
@@ -298,6 +303,8 @@ export interface ScreenRecord {
   at?: number;
   /** When the quiet its stages count from began (0.13.0): a reload while it is dark stays dark. */
   quiet?: number;
+  /** When this showing's sky came on, for a walk-by's dark wait after a reload (review m13 M2). */
+  since?: number;
   holds: ScreenHold[];
 }
 
@@ -323,9 +330,10 @@ export function readRecord(raw: string | null): ScreenRecord {
       })];
     });
     const at = (value as { at?: unknown }).at;
-    const quiet = (value as { quiet?: unknown }).quiet;
+    const { quiet, since } = value as { quiet?: unknown; since?: unknown };
     if (value.showing !== true || typeof at !== 'number') return { showing: value.showing === true, holds };
-    return typeof quiet === 'number' && Number.isFinite(quiet) ? { showing: true, at, quiet, holds } : { showing: true, at, holds };
+    const number = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+    return { showing: true, at, ...(number(quiet) ? { quiet } : {}), ...(number(since) ? { since } : {}), holds };
   } catch {
     return none;
   }

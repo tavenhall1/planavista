@@ -277,3 +277,26 @@ describe('the sky wakes like a phone (0.13.0, spec D4 to D8)', () => {
     expect(SETTLE_MS).toBeGreaterThan(LIGHT_UP_MS);
   });
 });
+
+describe('the stages after review m13', () => {
+  const MIN = 60_000;
+  const quiet = 1_000_000;
+
+  it('a walk-by while the sky shows starts only the dark wait over, not the screensaver wait too (M2)', () => {
+    const shownAt = quiet + 2 * MIN;
+    const cleared = { on: false, since: quiet + 4 * MIN };
+    expect(skyStage(quiet + 13 * MIN, quiet, cleared, 2, 10, shownAt)).toBe('rest');
+    expect(skyStage(quiet + 14 * MIN, quiet, cleared, 2, 10, shownAt)).toBe('dark');
+    // With no walk-by, still the screensaver wait and then the dark wait.
+    expect(skyStage(quiet + 12 * MIN - 1, quiet, { on: false, since: 0 }, 2, 10, shownAt)).toBe('rest');
+    expect(skyStage(quiet + 12 * MIN, quiet, { on: false, since: 0 }, 2, 10, shownAt)).toBe('dark');
+  });
+
+  it('a sensor back after a drop with the same reading is no new motion (I2)', () => {
+    const seen = seeMotion(null, { state: 'off', last_changed: '2026-10-15T20:00:00Z' }, 5000)!;
+    const back = seeMotion(seen, { state: 'off', last_changed: '2026-10-15T21:30:00Z' }, 9000)!;
+    expect(back.at).toBe(seen.at);
+    expect(back.changed).toBe('2026-10-15T21:30:00Z');
+    expect(seeMotion(back, { state: 'on', last_changed: '2026-10-15T21:31:00Z' }, 9500)).toMatchObject({ on: true, at: 9500 });
+  });
+});

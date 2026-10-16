@@ -70,15 +70,21 @@ export function swallowWakingKey(event: KeyLike, page: EventTarget, tail = WAKIN
  * The waking touch: every other pointerdown (a palm, a second finger) and
  * every click, until each finger that came down has lifted and a moment has
  * passed. Lifts aren't stopped; with their pointerdowns kept away they press nothing.
+ * `atLeast`: ms from the waking touch that every press is kept away, a panel's
+ * own wake when the touch turned it back on (review m13 I1: a second tap on a
+ * still-black screen pressed the board beneath).
  */
-export function swallowWakingPress(event: PointerLike, page: EventTarget, tail = WAKING_TAIL_MS, longest = WAKING_MAX_MS): void {
+export function swallowWakingPress(
+  event: PointerLike, page: EventTarget, tail = WAKING_TAIL_MS, longest = WAKING_MAX_MS, atLeast = 0,
+): void {
   const down = new Set<number>([event.pointerId ?? 0]);
+  const until = Date.now() + atLeast;
   let after: ReturnType<typeof setTimeout> | undefined;
   const lifted = (e: PointerLike): void => {
     down.delete(e.pointerId ?? 0);
     if (down.size) return;
     clearTimeout(after);
-    after = setTimeout(() => done(), tail);
+    after = setTimeout(() => done(), Math.max(tail, until - Date.now()));
   };
   const done = burst(page, {
     pointerdown: (e: PointerLike) => {
@@ -91,5 +97,5 @@ export function swallowWakingPress(event: PointerLike, page: EventTarget, tail =
     pointercancel: lifted,
     click: stop,
     contextmenu: stop,
-  } as Record<string, (e: Event) => void>, longest);
+  } as Record<string, (e: Event) => void>, Math.max(longest, atLeast + tail));
 }

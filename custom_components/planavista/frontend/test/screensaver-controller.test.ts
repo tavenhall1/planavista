@@ -229,13 +229,13 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 230 } });
     expect(page.wake.at(-1)).toBe(true);
     expect(page.record.holds).toEqual([]);
-    // They walk away: rest at once, dark again after the full waits from then.
+    // They walk away: rest at once, dark again after the dark wait from then (the sky is already up; review m13 M2).
     page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start + 21 * MIN).toISOString() };
     saver.tick(start + 21 * MIN, noon(21));
     expect(page.now).toBe('rest');
-    saver.tick(start + 35 * MIN, noon(35));
+    saver.tick(start + 31 * MIN - 1000, noon(30));
     expect(page.now).toBe('rest');
-    saver.tick(start + 36 * MIN, noon(36));
+    saver.tick(start + 31 * MIN, noon(31));
     expect(page.now).toBe('dark');
   });
 
@@ -256,6 +256,139 @@ describe('the screensaver controller (spec 3.2)', () => {
     other.tick(start + 5 * MIN, noon(5));
     other.tick(start + 600 * MIN, noon(0));
     expect(never.stages).toEqual([['lit', 0]]);
+  });
+
+  it('a touch that wakes a panel it turned off keeps presses from the unseen board until the picture is back (review m13 I1)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    expect(page.entities['light.planar'].state).toBe('off');
+    expect(saver.touch(start + 20 * MIN)).toBe(true);
+    expect(saver.blindMs).toBe(PANEL_WAKE_MS);
+    // A touch on a sky that was never dark, or on a drawn dark, keeps nothing longer.
+    const other = new FakePage();
+    const lit = new ScreensaverController(other, start);
+    lit.setView(view(), start);
+    lit.tick(start + 5 * MIN, noon(5));
+    expect(lit.touch(start + 6 * MIN)).toBe(true);
+    expect(lit.blindMs).toBe(0);
+    lit.tick(start + 22 * MIN, noon(22));
+    expect(other.now).toBe('dark');
+    lit.touch(start + 23 * MIN);
+    expect(lit.blindMs).toBe(0);
+    expect(src('shell/screensaver-controller.ts')).toMatch(/if \(screensaver\.touch\(Date\.now\(\)\)\) swallowWakingPress\(event, window, WAKING_TAIL_MS, WAKING_MAX_MS, screensaver\.blindMs\);/);
+  });
+
+  it('someone who walks up to a dark panel and touches it before the picture is back presses nothing either (review m13 I1)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 20 * MIN).toISOString() };
+    saver.tick(start + 20 * MIN, noon(20));
+    expect(page.entities['light.planar'].state).toBe('on');
+    saver.touch(start + 20 * MIN + 2000);
+    expect(saver.blindMs).toBe(PANEL_WAKE_MS - 2000);
+  });
+
+  it('a motion sensor that drops out keeps its last reading: resting stays resting, lit settles, and the waits count on (review m13 I2)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ motion: 'binary_sensor.kitchen' }), start);
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 5 * MIN, noon(5));
+    expect(page.now).toBe('rest');
+    page.entities['binary_sensor.kitchen'] = { state: 'unavailable', attributes: {} };
+    saver.tick(start + 7 * MIN, noon(7));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 15 * MIN - 1000, noon(14));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 15 * MIN, noon(15));
+    expect(page.now).toBe('dark');
+    // Someone in front when it drops: it settles as if they walked away then, and the dark wait counts from there.
+    const other = new FakePage();
+    const lit = new ScreensaverController(other, start);
+    lit.setView(view({ motion: 'binary_sensor.kitchen' }), start);
+    other.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    lit.tick(start + 5 * MIN, noon(5));
+    other.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 6 * MIN).toISOString() };
+    lit.tick(start + 6 * MIN, noon(6));
+    expect(other.now).toBe('lit');
+    other.entities['binary_sensor.kitchen'] = { state: 'unavailable', attributes: {} };
+    lit.tick(start + 7 * MIN, noon(7));
+    expect(other.now).toBe('rest');
+    lit.tick(start + 17 * MIN - 1000, noon(16));
+    expect(other.now).toBe('rest');
+    lit.tick(start + 17 * MIN, noon(17));
+    expect(other.now).toBe('dark');
+  });
+
+  it('once dark it stays dark through a settings change; only someone walking up or a touch brings it back (review m13 M1)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    page.entities['binary_sensor.hall'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    for (const changed of [view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }, { dark: 60 }),
+      view({ screen: 'light.planar', motion: 'binary_sensor.hall' }), view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }, { dark: 0 })]) {
+      saver.setView(changed, start + 16 * MIN);
+      saver.tick(start + 16 * MIN, noon(16));
+      expect(page.now).toBe('dark');
+      expect(page.entities['light.planar'].state).toBe('off');
+    }
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start + 17 * MIN);
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 18 * MIN).toISOString() };
+    saver.tick(start + 18 * MIN, noon(18));
+    expect(page.now).toBe('lit');
+  });
+
+  it('a walk-by while it shows starts the dark wait over from the walk-by (review m13 M2)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ motion: 'binary_sensor.kitchen' }), start);
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 5 * MIN, noon(5));
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 8 * MIN).toISOString() };
+    saver.tick(start + 8 * MIN, noon(8));
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start + 9 * MIN).toISOString() };
+    saver.tick(start + 9 * MIN, noon(9));
+    // Written at once, so a reload counts from the walk-by too (M4).
+    expect(page.record.quiet).toBe(start + 9 * MIN);
+    saver.tick(start + 19 * MIN - 1000, noon(18));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 19 * MIN, noon(19));
+    expect(page.now).toBe('dark');
+  });
+
+  it('a number turned to its minimum, or a plug someone turned back on, wakes at the quick ease (review m13 M3)', () => {
+    for (const [entity, state] of [['input_number.backlight', { state: '200', attributes: { min: 0, max: 255, step: 1 } }], ['switch.plug', { state: 'on', attributes: {} }]] as const) {
+      const page = new FakePage();
+      const start = noon().getTime();
+      const saver = new ScreensaverController(page, start);
+      saver.setView(view({ screen: entity, motion: 'binary_sensor.kitchen' }), start);
+      page.entities[entity] = structuredClone(state);
+      page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+      saver.tick(start + 15 * MIN, noon(15));
+      saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+      if (entity === 'switch.plug') page.entities[entity] = { state: 'on', attributes: {} }; // turned back on by hand
+      page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 20 * MIN).toISOString() };
+      saver.tick(start + 20 * MIN, noon(20));
+      expect(page.stages.at(-1), entity).toEqual(['lit', LIGHT_UP_MS]);
+    }
   });
 
   it('a motion sensor stuck on keeps the sky lit and never dark; a touch still opens the board', () => {
@@ -498,7 +631,7 @@ describe('the screensaver controller (spec 3.2)', () => {
   it("the waking touch or key presses nothing beneath, and what it changed is kept in the browser's storage", () => {
     const controller = src('shell/screensaver-controller.ts');
     expect(controller).toMatch(/if \(screensaver\.touch\(Date\.now\(\)\)\) swallowWakingKey\(event, window\);/);
-    expect(controller).toMatch(/if \(screensaver\.touch\(Date\.now\(\)\)\) swallowWakingPress\(event, window\);/);
+    expect(controller).toMatch(/if \(screensaver\.touch\(Date\.now\(\)\)\) swallowWakingPress\(event, window, WAKING_TAIL_MS, WAKING_MAX_MS, screensaver\.blindMs\);/);
     expect(controller).toMatch(/window\.addEventListener\('keydown', keyed, true\);/);
     expect(controller).toMatch(/window\.addEventListener\('pointerdown', pressed, true\);/);
     expect(controller).toMatch(/localStorage\.setItem\(RECORD_KEY, JSON\.stringify\(record\)\)/);

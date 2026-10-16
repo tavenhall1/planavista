@@ -26,7 +26,7 @@ Agreed with the owner on 2026-10-15. Builds on the screensaver (0.11.0) and the 
 | `lit` | motion reads on, or the screen has no Motion sensor | the sky at the time of day's level (0.12.0's dimming) |
 | `dark` | quiet for the screensaver wait plus the Dark wait | black: the Screen entity off where one is picked, else drawn black |
 
-Quiet starts at the later of the last touch and motion going off (0.11.0's rule). The sky comes on at quiet + `after_minutes` (unchanged) and goes dark at quiet + `after_minutes` + `dark_minutes`. Dark after Never (0) never goes dark.
+Quiet starts at the later of the last touch and motion going off (0.11.0's rule). The sky comes on at quiet + `after_minutes` (unchanged) and goes dark at quiet + `after_minutes` + `dark_minutes`; a walk-by while the sky shows starts only the dark wait over, from when they walk away (review m13 M2). Dark after Never (0) never goes dark. Once dark it stays dark until motion or a touch, whatever the settings do meanwhile (review m13 M1). A Motion sensor that drops out keeps its last reading, and someone in front of it when it dropped counts as having walked away then (review m13 I2); a new Motion pick starts from its own first reading.
 
 **D5. Motion lights, touch opens.** Motion while the sky shows moves it to `lit` and never dismisses it (until 0.13.0 motion went straight to the board). When motion clears, the sky eases back to `rest`, and the dark wait counts from then. A touch anywhere, in any stage, opens the board at once and presses nothing (the 0.11.0 wake). Motion while the board shows keeps the sky away, as before.
 
@@ -40,6 +40,8 @@ Quiet starts at the later of the last touch and motion going off (0.11.0's rule)
 - to dark: `DARK_FADE_MS` (5 s), then the Screen goes off and the scene stops drawing;
 - dark to lit with a Screen PlanaVista turned off: `PANEL_WAKE_MS` (6 s) on a slow-start curve from the turn_on, since a panel can take seconds to show a picture again (the kitchen's Planar 3.5 to 5 s, all at once); from a drawn dark, `LIGHT_UP_MS`;
 - a touch: the board's 0.12.0 wake fade.
+
+**D8a. A panel still waking.** A touch that wakes a dark whose Screen PlanaVista powered off (a light or switch, still off), or that comes within `PANEL_WAKE_MS` of someone walking up to one, keeps every press from the page until the panel has had time to show a picture (`blindMs`, `swallowWakingPress(..., atLeast)`), so nothing is pressed on a black screen (review m13 I1). The slow ease is for that panel only; a number at its minimum or a plug turned back on by hand eases quickly (review m13 M3).
 
 **D9. The device's own sleep.** The wake lock is let go while the screen is dark (it used to be let go while the sky showed at night), so a tablet's own Auto-Lock may take over in the dark.
 
