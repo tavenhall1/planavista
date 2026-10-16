@@ -239,8 +239,8 @@ describe('the sky wakes like a phone (0.13.0, spec D4 to D8)', () => {
     expect(stage(at(32), cleared)).toBe('dark');
   });
 
-  it('stays lit without a motion sensor, since nothing could light it again', () => {
-    expect(stage(at(2), null)).toBe('lit');
+  it('rests without a motion sensor too, the shade dimming every screen (review m13b I3)', () => {
+    expect(stage(at(2), null)).toBe('rest');
     expect(stage(at(12), null)).toBe('dark');
   });
 
@@ -257,8 +257,9 @@ describe('the sky wakes like a phone (0.13.0, spec D4 to D8)', () => {
   it('draws each stage with one shade', () => {
     expect(shadeOf('lit')).toBe(0);
     expect(shadeOf('rest')).toBe(REST_SHADE);
-    expect(REST_SHADE).toBeGreaterThan(0.3);
-    expect(REST_SHADE).toBeLessThan(0.6);
+    // About half the light (the shade mixes in sRGB, so its light left is (1 - shade) ^ 2.2; review m13b M1).
+    expect((1 - REST_SHADE) ** 2.2).toBeGreaterThan(0.4);
+    expect((1 - REST_SHADE) ** 2.2).toBeLessThan(0.6);
     expect(shadeOf('dark')).toBe(1);
   });
 

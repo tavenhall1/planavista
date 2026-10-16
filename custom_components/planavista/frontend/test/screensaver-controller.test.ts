@@ -2,14 +2,15 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ScreensaverController, type ScreensaverEnv } from '../src/shell/screensaver-controller';
-import { DARK_FADE_MS, LIGHT_UP_MS, PANEL_WAKE_MS, type EntityState, type ScreenRecord, type ServiceCall, type SkyStage } from '../src/core/screensaver';
+import { DARK_FADE_MS, LIGHT_UP_MS, PANEL_WAKE_MS, PRESENT_MS, type EntityState, type ScreenRecord, type ServiceCall, type SkyStage } from '../src/core/screensaver';
 import type { HouseholdView } from '../src/core/household';
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(`../src/${path}`, import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
 const MIN = 60_000;
 
 function view(
-  screens: { screen?: string | null; motion?: string | null } = {}, fields: { shared?: boolean; enabled?: boolean; dark?: number } = {},
+  screens: { screen?: string | null; motion?: string | null } = {},
+  fields: { shared?: boolean; enabled?: boolean; dark?: number; after?: number } = {},
 ): HouseholdView {
   return {
     available: true,
@@ -18,7 +19,7 @@ function view(
     security: {
       shuffle_keypad: false, shared_screens: 1,
       screensaver: {
-        enabled: fields.enabled ?? true, after_minutes: 5, dark_minutes: fields.dark ?? 10, night: { from: '22:00', to: '06:30' },
+        enabled: fields.enabled ?? true, after_minutes: fields.after ?? 5, dark_minutes: fields.dark ?? 10, night: { from: '22:00', to: '06:30' },
         screens: [{ user_id: 'kitchen', name: 'Kitchen', screen: screens.screen ?? null, motion: screens.motion ?? null }],
       },
     },
@@ -180,10 +181,10 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
     saver.tick(start + 5 * MIN, noon(5));
-    // No motion sensor: lit, and the Screen left alone until dark (the shade dims now, not the light).
-    expect([page.now, page.calls]).toEqual(['lit', []]);
+    // No motion sensor: resting too, and the Screen left alone until dark (the shade dims now, not the light).
+    expect([page.now, page.calls]).toEqual(['rest', []]);
     saver.tick(start + 15 * MIN - 1000, noon(15));
-    expect(page.now).toBe('lit');
+    expect(page.now).toBe('rest');
     saver.tick(start + 15 * MIN, noon(15));
     expect(page.stages.at(-1)).toEqual(['dark', DARK_FADE_MS]);
     expect(page.wake.at(-1)).toBe(false);
@@ -255,7 +256,7 @@ describe('the screensaver controller (spec 3.2)', () => {
     other.setView(view({}, { dark: 0 }), start);
     other.tick(start + 5 * MIN, noon(5));
     other.tick(start + 600 * MIN, noon(0));
-    expect(never.stages).toEqual([['lit', 0]]);
+    expect(never.stages).toEqual([['rest', 0]]);
   });
 
   it('a touch that wakes a panel it turned off keeps presses from the unseen board until the picture is back (review m13 I1)', () => {
@@ -343,6 +344,7 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.tick(start + 15 * MIN, noon(15));
     saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
     for (const changed of [view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }, { dark: 60 }),
+      view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }, { after: 30 }),
       view({ screen: 'light.planar', motion: 'binary_sensor.hall' }), view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }, { dark: 0 })]) {
       saver.setView(changed, start + 16 * MIN);
       saver.tick(start + 16 * MIN, noon(16));
@@ -636,5 +638,61 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(controller).toMatch(/window\.addEventListener\('pointerdown', pressed, true\);/);
     expect(controller).toMatch(/localStorage\.setItem\(RECORD_KEY, JSON\.stringify\(record\)\)/);
     expect(controller).toMatch(/readRecord\(localStorage\.getItem\(RECORD_KEY\)\)/);
+  });
+});
+
+describe('the stages after review m13b', () => {
+  it("a Home Assistant restart while it is dark keeps it dark and the Screen off (B-I1)", () => {
+    const page = new FakePage();
+    const start = evening(23).getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ screen: 'input_boolean.screen', motion: 'input_boolean.motion' }), start);
+    page.entities['input_boolean.screen'] = { state: 'on', attributes: {} };
+    page.entities['input_boolean.motion'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 15 * MIN, new Date(start + 15 * MIN));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, new Date(start + 15 * MIN));
+    expect(page.entities['input_boolean.screen'].state).toBe('off');
+    const calls = page.calls.length;
+    // Restarting: the helper goes away a moment and comes back off, changed just now.
+    page.entities['input_boolean.motion'] = { state: 'unavailable', attributes: {} };
+    saver.tick(start + 20 * MIN, new Date(start + 20 * MIN));
+    page.entities['input_boolean.motion'] = { state: 'off', attributes: {}, last_changed: new Date(start + 20 * MIN + 2000).toISOString() };
+    saver.tick(start + 20 * MIN + 3000, new Date(start + 20 * MIN));
+    // And a restart whose gap the tick never sees: only last_changed moves.
+    page.entities['input_boolean.motion'] = { state: 'off', attributes: {}, last_changed: new Date(start + 25 * MIN).toISOString() };
+    saver.tick(start + 25 * MIN + 1000, new Date(start + 25 * MIN));
+    expect(page.now).toBe('dark');
+    expect(page.calls).toHaveLength(calls);
+    expect(page.entities['input_boolean.screen'].state).toBe('off');
+  });
+
+  it('a page coming back into view counts as someone there: the board if it was hidden, a lit sky if it was dark (B-I2)', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view(), start);
+    page.hidden = true;
+    saver.tick(start + 30 * MIN, noon(30));
+    expect(page.shown).toBe(false);
+    page.hidden = false;
+    saver.present(start + 30 * MIN);
+    saver.tick(start + 30 * MIN + 1000, noon(30));
+    expect(page.shown).toBe(false);
+    // The wait starts over from then.
+    saver.tick(start + 35 * MIN, noon(35));
+    expect(page.now).toBe('rest');
+    // Dark, then the iPad unlocked: lit at once, resting after a while, dark again on the dark wait.
+    saver.tick(start + 45 * MIN, noon(45));
+    expect(page.now).toBe('dark');
+    saver.present(start + 50 * MIN);
+    saver.tick(start + 50 * MIN + 500, noon(50));
+    expect(page.stages.at(-1)).toEqual(['lit', LIGHT_UP_MS]);
+    saver.tick(start + 50 * MIN + PRESENT_MS + 1000, noon(50));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 60 * MIN - 1000, noon(59));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 60 * MIN, noon(0));
+    expect(page.now).toBe('dark');
+    expect(src('shell/screensaver-controller.ts')).toMatch(/if \(document\.visibilityState === 'visible'\) \{\n\s+screensaver\.present\(Date\.now\(\)\);/);
   });
 });

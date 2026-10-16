@@ -32,7 +32,7 @@ export const HELP = {
   },
   screensaver: {
     what: 'Shows a calm living sky with the time, the weather, and today when nobody is using the screen.',
-    how: "It comes on after the wait below with no touches, and the screen goes dark after Dark after. With a Motion sensor picked, it rests a little dimmer and brightens when someone walks up. Only a touch opens PlanaVista again, and that touch doesn't press anything underneath. At night the sky shows only the time, date, and weather.",
+    how: "It comes on after the wait below with no touches and rests a little dimmer; after Dark after the screen goes dark. With a Motion sensor picked, walking up brightens it. Only a touch opens PlanaVista again, and that touch doesn't press anything underneath. At night the sky shows only the time, date, and weather.",
   },
   screensaver_after: {
     what: 'How long the screen waits before the screensaver comes on.',
@@ -40,15 +40,15 @@ export const HELP = {
   },
   screensaver_dark: {
     what: 'How long the sky shows before the screen goes dark, the way a phone turns its screen off.',
-    how: 'It counts from when the screensaver comes on, or from when someone last walked away. The sky fades to black, and a Screen picked below turns off; it stays dark until someone walks up (with a Motion sensor picked) or touches the screen. A touch opens PlanaVista. Never keeps the sky showing.',
+    how: 'It counts from when the screensaver comes on, or from when someone last walked away. The sky fades to black, and a Screen picked below turns off; it stays dark until someone walks up (with a Motion sensor picked) or touches the screen. A touch opens PlanaVista. Never keeps the sky showing, day and night, with a Screen picked below left on.',
   },
   screensaver_screen: {
     what: 'The switch, plug, or light in Home Assistant that powers this screen, if it has one.',
-    how: "Pick this screen's own backlight or plug, not a room's light. It turns off, or all the way down, when the screen goes dark, and comes back when someone walks up or touches the screen. With None, PlanaVista draws the screen black instead.",
+    how: "Pick this screen's own backlight or plug, not a room's light. It turns off, or all the way down, when the screen goes dark, and comes back when someone walks up or touches the screen. If turning it off turns off the screen's touch too, pick a Motion sensor as well, so walking up can bring it back. With None, PlanaVista draws the screen black instead.",
   },
   screensaver_motion: {
     what: "A motion sensor in front of this screen, such as the screen's own camera.",
-    how: "Someone in front of the screen keeps the screensaver away. Once it shows, it rests a little dimmer, and walking up brightens it, even from dark, without leaving it; only a touch opens PlanaVista. Devices signed in with this account share these.",
+    how: "Someone in front of the screen keeps the screensaver away. Once it shows, walking up brightens it, even from dark, without leaving it; only a touch opens PlanaVista. Devices signed in with this account share these.",
   },
   screensaver_try: {
     what: 'Shows the screensaver right now as it would look at another time of day, in other weather, or in another season.',

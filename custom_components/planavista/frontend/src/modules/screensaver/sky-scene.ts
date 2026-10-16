@@ -452,8 +452,9 @@ export class SkyScene {
   /** Calm-day life: with Motion Full only. */
   private readonly _life: boolean;
   private _season: Season = 'summer';
-  /** The land's seeds for this scene's life (0.13.0). */
+  /** The land's seeds for this scene's life (0.13.0), and the clouds' with it (review m13b M5). */
   private _landscape: Landscape;
+  private _cloudSalt = 0;
   private _rainbowShown = -1;
   private _raysR = 0;
   private _flocks: Flock[] = [];
@@ -501,6 +502,7 @@ export class SkyScene {
   constructor(root: HTMLElement, options: { reducedMotion: boolean; landscape?: Landscape }) {
     this._root = root;
     this._landscape = options.landscape ?? APPROVED_LANDSCAPE;
+    this._salt();
     this._reduced = options.reducedMotion;
     this._life = !options.reducedMotion;
     this._wrap = div(this._reduced ? 'pvs-scene pvs-still' : 'pvs-scene');
@@ -588,7 +590,13 @@ export class SkyScene {
   setLandscape(landscape: Landscape): void {
     if (this._destroyed) return;
     this._landscape = landscape;
+    this._salt();
     this._rebuild();
+  }
+
+  /** New land brings new clouds; the approved land keeps the mockup's. */
+  private _salt(): void {
+    this._cloudSalt = this._landscape === APPROVED_LANDSCAPE ? 0 : this._landscape.trees[0] % 1000;
   }
 
   /** Rebuilds for the root's size, when it has changed. */
@@ -719,7 +727,7 @@ export class SkyScene {
     const scene = inputs.weather;
     const cover = clamp(scene.cover, 0, 1);
     const plan = cloudPlan(scene, this._life);
-    const r = rng(plan.seed);
+    const r = rng(plan.seed + this._cloudSalt);
     const portrait = H > W;
     const clouds: Cloud[] = [];
     const pick = (kind: CloudKind, table: Record<Drawn, number>) => table[kind];

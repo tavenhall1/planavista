@@ -22,8 +22,8 @@ Agreed with the owner on 2026-10-15. Builds on the screensaver (0.11.0) and the 
 
 | Stage | When | What shows |
 |---|---|---|
-| `rest` | the sky came on, nobody is in front of it, and the screen has a Motion sensor | the sky under a shade (`REST_SHADE`), about half as bright |
-| `lit` | motion reads on, or the screen has no Motion sensor | the sky at the time of day's level (0.12.0's dimming) |
+| `rest` | the sky came on and nobody is in front of it, on every screen (review m13b I3) | the sky under a shade (`REST_SHADE` 0.3, about half the light) |
+| `lit` | motion reads on, or the page just came back into view (`PRESENT_MS`, review m13b I2) | the sky at the time of day's level (0.12.0's dimming) |
 | `dark` | quiet for the screensaver wait plus the Dark wait | black: the Screen entity off where one is picked, else drawn black |
 
 Quiet starts at the later of the last touch and motion going off (0.11.0's rule). The sky comes on at quiet + `after_minutes` (unchanged) and goes dark at quiet + `after_minutes` + `dark_minutes`; a walk-by while the sky shows starts only the dark wait over, from when they walk away (review m13 M2). Dark after Never (0) never goes dark. Once dark it stays dark until motion or a touch, whatever the settings do meanwhile (review m13 M1). A Motion sensor that drops out keeps its last reading, and someone in front of it when it dropped counts as having walked away then (review m13 I2); a new Motion pick starts from its own first reading.

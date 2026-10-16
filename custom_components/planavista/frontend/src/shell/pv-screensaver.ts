@@ -103,6 +103,10 @@ export class PvScreensaver extends LitElement {
       inset: 0;
       overflow: hidden;
     }
+    /* In the dark nothing under the black moves, so the page draws no frames all night (review m13b I4). */
+    :host([still]) * {
+      animation-play-state: paused !important;
+    }
     /* The stage (0.13.0): one black sheet over the sky and the words, moved by opacity only. */
     .shade {
       position: absolute;
@@ -336,6 +340,7 @@ export class PvScreensaver extends LitElement {
     this.stage = stage;
     if (!this.hasUpdated) return; // it opens at the stage it was given
     if (was === 'dark' && stage !== 'dark') {
+      this._entrySlot = Math.floor(Date.now() / CORNER_MS);
       this._tick();
       if (document.visibilityState !== 'hidden') this._scene?.start();
     }
@@ -351,7 +356,14 @@ export class PvScreensaver extends LitElement {
     this.style.setProperty('--pvs-shade-ms', `${ease.ms}ms`);
     this.style.setProperty('--pvs-shade-ease', ease.easing);
     this.style.setProperty('--pvs-shade', String(shadeOf(stage)));
-    if (stage === 'dark') this._darkTimer = window.setTimeout(() => this._scene?.stop(), ease.ms);
+    if (stage === 'dark') {
+      this._darkTimer = window.setTimeout(() => {
+        this._scene?.stop();
+        this.toggleAttribute('still', true);
+      }, ease.ms);
+    } else {
+      this.toggleAttribute('still', false);
+    }
   }
 
   /**

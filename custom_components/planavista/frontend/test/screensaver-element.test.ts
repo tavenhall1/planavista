@@ -183,8 +183,8 @@ describe('the stages on the screen (0.13.0, spec D8)', () => {
 
   it('opens at the stage it is given, stops drawing in the dark, and starts again when it leaves it', () => {
     expect(element).toMatch(/this\._shade\(this\.stage, \{ ms: 0, easing: 'linear' \}\);\n\s+\/\/ Opening in the dark[^\n]*\n\s+if \(this\.stage === 'dark'\) return;/);
-    expect(element).toMatch(/if \(stage === 'dark'\) this\._darkTimer = window\.setTimeout\(\(\) => this\._scene\?\.stop\(\), ease\.ms\);/);
-    expect(element).toMatch(/if \(was === 'dark' && stage !== 'dark'\) \{\n\s+this\._tick\(\);\n\s+if \(document\.visibilityState !== 'hidden'\) this\._scene\?\.start\(\);/);
+    expect(element).toMatch(/this\._darkTimer = window\.setTimeout\(\(\) => \{\n\s+this\._scene\?\.stop\(\);/);
+    expect(element).toMatch(/if \(was === 'dark' && stage !== 'dark'\) \{\n\s+this\._entrySlot = [^\n]*\n\s+this\._tick\(\);\n\s+if \(document\.visibilityState !== 'hidden'\) this\._scene\?\.start\(\);/);
     expect(element).toMatch(/else if \(this\.stage !== 'dark'\) this\._scene\?\.start\(\);/);
     // The controller hands the element its stage before it is on the page, and every change after.
     expect(controller).toMatch(/shown\.stage = stage;\n\s+document\.body\.appendChild\(shown\);/);
@@ -222,5 +222,25 @@ describe('the waking touch on a panel still coming back (review m13 I1)', () => 
     vi.advanceTimersByTime(2400);
     page.dispatchEvent(pointer('pointerdown', 4));
     expect(heard).toEqual(['pointerdown']);
+  });
+});
+
+describe('the dark draws nothing, and the sky comes back whole (review m13b)', () => {
+  const element = src('shell/pv-screensaver.ts');
+
+  it('once dark, every animation under the black stops: no frames all night (B-I4)', () => {
+    expect(element).toMatch(/:host\(\[still\]\) \* \{\s*animation-play-state: paused !important;/);
+    expect(element).toMatch(/this\._darkTimer = window\.setTimeout\(\(\) => \{\n\s+this\._scene\?\.stop\(\);\n\s+this\.toggleAttribute\('still', true\);/);
+    expect(element).toMatch(/this\.toggleAttribute\('still', false\);/);
+  });
+
+  it('leaving the dark brings the words at once, not with their own slow fade (B-M6)', () => {
+    expect(element).toMatch(/if \(was === 'dark' && stage !== 'dark'\) \{\n\s+this\._entrySlot = Math\.floor\(Date\.now\(\) \/ CORNER_MS\);/);
+  });
+
+  it('new land brings new clouds too (B-M5)', () => {
+    const scene = src('modules/screensaver/sky-scene.ts');
+    expect(scene).toMatch(/const r = rng\(plan\.seed \+ this\._cloudSalt\);/);
+    expect(scene).toMatch(/this\._cloudSalt = this\._landscape === APPROVED_LANDSCAPE \? 0 : this\._landscape\.trees\[0\] % 1000;/);
   });
 });

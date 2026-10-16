@@ -13,7 +13,7 @@ import { lookForRain } from '../core/rain-record';
 import type { HouseholdView } from '../core/household';
 import { guardPageTaps } from '../core/press-guard';
 import {
-  DARK_FADE_MS, EntityState, MotionSeen, PANEL_WAKE_MS, ScreenHold, ScreenRecord, ServiceCall, SkyStage, holdOf, isNight, knownState,
+  DARK_FADE_MS, EntityState, MotionSeen, PANEL_WAKE_MS, PRESENT_MS, ScreenHold, ScreenRecord, ServiceCall, SkyStage, holdOf, isNight, knownState,
   readRecord, screenAction, screenRestore, screensaverHere, seeMotion, showsAt, skyStage, stageEase, type Trial,
 } from '../core/screensaver';
 import { WAKING_MAX_MS, WAKING_TAIL_MS, swallowWakingKey, swallowWakingPress } from '../core/wake-keys';
@@ -90,6 +90,8 @@ export class ScreensaverController {
   /** When it last turned a powered-off Screen back on, and how long the waking touch kept presses away. */
   private _panelOnAt = Number.NEGATIVE_INFINITY;
   private _blind = 0;
+  /** When the page last came back into view: someone is there (review m13b I2). */
+  private _presentAt = Number.NEGATIVE_INFINITY;
   /** The Screen entity it changes while it shows: the pick as it was (a new pick puts the others back). */
   private _entity: string | null = null;
   private _motion: MotionSeen | null = null;
@@ -144,6 +146,18 @@ export class ScreensaverController {
     this._lock();
   }
 
+  /**
+   * The page came back into view (an iPad unlocked, a tab shown again): someone is there. The board
+   * starts its wait over; a sky that shows lights for a while, out of the dark too (review m13b I2).
+   */
+  present(now: number): void {
+    if (!this._showing) {
+      this._lastTouch = now;
+      return;
+    }
+    this._presentAt = now;
+  }
+
   /** A touch anywhere on the page: it wakes the screensaver (true when it did), and starts the wait over. */
   touch(now: number): boolean {
     this._lastTouch = now;
@@ -156,7 +170,7 @@ export class ScreensaverController {
   tick(now: number, _date: Date = new Date(now)): void {
     const states = this._env.states();
     const here = screensaverHere(this._view);
-    const touched = Math.max(this._lastTouch, this._env.lastTouchAnywhere());
+    const touched = Math.max(this._lastTouch, this._env.lastTouchAnywhere(), this._presentAt);
     const motionId = here?.mine?.motion ?? null;
     if (here) {
       if (motionId !== this._motionId) {
@@ -204,8 +218,9 @@ export class ScreensaverController {
       if (this._preview) this._env.keepParentMode();
       // Motion lights the sky; only a touch opens the board (0.13.0). Once dark it stays dark until someone
       // walks up or touches it: a settings change elsewhere never lights a room nobody is in (review m13 M1).
-      const next = this._preview ? 'lit' : stageNow();
-      this._setStage(this._stage === 'dark' && !this._preview && !motion?.on ? 'dark' : next, now);
+      const present = now - this._presentAt < PRESENT_MS;
+      const next = this._preview || present ? 'lit' : stageNow();
+      this._setStage(this._stage === 'dark' && !this._preview && !present && !motion?.on ? 'dark' : next, now);
       // The record learns a walk-by at once, so a reload counts from it (review m13 M4).
       if (!this._preview && (now - this._beatAt >= SHOWING_BEAT_MS || this._quiet !== this._markedQuiet)) this._mark(true, now);
       // A preview is a look at it: the screen's entity is left alone.
@@ -524,6 +539,9 @@ export function startScreensaver(): void {
     screensaver.touch(Date.now());
   }, { capture: true, passive: true });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void holdWakeLock();
+    if (document.visibilityState === 'visible') {
+      screensaver.present(Date.now());
+      void holdWakeLock();
+    }
   });
 }

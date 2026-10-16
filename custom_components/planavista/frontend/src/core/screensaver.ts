@@ -26,13 +26,15 @@ export const DARK_CHOICES = [0, 5, 10, 15, 30, 60] as const;
 
 /**
  * Where the sky is while it shows (0.13.0, spec D4): resting under a shade with
- * nobody near, lit while someone is (or always, without a motion sensor to
- * light it again), or dark once nobody has been near for the dark wait.
+ * nobody near, lit while someone is (motion, or the page just came back into
+ * view), or dark once nobody has been near for the dark wait.
  */
 export type SkyStage = 'rest' | 'lit' | 'dark';
 
-/** How dark the shade over a resting sky is: about half as bright. */
-export const REST_SHADE = 0.45;
+/** How dark the shade over a resting sky is: about half the light (it mixes in sRGB; review m13b M1). */
+export const REST_SHADE = 0.3;
+/** How long a page coming back into view (an iPad unlocked) counts as someone there (review m13b I2). */
+export const PRESENT_MS = 30_000;
 /** The eases between stages (spec D8). */
 export const LIGHT_UP_MS = 800;
 export const SETTLE_MS = 4000;
@@ -48,7 +50,8 @@ export const PANEL_WAKE_EASE = 'linear(0, 0.04 50%, 0.3 80%, 1)';
 /**
  * The stage at `now` while the sky shows: dark once the quiet (the later of the
  * last touch and motion clearing) has lasted the screensaver wait and then the
- * dark wait; lit while motion reads on or with no motion sensor; else resting.
+ * dark wait; lit while motion reads on; else resting, on every screen, a motion
+ * sensor or not (review m13b I3: the shade is the day's dimming now).
  */
 export function skyStage(
   now: number, lastTouch: number, motion: MotionReading | null, afterMinutes: number, darkMinutes: number | undefined,
@@ -60,7 +63,7 @@ export function skyStage(
   const quiet = shows - afterMinutes * 60_000;
   const from = shownAt !== undefined && quiet > shownAt ? quiet : shows;
   if (darkMinutes && now >= from + darkMinutes * 60_000) return 'dark';
-  return motion ? 'rest' : 'lit';
+  return 'rest';
 }
 
 /** The shade's opacity for a stage. */
