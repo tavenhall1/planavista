@@ -537,7 +537,34 @@ export const WAKE_FADE_MS = 260;
  * corner it ends in. `bottom` is its box's bottom edge where it ends.
  */
 export function dropFrom(bottom: number): string {
-  return `0 ${-Math.ceil(Math.max(0, bottom) + 48)}px`;
+  return `0 ${-dropDistance(bottom)}px`;
+}
+
+/** How far a part falls, in px, to end with its box's bottom edge at `bottom`. */
+export function dropDistance(bottom: number): number {
+  return Math.ceil(Math.max(0, bottom) + 48);
+}
+
+/** The clock's spring in the owner's mockups (v5 to v14), which dropped it from half again its own height. */
+const DROP_SPRING = { stiffness: 260, damping: 13, ms: 1000 } as const;
+const MOCKUP_DROP = 1.5;
+
+/**
+ * The clock's bounce for a fall of `distance` px (0.13.2): the mockups' spring,
+ * damped more for a longer fall, so it passes its spot by no more than it did
+ * in the mockups. A spring overshoots by a share of how far it travels; from
+ * just above the screen to a bottom corner that share carried the clock off
+ * the bottom of the kitchen's screen and back up.
+ */
+export function dropEase(distance: number, height: number): string {
+  const { stiffness, damping, ms } = DROP_SPRING;
+  const reach = MOCKUP_DROP * Math.max(0, height);
+  if (distance <= reach) return springEase(stiffness, damping, ms);
+  // The share a spring overshoots by is exp(-pi z / sqrt(1 - z^2)) for its damping ratio z.
+  const ratio = damping / (2 * Math.sqrt(stiffness));
+  const share = Math.max(1e-4, Math.exp(-Math.PI * ratio / Math.sqrt(1 - ratio * ratio)) * reach / distance);
+  const l = -Math.log(share) / Math.PI;
+  return springEase(stiffness, 2 * Math.sqrt(stiffness) * (l / Math.sqrt(1 + l * l)), ms);
 }
 
 /** The sun or moon swinging up from behind the peaks, unseen until its turn (review m12 E). */
