@@ -167,3 +167,31 @@ describe("Settings' screensaver picks (0.11.0 review; Shared screens since 0.12.
     expect(page).toMatch(/@change=\$\{\(e: Event\) => this\._nightPart\('from', e\.target as HTMLInputElement\)\}/);
   });
 });
+
+describe('the stages on the screen (0.13.0, spec D8)', () => {
+  const element = src('shell/pv-screensaver.ts');
+  const controller = src('shell/screensaver-controller.ts');
+
+  it('draws each stage with one shade over the sky and the words, moved by opacity only', () => {
+    const shade = element.match(/\.shade \{[^}]*\}/)?.[0] ?? '';
+    expect(shade).toMatch(/z-index: 3;/);
+    expect(shade).toMatch(/opacity: var\(--pvs-shade, 0\);/);
+    expect(shade).toMatch(/transition: opacity var\(--pvs-shade-ms, 0ms\) var\(--pvs-shade-ease, linear\);/);
+    expect(shade).not.toMatch(/filter|backdrop/);
+    expect(element).toMatch(/<div class="shade" aria-hidden="true"><\/div>\n\s+<\/dialog>/);
+  });
+
+  it('opens at the stage it is given, stops drawing in the dark, and starts again when it leaves it', () => {
+    expect(element).toMatch(/this\._shade\(this\.stage, \{ ms: 0, easing: 'linear' \}\);\n\s+\/\/ Opening in the dark[^\n]*\n\s+if \(this\.stage === 'dark'\) return;/);
+    expect(element).toMatch(/if \(stage === 'dark'\) this\._darkTimer = window\.setTimeout\(\(\) => this\._scene\?\.stop\(\), ease\.ms\);/);
+    expect(element).toMatch(/if \(was === 'dark' && stage !== 'dark'\) \{\n\s+this\._tick\(\);\n\s+if \(document\.visibilityState !== 'hidden'\) this\._scene\?\.start\(\);/);
+    expect(element).toMatch(/else if \(this\.stage !== 'dark'\) this\._scene\?\.start\(\);/);
+    // The controller hands the element its stage before it is on the page, and every change after.
+    expect(controller).toMatch(/shown\.stage = stage;\n\s+document\.body\.appendChild\(shown\);/);
+    expect(controller).toMatch(/stage: \(stage, ease\) => \{\n\s+shown\?\.setStage\?\.\(stage, ease\);/);
+  });
+
+  it('draws new land each time it opens', () => {
+    expect(element).toMatch(/new SkyScene\(root, \{ reducedMotion: reduced, landscape: pickLandscape\(\) \}\)/);
+  });
+});
