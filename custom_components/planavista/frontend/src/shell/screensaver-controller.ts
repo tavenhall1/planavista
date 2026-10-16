@@ -75,6 +75,13 @@ export class ScreensaverController {
    * and the Screen stays as it was.
    */
   private _resume: boolean;
+  /**
+   * The record says it was dark (0.13.1): the page comes back dark whatever the old page's last word,
+   * since a page in the dark may have its timers slowed, and a reload (the kitchen's nightly one) or a
+   * crash at night must not light the room.
+   */
+  private _resumeDark: boolean;
+  private _markedDark = false;
   /** Where the sky is while it shows (0.13.0), when it went dark, and whether the Screen's dark call went out. */
   private _stage: SkyStage | null = null;
   private _darkAt = 0;
@@ -100,7 +107,8 @@ export class ScreensaverController {
 
   constructor(private readonly _env: ScreensaverEnv, now: number) {
     const record = _env.loadRecord();
-    this._resume = shows(record, now);
+    this._resumeDark = record.showing && record.dark === true;
+    this._resume = shows(record, now) || this._resumeDark;
     this._lastTouch = this._resume && typeof record.quiet === 'number' ? Math.min(record.quiet, now) : now;
     if (this._resume && typeof record.since === 'number') this._resumeSince = Math.min(record.since, now);
   }
@@ -151,6 +159,10 @@ export class ScreensaverController {
    * starts its wait over; a sky that shows lights for a while, out of the dark too (review m13b I2).
    */
   present(now: number): void {
+    // Nobody can be looking at a panel the screensaver powered off, and a page loading in the dark is
+    // no one there either (0.13.1: the kitchen's reload at night lit the room).
+    if (this._resume && this._resumeDark) return;
+    if (this._showing && this._stage === 'dark' && this._panelOff()) return;
     if (!this._showing) {
       this._lastTouch = now;
       return;
@@ -193,9 +205,11 @@ export class ScreensaverController {
         if (!this._view) return; // the household hasn't answered yet
         this._resume = false;
         if (here && this._env.visible()) {
-          this._show(now, false, stageNow());
+          this._show(now, false, this._resumeDark ? 'dark' : stageNow());
+          this._resumeDark = false;
           return;
         }
+        this._resumeDark = false;
       }
       // What it changed and couldn't put back yet: a Screen that was unavailable, a page closed while it showed.
       if (!shows(this._env.loadRecord(), now)) this._putBack(states, null);
@@ -222,7 +236,8 @@ export class ScreensaverController {
       const next = this._preview || present ? 'lit' : stageNow();
       this._setStage(this._stage === 'dark' && !this._preview && !present && !motion?.on ? 'dark' : next, now);
       // The record learns a walk-by at once, so a reload counts from it (review m13 M4).
-      if (!this._preview && (now - this._beatAt >= SHOWING_BEAT_MS || this._quiet !== this._markedQuiet)) this._mark(true, now);
+      if (!this._preview && (now - this._beatAt >= SHOWING_BEAT_MS || this._quiet !== this._markedQuiet
+        || (this._stage === 'dark') !== this._markedDark)) this._mark(true, now);
       // A preview is a look at it: the screen's entity is left alone.
       if (!this._preview) {
         const wanted = here.mine?.screen ?? null;
@@ -316,8 +331,9 @@ export class ScreensaverController {
     const record = this._env.loadRecord();
     this._beatAt = now;
     this._markedQuiet = this._quiet;
+    this._markedDark = showing && this._stage === 'dark';
     this._env.saveRecord(showing
-      ? { showing, at: now, quiet: this._quiet || now, since: this._skySince || now, holds: record.holds }
+      ? { showing, at: now, quiet: this._quiet || now, since: this._skySince || now, ...(this._markedDark ? { dark: true } : {}), holds: record.holds }
       : { showing, holds: record.holds });
   }
 
