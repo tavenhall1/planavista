@@ -16,9 +16,62 @@ export interface ScreensaverSettings {
   screens: ScreenEntities[];
   /** Brightness by day and at night on shared screens, in whole percents (0.12.0; missing before it). */
   dim?: { day: number; night: number };
+  /** Minutes the sky shows before the screen goes dark, 0 for Never (0.13.0; missing before it). */
+  dark_minutes?: number;
 }
 
 export const AFTER_CHOICES = [1, 2, 5, 10, 15, 30] as const;
+/** Dark after's choices (0.13.0, spec D11): 0 is Never. */
+export const DARK_CHOICES = [0, 5, 10, 15, 30, 60] as const;
+
+/**
+ * Where the sky is while it shows (0.13.0, spec D4): resting under a shade with
+ * nobody near, lit while someone is (or always, without a motion sensor to
+ * light it again), or dark once nobody has been near for the dark wait.
+ */
+export type SkyStage = 'rest' | 'lit' | 'dark';
+
+/** How dark the shade over a resting sky is: about half as bright. */
+export const REST_SHADE = 0.45;
+/** The eases between stages (spec D8). */
+export const LIGHT_UP_MS = 800;
+export const SETTLE_MS = 4000;
+export const DARK_FADE_MS = 5000;
+/**
+ * Back from a dark the screensaver made by turning the Screen off: a panel can
+ * take seconds to show a picture again (the kitchen's Planar about 4 s), so the
+ * sky brightens slowly at first and mostly once the picture is back.
+ */
+export const PANEL_WAKE_MS = 5000;
+export const PANEL_WAKE_EASE = 'linear(0, 0.04 50%, 0.3 80%, 1)';
+
+/**
+ * The stage at `now` while the sky shows: dark once the quiet (the later of the
+ * last touch and motion clearing) has lasted the screensaver wait and then the
+ * dark wait; lit while motion reads on or with no motion sensor; else resting.
+ */
+export function skyStage(
+  now: number, lastTouch: number, motion: MotionReading | null, afterMinutes: number, darkMinutes: number | undefined,
+): SkyStage {
+  const shows = showsAt(lastTouch, motion, afterMinutes);
+  if (shows === null) return 'lit';
+  if (darkMinutes && now >= shows + darkMinutes * 60_000) return 'dark';
+  return motion ? 'rest' : 'lit';
+}
+
+/** The shade's opacity for a stage. */
+export function shadeOf(stage: SkyStage): number {
+  return stage === 'dark' ? 1 : stage === 'rest' ? REST_SHADE : 0;
+}
+
+/** How the shade moves from one stage to the next; `screenOff` when the screensaver turned the Screen off for the dark. */
+export function stageEase(from: SkyStage | null, to: SkyStage, screenOff: boolean): { ms: number; easing: string } {
+  if (!from) return { ms: 0, easing: 'linear' };
+  if (to === 'dark') return { ms: DARK_FADE_MS, easing: 'ease-in-out' };
+  if (from === 'dark') return screenOff ? { ms: PANEL_WAKE_MS, easing: PANEL_WAKE_EASE } : { ms: LIGHT_UP_MS, easing: 'ease-out' };
+  if (to === 'lit') return { ms: LIGHT_UP_MS, easing: 'ease-out' };
+  return { ms: SETTLE_MS, easing: 'ease-in-out' };
+}
 
 /** Settings' Try it (0.12.0, spec 3.5): show it now at another time, in other weather, or in another season. */
 export type TrialTime = 'morning' | 'afternoon' | 'evening' | 'night';
@@ -78,8 +131,6 @@ export function motionCandidate(entityId: string, attributes: Record<string, unk
 }
 /** With no Sleep times anywhere and none set, night runs 10:00 PM to 6:30 AM (spec D3). */
 export const DEFAULT_NIGHT = { from: '22:00', to: '06:30' };
-/** How bright a light or number is kept while the day's screensaver shows (spec 3.2). */
-export const DAY_LEVEL = 0.4;
 /** The info moves to another corner this often, so nothing stays in one place for hours (spec 3.3). */
 export const CORNER_MS = 10 * 60_000;
 
@@ -225,8 +276,6 @@ export interface ServiceCall {
 const domainOf = (entityId: string): string => entityId.split('.', 1)[0];
 const LEVELS = new Set(['number', 'input_number']);
 const SWITCHES = new Set(['switch', 'input_boolean']);
-/** A light's full brightness, in Home Assistant's 0 to 255. */
-const FULL_LIGHT = 255;
 
 /** An entity whose state is known (not unavailable or unknown). */
 export const knownState = (state: EntityState | undefined): state is EntityState =>
@@ -247,6 +296,8 @@ export interface ScreenRecord {
   showing: boolean;
   /** When the page that shows it last said so (a closed page stops). */
   at?: number;
+  /** When the quiet its stages count from began (0.13.0): a reload while it is dark stays dark. */
+  quiet?: number;
   holds: ScreenHold[];
 }
 
@@ -272,47 +323,29 @@ export function readRecord(raw: string | null): ScreenRecord {
       })];
     });
     const at = (value as { at?: unknown }).at;
-    return value.showing === true && typeof at === 'number' ? { showing: true, at, holds } : { showing: value.showing === true, holds };
+    const quiet = (value as { quiet?: unknown }).quiet;
+    if (value.showing !== true || typeof at !== 'number') return { showing: value.showing === true, holds };
+    return typeof quiet === 'number' && Number.isFinite(quiet) ? { showing: true, at, quiet, holds } : { showing: true, at, holds };
   } catch {
     return none;
   }
 }
 
 /**
- * What the screensaver does to this screen's Screen entity (spec 3.2), from how
- * it was before the screensaver changed it and how it is now: by day a light or
- * number is dimmed to 40% of its range (never brighter than it was) and a switch
- * is as it was; at night a light or switch is off and a number at its minimum.
- * When night ends while it shows, the day's state comes back. Null when there is
- * nothing to do, or nothing known to put back.
+ * What the screensaver does to this screen's Screen entity when the sky goes
+ * dark (0.13.0, spec D7): a light or switch off, a number at its minimum. Null
+ * when it is already there or its state isn't known. Waking puts it back as it
+ * was (screenRestore); in every other stage it is left alone, since the shade
+ * does the dimming now.
  */
-export function screenAction(
-  entityId: string, phase: 'day' | 'night', before: EntityState | undefined, now: EntityState | undefined,
-): ServiceCall | null {
-  if (!knownState(before) || !knownState(now)) return null;
+export function screenAction(entityId: string, now: EntityState | undefined): ServiceCall | null {
+  if (!knownState(now)) return null;
   const domain = domainOf(entityId);
   const target = { entity_id: entityId };
-  if (domain === 'light') {
-    if (phase === 'night' || before.state !== 'on') return now.state === 'on' ? { domain, service: 'turn_off', data: target } : null;
-    const was = before.attributes.brightness;
-    // A light that only turns on and off stays on by day.
-    if (typeof was !== 'number') return now.state === 'on' ? null : { domain, service: 'turn_on', data: target };
-    const level = Math.min(was, Math.round(FULL_LIGHT * DAY_LEVEL));
-    return now.state === 'on' && now.attributes.brightness === level ? null : { domain, service: 'turn_on', data: { ...target, brightness: level } };
-  }
-  if (SWITCHES.has(domain)) {
-    const want = phase === 'night' ? 'off' : before.state;
-    if (want !== 'on' && want !== 'off') return null;
-    return now.state === want ? null : { domain, service: want === 'on' ? 'turn_on' : 'turn_off', data: target };
-  }
+  if (domain === 'light' || SWITCHES.has(domain)) return now.state === 'off' ? null : { domain, service: 'turn_off', data: target };
   if (LEVELS.has(domain)) {
-    const was = Number(before.state);
-    if (!Number.isFinite(was)) return null;
     const min = Number(now.attributes.min ?? 0);
-    const max = Number(now.attributes.max ?? 100);
-    const step = Number(now.attributes.step ?? 1) || 1;
-    const value = phase === 'night' ? min : Math.min(was, Math.round((min + (max - min) * DAY_LEVEL) / step) * step);
-    return Number(now.state) === value ? null : { domain, service: 'set_value', data: { ...target, value } };
+    return Number(now.state) === min ? null : { domain, service: 'set_value', data: { ...target, value: min } };
   }
   return null;
 }

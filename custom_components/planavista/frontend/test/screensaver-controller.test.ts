@@ -2,13 +2,15 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ScreensaverController, type ScreensaverEnv } from '../src/shell/screensaver-controller';
-import type { EntityState, ScreenRecord, ServiceCall } from '../src/core/screensaver';
+import { DARK_FADE_MS, LIGHT_UP_MS, PANEL_WAKE_MS, type EntityState, type ScreenRecord, type ServiceCall, type SkyStage } from '../src/core/screensaver';
 import type { HouseholdView } from '../src/core/household';
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(`../src/${path}`, import.meta.url)), 'utf-8').replace(/\r\n/g, '\n');
 const MIN = 60_000;
 
-function view(screens: { screen?: string | null; motion?: string | null } = {}, fields: { shared?: boolean; enabled?: boolean } = {}): HouseholdView {
+function view(
+  screens: { screen?: string | null; motion?: string | null } = {}, fields: { shared?: boolean; enabled?: boolean; dark?: number } = {},
+): HouseholdView {
   return {
     available: true,
     members: [],
@@ -16,7 +18,7 @@ function view(screens: { screen?: string | null; motion?: string | null } = {}, 
     security: {
       shuffle_keypad: false, shared_screens: 1,
       screensaver: {
-        enabled: fields.enabled ?? true, after_minutes: 5, night: { from: '22:00', to: '06:30' },
+        enabled: fields.enabled ?? true, after_minutes: 5, dark_minutes: fields.dark ?? 10, night: { from: '22:00', to: '06:30' },
         screens: [{ user_id: 'kitchen', name: 'Kitchen', screen: screens.screen ?? null, motion: screens.motion ?? null }],
       },
     },
@@ -58,7 +60,10 @@ class FakePage implements ScreensaverEnv {
     if (call.service === 'set_value') this.entities[id] = { state: String(call.data.value), attributes: { ...was?.attributes } };
     return Promise.resolve();
   }
-  show() { this.shown = true; }
+  stages: Array<[SkyStage, number]> = [];
+  show(stage: SkyStage) { this.shown = true; this.stages.push([stage, 0]); }
+  stage(stage: SkyStage, ease: { ms: number }) { this.stages.push([stage, ease.ms]); }
+  get now(): SkyStage | undefined { return this.stages.at(-1)?.[0]; }
   hide() { this.shown = false; }
   lockParentMode() { this.locks += 1; }
   keeps = 0;
@@ -113,7 +118,7 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.wake.at(-1)).toBe(false);
   });
 
-  it('stays off while motion reads on, and motion wakes it', () => {
+  it('stays off while motion reads on; motion lights the sky but only a touch opens the board (0.13.0)', () => {
     const page = new FakePage();
     const start = noon().getTime();
     const saver = new ScreensaverController(page, start);
@@ -126,9 +131,15 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.tick(start + 24 * MIN, noon(24));
     expect(page.shown).toBe(false);
     saver.tick(start + 25 * MIN, noon(25));
-    expect(page.shown).toBe(true);
+    expect([page.shown, page.now]).toEqual([true, 'rest']);
     page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 26 * MIN).toISOString() };
     saver.tick(start + 26 * MIN, noon(26));
+    expect([page.shown, page.stages.at(-1)]).toEqual([true, ['lit', LIGHT_UP_MS]]);
+    // They walk away: it rests again.
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start + 27 * MIN).toISOString() };
+    saver.tick(start + 27 * MIN, noon(27));
+    expect([page.shown, page.now]).toEqual([true, 'rest']);
+    expect(saver.touch(start + 28 * MIN)).toBe(true);
     expect(page.shown).toBe(false);
   });
 
@@ -148,7 +159,7 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.shown).toBe(true);
   });
 
-  it("wakes on motion when Home Assistant's clock is behind the screen's", () => {
+  it("lights on motion when Home Assistant's clock is behind the screen's", () => {
     const page = new FakePage();
     const start = noon().getTime();
     const behind = (ms: number) => new Date(ms - 10 * MIN).toISOString();
@@ -159,50 +170,106 @@ describe('the screensaver controller (spec 3.2)', () => {
     expect(page.shown).toBe(true);
     page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: behind(start + 6 * MIN) };
     saver.tick(start + 6 * MIN, noon(6));
-    expect(page.shown).toBe(false);
+    expect([page.shown, page.now]).toEqual([true, 'lit']);
   });
 
-  it('dims the screen by day, turns it off at night, and puts it back on waking', () => {
+  it('goes dark after the dark wait: the Screen off once the fade has played, the device free to sleep, and a touch puts it back', () => {
     const page = new FakePage();
-    const start = evening(21, 50).getTime();
+    const start = noon().getTime();
     const saver = new ScreensaverController(page, start);
     saver.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
-    saver.tick(start + 5 * MIN, new Date(start + 5 * MIN));
-    expect(page.calls).toEqual([{ domain: 'light', service: 'turn_on', data: { entity_id: 'light.planar', brightness: 102 } }]);
-    saver.tick(start + 10 * MIN, new Date(start + 10 * MIN));
-    expect(page.calls.at(-1)).toEqual({ domain: 'light', service: 'turn_off', data: { entity_id: 'light.planar' } });
-    // At night, while it shows, the device may sleep (its own Auto-Lock).
+    saver.tick(start + 5 * MIN, noon(5));
+    // No motion sensor: lit, and the Screen left alone until dark (the shade dims now, not the light).
+    expect([page.now, page.calls]).toEqual(['lit', []]);
+    saver.tick(start + 15 * MIN - 1000, noon(15));
+    expect(page.now).toBe('lit');
+    saver.tick(start + 15 * MIN, noon(15));
+    expect(page.stages.at(-1)).toEqual(['dark', DARK_FADE_MS]);
     expect(page.wake.at(-1)).toBe(false);
+    expect(page.calls).toEqual([]);
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    expect(page.calls).toEqual([{ domain: 'light', service: 'turn_off', data: { entity_id: 'light.planar' } }]);
+    saver.tick(start + 16 * MIN, noon(16));
+    expect(page.calls).toHaveLength(1);
     saver.touch(start + 30 * MIN);
     expect(page.calls.at(-1)).toEqual({ domain: 'light', service: 'turn_on', data: { entity_id: 'light.planar', brightness: 230 } });
     expect(page.wake.at(-1)).toBe(true);
     expect(page.record).toEqual({ showing: false, holds: [] });
   });
 
-  it('brings the screen back by itself when night ends while it shows', () => {
+  it('at night the same: it rests and goes dark on the waits, not as soon as it shows', () => {
     const page = new FakePage();
     const start = evening(23).getTime();
     const saver = new ScreensaverController(page, start);
-    saver.setView(view({ screen: 'input_boolean.planar' }), start);
-    page.entities['input_boolean.planar'] = { state: 'on', attributes: {} };
-    saver.tick(start + 5 * MIN, new Date(start + 5 * MIN));
-    expect(page.entities['input_boolean.planar'].state).toBe('off');
-    const morning = new Date(2026, 9, 16, 6, 30);
-    saver.tick(morning.getTime(), morning);
-    expect(page.calls.at(-1)).toEqual({ domain: 'input_boolean', service: 'turn_on', data: { entity_id: 'input_boolean.planar' } });
-    expect(page.shown).toBe(true);
+    saver.setView(view({ screen: 'switch.planar', motion: 'binary_sensor.kitchen' }), start);
+    page.entities['switch.planar'] = { state: 'on', attributes: {} };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 5 * MIN, evening(23, 5));
+    expect([page.now, page.entities['switch.planar'].state, page.wake.at(-1)]).toEqual(['rest', 'on', true]);
+    saver.tick(start + 15 * MIN, evening(23, 15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, evening(23, 15));
+    expect([page.now, page.entities['switch.planar'].state]).toEqual(['dark', 'off']);
   });
 
-  it('never makes a dim screen brighter', () => {
+  it('someone walking up in the dark: the Screen back on, the sky easing up slowly enough to outlast the panel waking', () => {
     const page = new FakePage();
     const start = noon().getTime();
     const saver = new ScreensaverController(page, start);
-    saver.setView(view({ screen: 'input_number.planar' }), start);
-    page.entities['input_number.planar'] = { state: '50', attributes: { min: 0, max: 255, step: 1 } };
+    saver.setView(view({ screen: 'light.planar', motion: 'binary_sensor.kitchen' }), start);
+    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
     saver.tick(start + 5 * MIN, noon(5));
-    expect(page.shown).toBe(true);
-    expect(page.calls).toEqual([]);
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    expect(page.entities['light.planar'].state).toBe('off');
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 20 * MIN).toISOString() };
+    saver.tick(start + 20 * MIN, noon(20));
+    expect([page.shown, page.stages.at(-1)]).toEqual([true, ['lit', PANEL_WAKE_MS]]);
+    expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 230 } });
+    expect(page.wake.at(-1)).toBe(true);
+    expect(page.record.holds).toEqual([]);
+    // They walk away: rest at once, dark again after the full waits from then.
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start + 21 * MIN).toISOString() };
+    saver.tick(start + 21 * MIN, noon(21));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 35 * MIN, noon(35));
+    expect(page.now).toBe('rest');
+    saver.tick(start + 36 * MIN, noon(36));
+    expect(page.now).toBe('dark');
+  });
+
+  it('a drawn dark (no Screen picked) lights quickly, and Never never goes dark', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ motion: 'binary_sensor.kitchen' }), start);
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 15 * MIN, noon(15));
+    expect(page.now).toBe('dark');
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 16 * MIN).toISOString() };
+    saver.tick(start + 16 * MIN, noon(16));
+    expect(page.stages.at(-1)).toEqual(['lit', LIGHT_UP_MS]);
+    const never = new FakePage();
+    const other = new ScreensaverController(never, start);
+    other.setView(view({}, { dark: 0 }), start);
+    other.tick(start + 5 * MIN, noon(5));
+    other.tick(start + 600 * MIN, noon(0));
+    expect(never.stages).toEqual([['lit', 0]]);
+  });
+
+  it('a motion sensor stuck on keeps the sky lit and never dark; a touch still opens the board', () => {
+    const page = new FakePage();
+    const start = noon().getTime();
+    const saver = new ScreensaverController(page, start);
+    saver.setView(view({ motion: 'binary_sensor.kitchen' }), start);
+    page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
+    saver.tick(start + 5 * MIN, noon(5));
+    page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 6 * MIN).toISOString() };
+    for (let m = 6; m < 200; m += 7) saver.tick(start + m * MIN, noon(0));
+    expect(page.now).toBe('lit');
+    saver.touch(start + 200 * MIN);
+    expect(page.shown).toBe(false);
   });
 
   it('after a reload while it shows, comes back up as it was, and a touch puts the screen back', () => {
@@ -212,17 +279,21 @@ describe('the screensaver controller (spec 3.2)', () => {
     before.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
     before.tick(start + 5 * MIN, new Date(start + 5 * MIN));
+    before.tick(start + 15 * MIN, new Date(start + 15 * MIN));
+    before.tick(start + 15 * MIN + DARK_FADE_MS, new Date(start + 15 * MIN));
     expect(page.entities['light.planar'].state).toBe('off');
-    // The page reloads (a kiosk browser's own reload, a crash): nobody touched it, so it shows again at once.
+    // The page reloads (a kiosk browser's own reload, a crash): nobody touched it, so it shows again at once, still dark.
     page.shown = false;
-    const after = new ScreensaverController(page, start + 6 * MIN);
-    after.tick(start + 6 * MIN, new Date(start + 6 * MIN));
+    page.stages = [];
+    const after = new ScreensaverController(page, start + 16 * MIN);
+    after.tick(start + 16 * MIN, new Date(start + 16 * MIN));
     expect(page.shown).toBe(false); // not before the household says it still runs here
-    after.setView(view({ screen: 'light.planar' }), start + 6 * MIN);
-    after.tick(start + 6 * MIN, new Date(start + 6 * MIN));
-    expect(page.shown).toBe(true);
+    after.setView(view({ screen: 'light.planar' }), start + 16 * MIN);
+    after.tick(start + 16 * MIN, new Date(start + 16 * MIN));
+    after.tick(start + 17 * MIN, new Date(start + 17 * MIN));
+    expect([page.shown, page.stages]).toEqual([true, [['dark', 0]]]);
     expect(page.entities['light.planar'].state).toBe('off');
-    after.touch(start + 7 * MIN);
+    after.touch(start + 18 * MIN);
     expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 230 } });
     expect(page.record).toEqual({ showing: false, holds: [] });
   });
@@ -245,13 +316,15 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 200 } };
     saver.tick(start + 5 * MIN, noon(5));
-    expect(page.entities['light.planar'].attributes.brightness).toBe(102);
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    expect(page.entities['light.planar'].state).toBe('off');
     page.entities['light.planar'] = { state: 'unavailable', attributes: {} };
-    saver.touch(start + 6 * MIN);
+    saver.touch(start + 16 * MIN);
     expect(page.shown).toBe(false);
     expect(page.record.holds).toHaveLength(1);
-    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 102 } };
-    saver.tick(start + 6 * MIN + 2000, noon(6));
+    page.entities['light.planar'] = { state: 'off', attributes: {} };
+    saver.tick(start + 16 * MIN + 2000, noon(16));
     expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 200 } });
     expect(page.record.holds).toEqual([]);
   });
@@ -273,14 +346,19 @@ describe('the screensaver controller (spec 3.2)', () => {
     }
     expect(b.shown).toBe(false);
     expect(browser.entities['light.planar'].attributes.brightness).toBe(200);
-    // Both idle: both show, and the one record keeps the Screen as it really was.
+    // Both idle: both show, both go dark, and the one record keeps the Screen as it really was.
     tabA.tick(start + 16 * MIN, noon(16));
     tabB.tick(start + 16 * MIN, noon(16));
     expect([a.shown, b.shown]).toEqual([true, true]);
+    for (const t of [26 * MIN, 26 * MIN + DARK_FADE_MS]) {
+      tabA.tick(start + t, noon(26));
+      tabB.tick(start + t, noon(26));
+    }
+    expect(browser.entities['light.planar'].state).toBe('off');
     expect(browser.record.holds).toEqual([{ entity: 'light.planar', before: { state: 'on', attributes: { brightness: 200 } } }]);
     // A touch on page A wakes page B too.
-    tabA.touch(start + 17 * MIN);
-    tabB.tick(start + 17 * MIN + 1000, noon(17));
+    tabA.touch(start + 27 * MIN);
+    tabB.tick(start + 27 * MIN + 1000, noon(27));
     expect([a.shown, b.shown]).toEqual([false, false]);
     expect(browser.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 200 } });
   });
@@ -306,8 +384,10 @@ describe('the screensaver controller (spec 3.2)', () => {
       saver.setView(view({ screen: 'switch.planar' }), start);
       page.entities['switch.planar'] = { state: 'on', attributes: {} };
       saver.tick(start + 5 * MIN, new Date(start + 5 * MIN));
+      saver.tick(start + 15 * MIN, new Date(start + 15 * MIN));
+      saver.tick(start + 15 * MIN + DARK_FADE_MS, new Date(start + 15 * MIN));
       expect(page.entities['switch.planar'].state).toBe('off');
-      saver.setView(view({}, fields), start + 6 * MIN);
+      saver.setView(view({}, fields), start + 16 * MIN);
       expect(page.shown).toBe(false);
       expect(page.entities['switch.planar'].state, JSON.stringify(fields)).toBe('on');
     }
@@ -320,12 +400,14 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
     page.entities['input_number.backlight'] = { state: '200', attributes: { min: 0, max: 255, step: 1 } };
-    saver.tick(start + 5 * MIN, noon(5));
-    saver.setView(view({ screen: 'input_number.backlight' }), start + 6 * MIN);
-    saver.tick(start + 6 * MIN, noon(6));
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
+    expect(page.entities['light.planar'].state).toBe('off');
+    saver.setView(view({ screen: 'input_number.backlight' }), start + 16 * MIN);
+    saver.tick(start + 16 * MIN, noon(16));
     expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 230 } });
-    expect(page.entities['input_number.backlight'].state).toBe('102');
-    saver.touch(start + 7 * MIN);
+    expect(page.entities['input_number.backlight'].state).toBe('0');
+    saver.touch(start + 17 * MIN);
     expect(page.entities['input_number.backlight'].state).toBe('200');
   });
 
@@ -336,15 +418,16 @@ describe('the screensaver controller (spec 3.2)', () => {
     saver.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 230 } };
     page.entities['input_number.backlight'] = { state: '200', attributes: { min: 0, max: 255, step: 1 } };
-    saver.tick(start + 5 * MIN, noon(5));
+    saver.tick(start + 15 * MIN, noon(15));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, noon(15));
     page.entities['light.planar'] = { state: 'unavailable', attributes: {} };
-    saver.setView(view({ screen: 'input_number.backlight' }), start + 6 * MIN);
-    saver.tick(start + 6 * MIN, noon(6));
-    expect(page.entities['input_number.backlight'].state).toBe('102');
-    page.entities['light.planar'] = { state: 'on', attributes: { brightness: 102 } };
-    saver.tick(start + 6 * MIN + 2000, noon(6));
+    saver.setView(view({ screen: 'input_number.backlight' }), start + 16 * MIN);
+    saver.tick(start + 16 * MIN, noon(16));
+    expect(page.entities['input_number.backlight'].state).toBe('0');
+    page.entities['light.planar'] = { state: 'off', attributes: {} };
+    saver.tick(start + 16 * MIN + 2000, noon(16));
     expect(page.entities['light.planar'].attributes.brightness).toBe(230);
-    saver.touch(start + 7 * MIN);
+    saver.touch(start + 17 * MIN);
     expect(page.entities['input_number.backlight'].state).toBe('200');
     expect(page.record.holds).toEqual([]);
   });
@@ -355,12 +438,13 @@ describe('the screensaver controller (spec 3.2)', () => {
     const saver = new ScreensaverController(page, start);
     saver.setView(view({ screen: 'light.planar' }), start);
     page.entities['light.planar'] = { state: 'unavailable', attributes: {} };
-    saver.tick(start + 5 * MIN, new Date(start + 5 * MIN));
+    saver.tick(start + 15 * MIN, new Date(start + 15 * MIN));
+    saver.tick(start + 15 * MIN + DARK_FADE_MS, new Date(start + 15 * MIN));
     expect(page.calls).toEqual([]);
     page.entities['light.planar'] = { state: 'on', attributes: { brightness: 180 } };
-    saver.tick(start + 6 * MIN, new Date(start + 6 * MIN));
+    saver.tick(start + 16 * MIN, new Date(start + 16 * MIN));
     expect(page.entities['light.planar'].state).toBe('off');
-    saver.touch(start + 7 * MIN);
+    saver.touch(start + 17 * MIN);
     expect(page.entities['light.planar']).toEqual({ state: 'on', attributes: { brightness: 180 } });
   });
 
@@ -373,15 +457,14 @@ describe('the screensaver controller (spec 3.2)', () => {
     page.entities['binary_sensor.kitchen'] = { state: 'off', attributes: {}, last_changed: new Date(start - MIN).toISOString() };
     saver.preview(noon());
     saver.tick(start + 2 * MIN, noon(2));
-    expect(page.shown).toBe(true);
+    expect([page.shown, page.now]).toEqual([true, 'lit']);
     expect([page.locks, page.calls.length]).toEqual([0, 0]);
-    // Nobody touched it for the wait: now it is the screensaver.
+    // A preview never rests or goes dark while a parent looks; nobody touched it for the wait: now it is the screensaver.
     saver.tick(start + 5 * MIN, noon(5));
-    expect(page.locks).toBe(1);
-    expect(page.calls).toEqual([{ domain: 'light', service: 'turn_on', data: { entity_id: 'light.planar', brightness: 102 } }]);
+    expect([page.locks, page.now, page.calls]).toEqual([1, 'rest', []]);
     page.entities['binary_sensor.kitchen'] = { state: 'on', attributes: {}, last_changed: new Date(start + 6 * MIN).toISOString() };
     saver.tick(start + 6 * MIN, noon(6));
-    expect(page.shown).toBe(false);
+    expect([page.shown, page.now]).toEqual([true, 'lit']);
   });
 
   it('a parent looking at a preview keeps parent mode while it shows, and the touch that ends it counts (review m12 J)', () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_NIGHT, LIGHTNING_GAP_MS, entityChoices, holdOf, infoCorner, isNight, motionCandidate, motionReading, nextLightning,
+  DARK_CHOICES, DARK_FADE_MS, DEFAULT_NIGHT, LIGHT_UP_MS, LIGHTNING_GAP_MS, PANEL_WAKE_EASE, PANEL_WAKE_MS, REST_SHADE, SETTLE_MS,
+  shadeOf, skyStage, stageEase, entityChoices, holdOf, infoCorner, isNight, motionCandidate, motionReading, nextLightning,
   nightText, nightWindow, readRecord, screenAction, screenRestore, screensaverHere, seeMotion, showsAt, weatherScene,
 } from '../src/core/screensaver';
 import type { HouseholdView, Member } from '../src/core/household';
@@ -149,43 +150,31 @@ describe('the screensaver: the Screen entity (spec 3.2)', () => {
   const off = { state: 'off', attributes: {} };
   const light = (service: string, extra: Record<string, unknown> = {}) => ({ domain: 'light', service, data: { entity_id: 'light.planar', ...extra } });
 
-  it('dims a light by day, turns it off at night, brings it back in the morning, and puts it back', () => {
+  it('turns a light off in the dark and leaves it alone otherwise (0.13.0: the shade dims, not the light)', () => {
     const was = on({ brightness: 255 });
-    expect(screenAction('light.planar', 'day', was, was)).toEqual(light('turn_on', { brightness: 102 }));
-    expect(screenAction('light.planar', 'night', was, on({ brightness: 102 }))).toEqual(light('turn_off'));
-    // Night ends while it shows: on again, dimmed.
-    expect(screenAction('light.planar', 'day', was, off)).toEqual(light('turn_on', { brightness: 102 }));
-    // Never brighter than it was, and a light that was off stays off.
-    expect(screenAction('light.planar', 'day', on({ brightness: 50 }), on({ brightness: 50 }))).toBeNull();
-    expect(screenAction('light.planar', 'day', off, off)).toBeNull();
-    expect(screenAction('light.planar', 'day', on(), off)).toEqual(light('turn_on'));
+    expect(screenAction('light.planar', was)).toEqual(light('turn_off'));
+    expect(screenAction('light.planar', off)).toBeNull();
+    expect(screenAction('light.planar', on())).toEqual(light('turn_off'));
     expect(screenRestore('light.planar', on({ brightness: 200 }))).toEqual({ domain: 'light', service: 'turn_on', data: { entity_id: 'light.planar', brightness: 200 } });
     expect(screenRestore('light.planar', { state: 'off', attributes: {} })).toEqual({ domain: 'light', service: 'turn_off', data: { entity_id: 'light.planar' } });
   });
 
-  it('leaves a switch as it was by day, turns it off at night, and on again in the morning', () => {
-    expect(screenAction('switch.planar', 'day', on(), on())).toBeNull();
-    expect(screenAction('input_boolean.planar', 'night', on(), on())).toEqual({ domain: 'input_boolean', service: 'turn_off', data: { entity_id: 'input_boolean.planar' } });
-    expect(screenAction('input_boolean.planar', 'day', on(), off)).toEqual({ domain: 'input_boolean', service: 'turn_on', data: { entity_id: 'input_boolean.planar' } });
-    expect(screenAction('switch.planar', 'day', off, off)).toBeNull();
+  it('turns a switch off in the dark', () => {
+    expect(screenAction('input_boolean.planar', on())).toEqual({ domain: 'input_boolean', service: 'turn_off', data: { entity_id: 'input_boolean.planar' } });
+    expect(screenAction('switch.planar', off)).toBeNull();
     expect(screenRestore('switch.planar', on())).toEqual({ domain: 'switch', service: 'turn_on', data: { entity_id: 'switch.planar' } });
   });
 
-  it('sets a number to 40% of its range by day and its minimum at night', () => {
+  it('sets a number to its minimum in the dark', () => {
     const level = { state: '80', attributes: { min: 10, max: 100, step: 5 } };
-    const value = (v: number) => ({ domain: 'number', service: 'set_value', data: { entity_id: 'number.planar_brightness', value: v } });
-    expect(screenAction('number.planar_brightness', 'day', level, level)).toEqual(value(45));
-    expect(screenAction('input_number.planar', 'night', level, level)).toEqual({ domain: 'input_number', service: 'set_value', data: { entity_id: 'input_number.planar', value: 10 } });
-    expect(screenAction('number.planar_brightness', 'night', level, { ...level, state: '10' })).toBeNull();
-    // Night ends: back up to the day's level; a screen already lower stays where it is.
-    expect(screenAction('number.planar_brightness', 'day', level, { ...level, state: '10' })).toEqual(value(45));
-    expect(screenAction('number.planar_brightness', 'day', { ...level, state: '20' }, { ...level, state: '20' })).toBeNull();
+    expect(screenAction('input_number.planar', level)).toEqual({ domain: 'input_number', service: 'set_value', data: { entity_id: 'input_number.planar', value: 10 } });
+    expect(screenAction('number.planar_brightness', { ...level, state: '10' })).toBeNull();
     expect(screenRestore('number.planar_brightness', level)).toEqual({ domain: 'number', service: 'set_value', data: { entity_id: 'number.planar_brightness', value: 80 } });
   });
 
   it('does nothing to an entity that is unavailable, or with nothing known to put back', () => {
-    expect(screenAction('light.planar', 'night', on(), { state: 'unavailable', attributes: {} })).toBeNull();
-    expect(screenAction('light.planar', 'night', undefined, on())).toBeNull();
+    expect(screenAction('light.planar', { state: 'unavailable', attributes: {} })).toBeNull();
+    expect(screenAction('light.planar', undefined)).toBeNull();
     expect(screenRestore('light.planar', undefined)).toBeNull();
   });
 });
@@ -221,5 +210,69 @@ describe('the screensaver: weather, lightning, and the info (spec 3.3)', () => {
     expect(infoCorner(0)).toBe('bottom-left');
     expect(infoCorner(10 * 60_000)).toBe('top-left');
     expect(infoCorner(40 * 60_000)).toBe('bottom-left');
+  });
+});
+
+describe('the sky wakes like a phone (0.13.0, spec D4 to D8)', () => {
+  const MIN = 60_000;
+  const quiet = 1_000_000;
+  const still = { on: false, since: 0 };
+  const settings = { after: 2, dark: 10 };
+  const at = (minutes: number) => quiet + minutes * MIN;
+  const stage = (now: number, motion: { on: boolean; since: number } | null = still, s = settings) =>
+    skyStage(now, quiet, motion, s.after, s.dark);
+
+  it('rests once the sky is up, goes dark after the dark wait, and is lit while someone is there', () => {
+    expect(DARK_CHOICES).toEqual([0, 5, 10, 15, 30, 60]);
+    expect(stage(at(2))).toBe('rest');
+    expect(stage(at(11.9))).toBe('rest');
+    // Dark counts from when the sky came on: 2 + 10 minutes after the quiet began.
+    expect(stage(at(12))).toBe('dark');
+    expect(stage(at(500))).toBe('dark');
+    expect(stage(at(20), { on: true, since: at(19) })).toBe('lit');
+  });
+
+  it('counts the dark wait again from when motion clears', () => {
+    const cleared = { on: false, since: at(20) };
+    expect(stage(at(21), cleared)).toBe('rest');
+    expect(stage(at(31.9), cleared)).toBe('rest');
+    expect(stage(at(32), cleared)).toBe('dark');
+  });
+
+  it('stays lit without a motion sensor, since nothing could light it again', () => {
+    expect(stage(at(2), null)).toBe('lit');
+    expect(stage(at(12), null)).toBe('dark');
+  });
+
+  it('never goes dark with Dark after Never, and a missing setting is Never', () => {
+    expect(stage(at(10_000), still, { after: 2, dark: 0 })).toBe('rest');
+    expect(skyStage(at(10_000), quiet, still, 2, undefined)).toBe('rest');
+  });
+
+  it('a touch later than the motion counts from the touch', () => {
+    expect(skyStage(at(3), at(2), { on: false, since: at(1) }, 2, 10)).toBe('rest');
+    expect(skyStage(at(14), at(2), { on: false, since: at(1) }, 2, 10)).toBe('dark');
+  });
+
+  it('draws each stage with one shade', () => {
+    expect(shadeOf('lit')).toBe(0);
+    expect(shadeOf('rest')).toBe(REST_SHADE);
+    expect(REST_SHADE).toBeGreaterThan(0.3);
+    expect(REST_SHADE).toBeLessThan(0.6);
+    expect(shadeOf('dark')).toBe(1);
+  });
+
+  it('eases quickly up, slowly down, and from a panel it turned off slowly enough to outlast its wake', () => {
+    expect(stageEase(null, 'rest', false)).toEqual({ ms: 0, easing: 'linear' });
+    expect(stageEase('rest', 'lit', false)).toEqual({ ms: LIGHT_UP_MS, easing: 'ease-out' });
+    expect(stageEase('lit', 'rest', false)).toEqual({ ms: SETTLE_MS, easing: 'ease-in-out' });
+    expect(stageEase('rest', 'dark', false)).toEqual({ ms: DARK_FADE_MS, easing: 'ease-in-out' });
+    expect(stageEase('dark', 'lit', false)).toEqual({ ms: LIGHT_UP_MS, easing: 'ease-out' });
+    expect(stageEase('dark', 'lit', true)).toEqual({ ms: PANEL_WAKE_MS, easing: PANEL_WAKE_EASE });
+    // The kitchen's panel shows a picture about 4 s after it is turned on: most of the brightening comes after that.
+    expect(PANEL_WAKE_MS).toBeGreaterThanOrEqual(4500);
+    expect(stageEase('dark', 'rest', true)).toEqual({ ms: PANEL_WAKE_MS, easing: PANEL_WAKE_EASE });
+    expect(LIGHT_UP_MS).toBeLessThan(1000);
+    expect(SETTLE_MS).toBeGreaterThan(LIGHT_UP_MS);
   });
 });
