@@ -191,6 +191,10 @@ describe('the stages on the screen (0.13.0, spec D8)', () => {
     expect(controller).toMatch(/stage: \(stage, ease\) => \{\n\s+shown\?\.setStage\?\.\(stage, ease\);/);
   });
 
+  it('eases from where the shade is, even on a page that drew no frame since the last change (review K1)', () => {
+    expect(element).toMatch(/if \(shade\) void getComputedStyle\(shade\)\.opacity;\n\s+this\.style\.setProperty\('--pvs-shade-ms'/);
+  });
+
   it('draws new land each time it opens', () => {
     expect(element).toMatch(/new SkyScene\(root, \{ reducedMotion: reduced, landscape: pickLandscape\(\) \}\)/);
   });

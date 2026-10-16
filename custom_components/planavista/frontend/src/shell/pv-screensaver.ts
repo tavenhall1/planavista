@@ -344,6 +344,10 @@ export class PvScreensaver extends LitElement {
 
   private _shade(stage: SkyStage, ease: { ms: number; easing: string }): void {
     window.clearTimeout(this._darkTimer);
+    // Where the shade is now, worked out before the change: a page that drew no frame since the last
+    // change (hidden behind another window, or its panel just woken) would otherwise jump, not ease (review K1).
+    const shade = this.renderRoot.querySelector<HTMLElement>('.shade');
+    if (shade) void getComputedStyle(shade).opacity;
     this.style.setProperty('--pvs-shade-ms', `${ease.ms}ms`);
     this.style.setProperty('--pvs-shade-ease', ease.easing);
     this.style.setProperty('--pvs-shade', String(shadeOf(stage)));

@@ -270,7 +270,8 @@ describe('the sky wakes like a phone (0.13.0, spec D4 to D8)', () => {
     expect(stageEase('dark', 'lit', false)).toEqual({ ms: LIGHT_UP_MS, easing: 'ease-out' });
     expect(stageEase('dark', 'lit', true)).toEqual({ ms: PANEL_WAKE_MS, easing: PANEL_WAKE_EASE });
     // The kitchen's panel shows a picture about 4 s after it is turned on: most of the brightening comes after that.
-    expect(PANEL_WAKE_MS).toBeGreaterThanOrEqual(4500);
+    // Timed on the kitchen's Planar: a picture 3.5 to 5 s after turn_on; the end of the brightening still shows (review K2).
+    expect(PANEL_WAKE_MS).toBe(6000);
     expect(stageEase('dark', 'rest', true)).toEqual({ ms: PANEL_WAKE_MS, easing: PANEL_WAKE_EASE });
     expect(LIGHT_UP_MS).toBeLessThan(1000);
     expect(SETTLE_MS).toBeGreaterThan(LIGHT_UP_MS);

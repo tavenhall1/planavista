@@ -38,7 +38,7 @@ Quiet starts at the later of the last touch and motion going off (0.11.0's rule)
 - rest to lit (someone walks up): `LIGHT_UP_MS` (0.8 s);
 - lit to rest (they walk away): `SETTLE_MS` (4 s);
 - to dark: `DARK_FADE_MS` (5 s), then the Screen goes off and the scene stops drawing;
-- dark to lit with a Screen PlanaVista turned off: `PANEL_WAKE_MS` (5 s) on a slow-start curve from the turn_on, since a panel can take seconds to show a picture again (the kitchen's Planar about 4 s); from a drawn dark, `LIGHT_UP_MS`;
+- dark to lit with a Screen PlanaVista turned off: `PANEL_WAKE_MS` (6 s) on a slow-start curve from the turn_on, since a panel can take seconds to show a picture again (the kitchen's Planar 3.5 to 5 s, all at once); from a drawn dark, `LIGHT_UP_MS`;
 - a touch: the board's 0.12.0 wake fade.
 
 **D9. The device's own sleep.** The wake lock is let go while the screen is dark (it used to be let go while the sky showed at night), so a tablet's own Auto-Lock may take over in the dark.

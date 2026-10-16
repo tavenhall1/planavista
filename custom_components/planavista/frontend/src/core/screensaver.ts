@@ -39,10 +39,10 @@ export const SETTLE_MS = 4000;
 export const DARK_FADE_MS = 5000;
 /**
  * Back from a dark the screensaver made by turning the Screen off: a panel can
- * take seconds to show a picture again (the kitchen's Planar about 4 s), so the
- * sky brightens slowly at first and mostly once the picture is back.
+ * take seconds to show a picture again (the kitchen's Planar 3.5 to 5 s, all at
+ * once), so the sky brightens slowly at first and mostly once the picture is back.
  */
-export const PANEL_WAKE_MS = 5000;
+export const PANEL_WAKE_MS = 6000;
 export const PANEL_WAKE_EASE = 'linear(0, 0.04 50%, 0.3 80%, 1)';
 
 /**
