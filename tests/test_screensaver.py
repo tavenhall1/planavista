@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockUser
 from homeassistant.core import HomeAssistant
 
 from custom_components.planavista.household.screensaver import (
+    DARK_CHOICES,
     DIM_DAY_CHOICES,
     DIM_NIGHT_CHOICES,
     MOTION_DOMAINS,
@@ -27,8 +28,18 @@ SAVE = "planavista/household/settings/save"
 
 def test_the_setting_starts_off_after_five_minutes() -> None:
     assert default_screensaver() == {
-        "enabled": False, "after_minutes": 5, "night": None, "screens": {}, "dim": {"day": 100, "night": 30},
+        "enabled": False, "after_minutes": 5, "dark_minutes": 10, "night": None, "screens": {}, "dim": {"day": 100, "night": 30},
     }
+
+
+def test_dark_after_is_a_choice_or_never() -> None:
+    # 0.13.0: how long the sky shows before the screen goes dark; 0 is Never.
+    assert DARK_CHOICES == (0, 5, 10, 15, 30, 60)
+    assert normalize_screensaver({})["dark_minutes"] == 10
+    assert normalize_screensaver({"dark_minutes": 0})["dark_minutes"] == 0
+    assert normalize_screensaver({"dark_minutes": 60})["dark_minutes"] == 60
+    for bad in (7, False, True, "30", 30.0, None, -5):
+        assert normalize_screensaver({"dark_minutes": bad})["dark_minutes"] == 10, bad
 
 
 def test_dimming_levels_are_whole_percents_from_the_choices() -> None:
@@ -90,7 +101,7 @@ def test_entries_follow_the_shared_screens_and_the_last_one_turns_it_off() -> No
 def test_diagnostics_name_only_the_kinds_of_entity() -> None:
     saver = normalize_screensaver({"enabled": True, "screens": {"u1": {"name": "Kitchen", "screen": "light.kitchen_screen"}}})
     assert screensaver_diagnostics(saver) == {
-        "enabled": True, "after_minutes": 5, "night": None, "screens": [{"screen": "light", "motion": None}],
+        "enabled": True, "after_minutes": 5, "dark_minutes": 10, "night": None, "screens": [{"screen": "light", "motion": None}],
         "dim": {"day": 100, "night": 30},
     }
 
@@ -114,7 +125,7 @@ async def test_the_view_lists_each_shared_screen(
 ) -> None:
     view = await _view(await hass_ws_client(hass))
     assert view["security"]["screensaver"] == {
-        "enabled": False, "after_minutes": 5, "night": None,
+        "enabled": False, "after_minutes": 5, "dark_minutes": 10, "night": None,
         "screens": [{"user_id": kitchen_shared, "name": "Kitchen", "screen": None, "motion": None}],
         "dim": {"day": 100, "night": 30},
     }
@@ -235,6 +246,33 @@ async def test_a_parent_sets_the_brightness_by_day_and_at_night(
         refused = await ws_command(client, {"type": SAVE, **bad})
         assert not refused["success"], bad
     assert household.data["security"]["screensaver"]["dim"] == {"day": 85, "night": 100}
+
+
+async def test_a_parent_sets_dark_after(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, kitchen_shared: str
+) -> None:
+    client = await ws_client_for(hass, hass_ws_client, accounts["admin"])
+    assert (await ws_command(client, {"type": SAVE, "screensaver_dark": 30}))["success"]
+    assert household.data["security"]["screensaver"]["dark_minutes"] == 30
+    # Never, and any wait works with any screensaver wait: dark counts from when the sky comes on.
+    assert (await ws_command(client, {"type": SAVE, "screensaver_dark": 0, "screensaver_after": 30}))["success"]
+    assert household.data["security"]["screensaver"]["dark_minutes"] == 0
+    for bad in (7, True, False, "10", 10.0, None):
+        refused = await ws_command(client, {"type": SAVE, "screensaver_dark": bad})
+        assert not refused["success"], bad
+    assert household.data["security"]["screensaver"]["dark_minutes"] == 0
+    # A save refused for another reason changes nothing.
+    refused = await ws_command(client, {"type": SAVE, "screensaver_dark": 60, "screensaver_screen": {"user": "someone"}})
+    assert not refused["success"]
+    assert household.data["security"]["screensaver"]["dark_minutes"] == 0
+
+
+async def test_a_member_cant_change_dark_after(
+    hass: HomeAssistant, hass_ws_client: Any, accounts: dict[str, MockUser], household: Any, kitchen_shared: str
+) -> None:
+    client = await ws_client_for(hass, hass_ws_client, accounts["casey"])
+    assert not (await ws_command(client, {"type": SAVE, "screensaver_dark": 60}))["success"]
+    assert household.data["security"]["screensaver"]["dark_minutes"] == 10
 
 
 async def test_a_refused_save_leaves_the_levels_alone(

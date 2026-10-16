@@ -6,7 +6,7 @@ import { defineElement } from '../utils/define';
 import { getPlanaVistaData } from '../utils/ha-utils';
 import { noteRain, rainAt } from '../core/rain-record';
 import type { HouseholdView } from '../core/household';
-import { CORNER_MS, infoCorner, trialTime, weatherScene } from '../core/screensaver';
+import { CORNER_MS, infoCorner, shadeOf, trialTime, weatherScene, type SkyStage } from '../core/screensaver';
 import { DIM_DEFAULT, dimLevel, mediaBrightness } from '../core/dimming';
 import { appearanceSettings } from '../core/appearance';
 import { resolveMotion } from '../core/motion';
@@ -16,7 +16,7 @@ import { eventsOn } from '../modules/chores/calendar-ties';
 import { screensaverInfo } from '../modules/screensaver/info';
 import { SkyScene } from '../modules/screensaver/sky-scene';
 import {
-  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropFrom, rainbowStrength, rainbowWeather, seasonAt, springEase,
+  ENTRANCE, ENTRANCE_PACE, RAIN_CONDITIONS, WAKE_FADE_MS, dropFrom, rainbowStrength, rainbowWeather, seasonAt, springEase, pickLandscape,
 } from '../modules/screensaver/sky';
 import { skyStyles } from '../modules/screensaver/sky-styles';
 import { onPageHousehold } from './page-household';
@@ -38,8 +38,13 @@ function minuteOf(text: unknown, fallback: number): number {
  * pv-screensaver: the living sky over the whole page (milestone 11, spec 3.3),
  * with the time, the day, and today written over it. The page-wide controller
  * puts it on document.body and takes it away; a touch anywhere wakes the page.
+ * Since 0.13.0 one shade over everything draws the controller's stage: resting,
+ * lit, or dark (and in the dark the scene stops drawing).
  */
 export class PvScreensaver extends LitElement {
+  /** The stage it opens at; the controller moves it on with setStage. */
+  stage: SkyStage = 'lit';
+  private _darkTimer: number | undefined;
   @state() private _now = new Date();
   @state() private _board: Board | null = null;
   @state() private _view: HouseholdView | null = null;
@@ -97,6 +102,20 @@ export class PvScreensaver extends LitElement {
       position: absolute;
       inset: 0;
       overflow: hidden;
+    }
+    /* In the dark nothing under the black moves, so the page draws no frames all night (review m13b I4). */
+    :host([still]) * {
+      animation-play-state: paused !important;
+    }
+    /* The stage (0.13.0): one black sheet over the sky and the words, moved by opacity only. */
+    .shade {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background: #000;
+      pointer-events: none;
+      opacity: var(--pvs-shade, 0);
+      transition: opacity var(--pvs-shade-ms, 0ms) var(--pvs-shade-ease, linear);
     }
 
     /* The clock: letters cut from cream paper, lifted off the sky. */
@@ -278,6 +297,7 @@ export class PvScreensaver extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.clearInterval(this._timer);
+    window.clearTimeout(this._darkTimer);
     document.removeEventListener('visibilitychange', this._visibility);
     this._offView?.();
     this._chores?.stop();
@@ -299,15 +319,51 @@ export class PvScreensaver extends LitElement {
     const data = hass ? getPlanaVistaData(hass) : null;
     const reduced = resolveMotion(appearanceSettings(data?.display).motion, matchMedia('(prefers-reduced-motion: reduce)').matches) === 'reduced';
     this.toggleAttribute('reduced', reduced);
-    this._scene = new SkyScene(root, { reducedMotion: reduced });
+    // New land each showing (0.13.0): the snowy ranges from the owner's picks, the rest at random.
+    this._scene = new SkyScene(root, { reducedMotion: reduced, landscape: pickLandscape() });
     // The paper's fibers, for the card too.
     const tex = root.style.getPropertyValue('--tex');
     if (tex) this.style.setProperty('--tex', tex);
     this._resize = new ResizeObserver(() => this._scene?.resize());
     this._resize.observe(this);
     this._feed(true);
+    this._shade(this.stage, { ms: 0, easing: 'linear' });
+    // Opening in the dark (a reload while it was dark): drawn once, no entrance, nothing moving.
+    if (this.stage === 'dark') return;
     this._scene.start();
     void this._enter(reduced);
+  }
+
+  /** The controller's stage (0.13.0): the shade eases there, and the scene stops once it is dark. */
+  setStage(stage: SkyStage, ease: { ms: number; easing: string }): void {
+    const was = this.stage;
+    this.stage = stage;
+    if (!this.hasUpdated) return; // it opens at the stage it was given
+    if (was === 'dark' && stage !== 'dark') {
+      this._entrySlot = Math.floor(Date.now() / CORNER_MS);
+      this._tick();
+      if (document.visibilityState !== 'hidden') this._scene?.start();
+    }
+    this._shade(stage, ease);
+  }
+
+  private _shade(stage: SkyStage, ease: { ms: number; easing: string }): void {
+    window.clearTimeout(this._darkTimer);
+    // Where the shade is now, worked out before the change: a page that drew no frame since the last
+    // change (hidden behind another window, or its panel just woken) would otherwise jump, not ease (review K1).
+    const shade = this.renderRoot.querySelector<HTMLElement>('.shade');
+    if (shade) void getComputedStyle(shade).opacity;
+    this.style.setProperty('--pvs-shade-ms', `${ease.ms}ms`);
+    this.style.setProperty('--pvs-shade-ease', ease.easing);
+    this.style.setProperty('--pvs-shade', String(shadeOf(stage)));
+    if (stage === 'dark') {
+      this._darkTimer = window.setTimeout(() => {
+        this._scene?.stop();
+        this.toggleAttribute('still', true);
+      }, ease.ms);
+    } else {
+      this.toggleAttribute('still', false);
+    }
   }
 
   /**
@@ -353,10 +409,12 @@ export class PvScreensaver extends LitElement {
 
   private _visibility = (): void => {
     if (document.visibilityState === 'hidden') this._scene?.stop();
-    else this._scene?.start();
+    else if (this.stage !== 'dark') this._scene?.start();
   };
 
   private _tick(): void {
+    // In the dark nothing is seen: the clock waits until the sky comes back.
+    if (this.stage === 'dark') return;
     this._now = new Date();
     this._feed(false);
   }
@@ -503,6 +561,7 @@ export class PvScreensaver extends LitElement {
           </div>
         ` : nothing}
       </div>`)}
+      <div class="shade" aria-hidden="true"></div>
       </dialog>
     `;
   }

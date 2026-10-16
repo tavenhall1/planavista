@@ -36,6 +36,7 @@ from .members import (
 from .kiosk import KIOSK_TOP_BARS, exit_refusal, may_change_kiosk
 from .screensaver import (
     AFTER_CHOICES,
+    DARK_CHOICES,
     DIM_DAY_CHOICES,
     DIM_NIGHT_CHOICES,
     MOTION_DOMAINS,
@@ -485,6 +486,13 @@ async def ws_shared_screen(
     connection.send_result(msg["id"])
 
 
+def _whole_number(value: Any) -> int:
+    """A schema check for minutes: an int that isn't a bool."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise vol.Invalid("expected a whole number")
+    return value
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "planavista/household/settings/save",
@@ -495,6 +503,8 @@ async def ws_shared_screen(
         vol.Optional("kiosk_top_bar"): vol.In(KIOSK_TOP_BARS),
         vol.Optional("screensaver_enabled"): bool,
         vol.Optional("screensaver_after"): vol.In(AFTER_CHOICES),
+        # A whole number of minutes, never a bool (True would pass as 1 and False as Never).
+        vol.Optional("screensaver_dark"): vol.All(_whole_number, vol.In(DARK_CHOICES)),
         vol.Optional("screensaver_night"): vol.Any(
             None, {vol.Required("from"): vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$"), vol.Required("to"): vol.Match(r"^([01]\d|2[0-3]):[0-5]\d$")}
         ),
@@ -557,6 +567,8 @@ async def ws_settings_save(
         saver["enabled"] = msg["screensaver_enabled"]
     if "screensaver_after" in msg:
         saver["after_minutes"] = msg["screensaver_after"]
+    if "screensaver_dark" in msg:
+        saver["dark_minutes"] = msg["screensaver_dark"]
     if "screensaver_night" in msg:
         saver["night"] = msg["screensaver_night"]
     for key, field in (("dim_day", "day"), ("dim_night", "night")):

@@ -70,6 +70,8 @@ export class HouseholdApi extends WsApi {
     kiosk_top_bar?: 'hidden' | 'tabs';
     screensaver_enabled?: boolean;
     screensaver_after?: number;
+    /** Minutes the sky shows before the screen goes dark, 0 for Never (0.13.0). */
+    screensaver_dark?: number;
     screensaver_night?: { from: string; to: string } | null;
     screensaver_screen?: { user: string; screen?: string | null; motion?: string | null };
     /** Brightness by day and at night on shared screens, whole percents (0.12.0). */

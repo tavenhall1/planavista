@@ -68,9 +68,9 @@ describe('colors the card does not dim itself', () => {
     expect(src('styles/shared.ts')).toMatch(/\.emo,\s*\.picture,\s*\.pictures button \{\s*filter: var\(--pv-media-filter, none\);/);
     expect(src('modules/chores/chores-styles.ts')).toMatch(/\.emo \{\s*filter: var\(--pv-media-filter, none\);/);
     expect(src('shell/pv-nav-bar.ts')).toMatch(/\.emo \{\s*filter: var\(--pv-media-filter, none\);/);
-    for (const file of ['modules/calendar/components/view-week.ts', 'modules/calendar/components/view-agenda.ts']) {
-      expect(src(file), file).toMatch(/\.day-weather svg \{\s*filter: var\(--pv-media-filter, none\);/);
-    }
+    // Weather icons dim their own fixed colors by the level and draw the rest in the words' color,
+    // so no filter dims the drawn words twice (test/weather-icons.test.ts, 0.13.0).
+    expect(src('utils/weather-icons.ts')).toMatch(/const SUN = atLevel\('#FBBF24'\);/);
     expect(src('modules/chores/pv-chores-column.ts')).toMatch(/<span class="emo" aria-hidden="true">⭐<\/span>/);
     expect(src('modules/chores/pv-chore-tile.ts')).toMatch(/withEmoji\(line\.text\)/);
     expect(src('modules/chores/pv-surprise-reveal.ts')).toMatch(/\.reward \{[^}]*filter: var\(--pv-media-filter, none\)/);

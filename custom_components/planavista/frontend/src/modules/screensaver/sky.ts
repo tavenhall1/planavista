@@ -42,6 +42,42 @@ export function rng(seed: number): () => number {
   };
 }
 
+/**
+ * The land's seeds, sheet by sheet back to front (0.13.0): each sheet's shape,
+ * and which of its trees are broadleaf. A new set each time the screensaver
+ * opens gives new ranges with the same rules.
+ */
+export interface Landscape {
+  shapes: readonly number[];
+  trees: readonly number[];
+}
+
+/** The approved mockup's land (v15), the one every screensaver drew before 0.13.0. */
+export const APPROVED_LANDSCAPE: Landscape = {
+  shapes: [211, 242, 273, 304, 335, 366],
+  trees: [907, 908, 909, 910, 911, 912],
+};
+
+/** The massif with the tallest peak (sheet 1): the shapes the owner picked in the Mountain Picker, today's first. */
+export const TOP_SEEDS: readonly number[] = [242, 595380, 557009, 614891, 264828, 39358, 60862];
+/** The range in front of it (sheet 2), the same way. */
+export const SECOND_SEEDS: readonly number[] = [273, 348899, 712769, 239700, 623634, 300407, 235294, 680635, 145242, 185318];
+
+/**
+ * The land for one showing (spec D2): the two snowy ranges from the owner's
+ * lists, the other sheets and every sheet's trees at random.
+ */
+export function pickLandscape(random: () => number = Math.random): Landscape {
+  const any = () => Math.floor(random() * 1_000_000);
+  const from = (list: readonly number[]) => list[Math.min(list.length - 1, Math.floor(random() * list.length))];
+  const top = from(TOP_SEEDS);
+  const second = from(SECOND_SEEDS);
+  return {
+    shapes: [any(), top, second, any(), any(), any()],
+    trees: [any(), any(), any(), any(), any(), any()],
+  };
+}
+
 /** "#rrggbb" as a color. */
 export function hex(h: string): Rgb {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];

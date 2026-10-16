@@ -1,9 +1,17 @@
 import { html, TemplateResult } from 'lit';
 import { WeatherCondition } from '../types';
+import { atLevel } from '../core/dimming';
 
 /**
  * Get an SVG weather icon for a HA weather condition.
  * Returns a Lit html template with an inline SVG.
+ *
+ * The clouds, the moon, fog, and wind are drawn in currentColor, the color of
+ * the words around the icon, so they read wherever the words do: white on a
+ * colored header, ink on a light one (the owner, 2026-10-15: fixed slate greys
+ * all but vanished on the kitchen's green header). Rain, snow, the sun, and
+ * lightning keep their colors, dimmed with a dimmed shared screen's level
+ * (atLevel), so nothing has to filter the icon and dim its drawn words twice.
  */
 export function weatherIcon(condition: WeatherCondition, size = 48): TemplateResult {
   const iconFn = WEATHER_ICONS[condition] || WEATHER_ICONS.cloudy;
@@ -12,11 +20,59 @@ export function weatherIcon(condition: WeatherCondition, size = 48): TemplateRes
 
 type IconFn = (size: number) => TemplateResult;
 
+const SUN = atLevel('#FBBF24');
+const BOLT = atLevel('#FBBF24');
+const WARN = atLevel('#F59E0B');
+/** Rain, snow, and hail: their blue mixed with the words' color, so they read on any background. */
+const RAIN = `color-mix(in srgb, currentColor 45%, ${atLevel('#60A5FA')})`;
+const SNOW = `color-mix(in srgb, currentColor 70%, ${atLevel('#BFDBFE')})`;
+const HAIL = `color-mix(in srgb, currentColor 50%, ${atLevel('#93C5FD')})`;
+
+/** Clear night's moon: a circle with a bite from another, in the icon's 64 units. */
+export const MOON = { cx: 30, cy: 34, r: 19, bx: 36, by: 28, br: 16.5 } as const;
+
+type Point = [number, number];
+const round = (v: number) => Math.round(v * 100) / 100;
+
+/** The arc's flags from `from` to `to` around `center`, passing through `via`. */
+function arcFlags(center: Point, from: Point, via: Point, to: Point): { large: 0 | 1; sweep: 0 | 1 } {
+  const angle = (p: Point) => Math.atan2(p[1] - center[1], p[0] - center[0]);
+  const turn = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  // Going the way angles grow (clockwise on screen, SVG's sweep 1): does it meet `via` before `to`?
+  const toVia = turn(angle(via) - angle(from));
+  const toEnd = turn(angle(to) - angle(from));
+  const sweep: 0 | 1 = toVia < toEnd ? 1 : 0;
+  const length = sweep ? toEnd : 2 * Math.PI - toEnd;
+  return { large: length > Math.PI ? 1 : 0, sweep };
+}
+
+/** The crescent's outline: the moon's far edge from horn to horn, then back along the bite. */
+export function crescentPath(m: { cx: number; cy: number; r: number; bx: number; by: number; br: number }): string {
+  const c1: Point = [m.cx, m.cy];
+  const c2: Point = [m.bx, m.by];
+  const d = Math.hypot(c2[0] - c1[0], c2[1] - c1[1]);
+  const ux = (c2[0] - c1[0]) / d;
+  const uy = (c2[1] - c1[1]) / d;
+  const a = (m.r * m.r - m.br * m.br + d * d) / (2 * d);
+  const h = Math.sqrt(m.r * m.r - a * a);
+  const mid: Point = [c1[0] + a * ux, c1[1] + a * uy];
+  const p1: Point = [mid[0] + h * uy, mid[1] - h * ux];
+  const p2: Point = [mid[0] - h * uy, mid[1] + h * ux];
+  const far: Point = [c1[0] - m.r * ux, c1[1] - m.r * uy];
+  const near: Point = [c2[0] - m.br * ux, c2[1] - m.br * uy];
+  const outer = arcFlags(c1, p1, far, p2);
+  const inner = arcFlags(c2, p2, near, p1);
+  const pt = (p: Point) => `${round(p[0])} ${round(p[1])}`;
+  return `M${pt(p1)} A${m.r} ${m.r} 0 ${outer.large} ${outer.sweep} ${pt(p2)} A${m.br} ${m.br} 0 ${inner.large} ${inner.sweep} ${pt(p1)} Z`;
+}
+
+const MOON_PATH = crescentPath(MOON);
+
 const WEATHER_ICONS: Record<string, IconFn> = {
   'sunny': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="12" fill="#FBBF24" />
-      <g stroke="#FBBF24" stroke-width="3" stroke-linecap="round">
+      <circle cx="32" cy="32" r="12" style="fill: ${SUN}" />
+      <g style="stroke: ${SUN}" stroke-width="3" stroke-linecap="round">
         <line x1="32" y1="6" x2="32" y2="14" class="pv-sun-ray" />
         <line x1="32" y1="50" x2="32" y2="58" class="pv-sun-ray" />
         <line x1="6" y1="32" x2="14" y2="32" class="pv-sun-ray" />
@@ -30,22 +86,21 @@ const WEATHER_ICONS: Record<string, IconFn> = {
 
   'clear-night': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M38 14C30 14 23 20 21 28C20 31 20 35 21 38C23 44 28 49 35 50C38 51 41 51 44 50C36 52 27 48 23 40C19 32 21 22 28 16C31 14 34 13 38 14Z" fill="#94A3B8" />
-      <circle cx="44" cy="16" r="1.5" fill="#94A3B8" opacity="0.6" />
-      <circle cx="50" cy="24" r="1" fill="#94A3B8" opacity="0.4" />
-      <circle cx="46" cy="32" r="1.2" fill="#94A3B8" opacity="0.5" />
+      <path d="${MOON_PATH}" fill="currentColor" />
+      <circle cx="47" cy="13" r="2.2" fill="currentColor" opacity="0.85" />
+      <circle cx="55" cy="24" r="1.6" fill="currentColor" opacity="0.7" />
+      <circle cx="50" cy="35" r="1.4" fill="currentColor" opacity="0.6" />
     </svg>`,
 
   'cloudy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2C52 32.2 52 32.2 52 32.3" fill="#CBD5E1" />
-      <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2V40C52 40 50 40 48 40Z" fill="#94A3B8" />
+      <path d="M48 40H18C13.6 40 10 36.4 10 32C10 27.6 13.6 24 18 24C18.2 24 18.5 24 18.7 24C20.2 18.6 25.2 15 31 15C37.9 15 43.5 19.9 44.2 26.5C44.8 26.3 45.4 26.2 46 26.2C49.3 26.2 52 28.9 52 32.2V40C52 40 50 40 48 40Z" fill="currentColor" />
     </svg>`,
 
   'partlycloudy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="26" cy="22" r="10" fill="#FBBF24" />
-      <g stroke="#FBBF24" stroke-width="2.5" stroke-linecap="round">
+      <circle cx="26" cy="22" r="10" style="fill: ${SUN}" />
+      <g style="stroke: ${SUN}" stroke-width="2.5" stroke-linecap="round">
         <line x1="26" y1="6" x2="26" y2="10" />
         <line x1="26" y1="34" x2="26" y2="38" />
         <line x1="10" y1="22" x2="14" y2="22" />
@@ -55,13 +110,13 @@ const WEATHER_ICONS: Record<string, IconFn> = {
         <line x1="14.7" y1="33.3" x2="17.5" y2="30.5" />
         <line x1="34.5" y1="13.5" x2="37.3" y2="10.7" />
       </g>
-      <path d="M50 46H22C17.6 46 14 42.4 14 38C14 33.6 17.6 30 22 30C22.3 30 22.5 30 22.8 30C24.3 25.4 28.8 22 34 22C40.3 22 45.5 26.5 46.2 32.5C46.8 32.3 47.4 32.2 48 32.2C51 32.2 53.5 34.7 53.5 37.7V46H50Z" fill="#CBD5E1" />
+      <path d="M50 46H22C17.6 46 14 42.4 14 38C14 33.6 17.6 30 22 30C22.3 30 22.5 30 22.8 30C24.3 25.4 28.8 22 34 22C40.3 22 45.5 26.5 46.2 32.5C46.8 32.3 47.4 32.2 48 32.2C51 32.2 53.5 34.7 53.5 37.7V46H50Z" fill="currentColor" />
     </svg>`,
 
   'rainy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 34H18C13.6 34 10 30.4 10 26C10 21.6 13.6 18 18 18C18.2 18 18.5 18 18.7 18C20.2 12.6 25.2 9 31 9C37.9 9 43.5 13.9 44.2 20.5C44.8 20.3 45.4 20.2 46 20.2C49.3 20.2 52 22.9 52 26.2V34H48Z" fill="#94A3B8" />
-      <g stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round">
+      <path d="M48 34H18C13.6 34 10 30.4 10 26C10 21.6 13.6 18 18 18C18.2 18 18.5 18 18.7 18C20.2 12.6 25.2 9 31 9C37.9 9 43.5 13.9 44.2 20.5C44.8 20.3 45.4 20.2 46 20.2C49.3 20.2 52 22.9 52 26.2V34H48Z" fill="currentColor" />
+      <g style="stroke: ${RAIN}" stroke-width="3" stroke-linecap="round">
         <line x1="22" y1="40" x2="20" y2="48" class="pv-rain-drop" />
         <line x1="32" y1="40" x2="30" y2="48" class="pv-rain-drop" style="animation-delay: 0.3s" />
         <line x1="42" y1="40" x2="40" y2="48" class="pv-rain-drop" style="animation-delay: 0.6s" />
@@ -72,8 +127,8 @@ const WEATHER_ICONS: Record<string, IconFn> = {
 
   'pouring': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#64748B" />
-      <g stroke="#3B82F6" stroke-width="3" stroke-linecap="round">
+      <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="currentColor" />
+      <g style="stroke: ${RAIN}" stroke-width="3" stroke-linecap="round">
         <line x1="18" y1="36" x2="15" y2="48" class="pv-rain-drop" />
         <line x1="26" y1="36" x2="23" y2="48" class="pv-rain-drop" style="animation-delay: 0.2s" />
         <line x1="34" y1="36" x2="31" y2="48" class="pv-rain-drop" style="animation-delay: 0.4s" />
@@ -88,57 +143,63 @@ const WEATHER_ICONS: Record<string, IconFn> = {
 
   'snowy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="#94A3B8" />
-      <circle cx="20" cy="42" r="2.5" fill="#BFDBFE" class="pv-snow-flake" />
-      <circle cx="32" cy="40" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.3s" />
-      <circle cx="44" cy="43" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.6s" />
-      <circle cx="25" cy="52" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.15s" />
-      <circle cx="38" cy="51" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.45s" />
+      <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="currentColor" />
+      <g style="fill: ${SNOW}">
+        <circle cx="20" cy="42" r="3" class="pv-snow-flake" />
+        <circle cx="32" cy="40" r="3" class="pv-snow-flake" style="animation-delay: 0.3s" />
+        <circle cx="44" cy="43" r="3" class="pv-snow-flake" style="animation-delay: 0.6s" />
+        <circle cx="25" cy="52" r="2.5" class="pv-snow-flake" style="animation-delay: 0.15s" />
+        <circle cx="38" cy="51" r="2.5" class="pv-snow-flake" style="animation-delay: 0.45s" />
+      </g>
     </svg>`,
 
   'snowy-rainy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="#94A3B8" />
-      <g stroke="#60A5FA" stroke-width="2" stroke-linecap="round">
+      <path d="M48 32H18C13.6 32 10 28.4 10 24C10 19.6 13.6 16 18 16C18.2 16 18.5 16 18.7 16C20.2 10.6 25.2 7 31 7C37.9 7 43.5 11.9 44.2 18.5C44.8 18.3 45.4 18.2 46 18.2C49.3 18.2 52 20.9 52 24.2V32H48Z" fill="currentColor" />
+      <g style="stroke: ${RAIN}" stroke-width="2.5" stroke-linecap="round">
         <line x1="22" y1="38" x2="20" y2="46" class="pv-rain-drop" />
         <line x1="42" y1="38" x2="40" y2="46" class="pv-rain-drop" style="animation-delay: 0.3s" />
       </g>
-      <circle cx="32" cy="42" r="2.5" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.15s" />
-      <circle cx="27" cy="52" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.45s" />
-      <circle cx="37" cy="50" r="2" fill="#BFDBFE" class="pv-snow-flake" style="animation-delay: 0.6s" />
+      <g style="fill: ${SNOW}">
+        <circle cx="32" cy="42" r="3" class="pv-snow-flake" style="animation-delay: 0.15s" />
+        <circle cx="27" cy="52" r="2.5" class="pv-snow-flake" style="animation-delay: 0.45s" />
+        <circle cx="37" cy="50" r="2.5" class="pv-snow-flake" style="animation-delay: 0.6s" />
+      </g>
     </svg>`,
 
   'fog': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
-        <line x1="12" y1="24" x2="52" y2="24" opacity="0.4" />
-        <line x1="16" y1="32" x2="48" y2="32" opacity="0.6" />
-        <line x1="12" y1="40" x2="52" y2="40" opacity="0.8" />
-        <line x1="18" y1="48" x2="46" y2="48" opacity="0.5" />
+      <g stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+        <line x1="12" y1="22" x2="52" y2="22" opacity="0.55" />
+        <line x1="16" y1="31" x2="48" y2="31" opacity="0.75" />
+        <line x1="12" y1="40" x2="52" y2="40" opacity="0.95" />
+        <line x1="18" y1="49" x2="46" y2="49" opacity="0.65" />
       </g>
     </svg>`,
 
   'hail': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#94A3B8" />
-      <circle cx="20" cy="40" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
-      <circle cx="32" cy="44" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
-      <circle cx="44" cy="38" r="3" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
-      <circle cx="26" cy="52" r="2.5" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
-      <circle cx="38" cy="54" r="2.5" fill="#93C5FD" stroke="#60A5FA" stroke-width="1" />
+      <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="currentColor" />
+      <g style="fill: ${HAIL}">
+        <circle cx="20" cy="40" r="3.2" />
+        <circle cx="32" cy="44" r="3.2" />
+        <circle cx="44" cy="38" r="3.2" />
+        <circle cx="26" cy="52" r="2.8" />
+        <circle cx="38" cy="54" r="2.8" />
+      </g>
     </svg>`,
 
   'lightning': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="#64748B" />
-      <path d="M34 30L28 42H34L30 56L42 40H36L40 30H34Z" fill="#FBBF24" stroke="#F59E0B" stroke-width="0.5" />
+      <path d="M48 30H18C13.6 30 10 26.4 10 22C10 17.6 13.6 14 18 14C18.2 14 18.5 14 18.7 14C20.2 8.6 25.2 5 31 5C37.9 5 43.5 9.9 44.2 16.5C44.8 16.3 45.4 16.2 46 16.2C49.3 16.2 52 18.9 52 22.2V30H48Z" fill="currentColor" />
+      <path d="M34 30L28 42H34L30 56L42 40H36L40 30H34Z" style="fill: ${BOLT}" />
     </svg>`,
 
   'lightning-rainy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 28H18C13.6 28 10 24.4 10 20C10 15.6 13.6 12 18 12C18.2 12 18.5 12 18.7 12C20.2 6.6 25.2 3 31 3C37.9 3 43.5 7.9 44.2 14.5C44.8 14.3 45.4 14.2 46 14.2C49.3 14.2 52 16.9 52 20.2V28H48Z" fill="#64748B" />
-      <path d="M34 28L28 40H34L30 52L42 38H36L40 28H34Z" fill="#FBBF24" />
-      <g stroke="#60A5FA" stroke-width="2" stroke-linecap="round">
+      <path d="M48 28H18C13.6 28 10 24.4 10 20C10 15.6 13.6 12 18 12C18.2 12 18.5 12 18.7 12C20.2 6.6 25.2 3 31 3C37.9 3 43.5 7.9 44.2 14.5C44.8 14.3 45.4 14.2 46 14.2C49.3 14.2 52 16.9 52 20.2V28H48Z" fill="currentColor" />
+      <path d="M34 28L28 40H34L30 52L42 38H36L40 28H34Z" style="fill: ${BOLT}" />
+      <g style="stroke: ${RAIN}" stroke-width="2.5" stroke-linecap="round">
         <line x1="18" y1="36" x2="16" y2="44" class="pv-rain-drop" style="animation-delay: 0.2s" />
         <line x1="48" y1="34" x2="46" y2="42" class="pv-rain-drop" style="animation-delay: 0.5s" />
         <line x1="22" y1="48" x2="20" y2="56" class="pv-rain-drop" style="animation-delay: 0.1s" />
@@ -148,7 +209,7 @@ const WEATHER_ICONS: Record<string, IconFn> = {
 
   'windy': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
+      <g stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
         <path d="M10 24 Q30 24 38 20 Q46 16 48 20 Q50 24 46 24" fill="none" />
         <path d="M8 34 Q28 34 40 30 Q48 28 50 32 Q52 36 48 36" fill="none" />
         <path d="M14 44 Q30 44 36 40 Q42 36 44 40 Q46 44 42 44" fill="none" />
@@ -157,8 +218,8 @@ const WEATHER_ICONS: Record<string, IconFn> = {
 
   'windy-variant': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M48 28H22C17.6 28 14 24.4 14 20C14 15.6 17.6 12 22 12C22.2 12 22.5 12 22.7 12C24.2 7 28.8 4 34 4C40.3 4 45.5 8.5 46.2 14.5C46.8 14.3 47.4 14.2 48 14.2C51 14.2 53.5 16.7 53.5 19.7V28H48Z" fill="#CBD5E1" />
-      <g stroke="#94A3B8" stroke-width="2.5" stroke-linecap="round">
+      <path d="M48 28H22C17.6 28 14 24.4 14 20C14 15.6 17.6 12 22 12C22.2 12 22.5 12 22.7 12C24.2 7 28.8 4 34 4C40.3 4 45.5 8.5 46.2 14.5C46.8 14.3 47.4 14.2 48 14.2C51 14.2 53.5 16.7 53.5 19.7V28H48Z" fill="currentColor" />
+      <g stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.8">
         <path d="M8 36 Q28 36 36 33 Q44 30 46 34 Q48 38 44 38" fill="none" />
         <path d="M12 46 Q28 46 34 43 Q40 40 42 44 Q44 48 40 48" fill="none" />
       </g>
@@ -166,11 +227,14 @@ const WEATHER_ICONS: Record<string, IconFn> = {
 
   'exceptional': (size) => html`
     <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="20" stroke="#F59E0B" stroke-width="3" fill="none" />
-      <line x1="32" y1="18" x2="32" y2="34" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" />
-      <circle cx="32" cy="42" r="2" fill="#F59E0B" />
+      <circle cx="32" cy="32" r="20" style="stroke: ${WARN}" stroke-width="3.5" fill="none" />
+      <line x1="32" y1="18" x2="32" y2="34" style="stroke: ${WARN}" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="32" cy="42" r="2.2" style="fill: ${WARN}" />
     </svg>`,
 };
+
+/** The conditions with an icon of their own (Home Assistant's weather conditions). */
+export const WEATHER_CONDITIONS: readonly string[] = Object.keys(WEATHER_ICONS);
 
 /**
  * CSS for weather icon animations.
