@@ -412,11 +412,13 @@ export const LIFE = {
  * crosses your view faster than something far away. `size` scales a far
  * bird's 46 by 20 px, `scale` is each bird's own size within its flock, `y`
  * the leader's height as a share of the screen's, `crossS` the seconds to
- * cross its width.
+ * cross its width. Far ones fly where the info sits in a top corner, so a
+ * close one flies below it (the kitchen's Today card ends at 0.344 of the
+ * height) and above a bottom corner's.
  */
 export const FLOCKS = {
   far: { count: [4, 7], size: 1, scale: [0.6, 1.05], y: [0.16, 0.36], crossS: [26, 36] },
-  near: { count: [2, 4], size: 2, scale: [0.85, 1.1], y: [0.3, 0.46], crossS: [11, 15] },
+  near: { count: [2, 4], size: 2, scale: [0.85, 1.1], y: [0.36, 0.52], crossS: [11, 15] },
 } as const;
 
 /** One bird of a flock: where it flies from the leader (px), its own size, and its wing beat's phase. */

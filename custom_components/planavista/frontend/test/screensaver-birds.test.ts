@@ -27,6 +27,11 @@ describe('paper birds, far and close', () => {
     expect(FLOCKS.near.size).toBeGreaterThanOrEqual(2 * FLOCKS.far.size);
     expect(FLOCKS.near.y[0]).toBeGreaterThan(FLOCKS.far.y[0]);
     expect(FLOCKS.near.y[1]).toBeGreaterThan(FLOCKS.far.y[1]);
+    // The kitchen (1920 by 1080): with the info in the top corners, the Today card ends at 372 px (0.344) and
+    // far flocks pass behind it and the clock. A close flock's leader flies below that, and its whole V stays
+    // above a bottom corner's card (it starts near 0.66): the lowest bird is about 78 px under the leader.
+    expect(FLOCKS.near.y[0]).toBeGreaterThanOrEqual(0.36);
+    expect(FLOCKS.near.y[1] * 1080 + 78).toBeLessThan(0.62 * 1080);
     // Close things cross the view quicker: parallax is what tells the eye they're close, not just big.
     expect(FLOCKS.near.crossS[1]).toBeLessThan(FLOCKS.far.crossS[0]);
     expect(FLOCKS.near.count[1]).toBeLessThanOrEqual(FLOCKS.far.count[0]);
