@@ -395,10 +395,68 @@ export const LIFE = {
   swayX: [6, 22] as const,
   swayY: [2, 5] as const,
   swayPeriod: [95, 120] as const,
-  /** A flock of paper birds crosses every few minutes by day; a shooting star now and then at night. */
-  flockEveryMs: [180_000, 360_000] as const,
+  /**
+   * A flock of paper birds crosses every minute or two by day (0.13.3: every few minutes left the sky
+   * empty most of the time), the first soon after the sky comes in; a shooting star now and then at night.
+   */
+  flockEveryMs: [60_000, 120_000] as const,
+  firstFlockMs: [10_000, 30_000] as const,
+  /** About one flock in three flies close, in front of the land (0.13.3, the owner). */
+  nearShare: 1 / 3,
   meteorEveryMs: [120_000, 300_000] as const,
 };
+
+/**
+ * Far flocks fly behind the land, small and slow; close ones in front of it,
+ * twice the size, lower, fewer, and quicker across, the way something near
+ * crosses your view faster than something far away. `size` scales a far
+ * bird's 46 by 20 px, `scale` is each bird's own size within its flock, `y`
+ * the leader's height as a share of the screen's, `crossS` the seconds to
+ * cross its width.
+ */
+export const FLOCKS = {
+  far: { count: [4, 7], size: 1, scale: [0.6, 1.05], y: [0.16, 0.36], crossS: [26, 36] },
+  near: { count: [2, 4], size: 2, scale: [0.85, 1.1], y: [0.3, 0.46], crossS: [11, 15] },
+} as const;
+
+/** One bird of a flock: where it flies from the leader (px), its own size, and its wing beat's phase. */
+export interface FlockBird {
+  dx: number;
+  dy: number;
+  s: number;
+  ph: number;
+}
+
+/** One flock's crossing: close or far, which way (1 left to right), and its birds, the leader first. */
+export interface FlockPlan {
+  near: boolean;
+  size: number;
+  dir: 1 | -1;
+  birds: FlockBird[];
+  y: number;
+  crossS: number;
+}
+
+/** The next flock (0.13.3): close about one time in three, with the wind behind it when it blows. */
+export function flockPlan(windy: boolean, random: () => number = Math.random): FlockPlan {
+  const near = random() < LIFE.nearShare;
+  const k = near ? FLOCKS.near : FLOCKS.far;
+  const pick = (range: readonly [number, number]) => range[0] + random() * (range[1] - range[0]);
+  const dir: 1 | -1 = windy || random() < 0.5 ? 1 : -1;
+  const count = k.count[0] + Math.min(k.count[1] - k.count[0], Math.floor(random() * (k.count[1] - k.count[0] + 1)));
+  const birds = Array.from({ length: count }, (_, i): FlockBird => {
+    // A loose V: the leader in front, the others behind on either side, spaced by the birds' size.
+    const rank = Math.ceil(i / 2);
+    const side = i % 2 ? -1 : 1;
+    return {
+      dx: rank ? -rank * 46 * k.size * dir : 0,
+      dy: (rank * 16 * side + (random() - 0.5) * 10) * k.size,
+      s: pick(k.scale),
+      ph: random() * 6.28,
+    };
+  });
+  return { near, size: k.size, dir, birds, y: pick(k.y), crossS: pick(k.crossS) };
+}
 
 /** How far the sheets sway at time `t` (seconds), group `gi` of `groups`. */
 export function swayAt(t: number, gi: number, groups: number, life: boolean): { x: number; y: number } {

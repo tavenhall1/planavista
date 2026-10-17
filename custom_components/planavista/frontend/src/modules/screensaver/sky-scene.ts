@@ -3,7 +3,7 @@ import { dimRgb } from '../../core/dimming';
 import { APPROVED_LANDSCAPE, boltSource, type Landscape,
   CROWNS, ENTRANCE, ENTRANCE_PACE, LEAFY, LIFE, Light, Rgb, SCENE_MARGIN, Season, clamp, cloudPlan, dimLight, fractal, gustAt,
   hex, horizonAt, lightAt, minuteOfDay, mixRgb, moonPhase, moonPixels, nightLight, rgba, rng, seasonGround, shade, snowFor,
-  springEase, sunPosition, swayAt, SUN_FRAMES, firefliesOut,
+  springEase, sunPosition, swayAt, SUN_FRAMES, firefliesOut, flockPlan,
 } from './sky';
 
 // The living sky's drawing (spec 3.3), ported from the approved mockup (v4,
@@ -394,6 +394,7 @@ interface Bird {
 interface Flock {
   birds: Bird[];
   dir: number;
+  size: number;
   x: number;
   y0: number;
   speed: number;
@@ -448,6 +449,8 @@ export class SkyScene {
   private readonly _rainbowHost: HTMLDivElement;
   private readonly _rainbow: HTMLCanvasElement;
   private readonly _birds: HTMLDivElement;
+  /** Close flocks, in front of the near hill (0.13.3). */
+  private readonly _nearBirds: HTMLDivElement;
   private readonly _fireflies: HTMLDivElement;
   /** Calm-day life: with Motion Full only. */
   private readonly _life: boolean;
@@ -522,16 +525,18 @@ export class SkyScene {
     this._rainbow = canvas('pvs-layer pvs-rainbow');
     this._rainbowHost.append(this._rainbow);
     this._birds = div('pvs-host');
+    this._nearBirds = div('pvs-host');
     this._fireflies = div('pvs-host pvs-fireflies');
     this._fireflies.hidden = true;
     for (let gi = 0; gi < GROUPS; gi++) this._ridges.push(canvas('pvs-layer pvs-ridge'));
     for (let i = 0; i < 3; i++) this._mistHosts.push(div('pvs-host'));
     const [r0, r1, r2, r3] = this._ridges;
     const [m0, m1, m2] = this._mistHosts;
-    // Back to front: the rainbow's feet stand behind the far range, the fireflies in front of the near hill.
+    // Back to front: the rainbow's feet stand behind the far range, far birds behind the land, close birds
+    // and the fireflies in front of the near hill.
     this._wrap.append(
       this._sky, this._starsA, this._starsB, this._meteors, this._glow, this._rays, this._sun, this._rainbowHost, this._farHost,
-      this._birds, r0, this._bolt, m0, r1, m1, r2, m2, r3, this._fireflies, this._weather, this._flash,
+      this._birds, r0, this._bolt, m0, r1, m1, r2, m2, r3, this._nearBirds, this._fireflies, this._weather, this._flash,
     );
     root.prepend(this._wrap);
     root.style.setProperty(PAPER_TEXTURE_VAR, `url(${paperTexture().url})`);
@@ -1045,17 +1050,18 @@ export class SkyScene {
 
   // ---- Paper birds by day, and a shooting star now and then at night -----------------
 
-  private _birdCanvas(): HTMLCanvasElement {
+  /** One paper bird, drawn at `size` times a far bird's 46 by 20 px so a close one stays sharp. */
+  private _birdCanvas(size = 1): HTMLCanvasElement {
     const el = canvas('pvs-bird');
     const w = 46;
     const h = 20;
-    el.width = Math.round(w * this._dpr);
-    el.height = Math.round(h * this._dpr);
-    el.style.width = `${w}px`;
-    el.style.height = `${h}px`;
+    el.width = Math.round(w * size * this._dpr);
+    el.height = Math.round(h * size * this._dpr);
+    el.style.width = `${w * size}px`;
+    el.style.height = `${h * size}px`;
     const g = el.getContext('2d');
     if (g) {
-      g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+      g.setTransform(this._dpr * size, 0, 0, this._dpr * size, 0, 0);
       g.beginPath();
       g.moveTo(2, 13);
       g.quadraticCurveTo(12, 2, 23, 12);
@@ -1072,19 +1078,18 @@ export class SkyScene {
   private _sendFlock(): void {
     const scene = this._inputs?.weather;
     if (!scene || !this._light?.sun.day || scene.rain > 0 || scene.snow > 0 || scene.storm) return;
-    const windy = scene.wind > 1;
-    const dir = windy ? 1 : Math.random() < 0.5 ? 1 : -1;
-    const n = 4 + Math.floor(Math.random() * 4);
-    const birds: Bird[] = [];
-    for (let i = 0; i < n; i++) {
-      const el = this._birdCanvas();
-      this._birds.append(el);
-      // A loose V: the leader in front, the others behind on either side.
-      const rank = Math.ceil(i / 2);
-      const side = i % 2 ? -1 : 1;
-      birds.push({ el, dx: -rank * 46 * dir, dy: rank * 16 * side + (Math.random() - 0.5) * 10, s: 0.6 + Math.random() * 0.45, ph: Math.random() * 6.28 });
-    }
-    this._flocks.push({ birds, dir, x: dir > 0 ? -120 : this._w + 120, y0: this._h * (0.16 + Math.random() * 0.2), speed: this._w / (26 + Math.random() * 10) });
+    // Far flocks behind the land, about one in three close in front of it (0.13.3).
+    const plan = flockPlan(scene.wind > 1);
+    const host = plan.near ? this._nearBirds : this._birds;
+    const birds: Bird[] = plan.birds.map(b => {
+      const el = this._birdCanvas(plan.size);
+      host.append(el);
+      return { el, ...b };
+    });
+    const edge = 120 * plan.size;
+    this._flocks.push({
+      birds, dir: plan.dir, size: plan.size, x: plan.dir > 0 ? -edge : this._w + edge, y0: this._h * plan.y, speed: this._w / plan.crossS,
+    });
   }
 
   private _moveBirds(t: number, dt: number): void {
@@ -1096,12 +1101,12 @@ export class SkyScene {
         const beating = Math.sin(t / 3.1 + b.ph) > (windy ? 0.75 : -0.35);
         const flap = beating ? 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 9.5 + b.ph)) : 0.85;
         const x = f.x + b.dx;
-        const y = f.y0 + b.dy + Math.sin(t * 0.9 + b.ph) * 7;
+        const y = f.y0 + b.dy + Math.sin(t * 0.9 + b.ph) * 7 * f.size;
         b.el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${b.s * f.dir}, ${b.s * flap})`;
       }
     }
     this._flocks = this._flocks.filter(f => {
-      const gone = f.dir > 0 ? f.x > this._w + 400 : f.x < -400;
+      const gone = f.dir > 0 ? f.x > this._w + 400 * f.size : f.x < -400 * f.size;
       if (gone) f.birds.forEach(b => b.el.remove());
       return !gone;
     });
@@ -1124,12 +1129,12 @@ export class SkyScene {
     ], { duration: 1100, easing: 'cubic-bezier(.3,.6,.4,1)' }).finished.then(() => el.remove(), () => el.remove());
   }
 
-  /** Visitors, with calm-day life: a flock every few minutes by day, a shooting star now and then at night. */
+  /** Visitors, with calm-day life: a flock every minute or two by day, a shooting star now and then at night. */
   private _visitors(now: number, t: number, dt: number): void {
     const L = this._light;
     if (this._life && L) {
       const between = (range: readonly [number, number]) => range[0] + Math.random() * (range[1] - range[0]);
-      if (!this._nextFlock) this._nextFlock = now + 20_000 + Math.random() * 40_000;
+      if (!this._nextFlock) this._nextFlock = now + between(LIFE.firstFlockMs);
       if (now >= this._nextFlock) {
         this._sendFlock();
         this._nextFlock = now + between(LIFE.flockEveryMs);
