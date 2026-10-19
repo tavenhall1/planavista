@@ -145,7 +145,7 @@ Chores sit next to the calendar. The board shows everyone's today at once: a col
 - **Once**: one job on a day or by a date (Fix the gate latch by Friday).
 - **Repeats**: every day, week, or month, on the days you pick (Take out the trash on Tuesday and Friday).
 
-**Views.** Board; Week, with each person's days and anything missed; My day, one person's day as a timeline, a list, or big pictures for young children; and Rewards, with stars saved up and what they can buy.
+**Views.** Board, with arrows to step back to earlier days (what was done and missed, and a parent can excuse a miss) and ahead to what's planned, coming back to today on its own after two minutes; Week, with each person's days and anything missed; My day, one person's day as a timeline, a list, or big pictures for young children; and Rewards, with stars saved up and what they can buy.
 
 **Goals and surprises.** Each person can save up for one reward, their goal. When their stars reach it, however they got there (a parent's approval from a phone, the end of the day, bonus stars), a wrapped present waits on their column, their My day, and their goal in Rewards, wiggling now and then until they open it. They hold it like a chore, and it opens across the whole screen with their reward. It opens on a shared screen or their own login, never on a parent's phone, so a parent checking in from work can't open it for them; parents with phones get a note that a surprise is waiting. Watch it again in Rewards plays it once more.
 
