@@ -20,7 +20,8 @@ import { motionOf, supportsLinearEasing } from '../../core/motion';
 import type { SettingsTarget } from '../../core/settings-registry';
 import type { Mode } from '../../styles/theme-pairs';
 import type { DisplayConfig, PlanaVistaCardConfig, PlanaVistaData } from '../../types';
-import { choresStyles } from './chores-styles';
+import { choresStyles, stepperStyles } from './chores-styles';
+import { BOARD_RETURN_MS, boardDate, boardDayTitle } from './board-day-derive';
 import type { ChoresService } from './chores-service';
 import type { Board } from './chores-types';
 import { ColumnModel, RowModel, boardColumns } from './board-derive';
@@ -59,6 +60,7 @@ import './pv-chores-quick-add';
 import './pv-chores-my-day';
 import './pv-chores-week';
 import './pv-chores-day-sheet';
+import './pv-chores-day-board';
 import './pv-chores-rewards';
 import './pv-chores-reward-sheet';
 
@@ -122,6 +124,14 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   @state() private _weekFailed = false;
   private _weekAsked: string | null = null;
   private _weekRevision = -1;
+  /** The Board's day (0.14.0): how many days from today, what came back, and for which request. */
+  @state() private _boardOffset = 0;
+  @state() private _boardDay: DayView | null = null;
+  @state() private _boardFailed = false;
+  private _boardAsked: string | null = null;
+  private _boardRevision = -1;
+  /** Brings an untouched board back to today (BOARD_RETURN_MS). */
+  private _boardReturn: ReturnType<typeof setTimeout> | undefined;
   /** Whose My day is showing. */
   @state() private _myDayMember: string | null = null;
   /** Requests being answered in the inbox. */
@@ -138,6 +148,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   static styles = [
     buttonStyles,
     choresStyles,
+    stepperStyles,
     css`
       :host {
         position: relative;
@@ -154,6 +165,24 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         min-height: 0;
         display: flex;
         flex-direction: column;
+      }
+
+      .board-view {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* The Week view's stepper, above the board's columns (0.14.0). */
+      .board-top {
+        padding: 8px 12px 0;
+      }
+
+      .board-top h2 {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
       }
 
       .skeleton {
@@ -347,6 +376,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (changed.has('session') || changed.has('household')) this._refreshReveal();
     this._replayCutShort();
     if (this.view === 'week') this._loadWeek();
+    if (this._boardOffset !== 0 && this._onBoard()) void this._loadBoardDay();
     if (changed.has('_sheet') && changed.get('_sheet') && !this._sheet) {
       const opener = this._opener;
       this._opener = null;
@@ -362,7 +392,9 @@ export class PvChoresModule extends LitElement implements ModuleElement {
 
   /** The calendar's springs for view changes (spec 11.5): another view glides in, another week slides in from its side. */
   private _playViewChange(): void {
-    const next: ViewPlace = { view: this.view ?? 'board', at: this.view === 'week' ? this._weekOffset : 0 };
+    const next: ViewPlace = {
+      view: this.view ?? 'board', at: this.view === 'week' ? this._weekOffset : this._onBoard() ? this._boardOffset : 0,
+    };
     const change = viewChange(this._drawn, next);
     this._drawn = next;
     const motion = viewMotion(change, motionOf(this), supportsLinearEasing());
@@ -380,6 +412,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     clearInterval(this._clock);
+    clearTimeout(this._boardReturn);
     this._watching?.stop();
     this._watching = null;
     if (this._overlayOpen) {
@@ -574,6 +607,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       await Promise.all([
         this._loadWeek(true),
         this._sheet?.kind === 'day' ? this._openDay(this._sheet.member, this._sheet.date, true) : Promise.resolve(),
+        this._loadBoardDay(true),
       ]);
     } catch (err) {
       this.showToast({ id: `excuse-${Date.now()}`, text: errorMessage(err) ?? 'That didn\'t save. Try again.', tone: 'bad' });
@@ -582,6 +616,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         await Promise.all([
           this._loadWeek(true),
           this._sheet?.kind === 'day' ? this._openDay(this._sheet.member, this._sheet.date, true) : Promise.resolve(),
+          this._loadBoardDay(true),
         ]);
       }
     } finally {
@@ -800,6 +835,95 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     if (this.view === 'my_day') return this._renderMyDay(board);
     if (this.view === 'week') return this._renderWeek(board);
     if (this.view === 'rewards') return this._renderRewards(board);
+    return html`
+      <div class="board-view" @pointerdown=${this._boardTouched} @keydown=${this._boardTouched}>
+        ${this._renderBoardTop(board)}
+        ${this._boardOffset === 0 ? this._renderLiveBoard(board) : this._renderDayBoard(board)}
+      </div>
+    `;
+  }
+
+  /** Whether the Board is the view showing (it's what anything but My day, Week, or Rewards draws). */
+  private _onBoard(): boolean {
+    return this.view !== 'my_day' && this.view !== 'week' && this.view !== 'rewards';
+  }
+
+  /** The Week view's stepper for days: the day shown, then round arrows around Today (0.14.0). */
+  private _renderBoardTop(board: Board) {
+    const date = boardDate(board.today, this._boardOffset);
+    return html`
+      <div class="top board-top">
+        <h2>${boardDayTitle(this._boardOffset, date, this.layout === 'phone')}</h2>
+        <div class="steps">
+          <button class="nav" type="button" aria-label="Previous day" title="Previous day" @click=${() => this._navBoard(-1)}>
+            <ha-icon icon="mdi:chevron-left"></ha-icon>
+          </button>
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => this._navBoard(0)} ?disabled=${this._boardOffset === 0}>Today</button>
+          <button class="nav" type="button" aria-label="Next day" title="Next day" @click=${() => this._navBoard(1)}>
+            <ha-icon icon="mdi:chevron-right"></ha-icon>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /** Another day's board: that day's record, or what's planned (pv-chores-day-board). */
+  private _renderDayBoard(board: Board) {
+    const date = boardDate(board.today, this._boardOffset);
+    return html`
+      <pv-chores-day-board .view=${this._boardDay?.date === date ? this._boardDay : null} .failed=${this._boardFailed}
+        .members=${inOrder(this.household?.members ?? [])} .hass=${this.hass} .mode=${this.mode} .dim=${this.dim}
+        layout=${this.layout} .today=${board.today} .canExcuse=${parentAccess(this.household, this.session) !== 'no'}
+        .excusing=${this._excusing} .self=${this.household?.account.member_id ?? null}
+        @pv-day-excuse=${(e: CustomEvent<{ occurrence: string; name: string; member: string }>) => void this._excuseMissed(e.detail.occurrence, e.detail.name, e.detail.member)}
+        @pv-day-retry=${() => void this._loadBoardDay(true)}></pv-chores-day-board>
+    `;
+  }
+
+  private _navBoard(offset: number): void {
+    this._boardOffset = offset === 0 ? 0 : this._boardOffset + offset;
+    this._armBoardReturn();
+    if (this._boardOffset !== 0) void this._loadBoardDay();
+  }
+
+  /** Away from today, every touch on the board restarts the wait before it comes back to today. */
+  private _armBoardReturn(): void {
+    clearTimeout(this._boardReturn);
+    this._boardReturn = undefined;
+    if (this._boardOffset === 0) return;
+    this._boardReturn = setTimeout(() => {
+      this._boardReturn = undefined;
+      this._boardOffset = 0;
+    }, BOARD_RETURN_MS);
+  }
+
+  private _boardTouched = (): void => {
+    if (this._boardOffset !== 0) this._armBoardReturn();
+  };
+
+  /** Loads the day the Board shows, again when the chores change (Excuse it here or on another screen). */
+  private _loadBoardDay(force = false): Promise<void> {
+    const board = this.service?.board();
+    const api = this.service?.api;
+    if (!board || !api || this._boardOffset === 0) return Promise.resolve();
+    const date = boardDate(board.today, this._boardOffset);
+    const stale = this._boardRevision !== this.revision;
+    if (!force && this._boardAsked === date && !stale) return Promise.resolve();
+    this._boardAsked = date;
+    this._boardRevision = this.revision;
+    if (this._boardDay?.date !== date) this._boardDay = null;
+    this._boardFailed = false;
+    return api.day(date).then(
+      view => {
+        if (this._boardAsked === date) this._boardDay = view;
+      },
+      () => {
+        if (this._boardAsked === date) this._boardFailed = true;
+      },
+    );
+  }
+
+  private _renderLiveBoard(board: Board) {
     return html`
       <pv-chores-board .board=${board} .household=${this.household} .session=${this.session} .data=${this.data}
         .cardConfig=${this.cardConfig}

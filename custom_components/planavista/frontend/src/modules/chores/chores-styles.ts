@@ -62,3 +62,49 @@ export const choresStyles = css`
     white-space: nowrap;
   }
 `;
+
+/**
+ * The Week view's and the Board's stepper (0.14.0): the calendar's toolbar
+ * grammar, the day or week on the left, then round arrows around This week
+ * or Today.
+ */
+export const stepperStyles = css`
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .top h2 {
+    margin: 0 6px;
+    min-width: 0;
+    font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
+    font-size: 1.125rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--pv-text-secondary, #5F6670);
+    cursor: pointer;
+  }
+
+  .nav:hover {
+    background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
+  }
+`;
