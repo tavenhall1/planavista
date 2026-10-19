@@ -282,14 +282,18 @@ def test_someone_added_to_a_chore_mid_week_owes_only_what_comes_after() -> None:
 def test_chores_turned_on_mid_week_owe_nothing_from_before() -> None:
     engine = sample_engine(at(10, 17, 9), in_use_since=None)  # chores turned on Saturday morning
     saturday = at(10, 17, 16)
-    assert keys(engine, "blair", saturday) == []  # Monday's and Thursday's loads came before chores did
+    # Monday's and Thursday's loads came before chores did. A chore with no set days counts in the week it
+    # began (0.13.3, the owner: owed by the week's end), so this week's bathroom is Blair's from Saturday.
+    assert keys(engine, "blair", saturday) == ["clean_the_bathroom|blair|week:2026-10-12|0"]
     casey = keys(engine, "casey", saturday)
-    assert not [k for k in casey if k.startswith(("take_out_the_trash", "clean_the_bathroom", "yard_work"))]
+    assert not [k for k in casey if k.startswith("take_out_the_trash")]
+    assert "yard_work|casey|week:2026-10-12|0" in casey
     assert "rake_the_leaves|casey|rep:2026-10-17|0" in casey
     out = engine.catch_up(at(10, 19, 9))
     missed = [e.data["occurrence"] for e in out.events if e.type == "missed"]
-    earlier = ("laundry", "take_out_the_trash", "clean_the_bathroom", "yard_work", "finance_and_budget")
+    earlier = ("laundry", "take_out_the_trash")
     assert not [k for k in missed if k.startswith(earlier)]
+    assert "yard_work|casey|week:2026-10-12|0" in missed  # owed from Saturday, by the week's end
     assert "groceries|alex|week:2026-10-12|0" in missed  # Saturday's shopping was owed
     assert _summary(engine, "dana", "week:2026-10-12")["due"] == 8  # Saturday and Sunday only
     assert "yard_work|casey|week:2026-10-19|0" in keys(engine, "casey", at(10, 19, 16))

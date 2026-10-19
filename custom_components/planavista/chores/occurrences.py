@@ -151,12 +151,14 @@ class Generator:
         week_due = clock.day_start(end)
         days = activity.get("days") or []
         if not days:
-            if week < begins:
-                return []  # the week was under way when it began: it starts with the next one
+            if end <= begins:
+                return []
+            # A week already under way when it began counts from that day, due when the week ends (the owner,
+            # 0.13.3: a plan imported on a Monday showed none of its weekly chores until the next week).
             return [
                 self._occurrence(
                     activity, member, period, n,
-                    appears=week, planned=None, due=week_due,
+                    appears=max(week, begins), planned=None, due=week_due,
                     band=self._band(activity, n), minutes=share / times, window="week",
                 )
                 for n in range(times)
@@ -289,7 +291,11 @@ class Generator:
         if kind == "week" and per == "week":
             return self._plan_week(activity, member, start, begins)
         if kind == "rep" and schedule == "repeats":
-            return [self._repeat(activity, member, start)] if start >= begins else []
+            occ = self._repeat(activity, member, start)
+            if occ.window == "day":
+                return [occ] if start >= begins else []
+            # Any time in its week or month: one under way when it began counts from that day, like a week's.
+            return [replace(occ, appears=max(occ.appears, begins))] if occ.due > self.clock.day_start(begins) else []
         return []
 
     def from_key(self, activity: Mapping[str, Any], key: str) -> Occurrence | None:
