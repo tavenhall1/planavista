@@ -245,6 +245,8 @@ def test_plan_only_and_unassigned_chores_never_reach_the_board() -> None:
 
 
 def test_a_chore_added_mid_week_starts_with_the_days_still_to_come() -> None:
+    # A weekly chore with no set days counts that same week, due when it ends (the owner, 2026-10-19: a plan
+    # imported on a Monday showed none of its weekly chores until the next week, so the board looked empty).
     engine = sample_engine(at(10, 14, 9), activities=[])  # Wednesday
     for chore in (
         {"name": "Laundry", "schedule": "plan", "assignees": ["blair"], "minimum": {"hours": 2, "per": "week"},
@@ -256,15 +258,25 @@ def test_a_chore_added_mid_week_starts_with_the_days_still_to_come() -> None:
     wednesday = at(10, 14, 16, 30)
     assert keys(engine, "blair", wednesday) == []  # Monday's load came before the chore did
     assert keys(engine, "dana", wednesday) == ["feed_the_fish|dana|day:2026-10-14|0"]  # today's counts
-    assert keys(engine, "casey", wednesday) == []  # with no set days, it starts with the next week
+    assert keys(engine, "casey", wednesday) == ["yard_work|casey|week:2026-10-12|0"]  # owed by the week's end
     assert keys(engine, "dana", at(10, 13, 16)) == []
     assert keys(engine, "blair", at(10, 15, 9)) == ["laundry|blair|week:2026-10-12|1"]
     engine.catch_up(at(10, 19, 9))
     week = {s["member"]: s for s in engine.log["summaries"] if s["period"] == "week:2026-10-12"}
     assert week["blair"]["missed"] == ["laundry|blair|week:2026-10-12|1"]
     assert week["dana"]["due"] == 5  # Wednesday to Sunday
-    assert week["casey"]["due"] == 0
+    assert week["casey"]["due"] == 1
+    assert week["casey"]["missed"] == ["yard_work|casey|week:2026-10-12|0"]
     assert keys(engine, "casey", at(10, 19, 16)) == ["yard_work|casey|week:2026-10-19|0"]
+
+
+def test_someone_added_to_a_weekly_chore_mid_week_owes_it_that_week() -> None:
+    engine = sample_engine(at(10, 12, 9), activities=[])  # Monday
+    yard = {"name": "Yard work", "schedule": "plan", "assignees": ["casey"], "minimum": {"hours": 1, "per": "week"}}
+    engine.save_activity(at(10, 12, 9), yard, by="alex", source="tablet")
+    engine.save_activity(at(10, 14, 16), {**yard, "assignees": ["casey", "dana"]}, by="alex", source="tablet",
+                         activity_id="yard_work")
+    assert keys(engine, "dana", at(10, 14, 17)) == ["yard_work|dana|week:2026-10-12|0"]
 
 
 def test_a_weekly_chore_with_no_set_days_added_on_the_first_day_counts_that_week() -> None:
@@ -288,5 +300,6 @@ def test_a_repeating_chore_owes_nothing_from_before_it_was_added() -> None:
         engine.save_activity(at(10, 14, 16), chore, by="alex", source="tablet")
     assert keys(engine, "casey", at(10, 14, 17)) == []  # Monday's watering came before the chore did
     assert keys(engine, "casey", at(10, 16, 9)) == ["water_the_plants|casey|rep:2026-10-16|0"]
-    assert keys(engine, "alex", at(10, 14, 17)) == []  # so did October's filter
+    # A month's any-time chore counts like a week's: October's filter is owed by the month's end.
+    assert keys(engine, "alex", at(10, 14, 17)) == ["change_the_filter|alex|rep:2026-10-01|0"]
     assert keys(engine, "alex", at(11, 2, 9)) == ["change_the_filter|alex|rep:2026-11-01|0"]

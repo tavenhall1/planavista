@@ -525,7 +525,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     return html`
       <pv-chores-week .view=${view} .excusing=${this._excusing} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
         .highlights=${view ? weekHighlights(view, members) : []} .shares=${view ? weekShares(view, members) : []}
-        .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout} ?current=${this._weekOffset === 0}
+        .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout} .current=${this._weekOffset === 0}
         ?failed=${this._weekFailed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
         @pv-week-nav=${(e: CustomEvent<{ offset: number }>) => this._navWeek(e.detail.offset)}
         @pv-week-day=${(e: CustomEvent<{ member: string; date: string }>) => this._openDay(e.detail.member, e.detail.date)}
