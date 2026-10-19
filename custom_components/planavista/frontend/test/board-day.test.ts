@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  BOARD_RETURN_MS, boardDate, boardDayTitle, dayColumns, dayItemBadge, longDay,
+  BOARD_RETURN_MS, KEPT_DAYS, awayLine, boardDate, boardDayTitle, dayColumns, dayItemBadge, longDay, mayStepBack,
 } from '../src/modules/chores/board-day-derive';
 import type { DayView, PastItem } from '../src/modules/chores/chores-types';
 import { MEMBERS, TODAY, item } from './chores-fixtures';
@@ -23,7 +23,8 @@ describe('the Board on another day', () => {
   });
 
   it('names the day it shows', () => {
-    expect(boardDayTitle(0, TODAY)).toBe('Today');
+    // Review: "Today" beside a greyed-out Today button said nothing; the date does.
+    expect(boardDayTitle(0, TODAY)).toBe('Today · Tuesday, October 13');
     expect(boardDayTitle(-1, '2026-10-12')).toBe('Yesterday · Monday, October 12');
     expect(boardDayTitle(1, '2026-10-14')).toBe('Tomorrow · Wednesday, October 14');
     expect(boardDayTitle(3, '2026-10-16')).toBe('Friday, October 16');
@@ -36,6 +37,23 @@ describe('the Board on another day', () => {
 
   it('comes back to today after two minutes without a touch, so a kitchen screen never sits on another day', () => {
     expect(BOARD_RETURN_MS).toBe(120_000);
+  });
+
+  it('steps back only as far as the record is kept (90 days), so an empty board never reads as a true record', () => {
+    expect(KEPT_DAYS).toBe(90);
+    expect(mayStepBack(0)).toBe(true);
+    expect(mayStepBack(-89)).toBe(true);
+    expect(mayStepBack(-90)).toBe(false);
+  });
+
+  it('says away in the tense of the day', () => {
+    expect(awayLine('past')).toBe('Away: nothing was due, and the streak keeps.');
+    expect(awayLine('future')).toBe('Away that day: nothing is due.');
+    expect(awayLine('today')).toBe('Away today: nothing is due.');
+    const view: DayView = { date: '2026-10-15', kind: 'future', members: { casey: { items: [], summary: null, away: true } } };
+    expect(dayColumns(view, MEMBERS, ctx)[0].line).toBe('Away that day: nothing is due.');
+    const sheet = readFileSync(new URL('../src/modules/chores/pv-chores-day-sheet.ts', import.meta.url), 'utf8');
+    expect(sheet).toMatch(/awayLine\(this\.day\.kind\)/);
   });
 
   it("shows a past day's record for everyone, in the household's order", () => {
@@ -114,8 +132,38 @@ describe('the Board on another day', () => {
     const module = readFileSync(new URL('../src/modules/chores/pv-chores-module.ts', import.meta.url), 'utf8');
     expect(module).toMatch(/aria-label="Previous day"/);
     expect(module).toMatch(/aria-label="Next day"/);
-    expect(module).toMatch(/\?disabled=\$\{this\._boardOffset === 0\}[^>]*>Today</);
-    expect(module).toMatch(/this\._boardOffset === 0 \? this\._renderLiveBoard\(board\) : this\._renderDayBoard\(board\)/);
-    expect(module).toMatch(/BOARD_RETURN_MS/);
+    expect(module).toMatch(/\?disabled=\$\{offset === 0\}[^>]*>Today</);
+    expect(module).toMatch(/\?disabled=\$\{!mayStepBack\(offset\)\}/);
+    expect(module).toMatch(/offset === 0 \? this\._renderLiveBoard\(board\) : this\._renderDayBoard\(board, date\)/);
+    // The day the board shows is kept as a date, so the 3 AM rollover doesn't move it (review).
+    expect(module).toMatch(/@state\(\) private _boardDate: string \| null = null;/);
+    // The title is announced, and takes focus when Today greys out under the finger (review).
+    expect(module).toMatch(/<h2 tabindex="-1" aria-live="polite">/);
+  });
+
+  it('comes back to today even after Home Assistant detaches and reattaches the card, and not under a sheet', () => {
+    const module = readFileSync(new URL('../src/modules/chores/pv-chores-module.ts', import.meta.url), 'utf8');
+    // A deadline, not only a timer: a detached card's timer is cleared, so reattaching checks the deadline (review).
+    expect(module).toMatch(/this\._boardReturnAt = Date\.now\(\) \+ BOARD_RETURN_MS/);
+    expect(module).toMatch(/connectedCallback\(\): void \{[\s\S]*?this\._resumeBoardReturn\(\);/);
+    // Detaching forgets the timer it cleared, or reattaching would think a wait still runs (seen on the dev HA).
+    expect(module).toMatch(/clearInterval\(this\._clock\);\s*clearTimeout\(this\._boardReturn\);\s*this\._boardReturn = undefined;/);
+    // A wheel counts as a touch, and an open sheet or a PIN being typed waits for the next touch.
+    expect(module).toMatch(/@wheel=\$\{this\._boardTouched\}/);
+    expect(module).toMatch(/if \(this\._sheet \|\| this\._excusing\.size > 0 \|\| this\._overlayOpen\)/);
+  });
+
+  it('keeps the phone on the person picked, from today to another day and back', () => {
+    const module = readFileSync(new URL('../src/modules/chores/pv-chores-module.ts', import.meta.url), 'utf8');
+    expect(module.match(/\.picked=\$\{this\._phonePerson\}/g)?.length).toBe(2);
+    expect(module.match(/@pv-phone-person=/g)?.length).toBe(2);
+    const live = readFileSync(new URL('../src/modules/chores/pv-chores-board.ts', import.meta.url), 'utf8');
+    expect(live).toMatch(/stripStart\(ids, this\.picked,/);
+    expect(live).toMatch(/'pv-phone-person'/);
+  });
+
+  it("reports its columns' scrolling, so the portrait header shrinks and grows on another day too", () => {
+    const day = readFileSync(new URL('../src/modules/chores/pv-chores-day-board.ts', import.meta.url), 'utf8');
+    expect(day).toMatch(/class="body" \$\{ref\(this\._reporter\(member\.id\)\.attach\)\}/);
   });
 });

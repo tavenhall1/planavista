@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { ref } from 'lit/directives/ref.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import { peopleStripStyles } from '../../styles/controls';
 import { buttonStyles } from '../../styles/shared';
@@ -9,6 +10,7 @@ import type { Layout } from '../../core/layout';
 import { Member, inOrder, memberColor } from '../../core/household';
 import { swipeDirection } from '../../utils/gestures';
 import { stripStart } from '../../core/people-strip';
+import { ScrollReporter } from '../../core/content-scroll';
 import '../../core/pv-ring';
 import '../../core/pv-member-avatar';
 import { choresStyles } from './chores-styles';
@@ -28,6 +30,7 @@ const MIN_COLUMN = 240;
  *
  * @fires pv-day-excuse - { occurrence, name, member } Excuse it on a miss
  * @fires pv-day-retry - Try again after the day couldn't load
+ * @fires pv-phone-person - { member } a phone moved to someone (the module keeps it for today's board)
  */
 export class PvChoresDayBoard extends LitElement {
   /** The day, once it arrives; null while it loads. */
@@ -44,6 +47,8 @@ export class PvChoresDayBoard extends LitElement {
   @property({ attribute: false }) excusing: ReadonlySet<string> = new Set();
   /** This account's own person, whom a phone opens on. */
   @property({ attribute: false }) self: string | null = null;
+  /** The person picked on a phone on another day (0.14.0 review: the pick carries between days). */
+  @property({ attribute: false }) picked: string | null = null;
 
   @state() private _width = 0;
   @state() private _height = 0;
@@ -53,6 +58,8 @@ export class PvChoresDayBoard extends LitElement {
   private _order: Record<string, string[]> = {};
   private _orderDate = '';
   private _touch: { x: number; y: number } | null = null;
+  /** Each column's scroll reports, so the portrait header shrinks and grows as on today's board. */
+  private _reporters = new Map<string, ScrollReporter>();
 
   static styles = [
     buttonStyles,
@@ -299,7 +306,7 @@ export class PvChoresDayBoard extends LitElement {
             ${column.line ? html`<span class="line">${column.line}</span>` : nothing}
           </span>
         </div>
-        <div class="body">
+        <div class="body" ${ref(this._reporter(member.id).attach)}>
           ${column.empty ? html`<div class="quiet">${column.empty}</div>` : html`
             <ul>
               ${repeat(column.rows, row => row.key, row => {
@@ -324,6 +331,17 @@ export class PvChoresDayBoard extends LitElement {
     `;
   }
 
+  private _reporter(id: string): ScrollReporter {
+    let reporter = this._reporters.get(id);
+    if (!reporter) this._reporters.set(id, reporter = new ScrollReporter());
+    return reporter;
+  }
+
+  private _pick(member: string): void {
+    this._picked = member;
+    this.dispatchEvent(new CustomEvent('pv-phone-person', { detail: { member }, bubbles: true, composed: true }));
+  }
+
   private _bones(member: Member) {
     return html`
       <section class="col" style="--member:${this._color(member)}" aria-hidden="true">
@@ -339,7 +357,7 @@ export class PvChoresDayBoard extends LitElement {
   private _phone(columns: DayColumn[] | null, people: Member[]) {
     if (people.length === 0) return nothing;
     const ids = people.map(m => m.id);
-    const index = Math.max(0, ids.indexOf(stripStart(ids, this._picked, this.self) ?? ''));
+    const index = Math.max(0, ids.indexOf(stripStart(ids, this._picked ?? this.picked, this.self) ?? ''));
     const shown = people[index];
     const column = columns?.find(c => c.member.id === shown.id);
     return html`
@@ -348,7 +366,7 @@ export class PvChoresDayBoard extends LitElement {
           const ring = columns?.find(c => c.member.id === member.id)?.ring;
           return html`
             <button type="button" class="pv-person" role="tab" aria-selected=${i === index ? 'true' : 'false'}
-              style="--member:${this._color(member)}" @click=${() => { this._picked = member.id; }}>
+              style="--member:${this._color(member)}" @click=${() => this._pick(member.id)}>
               <pv-ring size="40" .progress=${ring?.progress ?? 0} ?closed=${ring?.closed ?? false} color=${this._color(member)}>
                 <pv-member-avatar .member=${{ ...member, color: this._color(member) }} .hass=${this.hass} size="28"></pv-member-avatar>
               </pv-ring>
@@ -374,8 +392,8 @@ export class PvChoresDayBoard extends LitElement {
     const touch = event.changedTouches[0];
     if (!start || !touch) return;
     const direction = swipeDirection(touch.clientX - start.x, touch.clientY - start.y);
-    if (direction === 'next' && index < ids.length - 1) this._picked = ids[index + 1];
-    if (direction === 'prev' && index > 0) this._picked = ids[index - 1];
+    if (direction === 'next' && index < ids.length - 1) this._pick(ids[index + 1]);
+    if (direction === 'prev' && index > 0) this._pick(ids[index - 1]);
   }
 
   private _excuse(occurrence: string, name: string, member: string): void {

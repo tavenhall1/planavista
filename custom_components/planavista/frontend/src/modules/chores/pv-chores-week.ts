@@ -296,7 +296,7 @@ export class PvChoresWeek extends LitElement {
     return html`
       <div class="wrap" @touchstart=${this._touchStart} @touchend=${this._touchEnd}>
         <div class="top">
-          <h2>${view ? weekTitle(view) : 'This week'}</h2>
+          <h2 tabindex="-1" aria-live="polite">${view ? weekTitle(view) : 'This week'}</h2>
           <div class="steps">
             <button class="nav" type="button" aria-label="Last week" title="Last week" @click=${() => this._nav(-1)}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
@@ -421,6 +421,8 @@ export class PvChoresWeek extends LitElement {
 
   private _nav(offset: number): void {
     this._fire('pv-week-nav', { offset });
+    // This week greys out under the finger: the title takes focus, so it isn't lost to the page (0.14.0 review).
+    if (offset === 0 && !this.current) void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.top h2')?.focus());
   }
 
   private _touchStart = (event: TouchEvent): void => {

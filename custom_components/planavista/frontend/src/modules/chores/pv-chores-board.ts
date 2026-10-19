@@ -39,6 +39,7 @@ const MIN_COLUMN = 240;
  * Rings closing are celebrated once; when every ring closes, everyone's are.
  *
  * @fires pv-member-open - { member } a column's header was tapped
+ * @fires pv-phone-person - { member } a phone moved to someone (the module keeps it for another day's board)
  */
 export class PvChoresBoard extends LitElement {
   @property({ attribute: false }) board!: Board;
@@ -54,6 +55,8 @@ export class PvChoresBoard extends LitElement {
   @property({ type: String, reflect: true }) layout: Layout = 'landscape';
   /** Minutes since the epoch: the board re-derives each minute (bands and the evening check move with the clock). */
   @property({ attribute: false }) minute = 0;
+  /** Whom a phone shows when it opens: the person picked on another day's board (0.14.0 review). */
+  @property({ attribute: false }) picked: string | null = null;
 
   @state() private _width = 0;
   @state() private _height = 0;
@@ -179,7 +182,7 @@ export class PvChoresBoard extends LitElement {
     if (!this._phonePicked && (changed.has('board') || changed.has('household'))) {
       // Casey's phone opens on Casey; a shared or admin login opens on the first person (milestone 8).
       const ids = this._columns().map(col => col.member.id);
-      this._phoneIndex = Math.max(0, ids.indexOf(stripStart(ids, null, this.household?.account?.member_id ?? null) ?? ''));
+      this._phoneIndex = Math.max(0, ids.indexOf(stripStart(ids, this.picked, this.household?.account?.member_id ?? null) ?? ''));
     }
     if (!changed.has('board') && !changed.has('minute')) return;
     const columns = this._columns();
@@ -282,6 +285,8 @@ export class PvChoresBoard extends LitElement {
     const before = this._phoneIndex;
     this._phonePicked = true;
     this._phoneIndex = index;
+    const member = this._columns()[index]?.member.id;
+    if (member) this.dispatchEvent(new CustomEvent('pv-phone-person', { detail: { member }, bubbles: true, composed: true }));
     if (before === index || motionOf(this) === 'reduced') return;
     this.updateComplete.then(() => {
       const column = this.renderRoot.querySelector('.phone pv-chores-column');

@@ -15,7 +15,7 @@ import { chorePicture } from './picture-words';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
 import { PressGuard } from '../../core/press-guard';
-import { dayItemBadge, isPast, longDay } from './board-day-derive';
+import { awayLine, dayItemBadge, isPast, longDay } from './board-day-derive';
 
 /**
  * pv-chores-day-sheet: one person's day from the Week view (spec 13.5):
@@ -152,7 +152,7 @@ export class PvChoresDaySheet extends LitElement {
     const sub = !this.day
       ? ''
       : entry?.away
-        ? 'Away: nothing was due, and the streak keeps.'
+        ? awayLine(this.day.kind)
         : summary
           ? summary.closed ? `Ring closed: ${summary.done + summary.pending} of ${summary.due} done.` : `${summary.done + summary.pending} of ${summary.due} done.`
           : this.day.kind === 'future' ? 'Still to come.' : '';

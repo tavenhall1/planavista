@@ -15,6 +15,20 @@ import { keepOrder } from './week-derive';
  */
 export const BOARD_RETURN_MS = 120_000;
 
+/** How far back the record goes: the chores log keeps 90 days (engine RETENTION). */
+export const KEPT_DAYS = 90;
+
+/** Whether the Board may step back from `offset` days from today (review: older days have no record). */
+export function mayStepBack(offset: number): boolean {
+  return offset > -KEPT_DAYS;
+}
+
+/** Someone away that day, in the day's own tense (review: a day to come said "was due"). */
+export function awayLine(kind: DayView['kind']): string {
+  if (kind === 'past') return 'Away: nothing was due, and the streak keeps.';
+  return kind === 'today' ? 'Away today: nothing is due.' : 'Away that day: nothing is due.';
+}
+
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -30,10 +44,9 @@ export function boardDate(today: string, offset: number): string {
   return offset === 0 ? today : addDays(today, offset);
 }
 
-/** "Today", "Yesterday · Monday, October 12", "Friday, October 16"; on a phone "Yesterday", "Fri, Oct 16". */
+/** "Today · Tuesday, October 13", "Yesterday · Monday, October 12", "Friday, October 16"; on a phone "Yesterday", "Fri, Oct 16". */
 export function boardDayTitle(offset: number, date: string, short = false): string {
-  if (offset === 0) return 'Today';
-  const named = offset === -1 ? 'Yesterday' : offset === 1 ? 'Tomorrow' : null;
+  const named = offset === 0 ? 'Today' : offset === -1 ? 'Yesterday' : offset === 1 ? 'Tomorrow' : null;
   if (short) {
     if (named) return named;
     const [y, m, d] = date.split('-').map(Number);
@@ -107,7 +120,7 @@ export function dayColumns(view: DayView, members: readonly Member[], ctx: DayCo
     let line: string;
     let label: string;
     if (entry.away) {
-      line = 'Away: nothing was due, and the streak keeps.';
+      line = awayLine(view.kind);
       label = `${member.name}: away`;
     } else if (future) {
       line = items.length ? `${items.length} planned.` : '';
