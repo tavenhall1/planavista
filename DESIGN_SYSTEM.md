@@ -426,6 +426,10 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-10-19: Added: the Board steps through days
+
+- The Board has the Week view's stepper: round arrows around Today. A past day shows each person's record with Excuse it for a parent, a day to come what's planned, look only; checking off stays on Today. An untouched board comes back to today after two minutes, so a shared screen never sits on another day. On a phone the day is named short (Yesterday, Fri, Oct 16).
+
 ### 2026-10-15: Added: new land each time, and the sky that wakes like a phone
 
 - The mountains are drawn from new seeds each time the screensaver comes on (11.11).

@@ -9,7 +9,7 @@ import { ANSWERED_MS } from './inbox-derive';
 import { swipeDirection } from '../../utils/gestures';
 import '../../core/pv-ring';
 import '../../core/pv-member-avatar';
-import { choresStyles } from './chores-styles';
+import { choresStyles, stepperStyles } from './chores-styles';
 import type { WeekView } from './chores-types';
 import { Highlight, WeekCell, WeekRow, weekDays, weekTitle } from './week-derive';
 import { ScrollReporter } from '../../core/content-scroll';
@@ -49,6 +49,7 @@ export class PvChoresWeek extends LitElement {
   static styles = [
     buttonStyles,
     choresStyles,
+    stepperStyles,
     css`
       :host {
         display: block;
@@ -65,43 +66,7 @@ export class PvChoresWeek extends LitElement {
       }
 
       .top {
-        display: flex;
-        align-items: center;
-        gap: 8px;
         margin-bottom: 10px;
-      }
-
-      /* The calendar's toolbar grammar: the range on the left, then round arrows around This week. */
-      .top h2 {
-        margin: 0 6px;
-        font-family: var(--pv-font-heading, ui-rounded, 'SF Pro Rounded', 'PlanaVista Rounded', system-ui, sans-serif);
-        font-size: 1.125rem;
-        font-weight: 800;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .week-nav {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-left: auto;
-      }
-
-      .nav {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 48px;
-        height: 48px;
-        border: none;
-        border-radius: 50%;
-        background: transparent;
-        color: var(--pv-text-secondary, #5F6670);
-        cursor: pointer;
-      }
-
-      .nav:hover {
-        background: var(--pv-event-hover, rgba(0, 0, 0, 0.04));
       }
 
       .card {
@@ -331,8 +296,8 @@ export class PvChoresWeek extends LitElement {
     return html`
       <div class="wrap" @touchstart=${this._touchStart} @touchend=${this._touchEnd}>
         <div class="top">
-          <h2>${view ? weekTitle(view) : 'This week'}</h2>
-          <div class="week-nav">
+          <h2 tabindex="-1" aria-live="polite">${view ? weekTitle(view) : 'This week'}</h2>
+          <div class="steps">
             <button class="nav" type="button" aria-label="Last week" title="Last week" @click=${() => this._nav(-1)}>
               <ha-icon icon="mdi:chevron-left"></ha-icon>
             </button>
@@ -456,6 +421,8 @@ export class PvChoresWeek extends LitElement {
 
   private _nav(offset: number): void {
     this._fire('pv-week-nav', { offset });
+    // This week greys out under the finger: the title takes focus, so it isn't lost to the page (0.14.0 review).
+    if (offset === 0 && !this.current) void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('.top h2')?.focus());
   }
 
   private _touchStart = (event: TouchEvent): void => {

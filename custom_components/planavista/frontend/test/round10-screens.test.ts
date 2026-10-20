@@ -61,7 +61,8 @@ describe('round 10: screens', () => {
   it("shows a parent's note on a missed day, in the day sheet and the week's line", () => {
     expect(pastBadge('missed', 'Lid left open')).toEqual({ words: 'Missed: Lid left open', tone: 'bad', glyph: '×' });
     expect(pastBadge('open', 'Not finished').words).toBe('Not done that day: Not finished');
-    expect(src('modules/chores/pv-chores-day-sheet.ts')).toMatch(/const badge = pastBadge\(item\.status, item\.note\);/);
+    // The day sheet and the Board's other days share the rule (0.14.0).
+    expect(src('modules/chores/board-day-derive.ts')).toMatch(/const badge = pastBadge\(item\.status, item\.note\);/);
     const view: WeekView = {
       week: { start: '2026-10-12', end: '2026-10-19' }, today: '2026-10-15',
       members: {

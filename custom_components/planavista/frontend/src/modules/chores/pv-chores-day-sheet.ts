@@ -7,7 +7,7 @@ import { sheetStyles } from '../../styles/sheet';
 import { trapTab } from '../../core/focus';
 import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
-import { StatusBadge, badgeBelow, itemBadge, pastBadge } from '../../core/status-map';
+import { StatusBadge, badgeBelow } from '../../core/status-map';
 import { SheetMotion } from '../../shell/sheet-motion';
 import { choresStyles } from './chores-styles';
 import type { DayView, ItemView, PastItem } from './chores-types';
@@ -15,20 +15,7 @@ import { chorePicture } from './picture-words';
 import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
 import { PressGuard } from '../../core/press-guard';
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** "Monday, October 12". */
-export function longDay(day: string): string {
-  const [y, m, d] = day.split('-').map(Number);
-  const date = new Date(y, m - 1, d, 12);
-  return `${WEEKDAYS[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
-}
-
-function isPast(item: ItemView | PastItem): item is PastItem {
-  return !('section' in item);
-}
+import { awayLine, dayItemBadge, isPast, longDay } from './board-day-derive';
 
 /**
  * pv-chores-day-sheet: one person's day from the Week view (spec 13.5):
@@ -152,12 +139,7 @@ export class PvChoresDaySheet extends LitElement {
   }
 
   private _badge(item: ItemView | PastItem): StatusBadge | null {
-    if (isPast(item)) {
-      const badge = pastBadge(item.status, item.note);
-      if (item.status === 'done' && item.done_by && item.done_by !== this.member.id) return { ...badge, words: `Done by ${this.names(item.done_by)}` };
-      return badge;
-    }
-    return itemBadge(item, { today: this.today, daysLeft: 7, remaining: 0 }) ?? (item.status === 'done' ? pastBadge('done') : null);
+    return dayItemBadge(item, this.member.id, this.today, this.names);
   }
 
   render() {
@@ -170,7 +152,7 @@ export class PvChoresDaySheet extends LitElement {
     const sub = !this.day
       ? ''
       : entry?.away
-        ? 'Away: nothing was due, and the streak keeps.'
+        ? awayLine(this.day.kind)
         : summary
           ? summary.closed ? `Ring closed: ${summary.done + summary.pending} of ${summary.due} done.` : `${summary.done + summary.pending} of ${summary.due} done.`
           : this.day.kind === 'future' ? 'Still to come.' : '';
