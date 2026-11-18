@@ -208,8 +208,12 @@ describe('sunPosition', () => {
     expect(sunPosition(SET, RISE, SET, W, H, horizon).x).toBeCloseTo(W * 0.9, 9);
   });
 
-  it('puts the horizon lower on a tall screen', () => {
-    expect(horizonAt(1080, 1920)).toBeCloseTo(1920 * 0.58, 9);
+  it("puts a tall screen's horizon its turned screen's land above the bottom (the kitchen's panel in portrait, 2026-11-17)", () => {
+    // The kitchen's 1080 by 1920 shows the 1920 by 1080 land, 572 px of it below the horizon, with more sky.
+    expect(horizonAt(1080, 1920)).toBeCloseTo(1920 - (1080 - 1080 * 0.47), 9);
+    expect(1920 - horizonAt(1080, 1920)).toBeCloseTo(1080 - horizonAt(1920, 1080), 9);
+    // No jump where a screen turns from wide to tall.
+    expect(Math.abs(horizonAt(1000, 1001) - horizonAt(1001, 1000))).toBeLessThan(2);
   });
 });
 

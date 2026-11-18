@@ -308,9 +308,16 @@ export function nightLight(light: Light): Light {
   };
 }
 
-/** Where the horizon sits: lower on a tall screen, so the sky has room above the info. */
+/**
+ * Where the horizon sits: 0.47 of the way down a wide screen. A tall screen
+ * draws the land the same screen would draw turned on its side, lowered to the
+ * bottom, so its horizon sits that much lower and the sky takes the rest
+ * (the kitchen's panel in portrait, 2026-11-17: 0.58 of a tall height drew
+ * every peak about two and a half times as steep).
+ */
 export function horizonAt(width: number, height: number): number {
-  return height * (height > width ? 0.58 : 0.47);
+  if (height > width) return horizonAt(height, width) + (height - width);
+  return height * 0.47;
 }
 
 /**
