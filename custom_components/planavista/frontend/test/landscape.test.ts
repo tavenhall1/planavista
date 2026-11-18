@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ridgeGeometry, type SheetGeometry } from '../src/modules/screensaver/sky-scene';
-import { APPROVED_LANDSCAPE, SECOND_SEEDS, TOP_SEEDS, pickLandscape, rng } from '../src/modules/screensaver/sky';
+import { APPROVED_LANDSCAPE, SECOND_SEEDS, TOP_SEEDS, horizonAt, pickLandscape, rng, sunPosition } from '../src/modules/screensaver/sky';
 
 /** One number for a sheet's cut edge and trees, so a change anywhere shows. */
 function print(sheet: SheetGeometry): number {
@@ -30,7 +30,8 @@ describe('the landscape (0.13.0)', () => {
     expect(SECOND_SEEDS.map(s => edge(at([211, 242, s, 304, 335, 366])[2]))).toEqual(PICKER_SECOND);
   });
 
-  it("gives each curated range the same peaks on every screen, the kitchen's 1920 and a phone either way up (review m13 I3)", () => {
+  it("gives each curated range the same peaks on every wide screen, the kitchen's 1920 and a phone on its side (review m13 I3)", () => {
+    // A tall screen draws its turned screen's land (tested below), so it has these peaks too.
     const peaks = (W: number, H: number, d: 1 | 2, seed: number) => {
       const shapes = [...APPROVED_LANDSCAPE.shapes];
       shapes[d] = seed;
@@ -42,7 +43,7 @@ describe('the landscape (0.13.0)', () => {
     for (const [d, seeds] of [[1, TOP_SEEDS], [2, SECOND_SEEDS]] as const) {
       for (const seed of seeds) {
         const picker = peaks(1048, 590, d, seed);
-        for (const [W, H] of [[1920, 1080], [440, 956], [956, 440], [3840, 2160]]) {
+        for (const [W, H] of [[1920, 1080], [956, 440], [3840, 2160]]) {
           const here = peaks(W, H, d, seed);
           expect(here.length, `${seed} at ${W}`).toBe(picker.length);
           here.forEach(([x, h], i) => {
@@ -51,6 +52,93 @@ describe('the landscape (0.13.0)', () => {
           });
         }
       }
+    }
+  });
+
+  it("keeps every range's steepness on every screen, wide or tall (the kitchen's panel in portrait, 2026-11-17)", () => {
+    // In screen pixels: how steeply the tallest peak rises from the valley on its left. Fractions of the
+    // drawn width and of the band (the test above) passed while a tall screen stretched every peak up.
+    const steepness = (W: number, H: number, d: 1 | 2, seed: number) => {
+      const shapes = [...APPROVED_LANDSCAPE.shapes];
+      shapes[d] = seed;
+      const sheet = ridgeGeometry(W, H, 'summer', { ...APPROVED_LANDSCAPE, shapes }).sheets[d];
+      const top = sheet.apexes.reduce((a, b) => (b.y < a.y ? b : a));
+      return (top.ly - top.y) / (top.x - top.lx);
+    };
+    for (const [d, seeds] of [[1, TOP_SEEDS], [2, SECOND_SEEDS]] as const) {
+      for (const seed of seeds) {
+        const picker = steepness(1048, 590, d, seed);
+        for (const [W, H] of [[1920, 1080], [1080, 1920], [1280, 800], [800, 1280], [1024, 768], [768, 1024],
+          [956, 440], [440, 956], [390, 844], [3840, 2160]]) {
+          // A wide screen's own shape moves it a little (a 4:3 screen about a third steeper, a phone a fifth
+          // flatter); the stretched tall screens were 1.8 to 2.6 times as steep.
+          const ratio = steepness(W, H, d, seed) / picker;
+          expect(ratio, `${seed} at ${W} by ${H}`).toBeGreaterThan(0.75);
+          expect(ratio, `${seed} at ${W} by ${H}`).toBeLessThan(1.4);
+        }
+      }
+    }
+  });
+
+  it("draws a tall screen's land as the same screen turned on its side would, lowered to the bottom and centered", () => {
+    for (const [W, H] of [[1080, 1920], [800, 1280], [440, 956], [390, 844]]) {
+      const tall = ridgeGeometry(W, H, 'summer');
+      const turned = ridgeGeometry(H, W, 'summer');
+      const dx = -(H - W) / 2;
+      const dy = H - W;
+      expect(tall.horizon, `${W} by ${H}`).toBe(horizonAt(W, H));
+      expect(tall.horizon).toBeCloseTo(turned.horizon + dy, 9);
+      expect(tall.band).toBe(turned.band);
+      tall.sheets.forEach((sheet, d) => {
+        const from = turned.sheets[d];
+        // The edge keeps a point past each side of the canvas (the screen plus both margins).
+        const start = from.edge.findIndex(([x]) => Math.abs(x + dx - sheet.edge[0][0]) < 1e-9);
+        expect(start, `${W} by ${H}, sheet ${d}`).toBeGreaterThan(0);
+        sheet.edge.forEach(([x, y], i) => {
+          expect(x).toBeCloseTo(from.edge[start + i][0] + dx, 9);
+          expect(y).toBeCloseTo(from.edge[start + i][1] + dy, 9);
+        });
+        expect(sheet.edge[0][0]).toBeLessThan(-20);
+        expect(sheet.edge[sheet.edge.length - 1][0]).toBeGreaterThan(W + 112 + 20);
+        if (from.snowline) {
+          expect(sheet.snowline).toHaveLength(sheet.edge.length);
+          expect(sheet.snowline![3][1]).toBeCloseTo(from.snowline[start + 3][1] + dy, 9);
+        }
+        expect(sheet.apexes.map(a => [a.x, a.y, a.lx, a.vy])).toEqual(
+          from.apexes.map(a => [a.x + dx, a.y + dy, a.lx + dx, a.vy + dy]));
+        expect([sheet.top, sheet.bottom, sheet.foot]).toEqual([from.top + dy, from.bottom + dy, from.foot + dy]);
+        // Trees off the canvas are left out, the rest keep their place, size, and kind.
+        const kept = from.pines.filter(p => p.x + dx > -p.h && p.x + dx < W + 112 + p.h);
+        expect(sheet.pines.map(p => [p.x, p.y, p.h, p.leafy, p.tone])).toEqual(
+          kept.map(p => [p.x + dx, p.y + dy, p.h, p.leafy, p.tone]));
+      });
+    }
+  });
+
+  it("keeps the sun's and moon's timing on every screen, rising and setting behind the land (2026-11-17)", () => {
+    // The disc's radius, as SkyScene draws it.
+    const radius = (W: number, H: number) => Math.round(Math.min(W, H) * 0.05);
+    for (const [W, H] of [[1080, 1920], [800, 1280], [440, 956], [390, 844], [1920, 1080], [956, 440]]) {
+      const horizon = horizonAt(W, H);
+      const sheets = ridgeGeometry(W, H, 'summer').sheets;
+      // The highest land at a screen x (the canvas starts 56 px left of the screen).
+      const land = (x: number) => {
+        let best = Infinity;
+        for (const { edge } of sheets) {
+          for (let i = 0; i < edge.length - 1; i++) if (edge[i][0] <= x + 56 && edge[i + 1][0] >= x + 56) best = Math.min(best, edge[i][1]);
+        }
+        return best;
+      };
+      // A 7 AM sunrise and 5 PM sunset; the moon takes the same path through the night.
+      for (const minute of [420, 1020]) {
+        const at = sunPosition(minute, 420, 1020, W, H, horizon);
+        expect(at.y - radius(W, H), `${W} by ${H} at ${minute}`).toBeGreaterThan(land(at.x));
+      }
+      // Across by the clock alone: a tenth of the width at sunrise, the middle at midday, nine tenths at sunset.
+      for (const [minute, across] of [[420, 0.1], [570, 0.3], [720, 0.5], [1020, 0.9]]) {
+        expect(sunPosition(minute, 420, 1020, W, H, horizon).x).toBeCloseTo(W * across, 9);
+      }
+      expect(sunPosition(720, 420, 1020, W, H, horizon).y).toBeCloseTo(H * 0.1 + (H - horizon) * 0.12, 9);
     }
   });
 
@@ -70,8 +158,11 @@ describe('the landscape (0.13.0)', () => {
         shapes[1] = seed;
         const hero = ridgeGeometry(W, H, 'summer', { ...APPROVED_LANDSCAPE, shapes }).sheets[1];
         const top = hero.apexes.reduce((a, b) => (b.y < a.y ? b : a));
-        // The hero stands at 0.57 of the drawn width (the screen plus both margins).
-        expect(Math.abs(top.x - (W + 112) * 0.57), `${seed} at ${W}`).toBeLessThan((W + 112) * 0.06);
+        // The hero stands at 0.57 of the drawn width (the screen plus both margins); a tall screen shows the
+        // middle of its turned screen's land.
+        const wide = Math.max(W, H);
+        const at = (wide + 112) * 0.57 - (wide - W) / 2;
+        expect(Math.abs(top.x - at), `${seed} at ${W}`).toBeLessThan((wide + 112) * 0.06);
       }
     }
   });

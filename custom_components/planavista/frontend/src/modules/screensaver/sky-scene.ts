@@ -129,7 +129,19 @@ function yAt(edge: Point[], x: number): number {
 export function ridgeGeometry(
   W: number, H: number, season: Season = 'summer', landscape: Landscape = APPROVED_LANDSCAPE,
 ): { horizon: number; band: number; sheets: SheetGeometry[] } {
-  const portrait = H > W;
+  if (H > W) {
+    // A tall screen shows the middle of the land the same screen would draw turned on its side, lowered
+    // to the bottom with more sky above, so every range keeps the shape and size the owner chose (the
+    // kitchen's panel in portrait, 2026-11-17: sized from the tall height, every peak rose too steeply).
+    const turned = ridgeGeometry(H, W, season, landscape);
+    const dx = -(H - W) / 2;
+    const dy = H - W;
+    return {
+      horizon: horizonAt(W, H),
+      band: turned.band,
+      sheets: turned.sheets.map(sheet => movedSheet(sheet, dx, dy, W + 2 * M)),
+    };
+  }
   const horizon = horizonAt(W, H);
   const band = H - horizon;
   const width = W + 2 * M;
@@ -205,7 +217,7 @@ export function ridgeGeometry(
     const edge = pts.map(([x, y]): Point => [x + (r() - 0.5) * 0.8, y + (r() - 0.5) * 1.2]);
     // Pines in clusters, rooted on the edge so they stand against the sheet behind.
     const pines: Pine[] = [];
-    const sizeBase = H * (portrait ? 0.022 : 0.028) * (s.scale || 1);
+    const sizeBase = H * 0.028 * (s.scale || 1);
     for (let c = 0; c < (s.clusters || 0); c++) {
       const cx = r() * width;
       const k = 3 + Math.floor(r() * 6);
@@ -241,6 +253,29 @@ export function ridgeGeometry(
     return { sheet: s, edge, apexes, pines, top, bottom, foot: bottom + band * 0.14, snowline };
   });
   return { horizon, band, sheets };
+}
+
+/**
+ * A sheet moved by (dx, dy) onto a canvas `width` wide (the screen plus both
+ * margins). Built first and moved after, since trees find the edge by its
+ * start; the edge and snowline keep a point past 24 px beyond each side, as a
+ * wide screen's do, and trees off the canvas are left out.
+ */
+function movedSheet(G: SheetGeometry, dx: number, dy: number, width: number): SheetGeometry {
+  const move = ([x, y]: Point): Point => [x + dx, y + dy];
+  const first = Math.max(0, G.edge.findIndex(([x]) => x + dx >= -24) - 1);
+  let last = G.edge.length - 1;
+  while (last > first && G.edge[last - 1][0] + dx > width + 24) last--;
+  return {
+    sheet: G.sheet,
+    edge: G.edge.slice(first, last + 1).map(move),
+    snowline: G.snowline ? G.snowline.slice(first, last + 1).map(move) : null,
+    apexes: G.apexes.map(a => ({ x: a.x + dx, y: a.y + dy, lx: a.lx + dx, ly: a.ly + dy, vx: a.vx + dx, vy: a.vy + dy })),
+    pines: G.pines.filter(p => p.x + dx > -p.h && p.x + dx < width + p.h).map(p => ({ ...p, x: p.x + dx, y: p.y + dy })),
+    top: G.top + dy,
+    bottom: G.bottom + dy,
+    foot: G.foot + dy,
+  };
 }
 
 /** A sheet's paper: mixed from the nearest to the farthest, then hazed toward the horizon's color. */
