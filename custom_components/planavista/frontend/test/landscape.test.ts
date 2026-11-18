@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ridgeGeometry, type SheetGeometry } from '../src/modules/screensaver/sky-scene';
-import { APPROVED_LANDSCAPE, SECOND_SEEDS, TOP_SEEDS, horizonAt, pickLandscape, rng } from '../src/modules/screensaver/sky';
+import { APPROVED_LANDSCAPE, SECOND_SEEDS, TOP_SEEDS, horizonAt, pickLandscape, rng, sunPosition } from '../src/modules/screensaver/sky';
 
 /** One number for a sheet's cut edge and trees, so a change anywhere shows. */
 function print(sheet: SheetGeometry): number {
@@ -112,6 +112,33 @@ describe('the landscape (0.13.0)', () => {
         expect(sheet.pines.map(p => [p.x, p.y, p.h, p.leafy, p.tone])).toEqual(
           kept.map(p => [p.x + dx, p.y + dy, p.h, p.leafy, p.tone]));
       });
+    }
+  });
+
+  it("keeps the sun's and moon's timing on every screen, rising and setting behind the land (2026-11-17)", () => {
+    // The disc's radius, as SkyScene draws it.
+    const radius = (W: number, H: number) => Math.round(Math.min(W, H) * 0.05);
+    for (const [W, H] of [[1080, 1920], [800, 1280], [440, 956], [390, 844], [1920, 1080], [956, 440]]) {
+      const horizon = horizonAt(W, H);
+      const sheets = ridgeGeometry(W, H, 'summer').sheets;
+      // The highest land at a screen x (the canvas starts 56 px left of the screen).
+      const land = (x: number) => {
+        let best = Infinity;
+        for (const { edge } of sheets) {
+          for (let i = 0; i < edge.length - 1; i++) if (edge[i][0] <= x + 56 && edge[i + 1][0] >= x + 56) best = Math.min(best, edge[i][1]);
+        }
+        return best;
+      };
+      // A 7 AM sunrise and 5 PM sunset; the moon takes the same path through the night.
+      for (const minute of [420, 1020]) {
+        const at = sunPosition(minute, 420, 1020, W, H, horizon);
+        expect(at.y - radius(W, H), `${W} by ${H} at ${minute}`).toBeGreaterThan(land(at.x));
+      }
+      // Across by the clock alone: a tenth of the width at sunrise, the middle at midday, nine tenths at sunset.
+      for (const [minute, across] of [[420, 0.1], [570, 0.3], [720, 0.5], [1020, 0.9]]) {
+        expect(sunPosition(minute, 420, 1020, W, H, horizon).x).toBeCloseTo(W * across, 9);
+      }
+      expect(sunPosition(720, 420, 1020, W, H, horizon).y).toBeCloseTo(H * 0.1 + (H - horizon) * 0.12, 9);
     }
   });
 
