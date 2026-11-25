@@ -10,7 +10,7 @@ from custom_components.planavista.chores.engine import ChoresEngine
 from custom_components.planavista.chores.occurrences import Occurrence
 from custom_components.planavista.chores.periods import Clock
 
-from .chores_sample import TZ, at, keys, sample_engine
+from .chores_sample import TZ, at, keys, plan, sample_engine
 
 CLOCK = Clock(TZ)
 TODAY = date(2026, 10, 14)
@@ -47,7 +47,7 @@ def test_late_record_marks_missed() -> None:
     assert not late.is_late({"key": "x"})
 
 
-def test_answering_takes_any_credited_copy_since() -> None:
+def test_answering_takes_any_credited_copy_after_since() -> None:
     record = late.late_record(_bed(date(2026, 10, 12)), date(2026, 10, 12))
 
     def done(day: int, *, member: str = "dana", state: str = "done", chore: str = "make_your_bed") -> dict:
@@ -59,10 +59,12 @@ def test_answering_takes_any_credited_copy_since() -> None:
     def answer(*rows: dict) -> dict | None:
         return late.answering(record, rows, "dana", day_of)
 
-    on_since = done(12)
-    assert answer(on_since) is on_since
+    # Only a day after the missed one: that day's check-offs were for that day's copies.
+    assert answer(done(12)) is None
+    next_day = done(13)
+    assert answer(next_day) is next_day
     later = done(14, state="pending")
-    assert answer(on_since, later) is later
+    assert answer(next_day, later) is later
     assert answer(done(11)) is None
     assert answer(done(13, member="blair")) is None
     assert answer(done(13, state="sent_back")) is None
@@ -301,3 +303,35 @@ def test_once_chore_cleared_by_an_excuse_finishes() -> None:
     engine.catch_up(at(10, 18, 9))
     assert _record(engine, gate) is None
     assert engine.activity("fix_the_gate_latch")["finished_at"] == "2026-10-18T03:00:00-05:00"
+
+
+def test_a_morning_check_off_does_not_answer_the_evening_miss() -> None:
+    engine = sample_engine(MONDAY)
+    engine.complete(at(10, 12, 8), key="cat_care|casey|day:2026-10-12|0", by="casey", source="tablet", approve=True)
+    engine.catch_up(at(10, 13, 9))
+    evening = "cat_care|casey|day:2026-10-12|1"
+    assert _record(engine, evening) is not None and _answer(engine, evening) is None
+    assert _record(engine, "cat_care|casey|day:2026-10-12|0") is None
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, evening) is not None
+
+
+def test_one_load_done_on_the_weeks_last_day_leaves_the_other_load_missed() -> None:
+    engine = sample_engine(MONDAY)
+    engine.complete(at(10, 18, 10), key="laundry|blair|week:2026-10-12|1", by="blair", source="tablet", approve=True)
+    engine.catch_up(at(10, 19, 9))
+    monday = "laundry|blair|week:2026-10-12|0"
+    record = _record(engine, monday)
+    assert record is not None and record["since"] == "2026-10-18"
+    assert _answer(engine, monday) is None
+    engine.catch_up(at(10, 20, 9))
+    assert _record(engine, monday) is not None
+
+
+def test_late_records_go_with_the_logs_retention() -> None:
+    bed = plan("bed", "Make your bed", ["dana"], 5 / 60, "day")
+    engine = sample_engine(at(7, 1, 9), activities=[bed])
+    engine.catch_up(at(10, 1, 9))  # the last boundary is 10/1 3 AM; 90 days before it is 7/3 3 AM
+    since = sorted(c["since"] for c in engine.log["carried"] if c["chore"] == "bed")
+    assert since[0] == "2026-07-03" and since[-1] == "2026-09-30"
+    assert len(since) == len(set(since))

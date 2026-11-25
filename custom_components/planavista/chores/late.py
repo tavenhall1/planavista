@@ -36,7 +36,11 @@ def answering(
     record: Mapping[str, Any], completions: Iterable[Mapping[str, Any]], member: str,
     day_of: Callable[[object], date],
 ) -> Mapping[str, Any] | None:
-    """The latest credited check-off of the record's chore by `member` on or after its `since` day."""
+    """The latest credited check-off of the record's chore by `member` on a chore day after its `since` day.
+
+    Only after: the missed day ended at the rollover that made the record, and a check-off made on
+    it was for that day's copies (cat care's morning, the week's other load), not for the miss.
+    """
     since = date.fromisoformat(record["since"])
     found: Mapping[str, Any] | None = None
     for completion in completions:
@@ -44,7 +48,7 @@ def answering(
             completion.get("state") in CREDITED
             and completion.get("chore") == record["chore"]
             and completion.get("member") == member
-            and day_of(completion.get("at")) >= since
+            and day_of(completion.get("at")) > since
         ):
             found = completion
     return found

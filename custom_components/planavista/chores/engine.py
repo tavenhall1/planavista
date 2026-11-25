@@ -2559,13 +2559,15 @@ class ChoresEngine:
         ]
 
     def _prune(self, end: datetime) -> None:
-        """Completions, overrides, and resolved requests older than 90 days go (spec 7.7)."""
+        """Completions, overrides, resolved requests, and late records older than 90 days go (spec 7.7)."""
         cutoff = end - RETENTION
         self._days.clear()  # times of pruned records needn't be remembered
         log = self.log
         log["completions"] = [c for c in log["completions"] if _at(c["at"]) >= cutoff]
         log["overrides"] = [o for o in log["overrides"] if _at(o["at"]) >= cutoff]
         log["requests"] = [r for r in log["requests"] if r.get("state") == "open" or _at(r["at"]) >= cutoff]
+        # Late records go with the log's retention (missed-and-urgency spec 1); carried ones wait until done.
+        log["carried"] = [c for c in log["carried"] if not is_late(c) or _day(c["since"]) >= cutoff.date()]
         # What a summary counted is kept 40 days, for corrections after the fact (round 10).
         keep_from = (end - timedelta(days=40)).date()
         for summary in log["summaries"]:
