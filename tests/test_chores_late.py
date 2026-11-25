@@ -3,11 +3,14 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
+import pytest
+
 from custom_components.planavista.chores import late
+from custom_components.planavista.chores.engine import ChoresEngine
 from custom_components.planavista.chores.occurrences import Occurrence
 from custom_components.planavista.chores.periods import Clock
 
-from .chores_sample import TZ
+from .chores_sample import TZ, at, keys, sample_engine
 
 CLOCK = Clock(TZ)
 TODAY = date(2026, 10, 14)
@@ -128,3 +131,173 @@ def test_once_chore_counts_as_time() -> None:
     flag = _flag([late.late_record(occ, date(2026, 10, 13))])
     assert (flag["count"], flag["unit"], flag["in_a_row"]) == (1, "time", False)
     assert flag["periods"] == ["2026-10-13"]
+
+
+# The engine: late records made, answered, and tidied (spec section 1) ------------------------
+
+MONDAY = at(10, 12, 9)
+BED = "make_your_bed|dana|day:2026-10-12|0"
+FISH = "feed_the_fish|dana|day:2026-10-13|0"
+
+
+def _record(engine: ChoresEngine, key: str) -> dict | None:
+    return next((c for c in engine.log["carried"] if c["key"] == key), None)
+
+
+def _summary(engine: ChoresEngine, member: str, period: str) -> dict:
+    return next(s for s in engine.log["summaries"] if s["member"] == member and s["period"] == period)
+
+
+def _answer(engine: ChoresEngine, key: str) -> dict | None:
+    return engine._late_answer(_record(engine, key), engine._index())
+
+
+@pytest.mark.parametrize("policy", ["make_up", "strict"])
+def test_make_it_up_miss_leaves_a_late_record(policy: str) -> None:
+    engine = sample_engine(MONDAY, settings={"missed": policy})
+    out = engine.catch_up(at(10, 13, 9))
+    record = _record(engine, BED)
+    assert record is not None
+    assert record["missed"] is True and record["since"] == "2026-10-12"
+    assert record == late.late_record(engine._past_occurrence(BED), date(2026, 10, 12))
+    assert BED in _summary(engine, "dana", "day:2026-10-12")["missed"]
+    assert BED in [e.data["occurrence"] for e in out.events if e.type == "missed"]
+    # Until the board serves them (task 3), late records change nothing it shows.
+    assert keys(engine, "dana", at(10, 13, 9), "overdue") == []
+    assert BED not in keys(engine, "dana", at(10, 13, 9))
+    assert [c["key"] for c in engine.log["carried"]].count(BED) == 1
+
+
+def test_carry_it_over_makes_no_late_records() -> None:
+    engine = sample_engine(MONDAY, settings={"missed": "carry_over"})
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is not None
+    assert not any("missed" in c for c in engine.log["carried"])
+    item = engine.find_item(BED, at(10, 14, 9))
+    assert (item.section, item.counted) == ("overdue", True)
+
+
+@pytest.mark.parametrize("policy", ["make_up", "strict"])
+def test_late_send_back_leaves_a_late_record(policy: str) -> None:
+    engine = sample_engine(settings={"auto_approve": "never", "missed": policy})
+    engine.complete(at(10, 13, 16), key=FISH, by="dana", source="tablet")
+    [request] = [r for r in engine.open_requests() if r["occurrence"] == FISH]
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, FISH) is None  # waiting for approval at its day's end: not missed
+    out = engine.review(at(10, 14, 10), request_id=request["id"], allow=False, by="blair")
+    assert [e.data["occurrence"] for e in out.events if e.type == "missed"] == [FISH]
+    record = _record(engine, FISH)
+    assert record is not None and record["missed"] is True and record["since"] == "2026-10-13"
+    assert [c["key"] for c in engine.log["carried"]].count(FISH) == 1
+
+
+def test_late_send_back_under_carry_it_over_carries_as_before() -> None:
+    engine = sample_engine(settings={"auto_approve": "never", "missed": "carry_over"})
+    engine.complete(at(10, 13, 16), key=FISH, by="dana", source="tablet")
+    [request] = [r for r in engine.open_requests() if r["occurrence"] == FISH]
+    engine.catch_up(at(10, 14, 9))
+    engine.review(at(10, 14, 10), request_id=request["id"], allow=False, by="blair")
+    record = _record(engine, FISH)
+    assert record is not None and "missed" not in record
+
+
+def test_answered_record_is_dropped_only_once_approved() -> None:
+    engine = sample_engine(MONDAY, settings={"auto_approve": "never"})
+    engine.catch_up(at(10, 13, 9))
+    assert _answer(engine, BED) is None
+    # Today's bed, waiting for approval, answers yesterday's miss.
+    today = engine.complete(at(10, 13, 9), key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    assert today.result == "pending"
+    answer = _answer(engine, BED)
+    assert answer is not None and answer["id"] == today.data["completion"]
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is not None  # still waiting: kept
+    engine.review(at(10, 14, 10), request_id=today.data["completion"], allow=True, by="blair")
+    assert _record(engine, BED) is not None  # approved: kept until the day's tidy
+    engine.catch_up(at(10, 15, 9))
+    assert _record(engine, BED) is None
+    # Other misses stay.
+    assert _record(engine, "feed_the_fish|dana|day:2026-10-12|0") is not None
+
+
+def test_a_send_back_unanswers_it() -> None:
+    engine = sample_engine(MONDAY, settings={"auto_approve": "never"})
+    engine.catch_up(at(10, 13, 9))
+    today = engine.complete(at(10, 13, 9), key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet")
+    engine.review(at(10, 13, 10), request_id=today.data["completion"], allow=False, by="blair")
+    assert _answer(engine, BED) is None
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is not None and _answer(engine, BED) is None
+
+
+def test_answers_come_only_from_the_same_chore_and_member() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(at(10, 13, 9))
+    engine.complete(at(10, 13, 9), key="feed_the_fish|dana|day:2026-10-13|0", by="dana", source="tablet", approve=True)
+    assert _answer(engine, BED) is None
+    engine.complete(at(10, 13, 9, 30), key="make_your_bed|dana|day:2026-10-13|0", by="dana", source="tablet", approve=True)
+    assert _answer(engine, BED)["occurrence"] == "make_your_bed|dana|day:2026-10-13|0"
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is None
+    assert _record(engine, "feed_the_fish|dana|day:2026-10-12|0") is None  # today's fish answered it too
+
+
+def test_undo_brings_the_callout_back() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(at(10, 13, 9))
+    today = "make_your_bed|dana|day:2026-10-13|0"
+    engine.complete(at(10, 13, 9), key=today, by="dana", source="tablet", approve=True)
+    assert _answer(engine, BED) is not None
+    engine.undo(at(10, 13, 9, 5), key=today, by="dana", source="tablet")
+    assert _answer(engine, BED) is None
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is not None and _answer(engine, BED) is None
+
+
+def test_a_late_excuse_drops_it() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(at(10, 13, 9))
+    engine.excuse_missed(at(10, 13, 10), key=BED, by="blair")
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is None
+
+
+def test_a_hand_off_of_a_later_copy_leaves_the_record_with_who_missed_it() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(at(10, 13, 9))
+    today = "make_your_bed|dana|day:2026-10-13|0"
+    engine.log["overrides"].append({"occurrence": today, "assignee": "casey", "at": at(10, 13, 9).isoformat()})
+    engine.complete(at(10, 13, 9, 5), key=today, by="casey", source="tablet", approve=True)
+    assert _answer(engine, BED) is None  # Casey's check-off is Casey's, not Dana's answer
+    engine.catch_up(at(10, 14, 9))
+    assert _record(engine, BED) is not None
+
+
+def test_once_chore_with_a_late_record_is_not_finished() -> None:
+    gate = "fix_the_gate_latch|alex|once|0"
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    record = _record(engine, gate)
+    assert record is not None and record["missed"] is True and record["since"] == "2026-10-16"
+    assert engine.activity("fix_the_gate_latch")["finished_at"] is None
+    engine.catch_up(at(10, 18, 9))
+    assert engine.activity("fix_the_gate_latch")["finished_at"] is None
+    # Answered (as task 3's late row will be): finished at the rollover that drops it.
+    engine.log["completions"].append({
+        "id": "late1", "occurrence": gate, "chore": "fix_the_gate_latch", "member": "alex", "done_by": "alex",
+        "by": "alex", "at": at(10, 18, 10).isoformat(), "source": "tablet", "user": None, "state": "done",
+        "review": None, "credit_minutes": record["credit_minutes"], "stars": 0,
+    })
+    engine.catch_up(at(10, 19, 9))
+    assert _record(engine, gate) is None
+    assert engine.activity("fix_the_gate_latch")["finished_at"] == "2026-10-19T03:00:00-05:00"
+
+
+def test_once_chore_cleared_by_an_excuse_finishes() -> None:
+    gate = "fix_the_gate_latch|alex|once|0"
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    engine.excuse_missed(at(10, 17, 10), key=gate, by="blair")
+    engine.catch_up(at(10, 18, 9))
+    assert _record(engine, gate) is None
+    assert engine.activity("fix_the_gate_latch")["finished_at"] == "2026-10-18T03:00:00-05:00"

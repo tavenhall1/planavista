@@ -18,6 +18,7 @@ import os
 import time as wall_time
 from typing import Any
 
+from .late import answering, is_late, late_record
 from .model import (
     ACTIVITY_FIELDS,
     MAX_ACTIVITIES,
@@ -116,6 +117,8 @@ class _Index:
     requests: dict[str, dict[str, Any]]
     carried: dict[str, dict[str, Any]]
     by_day: dict[date, list[dict[str, Any]]]  # credited check-offs by the chore day they were made
+    # Credited check-offs by (chore, member), in log order: what can answer a late record.
+    by_chore: dict[tuple[str, str], list[dict[str, Any]]] = field(default_factory=dict)
 
 
 def _day(value: str) -> date:
@@ -307,11 +310,13 @@ class ChoresEngine:
     def _index(self) -> _Index:
         latest: dict[str, dict[str, Any]] = {}
         by_day: dict[date, list[dict[str, Any]]] = defaultdict(list)
+        by_chore: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
         for completion in self.log["completions"]:
             if completion.get("state") not in VOID:
                 latest[completion["occurrence"]] = completion
                 if completion.get("state") in CREDITED:
                     by_day[self._day_of(completion["at"])].append(completion)
+                    by_chore[(completion["chore"], completion["member"])].append(completion)
         overrides: dict[str, dict[str, Any]] = defaultdict(dict)
         for record in self.log["overrides"]:
             for name in ("planned_day", "due", "assignee", "excused", "note"):
@@ -321,7 +326,7 @@ class ChoresEngine:
             r["occurrence"]: r for r in self.log["requests"] if r.get("state") == "open"
         }
         carried = {c["key"]: c for c in self.log["carried"]}
-        return _Index(latest, dict(overrides), requests, carried, dict(by_day))
+        return _Index(latest, dict(overrides), requests, carried, dict(by_day), dict(by_chore))
 
     def _occurrences_on(self, day: date, index: _Index) -> list[Occurrence]:
         gen = self.generator()
@@ -356,7 +361,7 @@ class ChoresEngine:
                         found[occ.key] = occ
         # Occurrences kept on the board past their period by a later due date.
         for key, changes in index.overrides.items():
-            if key in found or "due" not in changes or key in index.carried:
+            if key in found or "due" not in changes or (key in index.carried and not is_late(index.carried[key])):
                 continue
             parsed = parse_key(key)
             activity = self.activity(parsed[0]) if parsed else None
@@ -443,6 +448,8 @@ class ChoresEngine:
             )
             present.add(occ.key)
         for key, record in index.carried.items():
+            if is_late(record):
+                continue  # a late record isn't an overdue row
             if key in present or record["member"] not in members or self.activity(record["chore"]) is None:
                 continue
             completion = index.latest.get(key)
@@ -1709,6 +1716,7 @@ class ChoresEngine:
                 contribution["shared_minutes"] = round(max(0.0, float(contribution.get("shared_minutes", 0)) - minutes), 2)
         if over and counted and not carry:
             out.events.append(ChoreEvent("missed", occ.member, self._missed_data(occ)))
+            self._add_late_record(occ, due_day)
 
     # What a summary counted (round 10) ----------------------------------------------
     # Each day and week summary keeps the occurrences it counted as `keys`: {key: [status,
@@ -2151,11 +2159,25 @@ class ChoresEngine:
                     return True
         return False
 
-    @staticmethod
-    def _open_carried(record: Mapping[str, Any], index: _Index) -> bool:
+    def _late_holder(self, record: Mapping[str, Any], index: _Index) -> str:
+        """Whose a late record is: the assignee override on its own key, else who missed it."""
+        handed = index.overrides.get(record["key"], {}).get("assignee")
+        return handed if handed is not None and self.member(handed) is not None else record["member"]
+
+    def _late_answer(self, record: Mapping[str, Any], index: _Index) -> Mapping[str, Any] | None:
+        """The credited check-off answering a late record (its chore, by its holder, since it was missed)."""
+        holder = self._late_holder(record, index)
+        return answering(record, index.by_chore.get((record["chore"], holder), ()), holder, self._day_of)
+
+    def _open_carried(self, record: Mapping[str, Any], index: _Index) -> bool:
+        """Whether a carried or late record still stands: kept by the tidy, and owed for finishing."""
         overrides = index.overrides.get(record["key"], {})
         if overrides.get("excused"):
             return False
+        if is_late(record):
+            # Kept until its answer is approved, so an Undo or a send-back brings it back (spec section 1).
+            answer = self._late_answer(record, index)
+            return answer is None or answer.get("state") != "done"
         latest = index.latest.get(record["key"], {})
         member = overrides.get("assignee") or record["member"]
         return latest.get("state") not in CREDITED or latest.get("member") != member
@@ -2428,6 +2450,7 @@ class ChoresEngine:
                 else:
                     missed.append(item.occ.key)
                     out.events.append(ChoreEvent("missed", member_id, self._missed_data(item.occ)))
+                    self._add_late_record(item.occ, day)
             self.log["summaries"].append(self._day_summary(member_id, day, found, missed, carried))
             if week_ends:
                 self.log["summaries"].append(
@@ -2455,6 +2478,11 @@ class ChoresEngine:
             "band": occ.band, "credit_minutes": occ.credit_minutes, "stars": occ.stars,
             "window": occ.window, "since": day.isoformat(),
         }
+
+    def _add_late_record(self, occ: Occurrence, day: date) -> None:
+        """What a miss leaves behind (Strict or Make it up): one late record per occurrence."""
+        if not any(is_late(c) and c["key"] == occ.key for c in self.log["carried"]):
+            self.log["carried"].append(late_record(occ, day))
 
     def _missed_data(self, occ: Occurrence) -> dict[str, Any]:
         activity = self.activity(occ.chore)
@@ -2522,7 +2550,8 @@ class ChoresEngine:
                 request["review"] = {"by": AUTO, "at": self._stamp(at), "note": None, "source": AUTO}
 
     def _tidy_carried(self, day: date, index: _Index) -> None:
-        """Drop overdue records once they are done or excused, or their chore or person is gone."""
+        """Drop overdue records once they are done or excused, late ones once their answer is approved,
+        or either once their chore or person is gone."""
         members = set(self.member_ids())
         self.log["carried"] = [
             c for c in self.log["carried"]

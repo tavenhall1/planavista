@@ -215,10 +215,14 @@ def test_old_records_are_pruned_and_summaries_kept() -> None:
     assert engine.balance("dana") == 1
 
 
-def test_a_dated_once_chore_finishes_when_it_is_missed() -> None:
+def test_a_dated_once_chore_finishes_once_its_miss_is_cleared() -> None:
     engine = sample_engine()
     engine.catch_up(at(10, 17, 9))
-    assert engine.activity("fix_the_gate_latch")["finished_at"] == "2026-10-17T03:00:00-05:00"
+    # Missed, its late record holds it open (missed-and-urgency spec 1) until done late or cleared.
+    assert engine.activity("fix_the_gate_latch")["finished_at"] is None
+    engine.excuse_missed(at(10, 17, 10), key="fix_the_gate_latch|alex|once|0", by="blair")
+    engine.catch_up(at(10, 18, 9))
+    assert engine.activity("fix_the_gate_latch")["finished_at"] == "2026-10-18T03:00:00-05:00"
 
 
 def test_carried_over_once_chores_wait_until_done() -> None:
@@ -236,7 +240,13 @@ def test_a_repeating_chore_finishes_after_its_last_week() -> None:
     engine.catch_up(at(11, 29, 9))
     assert engine.activity("rake_the_leaves")["finished_at"] is None
     engine.catch_up(at(11, 30, 9))
-    assert engine.activity("rake_the_leaves")["finished_at"] == "2026-11-30T03:00:00-06:00"
+    # Every Saturday was missed, and their late records hold it open (missed-and-urgency spec 1)
+    # until a parent clears them; then it finishes at the next boundary.
+    assert engine.activity("rake_the_leaves")["finished_at"] is None
+    for record in [c for c in engine.log["carried"] if c["chore"] == "rake_the_leaves"]:
+        engine.excuse_missed(at(11, 30, 10), key=record["key"], by="alex")
+    engine.catch_up(at(12, 1, 9))
+    assert engine.activity("rake_the_leaves")["finished_at"] == "2026-12-01T03:00:00-06:00"
 
 
 def test_weeks_off_are_caught_up_once_each(  # Review Focus 2
