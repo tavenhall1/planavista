@@ -40,11 +40,11 @@
 **Interfaces:**
 - Consumes: `Occurrence` (occurrences.py), `parse_key` (occurrences.py), `Clock` (periods.py).
 - Produces:
-  - `late_record(occ: Occurrence, day: date) -> dict` — `_carry`'s shape plus `"missed": True`, `since` = `day.isoformat()`.
-  - `is_late(record: Mapping) -> bool` — `record.get("missed") is True`.
-  - `answering(record: Mapping, completions: Iterable[Mapping], member: str, day_of: Callable[[object], date]) -> dict | None` — the latest completion with `state` in CREDITED, `chore == record["chore"]`, `member == member`, and `day_of(at) >= date(record["since"])`.
-  - `missed_flag(records: list[Mapping], *, late: bool, scheduled: Callable[[date], bool], away: Callable[[date], bool]) -> dict` — `{count, unit, in_a_row, periods, late}` per spec section 2. `count` = distinct periods (by `period`, except a Strict picked-day miss, `window == "week"` with `due` at a day end that isn't the week's end, counts by its due day). `unit`: `day` for `day:` periods or single-day misses, `week`, `month` (repeats monthly, `window == "month"`), `time` (`once` and irregular). `in_a_row`: for `day` units, every day between the oldest and newest missed day is missed, unscheduled, or away; for `week`/`month`, consecutive period starts; `time` always false.
-  - `missed_words(flag: Mapping, today: date) -> str` — spec section 3 table ("Missed yesterday", "Missed 3 days in a row", "Missed last week", "Missed 2 weeks in a row", "Missed last month", "Missed Tue" via `status.short_day`, "Missed 3 times").
+  - `late_record(occ: Occurrence, day: date) -> dict`: `_carry`'s shape plus `"missed": True`, `since` = `day.isoformat()`.
+  - `is_late(record: Mapping) -> bool`: `record.get("missed") is True`.
+  - `answering(record: Mapping, completions: Iterable[Mapping], member: str, day_of: Callable[[object], date]) -> dict | None`: the latest completion with `state` in CREDITED, `chore == record["chore"]`, `member == member`, and `day_of(at) >= date(record["since"])`.
+  - `missed_flag(records: list[Mapping], *, late: bool, scheduled: Callable[[date], bool], away: Callable[[date], bool]) -> dict`: `{count, unit, in_a_row, periods, late}` per spec section 2. `count` = distinct periods (by `period`, except a Strict picked-day miss, `window == "week"` with `due` at a day end that isn't the week's end, counts by its due day). `unit`: `day` for `day:` periods or single-day misses, `week`, `month` (repeats monthly, `window == "month"`), `time` (`once` and irregular). `in_a_row`: for `day` units, every day between the oldest and newest missed day is missed, unscheduled, or away; for `week`/`month`, consecutive period starts; `time` always false.
+  - `missed_words(flag: Mapping, today: date) -> str`: spec section 3 table ("Missed yesterday", "Missed 3 days in a row", "Missed last week", "Missed 2 weeks in a row", "Missed last month", "Missed Tue" via `status.short_day`, "Missed 3 times").
 
 - [ ] **Step 1: Write failing tests** in `tests/test_chores_late.py`: `test_late_record_marks_missed`, `test_answering_takes_any_credited_copy_since` (a done completion of the same chore on `since` or later answers; one before `since`, another member's, a `sent_back` or `undone` one don't), `test_count_is_periods_not_records` (two `week:2026-10-12` records of laundry, n=0 and n=1 → `count == 1`, `unit == "week"`), `test_in_a_row_skips_unscheduled_and_away_days` (Dana's bed missed Mon and Wed, Tue unscheduled → `in_a_row` True; Tue excused instead → False, words "Missed 2 times"), and `test_missed_words` with one case per row of the spec's table, today 2026-10-14.
 - [ ] **Step 2:** `scripts/test-backend.sh tests/test_chores_late.py` → FAIL (module missing).
@@ -126,8 +126,8 @@
   - `interface MissedFlag { count: number; unit: 'day' | 'week' | 'month' | 'time'; in_a_row: boolean; periods: string[]; late: boolean }`
   - `missedWords(flag: MissedFlag, today: string): string` (mirror of Task 1's)
   - `itemBadge`: an OPEN item with `missed` → `{words: missedWords(...), tone: 'bad', glyph: '×'}`, before overdue; a done item in section `missed` → `{words: 'Done late', tone: 'muted'}`.
-  - `daysToDeadline(item: ItemView, today: string, board: {week: {end: string}}): number | null` — days left including today to the item's own deadline: window `week` → week end; window `month` → its `due_day`; `dated` once → `due_day`; daily and undated → null.
-  - `type Urgency = 'calm' | 'amber' | 'soon' | 'last'`; `urgencyOf(days: number | null): Urgency` — null or ≥4 calm, 3 amber, 2 soon, 1 last (0 or less last).
+  - `daysToDeadline(item: ItemView, today: string, board: {week: {end: string}}): number | null`: days left including today to the item's own deadline: window `week` → week end; window `month` → its `due_day`; `dated` once → `due_day`; daily and undated → null.
+  - `type Urgency = 'calm' | 'amber' | 'soon' | 'last'`; `urgencyOf(days: number | null): Urgency`: null or ≥4 calm, 3 amber, 2 soon, 1 last (0 or less last).
   - `itemBadge` for `amber`: `{words: '3 days left', tone: 'time', glyph: '•'}` regardless of pace (the pace rule stays for ≥4).
 
 - [ ] **Step 1: Failing tests:** fixture cases from Task 3 now run in `status-map.test.ts` (same JSON); `urgency-derive.test.ts`: weekly row Wed with week ending Sun 00:00 (`days_left` 4) → calm, Thu amber, Fri soon, Sat last; a monthly row 2 days before month end → soon; a dated once due tomorrow → soon; a daily row → calm; an undated once → calm.
@@ -171,7 +171,7 @@
 - Test: `frontend/test/options-derive.test.ts`
 
 **Interfaces:**
-- Produces: `missedNote(flag: MissedFlag, today: string): {title: string; body: string}` — title = `missedWords`; body for `late` false: "Doing this week's takes it off the top." (day unit: "Doing today's takes it off the top."); for `late` true and one period: "Not done last week. Doing it now takes it off the top. It stays in the record."; several: "Not done the weeks of Nov 15 and Nov 22. Doing it now takes it off the top. Both misses stay in the record." (3 or more: "All N misses stay in the record."). Parent actions `[{id: 'clear_missed', label: 'Take it off the board', help: "It stays missed. Nothing more to do this time."}, {id: 'excuse_missed', label: 'Excuse the misses', help: 'There was a good reason. They count as excused, not missed.'}]` (singular "Excuse the miss" for count 1).
+- Produces: `missedNote(flag: MissedFlag, today: string): {title: string; body: string}`: title = `missedWords`; body for `late` false: "Doing this week's takes it off the top." (day unit: "Doing today's takes it off the top."); for `late` true and one period: "Not done last week. Doing it now takes it off the top. It stays in the record."; several: "Not done the weeks of Nov 15 and Nov 22. Doing it now takes it off the top. Both misses stay in the record." (3 or more: "All N misses stay in the record."). Parent actions `[{id: 'clear_missed', label: 'Take it off the board', help: "It stays missed. Nothing more to do this time."}, {id: 'excuse_missed', label: 'Excuse the misses', help: 'There was a good reason. They count as excused, not missed.'}]` (singular "Excuse the miss" for count 1).
 
 - [ ] **Step 1: Failing tests** for each wording above and for the singular label; `not_missed` refusal maps to a neutral toast.
 - [ ] **Step 2:** `npm test` → FAIL.
