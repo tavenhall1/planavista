@@ -40,8 +40,20 @@ def test_strict_days_miss_it_at_the_end_of_its_day() -> None:
         "chore": "laundry", "chore_name": "Laundry", "occurrence": "laundry|blair|week:2026-10-12|0",
         "member": "blair", "done_by": None, "source": None, "stars": 0, "state": "missed",
     }
-    assert "laundry|blair|week:2026-10-12|0" not in keys(engine, "blair", at(10, 13, 9))
+    # Gone from its day; until Thursday's copy shows, it waits as a late row, outside the ring
+    # (missed-and-urgency spec 1).
+    for section in ("overdue", "today", "week"):
+        assert "laundry|blair|week:2026-10-12|0" not in keys(engine, "blair", at(10, 13, 9), section)
+    late = engine.find_item("laundry|blair|week:2026-10-12|0", at(10, 13, 9))
+    assert (late.section, late.counted, late.missed["unit"], late.missed["late"]) == ("missed", False, "day", True)
+    assert engine.description(late, date(2026, 10, 13)) == "Missed yesterday"
     assert "laundry|blair|week:2026-10-12|0" in _summary(engine, "blair", "day:2026-10-12")["missed"]
+    # Thursday's copy carries it.
+    engine.catch_up(at(10, 15, 9))
+    thursday = engine.find_item("laundry|blair|week:2026-10-12|1", at(10, 15, 9))
+    assert (thursday.section, thursday.missed["late"]) == ("today", False)
+    assert engine.description(thursday, date(2026, 10, 15)) == "Missed Mon"
+    assert engine.find_item("laundry|blair|week:2026-10-12|0", at(10, 15, 9)) is None
 
 
 def test_carry_it_over_keeps_it_overdue_until_done() -> None:

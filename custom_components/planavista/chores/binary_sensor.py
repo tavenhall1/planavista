@@ -9,6 +9,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from ..coordinator import PlanaVistaConfigEntry
 from .entity import ChoresEntity
 from .runtime import DATA_CHORES, ChoresRuntime
+from .status import left_today
 
 
 class ChoresDoneBinarySensor(ChoresEntity, BinarySensorEntity):
@@ -27,6 +28,8 @@ class ChoresDoneBinarySensor(ChoresEntity, BinarySensorEntity):
         if view is None:
             return None
         today = view["today"]
+        if any(i.get("section") == "missed" for i in left_today(view)):
+            return False  # a missed chore's own row is still to do (missed-and-urgency spec 1)
         return today["done"] + today["pending"] >= today["due"]
 
 
