@@ -437,14 +437,9 @@ class ChoresEngine:
             # Handed to someone else: theirs to do fresh, not the first person's check-off or note (round 8).
             if completion is not None and completion.get("member") != occ.member:
                 completion = None
-            # Checked off after it came due and was missed (Strict or Make it up), the check-off answered
-            # its late row, so the days and the week it was due on still say not done, even once the
-            # record is gone (missed-and-urgency spec 1). Carried over, a late check-off counts as before.
-            if (
-                completion is not None and occ.due is not None
-                and self._day_of(completion["at"]) > clock.due_day(occ.due)
-                and self.policy_on(clock.due_day(occ.due)) != "carry_over"
-            ):
+            # Checked off as its late row, the check-off answered the miss: the days and the week it was
+            # due on still say not done, even once the record is gone (missed-and-urgency spec 1).
+            if completion is not None and completion.get("late"):
                 completion = None
             items[occ.member].append(
                 Item(
@@ -511,15 +506,13 @@ class ChoresEngine:
             if key in present or completion["member"] not in members or self.activity(completion["chore"]) is None:
                 continue
             parsed = parse_key(key)
-            if parsed is None:
-                continue
+            if parsed is None or completion.get("late"):
+                continue  # a late row's check-off, after its record went: never counted (missed-and-urgency spec 1)
             # An overdue copy checked off after its record went keeps its own due, so it never joins a
             # later week (round 12: Sunday's copy done Monday joined that week overnight; round 13: weekly,
             # repeating, and one-time chores too, from their occurrence).
             past = self._past_occurrence(key, index)
             if past is not None and past.due is not None and clock.due_day(past.due) < day:
-                if self.policy_on(clock.due_day(past.due)) != "carry_over":
-                    continue  # a missed copy's late row, done after its record went: never counted (spec 1)
                 own_due, own_day = past.due, past.planned
             else:
                 period_day = _day(parsed[2][4:]) if parsed[2].startswith("day:") else None
@@ -560,8 +553,13 @@ class ChoresEngine:
             if holder not in members:
                 continue
             person = self.member(record["member"])
-            if person is not None and away_on(person, since) is not None:
-                continue  # its own day became an away day after the miss: nothing was owed (as round 15)
+            if person is not None and person.get("away"):
+                # Its day became an away day after the miss: nothing was owed (as round 15), judged as the
+                # rollover judges it (its planned day, or its whole window).
+                past = self._past_occurrence(key, index)
+                missed = replace(past or self._carried_occurrence(record), member=record["member"])
+                if self._away_when_due(missed, since):
+                    continue
             latest = index.latest.get(key)
             if (
                 latest is not None and latest.get("state") in CREDITED and latest.get("member") == holder
@@ -1418,6 +1416,8 @@ class ChoresEngine:
         }
         if state == "pending" and activity and activity.get("needs_ok_always"):
             completion["auto_approve"] = False  # a parent looks at it, even after the day ends
+        if item.section == "missed":
+            completion["late"] = True  # a late row's check-off: it answers the miss and is never counted
         self.log["completions"].append(completion)
         self._credit(doer_id, occ.credit_minutes)
         out = Outcome(state, {"occurrence": occ.key, "stars": stars, "completion": completion["id"]}, changed={"log"})

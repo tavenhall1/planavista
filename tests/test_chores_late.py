@@ -10,7 +10,7 @@ from custom_components.planavista.chores.engine import ChoresEngine
 from custom_components.planavista.chores.occurrences import Occurrence
 from custom_components.planavista.chores.periods import Clock
 
-from .chores_sample import TZ, at, keys, plan, sample_engine
+from .chores_sample import TZ, at, keys, once, plan, sample_activities, sample_engine
 
 CLOCK = Clock(TZ)
 TODAY = date(2026, 10, 14)
@@ -545,3 +545,75 @@ def test_a_weekly_check_off_sent_back_after_its_week_leaves_a_late_record() -> N
     assert _record(engine, loads[0]) is None
     flagged = _item(engine, "blair", "laundry|blair|week:2026-10-19|0", at(10, 19, 10, 1))
     assert flagged.missed == {"count": 1, "unit": "week", "in_a_row": True, "periods": ["2026-10-12"], "late": False}
+
+
+def test_away_only_on_the_weeks_last_day_still_leaves_the_callout() -> None:
+    engine = sample_engine(MONDAY)
+    engine.member("blair")["away"] = [{"from": "2026-10-18", "to": "2026-10-18", "note": None}]
+    engine.catch_up(at(10, 19, 9))
+    assert _record(engine, "laundry|blair|week:2026-10-12|0") is not None
+    flagged = _item(engine, "blair", "laundry|blair|week:2026-10-19|0", at(10, 19, 9))
+    assert flagged.missed is not None and flagged.missed["periods"] == ["2026-10-12"]
+
+
+def test_away_on_a_picked_day_marked_later_is_not_served() -> None:
+    engine = sample_engine(MONDAY, settings={"missed": "strict"})
+    engine.catch_up(at(10, 13, 9))
+    assert _record(engine, "laundry|blair|week:2026-10-12|0") is not None
+    engine.member("blair")["away"] = [{"from": "2026-10-12", "to": "2026-10-12", "note": None}]
+    assert [i for i in _missed_rows(engine, "blair", at(10, 13, 9)) if i.occ.chore == "laundry"] == []
+
+
+def test_a_check_off_keeps_counting_after_an_edit_moves_its_day() -> None:
+    engine = sample_engine(MONDAY, settings={"missed": "strict"})
+    thursday = "laundry|blair|week:2026-10-12|1"
+    engine.catch_up(at(10, 15, 9))
+    engine.complete(at(10, 15, 10), key=thursday, by="blair", source="tablet")
+    before = engine.board(at(10, 15, 10, 1))["members"]["blair"]["today"]
+    engine.activity("laundry")["days"] = ["mon", "tue"]  # an edit since: its key now means Tuesday
+    item = _item(engine, "blair", thursday, at(10, 15, 10, 2))
+    assert item is not None and (item.status, item.counted) == ("done", True)
+    assert engine.board(at(10, 15, 10, 2))["members"]["blair"]["today"]["done"] == before["done"]
+
+
+def test_a_late_row_check_off_is_marked_late() -> None:
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    engine.complete(at(10, 17, 10), key=GATE, by="alex", source="tablet")
+    assert engine.log["completions"][-1]["late"] is True
+    engine.complete(at(10, 17, 10, 30), key="kitchen_cleanup|alex|day:2026-10-17|0", by="alex", source="tablet")
+    assert "late" not in engine.log["completions"][-1]
+
+
+def test_a_late_row_earns_its_stars_once() -> None:
+    errand = once("return_the_library_books", "Return the library books", ["casey"], by="2026-10-14", estimate_minutes=20)
+    engine = sample_engine(activities=[errand])
+    engine.catch_up(at(10, 15, 9))
+    key = "return_the_library_books|casey|once|0"
+    [row] = _missed_rows(engine, "casey", at(10, 15, 9))
+    assert row.occ.key == key and row.occ.stars > 0
+    stars = engine.balance("casey")
+    out = engine.complete(at(10, 15, 10), key=key, by="casey", source="tablet", approve=True)
+    assert out.data["stars"] == row.occ.stars
+    assert engine.balance("casey") == stars + row.occ.stars
+    assert _chore_stars(engine, "casey") == 1
+    again = engine.complete(at(10, 15, 10, 5), chore="return_the_library_books", member="casey", by="casey", source="tablet")
+    assert again.result in ("already_done", "nothing_open")
+    assert engine.balance("casey") == stars + row.occ.stars
+
+
+def test_a_person_taken_off_the_chore_keeps_a_working_callout() -> None:
+    dishes = plan("dishes", "Dishes", ["blair", "casey"], 1, "day", split="shared", shares={"blair": 0.5, "casey": 0.5})
+    engine = sample_engine(MONDAY, activities=[dishes, *[a for a in sample_activities() if a["id"] == "make_your_bed"]])
+    engine.catch_up(at(10, 15, 9))
+    for chore, member in (("dishes", "casey"), ("make_your_bed", "dana")):
+        # Only the Monday and Wednesday misses stay: a gap the schedule doesn't explain.
+        engine.log["carried"] = [
+            c for c in engine.log["carried"]
+            if not (c["chore"] == chore and c["member"] == member and c["since"] == "2026-10-13")
+        ]
+    engine.activity("dishes").update(assignees=["blair"], shares={"blair": 1})
+    engine.activity("make_your_bed")["assignees"] = ["casey"]
+    rows = {(i.occ.chore, i.occ.member): i for m in engine.items(at(10, 15, 9)).values() for i in m if i.section == "missed"}
+    assert rows[("dishes", "casey")].missed["count"] == 2
+    assert rows[("make_your_bed", "dana")].missed["in_a_row"] is False
