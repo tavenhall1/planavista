@@ -28,7 +28,7 @@ from homeassistant.util import dt as dt_util
 from ..const import CONF_DISPLAY
 from .model import ChoreError
 from .periods import parse_clock
-from .status import left_today
+from .status import left_in_ring
 
 if TYPE_CHECKING:
     from .runtime import ChoresRuntime
@@ -344,7 +344,7 @@ class ChoresNotifier:
             if not member.get("phones") or not (member.get("notify") or {}).get("reminders"):
                 continue
             view = self.runtime.member_view(member["id"])
-            left = left_today(view) if view else []
+            left = left_in_ring(view) if view else []
             if not left:
                 continue
             count = f"{len(left)} chore{'s' if len(left) != 1 else ''} left"

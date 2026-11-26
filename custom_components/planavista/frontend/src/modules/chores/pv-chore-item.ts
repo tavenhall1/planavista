@@ -46,6 +46,8 @@ export class PvChoreItem extends LitElement {
   @property({ type: Boolean }) locked = false;
   /** A later band's row: drawn a little quieter (spec 13.1). */
   @property({ type: Boolean, reflect: true }) dim = false;
+  /** The top panel it sits in (missed, soon, or last), or '' (missed and urgency, 0.15.0). */
+  @property({ type: String, reflect: true }) panel = '';
 
   @state() private _fill = 0;
   /** A hold finished and waits for its answer: the circle stays full. */
@@ -228,6 +230,52 @@ export class PvChoreItem extends LitElement {
 
       :host([data-state='done']) .name {
         color: var(--pv-text-muted, #8E949C);
+      }
+
+      /* In a top panel: names semibold when due soon, bold on a last day and when missed (0.15.0). */
+      :host([panel='soon']) .name {
+        font-weight: 600;
+      }
+
+      :host([panel='missed']) .name,
+      :host([panel='last']) .name {
+        font-weight: 700;
+      }
+
+      :host([panel='soon']) .meta {
+        color: var(--pv-warn-ink, #8A5A00);
+      }
+
+      :host([panel='missed']) .meta,
+      :host([panel='last']) .meta {
+        color: var(--pv-bad-ink, #A12828);
+      }
+
+      /* A red badge on the red panel would vanish: it sits on the card with a red line. */
+      :host([panel='missed']) .badge.bad,
+      :host([panel='last']) .badge.bad {
+        background: var(--pv-card-bg, #FFFFFF);
+        box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pv-danger, #C62828) 45%, transparent);
+      }
+
+      /* The name with its badge under it, the estimate at the end (a missed row). */
+      .stack {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
+      }
+
+      .stack .name {
+        flex: none;
+        max-width: 100%;
+      }
+
+      .stack .badge {
+        white-space: normal;
+        text-align: left;
       }
 
       :host([data-state='done']) .strike {
@@ -422,13 +470,17 @@ export class PvChoreItem extends LitElement {
     const pending = state === 'pending';
     const fill = this._held ? 1 : this._fill;
     const action = done ? `Hold to uncheck ${row.name}` : `Hold to complete ${row.name}`;
+    const badge = row.badge ? html`
+      <span class="badge ${row.badge.tone}">${row.badge.glyph ? html`<span aria-hidden="true">${row.badge.glyph}</span>` : nothing}${row.badge.words}</span>
+    ` : nothing;
+    // A missed row keeps its estimate beside its badge (the badge sits under the name).
+    const under = !!row.badgeUnder && !!row.badge && !done;
     const end = html`
-      ${row.badge ? html`
-        <span class="badge ${row.badge.tone}">${row.badge.glyph ? html`<span aria-hidden="true">${row.badge.glyph}</span>` : nothing}${row.badge.words}</span>
-      ` : nothing}
-      ${!row.badge && row.meta && !done ? html`<span class="meta">${row.meta}</span>` : nothing}
+      ${under ? nothing : badge}
+      ${(under || !row.badge) && row.meta && !done ? html`<span class="meta">${row.meta}</span>` : nothing}
       ${done && row.doneAt ? html`<span class="meta">${row.doneBy ? `${row.doneBy} · ` : ''}${row.doneAt}</span>` : nothing}
     `;
+    const name = html`<span class="name"><span class="text">${row.name}<span class="strike"></span></span>${row.label ? html`<span class="label">${row.label}</span>` : nothing}</span>`;
     return html`
       <div class="row" style="--member:${color}">
         <div class="sweep" style="transform: scaleX(${done ? 0 : fill})"></div>
@@ -456,10 +508,10 @@ export class PvChoreItem extends LitElement {
             `}
           </svg>
         </button>
-        <button class="about ${badgeBelow(row.badge, this.narrow) ? 'below' : ''}" type="button"
+        <button class="about ${!under && badgeBelow(row.badge, this.narrow) ? 'below' : ''}" type="button"
           @click=${this._options} @contextmenu=${this._context}
           aria-label=${`${row.name}${row.badge ? `, ${row.badge.words}` : ''}. Options`}>
-          <span class="name"><span class="text">${row.name}<span class="strike"></span></span>${row.label ? html`<span class="label">${row.label}</span>` : nothing}</span>
+          ${under ? html`<span class="stack">${name}${badge}</span>` : name}
           <span class="end">${end}</span>
         </button>
         <span class="sparkles" aria-hidden="true">✦ ✧ ✦</span>

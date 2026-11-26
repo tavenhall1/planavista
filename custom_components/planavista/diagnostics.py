@@ -11,6 +11,7 @@ from typing import Any
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
+from .chores.late import is_late
 from .chores.runtime import DATA_CHORES
 from .const import CONF_CALENDARS, CONF_DISPLAY
 from .coordinator import PlanaVistaConfigEntry
@@ -73,7 +74,8 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PlanaVi
             "completions": len(engine.log["completions"]),
             "overrides": len(engine.log["overrides"]),
             "open_requests": len(engine.open_requests()),
-            "carried": len(engine.log["carried"]),
+            "carried": sum(1 for c in engine.log["carried"] if not is_late(c)),
+            "late": sum(1 for c in engine.log["carried"] if is_late(c)),
             "summaries": len(engine.log["summaries"]),
             "rewards": len(engine.rewards["rewards"]),
             "ledger": len(engine.rewards["ledger"]),

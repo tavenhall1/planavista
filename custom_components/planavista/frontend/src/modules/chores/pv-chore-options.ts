@@ -14,10 +14,12 @@ import { backdropTap } from '../../core/backdrop';
 import { SheetLayer } from '../../core/sheet-layer';
 import { PressGuard } from '../../core/press-guard';
 import { sendBackReasons } from './inbox-derive';
+import { onColor } from '../../core/dimming';
 
 const ICONS: Record<OptionId, string> = {
   plan_day: '📅', more_time: '⏰', skip: '🛌', done_by: '🙋', history: '📜', undo: '↩️',
   change_due: '🗓️', hand_off: '🔁', excuse: '🤒', edit: '✏️', delete: '🗑️', approve: '✅', send_back: '↩️',
+  clear_missed: '🧹', excuse_missed: '🤒', done: '✓',
 };
 
 
@@ -103,6 +105,22 @@ export class PvChoreOptions extends LitElement {
 
       .note {
         margin-top: 8px;
+      }
+
+      .missed-note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: var(--pv-radius-md, 12px);
+        background: var(--pv-bad-bg, #FBE4E4);
+        color: var(--pv-bad-ink, #A12828);
+        font-size: 0.875rem;
+        line-height: 1.35;
+      }
+
+      .missed-note b {
+        display: block;
+        font-size: 0.9375rem;
+        font-weight: 750;
       }
 
       .group {
@@ -211,6 +229,18 @@ export class PvChoreOptions extends LitElement {
       .actions {
         margin-top: 14px;
       }
+
+      /* Done on a missed row: the first action, in the person's color (missed-and-urgency mockup). */
+      .do {
+        width: 100%;
+        margin-top: 14px;
+        background: var(--member);
+        font-weight: 700;
+      }
+
+      .do .pv-tag {
+        margin-left: 8px;
+      }
     `,
   ];
 
@@ -250,8 +280,13 @@ export class PvChoreOptions extends LitElement {
           <h2 id="options-title" tabindex="-1">${model.title}</h2>
           <div class="meta-line">${model.meta}</div>
           ${model.added ? html`<div class="added">${model.added}</div>` : nothing}
+          ${model.missed ? html`<div class="missed-note" role="note"><b>${model.missed.title}</b>${model.missed.body}</div>` : nothing}
           ${model.note ? html`<div class="note"><span class="badge ${model.noteTone ?? 'act'}">${model.note}</span></div>` : nothing}
         </div>
+        ${model.done ? html`
+          <button class="pv-btn pv-btn-primary do" type="button" style=${`color: ${onColor(this.color)}`} ?disabled=${this.busy}
+            @click=${() => this._choose('done')}>${model.done.label}${model.done.tag ? html`<span class="pv-tag muted">${model.done.tag}</span>` : nothing}</button>
+        ` : nothing}
         ${model.member.filter(option => !option.destructive).map(option => this._option(option))}
         ${model.parent.some(option => !option.destructive)
           ? html`<div class="group">For parents</div>${model.parent.filter(option => !option.destructive).map(option => this._option(option))}`
@@ -261,7 +296,7 @@ export class PvChoreOptions extends LitElement {
             <button class="pv-btn pv-btn-secondary danger" type="button" ?disabled=${option.disabled || this.busy}
               @click=${() => this._tap(option, false)}>${option.label}${option.tag ? html` <span class="pv-tag muted">${option.tag}</span>` : nothing}</button>
           `)}
-          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>Done</button>
+          <button class="pv-btn pv-btn-secondary" type="button" @click=${() => void this.close()}>${model.closeLabel}</button>
         </div>
       </div>
     `;

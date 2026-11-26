@@ -32,6 +32,8 @@ export class PvChoreTile extends LitElement {
   @property({ type: String }) color = '#5B5BD6';
   /** The chore for now: drawn with the person's color around it. */
   @property({ type: Boolean, reflect: true }) now = false;
+  /** The top panel its row is in (missed, soon, or last): outlined in that panel's color (0.15.0). */
+  @property({ type: String, reflect: true }) zone = '';
   /** Bigger, for My day's Now tile. */
   @property({ type: Boolean, reflect: true }) large = false;
   @property({ type: Boolean }) locked = false;
@@ -129,6 +131,16 @@ export class PvChoreTile extends LitElement {
 
     :host([now]) .tile {
       border-color: var(--member);
+    }
+
+    /* Missed or on its last day in red, due soon in amber; over the Now outline. */
+    :host([zone='missed']) .tile,
+    :host([zone='last']) .tile {
+      border-color: var(--pv-danger, #C62828);
+    }
+
+    :host([zone='soon']) .tile {
+      border-color: var(--pv-warn-ink, #8A5A00);
     }
 
     .tile.pending {

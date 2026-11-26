@@ -313,6 +313,8 @@ class ChoresRuntime:
             if self._sync_first_day():
                 self._schedule_log_save()
             await self.async_apply(self.engine.catch_up(self.now()))
+            # Once, on the first start of a release with late records: this week's open misses show at once.
+            await self.async_apply(self.engine.backfill_late(self.now()))
         self._schedule_boundary()
 
     @callback

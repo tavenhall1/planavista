@@ -11,9 +11,9 @@ import type { Layout } from '../../core/layout';
 import type { Member } from '../../core/household';
 import '../../core/pv-ring';
 import '../../core/pv-member-avatar';
-import { choresStyles } from './chores-styles';
+import { choresStyles, panelStyles } from './chores-styles';
 import type { Board } from './chores-types';
-import type { ColumnModel, RowModel } from './board-derive';
+import type { ColumnEntry, ColumnModel, RowModel } from './board-derive';
 import type { DayEvent } from './calendar-ties';
 import {
   FairShare,
@@ -24,6 +24,10 @@ import {
   picturesFor,
   stickersLabel,
   timelineFor,
+  isWeekEntry,
+  panelEntries,
+  listFor,
+  listHeads,
 } from './my-day-derive';
 import { pictureOf } from './pv-chore-tile';
 import './pv-chore-item';
@@ -73,7 +77,18 @@ export class PvChoresMyDay extends LitElement {
     peopleStripStyles,
     segmentedStyles,
     choresStyles,
+    panelStyles,
     css`
+      .head-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 12px 6px 4px;
+        font-size: 0.8125rem;
+        font-weight: 750;
+      }
+
       :host {
         display: flex;
         flex-direction: column;
@@ -455,13 +470,36 @@ export class PvChoresMyDay extends LitElement {
     return html`<pv-chore-item .row=${row} color=${this.colorOf(this.column.member)} ?highlight=${zone === 'now'} ?locked=${this.locked}></pv-chore-item>`;
   }
 
+  /** The Board's top panels: Missed first, due-soon next (the same heads and looks), above any style's list. */
+  private _panels() {
+    const entries = panelEntries(this.column);
+    if (entries.length === 0) return nothing;
+    return html`<div class="panels">${repeat(entries, e => e.key, e => this._panelEntry(e))}</div>`;
+  }
+
+  private _panelEntry(entry: ColumnEntry) {
+    if (entry.kind === 'head') {
+      return html`
+        <div class="head-row ${entry.tone} in-panel start" data-key=${entry.key}>
+          <span class="text">${entry.text}</span>${entry.right ? html`<span class="right ${entry.rightTone ?? ''}">${entry.right}</span>` : nothing}
+        </div>
+      `;
+    }
+    if (entry.kind !== 'row') return nothing;
+    return html`
+      <pv-chore-item data-key=${entry.key} class=${`in-panel ${entry.panel ?? ''}${entry.end ? ' end' : ''}`} panel=${entry.panel ?? ''}
+        .row=${entry.row} color=${this.colorOf(this.column.member)} ?locked=${this.locked}></pv-chore-item>
+    `;
+  }
+
   private _timeline() {
     const entries = timelineFor(this.column, {
       now: new Date(), events: this.events, timeFormat: this.timeFormat, bedtime: this.bedtime,
       dayStarts: this.board?.settings?.day_starts,
     });
-    if (entries.length === 0) return html`<p class="meta" style="margin-top:12px">Nothing on today's timeline.</p>`;
-    return html`<div class="tl">${repeat(entries, e => e.key, e => this._entry(e))}</div>${this._weekRows()}`;
+    const panels = this._panels();
+    if (entries.length === 0) return panels === nothing ? html`<p class="meta" style="margin-top:12px">Nothing on today's timeline.</p>` : panels;
+    return html`${panels}<div class="tl">${repeat(entries, e => e.key, e => this._entry(e))}</div>${this._weekRows()}`;
   }
 
   private _entry(entry: TimelineEntry) {
@@ -496,7 +534,7 @@ export class PvChoresMyDay extends LitElement {
 
   private _weekRows() {
     if (this.layout === 'landscape') return nothing;
-    const week = this.column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
+    const week = this.column.entries.flatMap(e => (e.kind === 'row' && isWeekEntry(e) ? [e.row] : []));
     if (week.length === 0) return nothing;
     return html`
       <div class="tl-week">
@@ -508,13 +546,14 @@ export class PvChoresMyDay extends LitElement {
 
   private _list() {
     const column = this.column;
-    const open = column.entries.flatMap(e => (e.kind === 'row' && e.zone !== 'week' && e.zone !== 'done' ? [e.row] : []));
-    const week = column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
+    const { open, week } = listFor(column);
+    const heads = listHeads(column);
     const next = nextLine(this.events, column.member.id, new Date(), this.timeFormat);
     return html`
       ${next ? html`<div class="next">📅 ${next}</div>` : nothing}
-      <div class="section-head"><span>Today</span></div>
-      ${open.length || column.doneToday.length ? nothing : html`<p class="meta">Nothing due today.</p>`}
+      ${this._panels()}
+      ${heads.today ? html`<div class="section-head"><span>Today</span></div>` : nothing}
+      ${heads.nothing ? html`<p class="meta">Nothing due today.</p>` : nothing}
       ${repeat(open, r => r.key, r => this._row(r))}
       ${repeat(column.doneToday, r => r.key, r => this._row(r, 'done'))}
       ${week.length && this.layout !== 'landscape' ? html`
@@ -541,12 +580,13 @@ export class PvChoresMyDay extends LitElement {
   private _pictures() {
     const model = picturesFor(this.column, this.events, new Date(), this.timeFormat);
     const stars = this.column.member.stars ? this.column.entry.week_stars : 0;
+    const zoneOf = (row: RowModel) => model.zones.get(row.key) ?? '';
     const color = this.colorOf(this.column.member);
     return html`
       ${model.now ? html`
         <div class="now-tile">
           <div class="label" style="text-align:center;margin-top:0;color:${color}">NOW</div>
-          ${keyed(model.now.key, html`<pv-chore-tile large now .row=${model.now} color=${color} ?locked=${this.locked}
+          ${keyed(model.now.key, html`<pv-chore-tile large now .row=${model.now} zone=${zoneOf(model.now)} color=${color} ?locked=${this.locked}
             .stars=${this.column.member.stars ? model.now.item.stars : 0}></pv-chore-tile>`)}
         </div>
       ` : html`<div class="label" style="text-align:center">All done for now 🎉</div>`}
@@ -556,7 +596,7 @@ export class PvChoresMyDay extends LitElement {
         <div class="steps">
           ${repeat(model.next, step => (step.kind === 'event' ? `event:${step.text}` : step.row.key), step => step.kind === 'event'
             ? html`<div class="step"><span class="picture" aria-hidden="true">${step.picture}</span>${step.text}</div>`
-            : html`<pv-chore-tile .row=${step.row} color=${color} ?locked=${this.locked}></pv-chore-tile>`)}
+            : html`<pv-chore-tile .row=${step.row} zone=${zoneOf(step.row)} color=${color} ?locked=${this.locked}></pv-chore-tile>`)}
         </div>
         </div>
       ` : nothing}
@@ -564,7 +604,7 @@ export class PvChoresMyDay extends LitElement {
         <div class="label">Later, waiting, and done</div>
         <div class="tiles">
           ${repeat([...model.later, ...model.waiting, ...model.done], r => r.key, r => html`
-            <pv-chore-tile .row=${r} color=${color} ?locked=${this.locked}></pv-chore-tile>
+            <pv-chore-tile .row=${r} zone=${zoneOf(r)} color=${color} ?locked=${this.locked}></pv-chore-tile>
           `)}
         </div>
       ` : nothing}
@@ -580,7 +620,7 @@ export class PvChoresMyDay extends LitElement {
 
   private _side() {
     const column = this.column;
-    const week = column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
+    const week = column.entries.flatMap(e => (e.kind === 'row' && isWeekEntry(e) ? [e.row] : []));
     if (this.layout !== 'landscape') {
       return nothing;
     }

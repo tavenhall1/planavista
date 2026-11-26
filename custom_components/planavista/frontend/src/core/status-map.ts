@@ -14,6 +14,17 @@ export interface StatusBadge {
   glyph?: string;
 }
 
+/** What a row missed before: how many periods, which unit, and whether they ran in a row. */
+export interface MissedFlag {
+  count: number;
+  unit: 'day' | 'week' | 'month' | 'time';
+  in_a_row: boolean;
+  periods: string[];
+  late: boolean;
+  /** The late records' occurrence keys (what Excuse the misses sends). */
+  keys: string[];
+}
+
 /** The fields of an item view (planavista/chores/subscribe) the status map reads. */
 export interface StatusView {
   status: string;
@@ -25,6 +36,7 @@ export interface StatusView {
   due_day?: string | null;
   note?: string | null;
   planned?: string | null;
+  missed?: MissedFlag | null;
 }
 
 export interface BadgeContext {
@@ -34,6 +46,8 @@ export interface BadgeContext {
   daysLeft: number;
   /** The chore's floating check-offs still open this week. */
   remaining: number;
+  /** Days left to the item's own deadline, today included (urgency-derive), or null. */
+  deadlineDays?: number | null;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -57,6 +71,38 @@ export function shortDay(day: string, today: string): string {
   return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
+const MONTH_WORDS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * One missed week or month (mirrors chores/late.py period_words): "last week" or
+ * "last month" just after it, else which it was ("the week of Sep 28", "in August").
+ * The week just before this one began 7 to 13 days ago.
+ */
+export function periodWords(unit: 'week' | 'month', first: string, today: string): string {
+  const start = dayDate(first);
+  if (unit === 'week') {
+    const days = daysBetween(first, today);
+    return days >= 7 && days < 14 ? 'last week' : `the week of ${MONTHS[start.getMonth()]} ${start.getDate()}`;
+  }
+  const now = dayDate(today);
+  const before = new Date(now.getFullYear(), now.getMonth() - 1, 1, 12);
+  if (start.getFullYear() === before.getFullYear() && start.getMonth() === before.getMonth()) return 'last month';
+  return `in ${MONTH_WORDS[start.getMonth()]}`;
+}
+
+/** The missed callout's words (mirrors chores/late.py missed_words). */
+export function missedWords(flag: MissedFlag, today: string): string {
+  const { count, unit } = flag;
+  const first = flag.periods[0];
+  if (count === 1) {
+    if (unit === 'week' || unit === 'month') return `Missed ${periodWords(unit, first, today)}`;
+    if (unit === 'day' && daysBetween(first, today) === 1) return 'Missed yesterday';
+    return `Missed ${shortDay(first, today)}`;
+  }
+  if (flag.in_a_row && (unit === 'day' || unit === 'week' || unit === 'month')) return `Missed ${count} ${unit}s in a row`;
+  return `Missed ${count} times`;
+}
+
 /**
  * The badge beside an item's name, or null when its estimate shows instead.
  * Waiting for approval and Sent back come first; then overdue, make-up, and due
@@ -66,7 +112,7 @@ export function shortDay(day: string, today: string): string {
 export function itemBadge(view: StatusView, ctx: BadgeContext): StatusBadge | null {
   switch (view.status) {
     case 'done':
-      return null;
+      return view.section === 'missed' ? { words: 'Done late', tone: 'muted' } : null;
     case 'pending':
       return { words: 'Waiting for approval', tone: 'act', glyph: '⏳' };
     case 'sent_back':
@@ -78,12 +124,14 @@ export function itemBadge(view: StatusView, ctx: BadgeContext): StatusBadge | nu
     default:
       break;
   }
+  if (view.missed) return { words: missedWords(view.missed, ctx.today), tone: 'bad', glyph: '×' };
   if (view.overdue_since) return { words: `Overdue since ${shortDay(view.overdue_since, ctx.today)}`, tone: 'bad', glyph: '•' };
   if (view.from) return { words: `From ${shortDay(view.from, ctx.today)}`, tone: 'neutral' };
   if (view.dated && view.due_day) {
     if (view.due_day === ctx.today) return { words: 'Due today', tone: 'time' };
     return { words: `Due ${shortDay(view.due_day, ctx.today)}`, tone: 'neutral' };
   }
+  if (ctx.deadlineDays === 3) return { words: '3 days left', tone: 'time', glyph: '•' };
   if (view.section === 'week' && view.window === 'week' && ctx.remaining > 0) {
     if (ctx.daysLeft <= 1) return { words: 'Last day', tone: 'bad', glyph: '•' };
     if (ctx.remaining >= ctx.daysLeft) return { words: `${ctx.daysLeft} days left`, tone: 'time', glyph: '•' };

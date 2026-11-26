@@ -172,3 +172,19 @@ async def test_two_items_with_one_name_check_off_the_open_one(hass: HomeAssistan
     await _update(hass, "todo.casey_chores", {"item": "Cat care", "status": "completed"})
     done = [c["occurrence"] for c in chores.engine.log["completions"] if c["chore"] == "cat_care"]
     assert done == ["cat_care|casey|day:2026-10-13|0", "cat_care|casey|day:2026-10-13|1"]
+
+
+def _miss(chores: Any, key: str, day: str) -> None:
+    """A late record, as the rollover leaves one (missed-and-urgency spec section 1)."""
+    from custom_components.planavista.chores.late import late_record
+
+    chores.engine.log["carried"].append(late_record(chores.engine._past_occurrence(key), date.fromisoformat(day)))
+    chores.async_notify()
+
+
+async def test_todo_describes_the_flag(hass: HomeAssistant, chores: Any) -> None:
+    for day in ("2026-10-11", "2026-10-12"):
+        _miss(chores, f"make_your_bed|dana|day:{day}|0", day)
+    await hass.async_block_till_done()
+    bed = next(i for i in await _items(hass, "todo.dana_chores") if i["uid"] == "make_your_bed|dana|day:2026-10-13|0")
+    assert (bed["status"], bed["description"]) == ("needs_action", "Missed 2 days in a row")

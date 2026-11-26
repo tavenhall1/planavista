@@ -1,7 +1,9 @@
 /** The chores feed and views as the card receives them (spec 10.7). */
 
+import type { MissedFlag } from '../../core/status-map';
+
 export type ItemStatus = 'open' | 'sent_back' | 'done' | 'pending' | 'excused' | 'away';
-export type Section = 'overdue' | 'today' | 'week';
+export type Section = 'missed' | 'overdue' | 'today' | 'week';
 export type Band = 'morning' | 'afternoon' | 'evening';
 export type Window = 'day' | 'week' | 'month' | 'once';
 
@@ -45,6 +47,8 @@ export interface ItemView {
   stars: number;
   from: string | null;
   overdue_since: string | null;
+  /** What this row missed before (late.py), or null. */
+  missed?: MissedFlag | null;
   needs_ok: boolean;
   completion: CompletionView | null;
   note: string | null;
@@ -168,6 +172,8 @@ export interface Board {
   band: Band;
   day: { start: string; end: string };
   week: { start: string; end: string; days_left: number };
+  /** How many rows carry a missed flag across the household. */
+  missed_total?: number;
   members: Record<string, BoardMember>;
   household: { due: number; done: number; pending: number };
   requests: ChoreRequest[];

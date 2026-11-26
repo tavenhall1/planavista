@@ -21,7 +21,7 @@ from custom_components.planavista.chores.runtime import DATA_CHORES
 from custom_components.planavista.chores.store import normalize_plan
 from custom_components.planavista.const import DOMAIN
 
-from .chores_sample import MEMBERS, SCENE, TZ, at, built, sample_activities
+from .chores_sample import MEMBERS, SCENE, TZ, at, built, sample_activities, sample_engine
 from .conftest import FakeCalendar, ws_command
 
 
@@ -94,6 +94,29 @@ async def test_an_outage_is_caught_up_at_startup(
     assert engine.balance("dana") == 1
     assert [s["period"] for s in engine.log["summaries"] if s["member"] == "dana"] == ["day:2026-10-12", "day:2026-10-13"]
     assert hass.states.get("sensor.dana_stars").state == "1"
+
+
+async def test_the_first_start_back_fills_open_misses(
+    hass: HomeAssistant, chicago: None, hass_storage: dict[str, Any], mock_config_entry: MockConfigEntry, freezer: Any
+) -> None:
+    """Upgrade day (missed-and-urgency spec 8): a log from before late records gets this week's open misses."""
+    before = sample_engine(at(10, 12, 9))
+    before.catch_up(at(10, 14, 9))
+    log = deepcopy(before.log)
+    log["carried"] = [c for c in log["carried"] if not c.get("missed")]
+    log.pop("late_backfill", None)
+    _seed(hass_storage, log=log)
+    freezer.move_to("2026-10-14T09:00:00-05:00")
+    runtime = await _start(hass, mock_config_entry)
+    bed = "make_your_bed|dana|day:2026-10-12|0"
+    assert runtime.engine.log["late_backfill"] == 1
+    assert any(c["key"] == bed and c.get("missed") for c in runtime.engine.log["carried"])
+    freezer.tick(2)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    saved = hass_storage["planavista.chores_log"]["data"]
+    assert saved["late_backfill"] == 1
+    assert any(c["key"] == bed and c.get("missed") for c in saved["carried"])
 
 
 async def test_a_missing_file_holds_chores_for_a_parent(
@@ -213,10 +236,10 @@ async def test_a_check_off_works_out_the_day_only_a_few_times(hass: HomeAssistan
     runs = 0
     items_on = ChoresEngine._items_on
 
-    def counted(self: ChoresEngine, day: Any, index: Any) -> Any:
+    def counted(self: ChoresEngine, day: Any, index: Any, **kwargs: Any) -> Any:
         nonlocal runs
         runs += 1
-        return items_on(self, day, index)
+        return items_on(self, day, index, **kwargs)
 
     with patch.object(ChoresEngine, "_items_on", counted):
         await hass.services.async_call(DOMAIN, "complete_chore", {"member": "casey", "chore": "yard_work"},

@@ -156,3 +156,22 @@ async def test_turning_chores_on_logs_no_errors(
     # asyncio's own slow-task notices come from the test harness's debug mode.
     assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING and r.name != "asyncio"] == []
     assert hass.states.get("sensor.casey_chores_left") is not None
+
+
+async def test_standalone_late_row_counts_in_chores_left(hass: HomeAssistant, chores: Any) -> None:
+    from datetime import date
+
+    from custom_components.planavista.chores.late import late_record
+
+    await _complete(hass, chores, "alex", "kitchen_cleanup")
+    assert hass.states.get("sensor.alex_chores_left").state == "0"
+    assert hass.states.get("binary_sensor.alex_chores_done").state == "on"
+    # Last week's groceries (Saturday's) were missed; this week's copy hasn't appeared yet.
+    key = "groceries|alex|week:2026-10-05|0"
+    chores.engine.log["carried"].append(late_record(chores.engine._past_occurrence(key), date(2026, 10, 11)))
+    chores.async_notify()
+    await hass.async_block_till_done()
+    left = hass.states.get("sensor.alex_chores_left")
+    assert (left.state, left.attributes["items"]) == ("1", ["Groceries"])
+    assert hass.states.get("binary_sensor.alex_chores_done").state == "off"
+    assert chores.board()["members"]["alex"]["today"]["due"] == 1  # still not part of the ring

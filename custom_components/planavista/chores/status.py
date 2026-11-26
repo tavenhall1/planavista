@@ -34,6 +34,10 @@ def describe(view: Mapping[str, Any], today: date) -> str | None:
         return f"Sent back: {view['note']}" if view.get("note") else "Sent back"
     if status == "done":
         return None
+    if view.get("missed") and status in OPEN:
+        from .late import missed_words  # late imports short_day from here
+
+        return missed_words(view["missed"], today)
     if (since := _day(view.get("overdue_since"))) is not None:
         return f"Overdue since {short_day(since, today)}"
     if (moved := _day(view.get("from"))) is not None:
@@ -49,5 +53,14 @@ OPEN = ("open", "sent_back")
 
 
 def left_today(view: dict[str, Any]) -> list[dict[str, Any]]:
-    """Items still due today: in today's ring and not done or waiting for approval."""
+    """Items still due today: in today's ring, or a late row of a missed chore, and not done or waiting."""
+    return [
+        i for i in view["items"]
+        if (i["counted"] or i.get("section") == "missed") and i["status"] in OPEN
+    ]
+
+
+def left_in_ring(view: dict[str, Any]) -> list[dict[str, Any]]:
+    """Items in today's ring not done or waiting: what the evening check reminds about (it stays as it was:
+    a missed chore's late row isn't counted there, missed-and-urgency non-goals; final review A-I3)."""
     return [i for i in view["items"] if i["counted"] and i["status"] in OPEN]

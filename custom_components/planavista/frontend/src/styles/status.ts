@@ -30,6 +30,7 @@ export const statusStyles = css`
     color: var(--pv-accent-tint-ink, #3B3BB0);
   }
 
+  .badge.warn,
   .badge.time {
     background: var(--pv-warn-bg, #FDF1DC);
     color: var(--pv-warn-ink, #8A5A00);

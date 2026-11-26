@@ -398,9 +398,12 @@ def test_renaming_a_once_chore_missed_at_the_rollover_keeps_it_finished() -> Non
     """Round 9 (r9a A7): a rename reopened it until 3 AM, in Settings' active list with nothing on the board."""
     engine = sample_engine(activities=[once("fix_the_gate", "Fix the gate", ["alex"], by="2026-10-13")])
     engine.catch_up(at(10, 14, 9))
+    # Its miss cleared, it finishes at the next rollover (a late record held it open: missed-and-urgency spec 1).
+    engine.excuse_missed(at(10, 14, 9, 30), key="fix_the_gate|alex|once|0", by="alex")
+    engine.catch_up(at(10, 15, 9))
     finished = engine.activity("fix_the_gate")["finished_at"]
     assert finished is not None
-    engine.save_activity(at(10, 14, 10), {"name": "Fix the garden gate"}, by="alex", source="tablet", activity_id="fix_the_gate")
+    engine.save_activity(at(10, 15, 10), {"name": "Fix the garden gate"}, by="alex", source="tablet", activity_id="fix_the_gate")
     assert engine.activity("fix_the_gate")["finished_at"] == finished
 
 
@@ -592,8 +595,11 @@ def test_a_missed_one_time_chore_stays_in_its_week() -> None:
     engine = sample_engine(activities=[once("fix_the_porch_light", "Fix the porch light", ["alex"], on="2026-10-14")])
     before = engine.board(at(10, 14, 10))["members"]["alex"]["week"]["due"]
     engine.catch_up(at(10, 15, 9))
-    assert engine.activity("fix_the_porch_light")["finished_at"] is not None
+    # Missed, its late record keeps it unfinished (missed-and-urgency spec 1); the week still counts it.
+    assert engine.activity("fix_the_porch_light")["finished_at"] is None
     assert engine.board(at(10, 15, 9))["members"]["alex"]["week"]["due"] == before == 1
+    engine.catch_up(at(10, 16, 9))
+    assert engine.board(at(10, 16, 9))["members"]["alex"]["week"]["due"] == 1
 
 
 def test_excusing_a_days_only_miss_says_the_streak_holds() -> None:
@@ -1165,10 +1171,10 @@ def test_a_busy_household_stays_quick() -> None:  # Review Focus 1
     runs = 0
     items_on = ChoresEngine._items_on
 
-    def counted(self: ChoresEngine, day: date, index: object) -> object:
+    def counted(self: ChoresEngine, day: date, index: object, **kwargs: object) -> object:
         nonlocal runs
         runs += 1
-        return items_on(self, day, index)
+        return items_on(self, day, index, **kwargs)
 
     started = wall.perf_counter()
     with patch.object(ChoresEngine, "_items_on", counted):

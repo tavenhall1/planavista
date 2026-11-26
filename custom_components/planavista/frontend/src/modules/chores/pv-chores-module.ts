@@ -30,13 +30,13 @@ import { eventsOn } from './calendar-ties';
 import { bedtimeOn, fairShares, goalFor } from './my-day-derive';
 import type { MyDayStyle } from './pv-chores-my-day';
 import type { DayView, WeekView } from './chores-types';
-import { weekHighlights, weekRows, weekShares } from './week-derive';
+import { weekDaysLeft, weekHighlights, weekRows, weekShares } from './week-derive';
 import { addDays } from './options-derive';
 import { RewardDraft, balances, elsewhereText, recentLine, redeemers, rewardCards, rewardFrom, settleAsks } from './rewards-derive';
 import { memoizeOne } from '../../utils/render-cache';
 import type { HoldDetail } from './pv-chore-item';
 import { needsOk } from './overlay';
-import { creditedText, dayWords, historyLines, itemOptions, skipWords, whoDidItBody } from './options-derive';
+import { creditedText, dayWords, excusedText, historyLines, itemOptions, skipWords, whoDidItBody } from './options-derive';
 import { RecentCheckoffs } from './recent-checkoffs';
 import type { OptionChoice } from './pv-chore-options';
 import { InboxRow, answeredText, approveAllSummary, excusedRequest, inboxGroups, lateRequest, reviewQuestion } from './inbox-derive';
@@ -563,7 +563,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
     const members = inOrder(this.household?.members ?? []);
     const view = this._week;
     return html`
-      <pv-chores-week .view=${view} .excusing=${this._excusing} .rows=${view ? weekRows(view, members, board.week.days_left) : []}
+      <pv-chores-week .view=${view} .excusing=${this._excusing} .rows=${view ? weekRows(view, members, weekDaysLeft(view)) : []}
         .highlights=${view ? weekHighlights(view, members) : []} .shares=${view ? weekShares(view, members) : []}
         .hass=${this.hass} .colorOf=${this._colorOf} layout=${this.layout} .current=${this._weekOffset === 0}
         ?failed=${this._weekFailed} ?canExcuse=${parentAccess(this.household, this.session) !== 'no'}
@@ -609,7 +609,7 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       const result = await api.excuseMissed(occurrence);
       const who = this._member(member)?.name;
       // Only a day that closes keeps the streak (round 9: it said so while the day had another miss).
-      this.showToast({ id: `excused-${occurrence}`, text: `Excused ${name}.${result.streak_holds && who ? ` ${who}'s streak holds.` : ''}` });
+      this.showToast({ id: `excused-${occurrence}`, text: excusedText(name, who, result.streak_holds) });
       // Its link stays gone until the day and the week show it excused (round 7: a double tap excused twice).
       await Promise.all([
         this._loadWeek(true),
@@ -1207,6 +1207,15 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         await this._run(() => api.request('skip', key), `Asked to skip ${skipWords(row.item.period, board.today)}. A parent will answer.`);
         return;
       }
+      case 'done': {
+        // A missed row's Done: the same check-off and PIN as a hold (final review B-I3).
+        if (!(await this.asMember(owner.id, `Who's checking off ${name}?`))) return;
+        const fresh = this.service?.board();
+        if (!fresh) return;
+        this._sheet = null;
+        this._checkOff(row, owner.id, fresh);
+        return;
+      }
       case 'undo': {
         if (!(await this.asMember(owner.id, `Who's unchecking ${name}?`))) return;
         service.enqueue({ op: 'undo', occurrence: key, member: owner.id, name });
@@ -1251,6 +1260,35 @@ export class PvChoresModule extends LitElement implements ModuleElement {
       case 'excuse': {
         if (!(await this.asParent(`Who's excusing ${name}?`))) return;
         await this._run(() => api.override(key, { excused: true }), `${name} is excused. Nothing is missed.`);
+        return;
+      }
+      case 'clear_missed':
+      case 'excuse_missed': {
+        const clearing = choice.id === 'clear_missed';
+        const keys = item.missed?.keys ?? [];
+        if (!clearing && !keys.length) return;
+        if (!(await this.asParent(clearing ? `Who's taking ${name} off the board?` : `Who's excusing ${name}?`))) return;
+        this._acting = true;
+        try {
+          const result = clearing ? null : await api.excuseMissedAll(keys);
+          if (clearing) await api.clearMissed(item.chore, item.member);
+          this._sheet = null;
+          this.showToast({
+            id: `ok-${Date.now()}`,
+            text: result ? excusedText(name, owner.name, result.streak_holds) : `${name} is off the board. It stays missed.`,
+          });
+        } catch (err) {
+          if (this._sheet?.kind === 'options') this._sheet = { ...this._sheet, busy: false };
+          if (errorCode(err) === 'not_missed') {
+            // Taken care of on another screen: nothing went wrong, so the sheet closes without alarm.
+            this._sheet = null;
+            this.showToast({ id: `ok-${Date.now()}`, text: errorMessage(err) ?? 'That was already taken care of.' });
+          } else {
+            this.showToast({ id: `err-${Date.now()}`, text: errorMessage(err) ?? "That didn't save. Try again.", tone: 'bad', ms: 6000 });
+          }
+        } finally {
+          this._acting = false;
+        }
         return;
       }
       case 'approve':

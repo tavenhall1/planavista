@@ -1,6 +1,6 @@
 import type { Member } from '../../core/household';
 import type { Access, ParentAccess } from '../../core/access';
-import { dayDate, daysBetween, minutesText, shortDay } from '../../core/status-map';
+import { dayDate, daysBetween, minutesText, missedWords, periodWords, shortDay, type MissedFlag } from '../../core/status-map';
 import type { Activity, Band, ChoreHistory, ItemView } from './chores-types';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -10,7 +10,8 @@ const CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export type OptionId =
   | 'plan_day' | 'more_time' | 'skip' | 'done_by' | 'history' | 'undo'
-  | 'change_due' | 'hand_off' | 'excuse' | 'edit' | 'delete' | 'approve' | 'send_back';
+  | 'change_due' | 'hand_off' | 'excuse' | 'edit' | 'delete' | 'approve' | 'send_back'
+  | 'clear_missed' | 'excuse_missed' | 'done';
 
 /** A day to pick in a sheet ("Tomorrow", "Sat", "Next Sat"). */
 export interface DayChip {
@@ -34,6 +35,8 @@ export interface OptionModel {
   late?: boolean;
   /** Not done for a check-off of an occurrence owed nothing: it stays excused (round 14). */
   excused?: boolean;
+  /** The records Excuse the misses sends (a missed chore's flag names them). */
+  keys?: string[];
 }
 
 export interface OptionsContext {
@@ -63,6 +66,12 @@ export interface OptionsModel {
   note: string | null;
   /** The note's color: bad for sent back or overdue, act for a request waiting (round 11). */
   noteTone?: 'bad' | 'act';
+  /** The red note of a chore missed before: what it says, and what doing it now does. */
+  missed?: { title: string; body: string };
+  /** Done, the sheet's first action on an open missed row: checks it off as a hold does (final review B-I3). */
+  done?: { label: string; tag?: string };
+  /** The sheet's closer: Close beside Done, else Done as on every sheet. */
+  closeLabel: 'Done' | 'Close';
   member: OptionModel[];
   parent: OptionModel[];
 }
@@ -171,6 +180,46 @@ function addedLine(activity: Activity | undefined, members: Member[], today: str
   return who ? `Added by ${who} ${when}` : `Added ${when}`;
 }
 
+/** Days as "Sep 26 and Sep 29 to Oct 1": a run of three or more days in a row reads as one stretch (final review B-m8). */
+function dayList(periods: string[], days: boolean): string {
+  const label = (p: string) => `${MONTHS[dayDate(p).getMonth()]} ${dayDate(p).getDate()}`;
+  const parts: string[] = [];
+  for (let i = 0; i < periods.length;) {
+    let j = i;
+    while (days && j + 1 < periods.length && daysBetween(periods[j], periods[j + 1]) === 1) j++;
+    if (j - i >= 2) parts.push(`${label(periods[i])} to ${label(periods[j])}`);
+    else for (let k = i; k <= j; k++) parts.push(label(periods[k]));
+    i = j + 1;
+  }
+  return parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+const THIS_ONE: Record<string, string> = { day: "today's", week: "this week's", month: "this month's" };
+
+/**
+ * The missed note's two lines (missed-and-urgency spec 6): the badge's words, then what doing it now does.
+ * `window` is the row's own (final review B-m2): a flagged copy says which copy takes it off the top.
+ */
+export function missedNote(flag: MissedFlag, today: string, window?: string | null): { title: string; body: string } {
+  const title = missedWords(flag, today);
+  if (!flag.late) {
+    const copy = THIS_ONE[window ?? (flag.unit === 'day' ? 'day' : 'week')] ?? 'this one';
+    return { title, body: `Doing ${copy} takes it off the top.` };
+  }
+  const { count, unit } = flag;
+  const list = dayList(flag.periods, unit === 'day');
+  const when = count === 1
+    ? (unit === 'week' || unit === 'month' ? periodWords(unit, flag.periods[0], today) : daysBetween(flag.periods[0], today) === 1 ? 'yesterday' : `on ${list}`)
+    : `the ${unit === 'time' ? 'times' : `${unit}s`} of ${list}`.replace('the times of', 'on');
+  const stays = count === 1 ? 'It stays in the record.' : count === 2 ? 'Both misses stay in the record.' : `All ${count} misses stay in the record.`;
+  return { title, body: `Not done ${when}. Doing it now takes it off the top. ${stays}` };
+}
+
+/** What excusing a miss says, from the day sheet or the options sheet: the streak only when it holds (round 9, B-m7). */
+export function excusedText(name: string, who: string | undefined, holds: boolean | undefined): string {
+  return `Excused ${name}.${holds && who ? ` ${who}'s streak holds.` : ''}`;
+}
+
 /** What the options sheet offers, depending on who's looking (spec 13.3). */
 export function itemOptions(ctx: OptionsContext): OptionsModel {
   const { item, activity, owner, members, today } = ctx;
@@ -213,6 +262,20 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
   }
   member.push({ id: 'history', label: 'History', hint: 'The streak, recent check-offs, and when it usually gets done.' });
 
+  // A chore missed before: a parent may take it off the board or excuse the misses, first (missed-and-urgency
+  // spec 6, the mockup's order). A late row stands for every record of the miss, so it has no hand-off or Excuse
+  // it of its own (final review B-I2); a flagged copy keeps them for today's copy.
+  const flag = item.missed;
+  const lateRow = item.section === 'missed';
+  if (flag && ctx.parent !== 'no') {
+    parent.push({ id: 'clear_missed', label: 'Take it off the board', tag: parentTag, hint: 'It stays missed. Nothing more to do this time.' });
+    if (flag.keys?.length) {
+      parent.push({
+        id: 'excuse_missed', label: flag.count === 1 ? 'Excuse the miss' : 'Excuse the misses', tag: parentTag, keys: flag.keys,
+        hint: flag.count === 1 ? 'There was a good reason. It counts as excused, not missed.' : 'There was a good reason. They count as excused, not missed.',
+      });
+    }
+  }
   if (ctx.parent !== 'no') {
     if (status === 'pending') {
       parent.push({ id: 'approve', label: 'Looks good', tag: parentTag, hint: 'Approves it, and the stars are earned.' });
@@ -228,7 +291,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
         pick: { min: today }, hint: due ? `Due ${dayWords(due, today)} now.` : 'It has no due date now.',
       });
     }
-    if (open) {
+    if (open && !lateRow) {
       parent.push({ id: 'hand_off', label: 'Hand it to someone else', tag: parentTag, hint: 'Just this time.' });
       parent.push({ id: 'excuse', label: 'Excuse it', tag: parentTag, hint: 'A sick day: nothing is missed, and the streak holds.' });
     }
@@ -250,10 +313,14 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
     added: addedLine(activity, members, today),
     note: [
       status === 'sent_back' ? (item.note ? `Sent back: ${item.note}` : 'Sent back') : request,
-      // Overdue from an earlier day (round 10: the sheet didn't say so).
-      overdue && open ? `Overdue since ${shortDay(item.overdue_since!, today)}` : null,
+      // Overdue from an earlier day (round 10: the sheet didn't say so); a late row's red note says it (B-I2).
+      overdue && open && !lateRow ? `Overdue since ${shortDay(item.overdue_since!, today)}` : null,
     ].filter(Boolean).join(' · ') || null,
-    noteTone: status === 'sent_back' || (overdue && open) ? 'bad' : 'act',
+    missed: flag ? missedNote(flag, today, item.window) : undefined,
+    noteTone: status === 'sent_back' || (overdue && open && !lateRow) ? 'bad' : 'act',
+    // Doing it now takes it off the top: Done first, the same check-off and PIN as a hold (B-I3).
+    ...(flag && open && memberMay ? { done: memberTag ? { label: 'Done', tag: memberTag } : { label: 'Done' } } : {}),
+    closeLabel: flag && open && memberMay ? 'Close' : 'Done',
     member,
     parent,
   };

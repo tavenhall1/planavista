@@ -104,7 +104,7 @@ async def test_get_chores_for_today_and_another_day(hass: HomeAssistant, chores:
         "key": TRASH, "chore": "take_out_the_trash", "name": "Take out the trash", "section": "today",
         "band": "evening", "status": "open", "counted": True, "due": "2026-10-19T03:00:00-05:00",
         "due_day": "2026-10-18", "planned": "2026-10-13", "from": None, "overdue_since": None,
-        "credit_minutes": 15.0, "stars": 1,
+        "credit_minutes": 15.0, "stars": 1, "missed": None,
     }
     saturday = await _call(hass, "get_chores", {"member": "casey", "date": "2026-10-17"})
     assert "rake_the_leaves|casey|rep:2026-10-17|0" in [i["key"] for i in saturday["items"]]

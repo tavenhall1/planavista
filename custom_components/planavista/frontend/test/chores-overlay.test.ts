@@ -43,6 +43,48 @@ describe('withQueued (spec 11.6)', () => {
   });
 });
 
+describe('withQueued and the missed flag (final review B-I4)', () => {
+  const flag = { count: 1, unit: 'week' as const, in_a_row: true, periods: ['2026-10-05'], late: false, keys: ['laundry|casey|week:2026-10-05|0'] };
+  const L0 = 'laundry|casey|week:2026-10-12|0';
+  const L1 = 'laundry|casey|week:2026-10-12|1';
+  const LATE = 'garage|casey|once|0';
+  const feed = {
+    ...board({ casey: column([
+      item(L0, { section: 'week', window: 'week', counted: false, missed: flag }),
+      item(L1, { section: 'week', window: 'week', counted: false }),
+      item(LATE, { section: 'missed', window: 'once', counted: false, overdue_since: '2026-10-10', missed: { ...flag, unit: 'time', late: true } }),
+      item(TRASH),
+    ]) }),
+    missed_total: 2,
+  };
+  const casey = (b: typeof feed) => Object.fromEntries(b.members.casey.items.map(i => [i.key, i]));
+
+  it("clears the chore's flag at once when one of its copies is checked off", () => {
+    const shown = withQueued(feed, [queued(L1, 'complete')]);
+    expect(casey(shown)[L1].status).toBe('done');
+    expect(casey(shown)[L0].missed).toBeNull();
+    expect(shown.missed_total).toBe(1);
+  });
+
+  it("clears a late row's flag when it is done late", () => {
+    const shown = withQueued(feed, [queued(LATE, 'complete')]);
+    expect(casey(shown)[LATE]).toMatchObject({ status: 'done', missed: null });
+    expect(shown.missed_total).toBe(1);
+  });
+
+  it('brings the flag back as the feed has it when the check-off is undone before it lands', () => {
+    const shown = withQueued(feed, [queued(L0, 'complete'), { ...queued(L0, 'undo'), id: 'q2' }]);
+    expect(casey(shown)[L0]).toMatchObject({ status: 'open', missed: flag });
+    expect(shown.missed_total).toBe(2);
+  });
+
+  it('leaves the flag of a check-off on another chore', () => {
+    const shown = withQueued(feed, [queued(TRASH, 'complete')]);
+    expect(casey(shown)[L0].missed).toEqual(flag);
+    expect(shown.missed_total).toBe(2);
+  });
+});
+
 describe('statsOf', () => {
   it('counts what is due today, with Waiting for approval apart and excused or away left out', () => {
     const stats = statsOf([

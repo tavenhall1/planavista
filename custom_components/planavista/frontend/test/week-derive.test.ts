@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { weekCell, weekDays, weekHighlights, weekRows, weekShares, weekTitle, weeklyLine } from '../src/modules/chores/week-derive';
+import { weekCell, weekDays, weekDaysLeft, weekHighlights, weekRows, weekShares, weekTitle, weeklyLine } from '../src/modules/chores/week-derive';
 import type { WeekDay, WeekView } from '../src/modules/chores/chores-types';
 import { MEMBERS } from './chores-fixtures';
 
@@ -46,6 +46,22 @@ describe('weekCell (spec 13.5)', () => {
   });
 });
 
+describe('the days left of the week shown (final review B-m5)', () => {
+  const shown = (start: string, end: string, today = '2026-10-15') => ({ week: { start, end }, today, members: {} }) as WeekView;
+
+  it("counts this week's from today, a later week's in full, and an earlier week's as over", () => {
+    expect(weekDaysLeft(shown('2026-10-12', '2026-10-19'))).toBe(4);
+    expect(weekDaysLeft(shown('2026-10-19', '2026-10-26'))).toBe(7);
+    expect(weekDaysLeft(shown('2026-10-05', '2026-10-12'))).toBe(0);
+  });
+
+  it("says nothing about days left once the week shown is over", () => {
+    const open = [{ chore: 'yard', name: 'Yard work', total: 1, done: 0, pending: 0, from: null }];
+    expect(weeklyLine(open, 0, '2026-10-15')).toEqual({ text: '0 of 1', badge: null, badgeTone: 'neutral', progress: 0 });
+    expect(weeklyLine(open, 7, '2026-10-15')).toMatchObject({ badge: '7 days left', badgeTone: 'neutral' });
+  });
+});
+
 describe('weeklyLine', () => {
   it('counts the week, and says what needs a look', () => {
     expect(weeklyLine(WEEK.members.blair.weekly, 6, '2026-10-13')).toEqual({ text: '1 of 3', badge: 'Laundry from Mon', badgeTone: 'time', progress: 1 / 3 });
@@ -53,6 +69,14 @@ describe('weeklyLine', () => {
     expect(weeklyLine(WEEK.members.alex.weekly, 4, '2026-10-13')).toMatchObject({ text: '0 of 2', badge: '4 days left' });
     expect(weeklyLine([], 6, '2026-10-13')).toBeNull();
     expect(weeklyLine(WEEK.members.blair.weekly, 6, '2026-10-11')?.badge).toBe('6 days left');
+  });
+
+  it('feels the deadline: 3 and 2 days warn, the last day is bad', () => {
+    const open = WEEK.members.alex.weekly;
+    expect(weeklyLine(open, 3, '2026-10-13')).toMatchObject({ badge: '3 days left', badgeTone: 'warn' });
+    expect(weeklyLine(open, 2, '2026-10-13')).toMatchObject({ badge: '2 days left', badgeTone: 'warn' });
+    expect(weeklyLine(open, 1, '2026-10-13')).toMatchObject({ badge: 'Last day', badgeTone: 'bad' });
+    expect(weeklyLine(open, 4, '2026-10-13')).toMatchObject({ badge: '4 days left', badgeTone: 'neutral' });
   });
 });
 

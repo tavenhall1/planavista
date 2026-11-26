@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { choresBarActions, choresGlance, choresStripActions, nextEventChip } from '../src/modules/chores/chores-glance';
+import { choresBarActions, choresGlance, choresStripActions, missedChip, nextEventChip } from '../src/modules/chores/chores-glance';
 import { choresEnabled, refusalText } from '../src/modules/chores/chores-service';
 import type { AccountKind, HouseholdView } from '../src/core/household';
 import type { Session } from '../src/core/session';
@@ -33,6 +33,17 @@ describe('choresGlance (spec 12.2)', () => {
     expect(choresGlance(done)[0].text).toBe('All 1 chores done today');
     expect(choresGlance(board({}))).toEqual([]);
     expect(choresGlance(null)).toEqual([]);
+  });
+
+  it('says how many chores were missed, beside the count, even on a day with nothing due (missed-and-urgency spec 3)', () => {
+    expect(missedChip({ ...today, missed_total: 2 })).toBe('2 missed');
+    expect(missedChip({ ...today, missed_total: 0 })).toBeNull();
+    expect(missedChip(today)).toBeNull();
+    expect(missedChip(null)).toBeNull();
+    const missed = { id: 'missed', text: '2 missed', tone: 'bad', primary: true, open: { module: 'chores', view: 'board' } };
+    expect(choresGlance({ ...today, missed_total: 2 }).map(c => c.id)).toEqual(['chores', 'missed']);
+    expect(choresGlance({ ...today, missed_total: 2 })[1]).toEqual(missed);
+    expect(choresGlance({ ...board({}), missed_total: 2 })).toEqual([missed]);
   });
 
   it('words the next event', () => {

@@ -426,6 +426,12 @@ hide_header: false
 
 ## 12. Design changelog
 
+### 2026-11-25: Added: missed and due-soon panels
+
+- A column's top panels: Missed (`--pv-bad-bg` with a 2 px `--pv-danger` edge) and due soon (`--pv-warn-bg`; on the last day the bad background and danger edge). The header gains an "N missed" chip beside the day's count.
+- Three days before a deadline, the step before the panel: the This week heading's "3 days left" turns `--pv-warn-ink`, and each row's badge says "3 days left" in amber with a dot.
+- A missed chore's sheet opens on a red note, then Done in the person's color; Take it off the board and Excuse the misses lead the parents' options, and the sheet closes with Close.
+
 ### 2026-10-19: Added: the Board steps through days
 
 - The Board has the Week view's stepper: round arrows around Today. A past day shows each person's record with Excuse it for a parent, a day to come what's planned, look only; checking off stays on Today. An untouched board comes back to today after two minutes, so a shared screen never sits on another day. On a phone the day is named short (Yesterday, Fri, Oct 16).

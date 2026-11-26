@@ -2,7 +2,7 @@ import type { Member } from '../../core/household';
 import { minutesText } from '../../core/status-map';
 import { FairShare, fairnessShares } from './fairness';
 import type { Band, Board, BoardMember, Reward } from './chores-types';
-import type { ColumnModel, RowModel } from './board-derive';
+import type { ColumnEntry, ColumnModel, RowModel } from './board-derive';
 import { BANDS, BAND_NAMES, bandAt, bandState } from './board-derive';
 import { DayEvent, clockTime } from './calendar-ties';
 import { pictureFor } from './picture-words';
@@ -60,6 +60,39 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
   return names;
 }
 
+/** Whether a column entry is one of This week's rows. A top panel's row (it has `panel`, zone missed or soon) is not: panelEntries has it. */
+export function isWeekEntry(entry: ColumnEntry): boolean {
+  return entry.kind === 'row' && entry.zone === 'week';
+}
+
+/** The List style's rows below the panels: Today's open rows and This week's, with no row the panels took. */
+export function listFor(column: ColumnModel): { open: RowModel[]; week: RowModel[] } {
+  const rows = column.entries.flatMap(e => (e.kind === 'row' && e.panel === undefined ? [e] : []));
+  return {
+    open: rows.filter(e => !isWeekEntry(e) && e.zone !== 'done').map(e => e.row),
+    week: rows.filter(isWeekEntry).map(e => e.row),
+  };
+}
+
+/**
+ * The List style's heads under the panels (final review B-m6): Today over its rows (or over "Nothing due
+ * today" when there's nothing at all), never an empty Today under panels that hold everything.
+ */
+export function listHeads(column: ColumnModel): { today: boolean; nothing: boolean } {
+  const rows = listFor(column).open.length + column.doneToday.length;
+  const panels = panelEntries(column).length;
+  return { today: rows > 0 || panels === 0, nothing: rows === 0 && panels === 0 };
+}
+
+/**
+ * The Board's top panels as My day draws them: Missed first, due-soon next, the
+ * same heads and rows (the column built them with `topPanels`). The Board's
+ * "Ring closed" note stays on the Board.
+ */
+export function panelEntries(column: ColumnModel): ColumnEntry[] {
+  return column.entries.filter(e => (e.kind === 'head' ? e.tone === 'missed' || e.tone === 'soon' || e.tone === 'last' : e.kind === 'row' && e.panel !== undefined));
+}
+
 /**
  * The Timeline (spec 13.4): calendar events at their real times, chores in
  * their bands in plan order, a line at now with what fits before the next
@@ -68,15 +101,17 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
 export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry[] {
   const now = ctx.now;
   const current = bandAt(now, ctx.dayStarts);
-  const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
+  // The panels' rows are drawn above the timeline, once; they still count for what fits.
+  const panelRows = column.entries.flatMap(e => (e.kind === 'row' && e.panel !== undefined ? [e.row] : []));
+  const rows = column.entries.flatMap(e => (e.kind === 'row' && e.panel === undefined ? [{ row: e.row, zone: e.zone }] : []));
   const bandOf = (row: RowModel): Band => row.item.band ?? current;
   // A check-off waiting for approval happened already: it sits at its time, like a done one (milestone 8).
   const checkedOff = (row: RowModel) => row.state === 'pending' && !!row.item.completion;
   // Overdue ones and ones left from an earlier band are due now.
   const dueNow = rows
-    .filter(r => (r.zone === 'overdue' || r.zone === 'past') && !checkedOff(r.row))
+    .filter(r => (r.zone === 'missed' || r.zone === 'overdue' || r.zone === 'past') && !checkedOff(r.row))
     .map(r => r.row);
-  const open = rows.filter(r => (r.zone === 'now' || r.zone === 'later') && !checkedOff(r.row)).map(r => r.row);
+  const open = rows.filter(r => (r.zone === 'now' || r.zone === 'later' || r.zone === 'soon') && !checkedOff(r.row)).map(r => r.row);
   const waiting = rows.filter(r => r.zone !== 'week' && r.zone !== 'done' && checkedOff(r.row)).map(r => r.row);
   const done = [...column.doneToday, ...waiting];
   const week = rows.filter(r => r.zone === 'week').map(r => r.row);
@@ -116,7 +151,7 @@ export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry
             kind: 'free', key: 'free',
             until: next ? clockTime(next.start, ctx.timeFormat) : null,
             span: free !== null ? minutesText(free) : null,
-            fits: fitsIn(free, [...dueNow, ...open, ...week]),
+            fits: fitsIn(free, [...panelRows.filter(r => !checkedOff(r)), ...dueNow, ...open, ...week]),
           },
         });
       }
@@ -181,13 +216,16 @@ export interface PicturesModel {
   waiting: RowModel[];
   done: RowModel[];
   later: RowModel[];
+  /** The panel look of a row's tile (missed, soon, last): its own in a mixed panel (final review B-m3). */
+  zones: Map<string, string>;
 }
 
 /** Pictures (spec 13.4): one huge Now tile, a Now to Next strip, then waiting and done tiles. */
 export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, format: '12h' | '24h'): PicturesModel {
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
+  const zones = new Map(column.entries.flatMap(e => (e.kind === 'row' && e.panel ? [[e.row.key, e.tile ?? e.panel] as [string, string]] : [])));
   const todo = rows.filter(r => r.zone !== 'done' && (r.row.state === 'open' || r.row.state === 'sent_back'));
-  const order = ['overdue', 'now', 'past', 'later', 'week'];
+  const order = ['missed', 'soon', 'overdue', 'now', 'past', 'later', 'week'];
   todo.sort((a, b) => order.indexOf(a.zone) - order.indexOf(b.zone));
   const [first, ...others] = todo.map(r => r.row);
   const next: PicturesModel['next'] = [];
@@ -198,8 +236,10 @@ export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, 
     now: first ?? null,
     next,
     waiting: rows.filter(r => r.row.state === 'pending').map(r => r.row),
-    done: column.doneToday,
+    // Done today holds a late check-off waiting for approval too (0.15.0); it shows among the waiting.
+    done: column.doneToday.filter(r => r.state !== 'pending'),
     later: others.slice(1),
+    zones,
   };
 }
 

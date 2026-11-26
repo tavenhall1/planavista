@@ -244,7 +244,7 @@ async def test_excusing_a_missed_one_is_a_parents(
     reply = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "occurrence": CAT_MONDAY_EVENING, "note": "Sick"})
     assert reply["result"] == {"result": "excused", "occurrence": CAT_MONDAY_EVENING, "streak_holds": True}
     again = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "occurrence": CAT_MONDAY_EVENING})
-    assert again["error"] == {"code": "not_missed", "message": "That chore wasn't missed, or it was already excused."}
+    assert again["error"] == {"code": "not_missed", "message": "That was already taken care of."}
 
 
 async def test_a_person_picks_their_own_my_day_style_and_goal(
