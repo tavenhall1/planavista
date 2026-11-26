@@ -21,7 +21,7 @@ export interface MissedFlag {
   in_a_row: boolean;
   periods: string[];
   late: boolean;
-  /** The late records' occurrence keys, (what Excuse the misses sends). */
+  /** The late records' occurrence keys (what Excuse the misses sends). */
   keys: string[];
 }
 
@@ -71,13 +71,31 @@ export function shortDay(day: string, today: string): string {
   return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
+const MONTH_WORDS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * One missed week or month (mirrors chores/late.py period_words): "last week" or
+ * "last month" just after it, else which it was ("the week of Sep 28", "in August").
+ * The week just before this one began 7 to 13 days ago.
+ */
+export function periodWords(unit: 'week' | 'month', first: string, today: string): string {
+  const start = dayDate(first);
+  if (unit === 'week') {
+    const days = daysBetween(first, today);
+    return days >= 7 && days < 14 ? 'last week' : `the week of ${MONTHS[start.getMonth()]} ${start.getDate()}`;
+  }
+  const now = dayDate(today);
+  const before = new Date(now.getFullYear(), now.getMonth() - 1, 1, 12);
+  if (start.getFullYear() === before.getFullYear() && start.getMonth() === before.getMonth()) return 'last month';
+  return `in ${MONTH_WORDS[start.getMonth()]}`;
+}
+
 /** The missed callout's words (mirrors chores/late.py missed_words). */
 export function missedWords(flag: MissedFlag, today: string): string {
   const { count, unit } = flag;
   const first = flag.periods[0];
   if (count === 1) {
-    if (unit === 'week') return 'Missed last week';
-    if (unit === 'month') return 'Missed last month';
+    if (unit === 'week' || unit === 'month') return `Missed ${periodWords(unit, first, today)}`;
     if (unit === 'day' && daysBetween(first, today) === 1) return 'Missed yesterday';
     return `Missed ${shortDay(first, today)}`;
   }

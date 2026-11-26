@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { badgeBelow, daysBetween, itemBadge, minutesText, pastBadge, ringLabel, shortDay, type StatusView } from '../src/core/status-map';
+import { badgeBelow, daysBetween, itemBadge, minutesText, pastBadge, periodWords, ringLabel, shortDay, type StatusView } from '../src/core/status-map';
 
 const TABLE = JSON.parse(readFileSync(new URL('../../../../tests/fixtures/chores_status.json', import.meta.url), 'utf-8')) as {
   today: string;
@@ -17,6 +17,19 @@ describe('itemBadge', () => {
   it.each(TABLE.cases)('$name', c => {
     const badge = itemBadge(c.view, { today: TABLE.today, daysLeft: c.days_left ?? 6, remaining: c.remaining ?? 1 });
     expect(badge).toEqual(c.card);
+  });
+});
+
+describe('periodWords', () => {
+  // Final review A-I4c, as chores/late.py period_words says it.
+  it('says last only for the week or month just before this one', () => {
+    expect(periodWords('week', '2026-10-05', '2026-10-14')).toBe('last week');
+    expect(periodWords('week', '2026-09-28', '2026-10-14')).toBe('the week of Sep 28');
+    expect(periodWords('week', '2026-09-28', '2026-10-11')).toBe('last week');
+    expect(periodWords('month', '2026-09-01', '2026-10-14')).toBe('last month');
+    expect(periodWords('month', '2026-08-01', '2026-10-14')).toBe('in August');
+    expect(periodWords('month', '2025-12-01', '2026-01-20')).toBe('last month');
+    expect(periodWords('month', '2025-10-01', '2026-01-20')).toBe('in October');
   });
 });
 

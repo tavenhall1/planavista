@@ -12,7 +12,12 @@ from typing import Any
 
 from .occurrences import Occurrence
 from .periods import Clock
-from .status import short_day
+from .status import MONTH_NAMES, short_day
+
+MONTH_WORDS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
 
 CREDITED = ("done", "pending")  # the engine's credited states (engine.CREDITED; kept here to stay import-free)
 
@@ -69,22 +74,42 @@ def _unit_and_start(record: Mapping[str, Any], clock: Clock) -> tuple[str, date]
     if kind == "day" and start is not None:
         return "day", start
     if window == "day":
-        return "day", due_day or start or since or date.min
+        day = due_day or start or since or date.min
+        if kind == "rep" and due_day is not None and due_day == clock.week_end(due_day) - timedelta(days=1):
+            # A day's Repeats under Make it up is due as its week ends: a missed week (final review A-I4b).
+            return "week", clock.week_start(due_day)
+        return "day", day
     if window == "week":
         if due_day is not None and due_day != clock.week_end(due_day) - timedelta(days=1):
             return "day", due_day  # a Strict picked day, due at the end of its own day
-        return "week", start or (clock.week_start(anchor) if anchor else date.min)
+        base = start or anchor
+        # A Repeats chore's period is its instance's day: the week is the one holding it (final review A-I4a).
+        return "week", clock.week_start(base) if base else date.min
     if window == "month":
         base = start or anchor
         return "month", Clock.month_start(base) if base else date.min
     return "time", anchor or date.min
 
 
+def _owed_in(
+    start: date, end: date, period_scheduled: Callable[[date], bool], away: Callable[[date], bool]
+) -> bool:
+    """Whether a week or month between two misses was owed: scheduled, and the person not away all of it."""
+    if not period_scheduled(start):
+        return False
+    return not all(away(start + timedelta(days=i)) for i in range((end - start).days))
+
+
 def missed_flag(
     records: list[Mapping[str, Any]], *, late: bool, scheduled: Callable[[date], bool],
-    away: Callable[[date], bool], clock: Clock,
+    away: Callable[[date], bool], clock: Clock, period_scheduled: Callable[[date], bool] | None = None,
 ) -> dict[str, Any]:
-    """`{count, unit, in_a_row, periods, late, keys}` for one chore and member's late records."""
+    """`{count, unit, in_a_row, periods, late, keys}` for one chore and member's late records.
+
+    `scheduled(day)` says whether the chore was planned on a day, `period_scheduled(start)` whether
+    anything of it was owed in the week or month starting then: a day, week, or month the chore
+    wasn't owed, or the person was away all of, doesn't break a run.
+    """
     starts: dict[date, str] = {}
     for record in records:
         unit, start = _unit_and_start(record, clock)
@@ -100,7 +125,15 @@ def missed_flag(
         )
     elif unit in ("week", "month"):
         step = clock.week_end if unit == "week" else Clock.month_end
-        in_a_row = all(step(a) == b for a, b in zip(days, days[1:]))
+        owed = period_scheduled or (lambda start: True)
+        in_a_row = True
+        for a, b in zip(days, days[1:]):
+            between = step(a)
+            while between < b and not _owed_in(between, step(between), owed, away):
+                between = step(between)
+            if between != b:
+                in_a_row = False
+                break
     return {
         "count": len(days), "unit": unit, "in_a_row": in_a_row,
         "periods": [day.isoformat() for day in days], "late": late,
@@ -108,15 +141,29 @@ def missed_flag(
     }
 
 
+def period_words(unit: str, first: date, today: date) -> str:
+    """One missed week or month: "last week" or "last month" just after it, else which it was.
+
+    The week just before this one began 7 to 13 days ago (final review A-I4c); the card's
+    status map says the same (tests/fixtures/chores_status.json).
+    """
+    if unit == "week":
+        if 7 <= (today - first).days < 14:
+            return "last week"
+        return f"the week of {MONTH_NAMES[first.month - 1]} {first.day}"
+    before = today.replace(day=1) - timedelta(days=1)
+    if (first.year, first.month) == (before.year, before.month):
+        return "last month"
+    return f"in {MONTH_WORDS[first.month - 1]}"
+
+
 def missed_words(flag: Mapping[str, Any], today: date) -> str:
     """The callout's words (spec section 3)."""
     count, unit = flag["count"], flag["unit"]
     first = date.fromisoformat(flag["periods"][0])
     if count == 1:
-        if unit == "week":
-            return "Missed last week"
-        if unit == "month":
-            return "Missed last month"
+        if unit in ("week", "month"):
+            return f"Missed {period_words(unit, first, today)}"
         if unit == "day" and first == today - timedelta(days=1):
             return "Missed yesterday"
         return f"Missed {short_day(first, today)}"

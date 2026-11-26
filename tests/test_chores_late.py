@@ -148,6 +148,91 @@ def test_once_chore_counts_as_time() -> None:
     assert flag["periods"] == ["2026-10-13"]
 
 
+def _rep(chore: str, instance: date, window: str, due: datetime) -> Occurrence:
+    return _occ(chore, "casey", f"rep:{instance.isoformat()}", 0, window, due)
+
+
+def _week_rep(instance: date) -> Occurrence:
+    """A weekly Repeats chore any time in its week: due as its week ends."""
+    return _rep("sweep", instance, "week", CLOCK.day_start(CLOCK.week_end(instance)))
+
+
+def test_weekly_repeats_any_time_in_the_week_count_weeks_in_a_row() -> None:
+    # Final review A-I4a: the period is the instance's day (a Saturday), not the week's first day.
+    records = [late.late_record(_week_rep(date(2026, 10, d)), date(2026, 10, d + 1)) for d in (3, 10)]
+    flag = _flag(records)
+    assert (flag["count"], flag["unit"], flag["in_a_row"]) == (2, "week", True)
+    assert flag["periods"] == ["2026-09-28", "2026-10-05"]
+    assert late.missed_words(flag, TODAY) == "Missed 2 weeks in a row"
+
+
+def test_a_day_repeats_due_at_the_weeks_end_is_a_missed_week() -> None:
+    # Final review A-I4b: under Make it up a Saturday's Repeats is due as its week ends.
+    def saturday(d: int) -> dict:
+        day = date(2026, 10, d)
+        return late.late_record(_rep("rake", day, "day", CLOCK.day_start(CLOCK.week_end(day))), day + timedelta(days=1))
+
+    one = _flag([saturday(10)])
+    assert (one["count"], one["unit"], one["periods"]) == (1, "week", ["2026-10-05"])
+    assert late.missed_words(one, TODAY) == "Missed last week"
+    both = _flag([saturday(3), saturday(10)])
+    assert (both["count"], both["unit"], both["in_a_row"]) == (2, "week", True)
+    # Strict, due at the end of its own day (not the week's last): a missed day.
+    strict = late.late_record(_rep("rake", date(2026, 10, 10), "day", CLOCK.day_end(date(2026, 10, 10))), date(2026, 10, 10))
+    assert (_flag([strict])["unit"], _flag([strict])["periods"]) == ("day", ["2026-10-10"])
+
+
+def test_an_older_single_week_or_month_is_named() -> None:
+    # Final review A-I4c: "last" only for the week or month just before this one.
+    def words(unit: str, first: str, today: date = TODAY) -> str:
+        return late.missed_words({"count": 1, "unit": unit, "in_a_row": True, "periods": [first], "late": True}, today)
+
+    assert words("week", "2026-10-05") == "Missed last week"
+    assert words("week", "2026-09-28") == "Missed the week of Sep 28"
+    assert words("week", "2026-09-28", date(2026, 10, 11)) == "Missed last week"
+    assert words("month", "2026-09-01") == "Missed last month"
+    assert words("month", "2026-08-01") == "Missed in August"
+    assert words("month", "2025-12-01", date(2026, 1, 20)) == "Missed last month"
+    assert words("month", "2025-10-01", date(2026, 1, 20)) == "Missed in October"
+
+
+def test_an_away_or_unscheduled_week_does_not_break_a_weekly_run() -> None:
+    # Final review A-I4d.
+    weeks = [late.late_record(_laundry(0, w), w + timedelta(days=6)) for w in (date(2026, 9, 28), date(2026, 10, 12))]
+    between = date(2026, 10, 5)
+
+    def flag(**predicates) -> dict:
+        return late.missed_flag(weeks, late=False, clock=CLOCK, **{
+            "scheduled": lambda d: True, "away": lambda d: False, **predicates,
+        })
+
+    assert flag()["in_a_row"] is False  # the week between was done or excused
+    assert flag(period_scheduled=lambda start: start != between)["in_a_row"] is True
+    away_all = flag(away=lambda d: between <= d < between + timedelta(days=7))
+    assert away_all["in_a_row"] is True
+    assert late.missed_words(away_all, date(2026, 10, 20)) == "Missed 2 weeks in a row"
+    # Away for part of it: the week was still owed.
+    assert flag(away=lambda d: d == between)["in_a_row"] is False
+
+
+def test_monthly_misses_count_months() -> None:
+    def month(m: int) -> dict:
+        day = date(2026, m, 15)
+        return late.late_record(_rep("filters", day, "month", CLOCK.day_start(Clock.month_end(day))), Clock.month_end(day))
+
+    flag = _flag([month(8), month(9)])
+    assert (flag["count"], flag["unit"], flag["in_a_row"]) == (2, "month", True)
+    assert flag["periods"] == ["2026-08-01", "2026-09-01"]
+    assert late.missed_words(flag, TODAY) == "Missed 2 months in a row"
+    gap = [month(7), month(9)]
+    assert _flag(gap)["in_a_row"] is False
+    unscheduled = late.missed_flag(
+        gap, late=True, clock=CLOCK, scheduled=lambda d: True, away=lambda d: False,
+        period_scheduled=lambda start: start != date(2026, 8, 1),
+    )
+    assert unscheduled["in_a_row"] is True
+
+
 # The engine: late records made, answered, and tidied (spec section 1) ------------------------
 
 MONDAY = at(10, 12, 9)
@@ -384,6 +469,23 @@ def test_flag_rides_on_todays_copy() -> None:
     assert [c["key"] for c in engine.log["carried"] if c["chore"] == "make_your_bed"] == [
         BED, "make_your_bed|dana|day:2026-10-13|0",
     ]
+
+
+@pytest.mark.parametrize("between", ["away", "excused"])
+def test_a_weekly_run_skips_an_away_week_but_not_an_excused_one(between: str) -> None:
+    # Final review A-I4d: a floating weekly chore has no day of its own, so its week is what was owed.
+    yard = plan("yard_work", "Yard work", ["casey"], 1, "week")
+    engine = sample_engine(at(9, 28, 9), activities=[yard])
+    if between == "away":
+        engine.member("casey")["away"] = [{"from": "2026-10-05", "to": "2026-10-11", "note": None}]
+    else:
+        engine.catch_up(at(10, 7, 9))  # a done week would answer the first miss; an excused one is owed nothing
+        engine.excuse(at(10, 7, 9), chore="yard_work", member="casey", by="blair")
+    engine.catch_up(at(10, 20, 9))
+    [copy] = [i for i in engine.items(at(10, 20, 9))["casey"] if i.missed]
+    assert copy.missed["periods"] == ["2026-09-28", "2026-10-12"]
+    words = late.missed_words(copy.missed, date(2026, 10, 20))
+    assert words == ("Missed 2 weeks in a row" if between == "away" else "Missed 2 times")
 
 
 def test_one_checkoff_clears_every_record() -> None:
