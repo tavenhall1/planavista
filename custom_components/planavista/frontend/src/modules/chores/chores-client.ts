@@ -65,6 +65,16 @@ export class ChoresApi extends WsApi {
     return this.call('planavista/chores/excuse_missed', note ? { occurrence, note } : { occurrence });
   }
 
+  /** A parent takes a chore's missed callout off the board for one holder; the record keeps it missed. */
+  clearMissed(chore: string, member: string): Promise<{ cleared: number }> {
+    return this.call('planavista/chores/clear_missed', { chore, member });
+  }
+
+  /** Excuse several misses at once (the sheet's Excuse the misses). */
+  excuseMissedAll(keys: string[]): Promise<{ result: string; occurrences: string[]; streak_holds?: boolean }> {
+    return this.call('planavista/chores/excuse_missed', { keys });
+  }
+
   saveActivity(activity: Partial<Activity>, existing?: { id: string; rev?: number }): Promise<{ activity: Activity }> {
     const fields: Record<string, unknown> = { activity };
     if (existing) {

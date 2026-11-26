@@ -7,6 +7,7 @@ import {
   dueChips,
   historyLines,
   itemOptions,
+  missedNote,
   moreTimeChips,
   type OptionsContext,
   planChips,
@@ -14,6 +15,7 @@ import {
   whoDidItBody,
 } from '../src/modules/chores/options-derive';
 import { MEMBERS, TODAY, activity, item } from './chores-fixtures';
+import type { MissedFlag } from '../src/core/status-map';
 
 const [alex, blair, casey] = MEMBERS;
 const YARD = item('yard_work|casey|week:2026-10-12|0', {
@@ -159,5 +161,49 @@ describe('Who did it? (milestone 8)', () => {
     expect(creditedText({ name: 'Dana', stars: true }, 1)).toBe('Dana gets the credit and the stars.');
     expect(creditedText({ name: 'Blair', stars: false }, 1)).toBe('Blair gets the credit.');
     expect(creditedText({ name: 'Dana', stars: true }, 0)).toBe('Dana gets the credit.');
+  });
+});
+
+describe("a missed chore's options (missed-and-urgency spec 6)", () => {
+  const flag = (fields: Partial<MissedFlag>): MissedFlag => ({
+    count: 1, unit: 'week', in_a_row: false, periods: ['2026-10-05'], late: true, keys: ['yard_work|casey|week:2026-10-05|0'], ...fields,
+  });
+
+  it('says what doing it now does, and what stays in the record', () => {
+    expect(missedNote(flag({ late: false }), TODAY)).toEqual({ title: 'Missed last week', body: "Doing this week's takes it off the top." });
+    expect(missedNote(flag({ late: false, unit: 'day', periods: ['2026-10-12'] }), TODAY).body).toBe("Doing today's takes it off the top.");
+    expect(missedNote(flag({}), TODAY).body).toBe('Not done last week. Doing it now takes it off the top. It stays in the record.');
+    expect(missedNote(flag({ count: 2, periods: ['2026-10-05', '2026-10-12'], in_a_row: true }), TODAY)).toEqual({
+      title: 'Missed 2 weeks in a row',
+      body: 'Not done the weeks of Oct 5 and Oct 12. Doing it now takes it off the top. Both misses stay in the record.',
+    });
+    expect(missedNote(flag({ count: 3, periods: ['2026-09-28', '2026-10-05', '2026-10-12'] }), TODAY).body)
+      .toBe('Not done the weeks of Sep 28, Oct 5 and Oct 12. Doing it now takes it off the top. All 3 misses stay in the record.');
+  });
+
+  it('gives a parent Take it off the board and Excuse the misses, with the count in the label', () => {
+    const many = flag({ count: 2, periods: ['2026-10-05', '2026-10-12'], keys: ['a|casey|week:2026-10-05|0', 'a|casey|week:2026-10-12|0'] });
+    const options = itemOptions(ctx({ item: { ...YARD, missed: many } }));
+    expect(options.missed?.title).toBe('Missed 2 times');
+    expect(options.parent.filter(o => o.id === 'clear_missed' || o.id === 'excuse_missed')).toEqual([
+      { id: 'clear_missed', label: 'Take it off the board', tag: '🔒 Parent', hint: 'It stays missed. Nothing more to do this time.' },
+      { id: 'excuse_missed', label: 'Excuse the misses', tag: '🔒 Parent', hint: 'There was a good reason. They count as excused, not missed.', keys: many.keys },
+    ]);
+    const one = itemOptions(ctx({ item: { ...YARD, missed: flag({}) } }));
+    expect(one.parent.find(o => o.id === 'excuse_missed')?.label).toBe('Excuse the miss');
+    expect(one.parent.find(o => o.id === 'excuse_missed')?.hint).toBe('There was a good reason. It counts as excused, not missed.');
+  });
+
+  it('offers nothing about misses to a child, or on a chore with none', () => {
+    expect(itemOptions(ctx({ item: { ...YARD, missed: flag({}) }, parent: 'no' })).parent).toEqual([]);
+    expect(itemOptions(ctx({ item: { ...YARD, missed: flag({}) }, parent: 'no' })).missed?.title).toBe('Missed last week');
+    expect(itemOptions(ctx({})).missed).toBeUndefined();
+    expect(ids(itemOptions(ctx({})).parent)).not.toContain('clear_missed');
+  });
+
+  it('leaves out Excuse the misses when the feed names no records', () => {
+    const options = itemOptions(ctx({ item: { ...YARD, missed: flag({ keys: undefined }) } }));
+    expect(ids(options.parent)).toContain('clear_missed');
+    expect(ids(options.parent)).not.toContain('excuse_missed');
   });
 });

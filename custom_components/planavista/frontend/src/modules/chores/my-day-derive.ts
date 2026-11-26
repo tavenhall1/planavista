@@ -65,11 +65,6 @@ export function isWeekEntry(entry: ColumnEntry): boolean {
   return entry.kind === 'row' && entry.zone === 'week';
 }
 
-/**
- * The Board's top panels as My day draws them: Missed first, due-soon next, the
- * same heads and rows (the column built them with `topPanels`). The Board's
- * "Ring closed" note stays on the Board.
- */
 /** The List style's rows below the panels: Today's open rows and This week's, with no row the panels took. */
 export function listFor(column: ColumnModel): { open: RowModel[]; week: RowModel[] } {
   const rows = column.entries.flatMap(e => (e.kind === 'row' && e.panel === undefined ? [e] : []));
@@ -79,6 +74,11 @@ export function listFor(column: ColumnModel): { open: RowModel[]; week: RowModel
   };
 }
 
+/**
+ * The Board's top panels as My day draws them: Missed first, due-soon next, the
+ * same heads and rows (the column built them with `topPanels`). The Board's
+ * "Ring closed" note stays on the Board.
+ */
 export function panelEntries(column: ColumnModel): ColumnEntry[] {
   return column.entries.filter(e => (e.kind === 'head' ? e.tone === 'missed' || e.tone === 'soon' || e.tone === 'last' : e.kind === 'row' && e.panel !== undefined));
 }

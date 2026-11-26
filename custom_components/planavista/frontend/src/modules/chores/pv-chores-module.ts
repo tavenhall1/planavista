@@ -1253,6 +1253,32 @@ export class PvChoresModule extends LitElement implements ModuleElement {
         await this._run(() => api.override(key, { excused: true }), `${name} is excused. Nothing is missed.`);
         return;
       }
+      case 'clear_missed':
+      case 'excuse_missed': {
+        const clearing = choice.id === 'clear_missed';
+        const keys = item.missed?.keys ?? [];
+        if (!clearing && !keys.length) return;
+        if (!(await this.asParent(clearing ? `Who's taking ${name} off the board?` : `Who's excusing ${name}?`))) return;
+        this._acting = true;
+        try {
+          if (clearing) await api.clearMissed(item.chore, item.member);
+          else await api.excuseMissedAll(keys);
+          this._sheet = null;
+          this.showToast({ id: `ok-${Date.now()}`, text: clearing ? `${name} is off the board. It stays missed.` : `${name} is excused. Nothing is missed.` });
+        } catch (err) {
+          if (this._sheet?.kind === 'options') this._sheet = { ...this._sheet, busy: false };
+          if (errorCode(err) === 'not_missed') {
+            // Taken care of on another screen: nothing went wrong, so the sheet closes without alarm.
+            this._sheet = null;
+            this.showToast({ id: `ok-${Date.now()}`, text: errorMessage(err) ?? 'That was already taken care of.' });
+          } else {
+            this.showToast({ id: `err-${Date.now()}`, text: errorMessage(err) ?? "That didn't save. Try again.", tone: 'bad', ms: 6000 });
+          }
+        } finally {
+          this._acting = false;
+        }
+        return;
+      }
       case 'approve':
       case 'send_back': {
         const request = item.completion?.id;

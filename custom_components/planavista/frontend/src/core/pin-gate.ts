@@ -14,7 +14,7 @@ export interface PinGate {
 const VERBS: Record<string, string> = {
   adding: 'add', approving: 'approve', asking: 'ask', changing: 'change', checking: 'check', counting: 'count', declining: 'decline', deleting: 'delete', doing: 'do',
   excusing: 'excuse', finishing: 'finish', getting: 'get', giving: 'give', handing: 'hand', opening: 'open', planning: 'plan',
-  sending: 'send', setting: 'set', starting: 'start', unchecking: 'uncheck',
+  sending: 'send', setting: 'set', starting: 'start', taking: 'take', unchecking: 'uncheck',
 };
 
 const FIXED: Record<string, string> = {

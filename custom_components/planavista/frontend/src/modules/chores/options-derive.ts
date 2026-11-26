@@ -1,6 +1,6 @@
 import type { Member } from '../../core/household';
 import type { Access, ParentAccess } from '../../core/access';
-import { dayDate, daysBetween, minutesText, shortDay } from '../../core/status-map';
+import { dayDate, daysBetween, minutesText, missedWords, shortDay, type MissedFlag } from '../../core/status-map';
 import type { Activity, Band, ChoreHistory, ItemView } from './chores-types';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -10,7 +10,8 @@ const CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export type OptionId =
   | 'plan_day' | 'more_time' | 'skip' | 'done_by' | 'history' | 'undo'
-  | 'change_due' | 'hand_off' | 'excuse' | 'edit' | 'delete' | 'approve' | 'send_back';
+  | 'change_due' | 'hand_off' | 'excuse' | 'edit' | 'delete' | 'approve' | 'send_back'
+  | 'clear_missed' | 'excuse_missed';
 
 /** A day to pick in a sheet ("Tomorrow", "Sat", "Next Sat"). */
 export interface DayChip {
@@ -34,6 +35,8 @@ export interface OptionModel {
   late?: boolean;
   /** Not done for a check-off of an occurrence owed nothing: it stays excused (round 14). */
   excused?: boolean;
+  /** The records Excuse the misses sends (a missed chore's flag names them). */
+  keys?: string[];
 }
 
 export interface OptionsContext {
@@ -63,6 +66,8 @@ export interface OptionsModel {
   note: string | null;
   /** The note's color: bad for sent back or overdue, act for a request waiting (round 11). */
   noteTone?: 'bad' | 'act';
+  /** The red note of a chore missed before: what it says, and what doing it now does. */
+  missed?: { title: string; body: string };
   member: OptionModel[];
   parent: OptionModel[];
 }
@@ -171,6 +176,22 @@ function addedLine(activity: Activity | undefined, members: Member[], today: str
   return who ? `Added by ${who} ${when}` : `Added ${when}`;
 }
 
+/** The missed note's two lines (missed-and-urgency spec 6): the badge's words, then what doing it now does. */
+export function missedNote(flag: MissedFlag, today: string): { title: string; body: string } {
+  const title = missedWords(flag, today);
+  if (!flag.late) {
+    return { title, body: flag.unit === 'day' ? "Doing today's takes it off the top." : "Doing this week's takes it off the top." };
+  }
+  const { count, unit } = flag;
+  const days = flag.periods.map(p => `${MONTHS[dayDate(p).getMonth()]} ${dayDate(p).getDate()}`);
+  const list = days.length <= 1 ? days.join('') : `${days.slice(0, -1).join(', ')} and ${days[days.length - 1]}`;
+  const when = count === 1
+    ? (unit === 'week' ? 'last week' : unit === 'month' ? 'last month' : daysBetween(flag.periods[0], today) === 1 ? 'yesterday' : `on ${list}`)
+    : `the ${unit === 'time' ? 'times' : `${unit}s`} of ${list}`.replace('the times of', 'on');
+  const stays = count === 1 ? 'It stays in the record.' : count === 2 ? 'Both misses stay in the record.' : `All ${count} misses stay in the record.`;
+  return { title, body: `Not done ${when}. Doing it now takes it off the top. ${stays}` };
+}
+
 /** What the options sheet offers, depending on who's looking (spec 13.3). */
 export function itemOptions(ctx: OptionsContext): OptionsModel {
   const { item, activity, owner, members, today } = ctx;
@@ -236,6 +257,18 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
     parent.push({ id: 'delete', label: 'Delete chore', tag: parentTag, destructive: true, hint: 'It leaves the board for everyone.' });
   }
 
+  // A chore missed before: a parent may take it off the board or excuse the misses (missed-and-urgency spec 6).
+  const flag = item.missed;
+  if (flag && ctx.parent !== 'no') {
+    parent.push({ id: 'clear_missed', label: 'Take it off the board', tag: parentTag, hint: 'It stays missed. Nothing more to do this time.' });
+    if (flag.keys?.length) {
+      parent.push({
+        id: 'excuse_missed', label: flag.count === 1 ? 'Excuse the miss' : 'Excuse the misses', tag: parentTag, keys: flag.keys,
+        hint: flag.count === 1 ? 'There was a good reason. It counts as excused, not missed.' : 'There was a good reason. They count as excused, not missed.',
+      });
+    }
+  }
+
   const minutes = item.window === 'once' && activity?.once ? activity.once.estimate_minutes : item.credit_minutes;
   const metaParts = [owner.name, rhythmText(activity, item, today), minutesText(minutes)];
   if (owner.stars && item.stars > 0) metaParts.push(`★ ${item.stars}`);
@@ -253,6 +286,7 @@ export function itemOptions(ctx: OptionsContext): OptionsModel {
       // Overdue from an earlier day (round 10: the sheet didn't say so).
       overdue && open ? `Overdue since ${shortDay(item.overdue_since!, today)}` : null,
     ].filter(Boolean).join(' · ') || null,
+    missed: flag ? missedNote(flag, today) : undefined,
     noteTone: status === 'sent_back' || (overdue && open) ? 'bad' : 'act',
     member,
     parent,

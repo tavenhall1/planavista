@@ -21,6 +21,8 @@ export interface MissedFlag {
   in_a_row: boolean;
   periods: string[];
   late: boolean;
+  /** The late records' occurrence keys, when the feed names them (what Excuse the misses sends). */
+  keys?: string[];
 }
 
 /** The fields of an item view (planavista/chores/subscribe) the status map reads. */
