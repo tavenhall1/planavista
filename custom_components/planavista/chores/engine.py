@@ -45,6 +45,7 @@ from .status import describe
 
 AUTO = "auto"
 RETENTION = timedelta(days=90)
+BACKFILL_DAYS = 14  # upgrade day looks this many chore days back for open misses (missed-and-urgency spec 8)
 REPEAT_WINDOW = timedelta(seconds=60)
 CREDITED = ("done", "pending")
 # Check-offs that count for nothing: unchecked, or withdrawn when their chore was deleted (round 7).
@@ -2510,6 +2511,7 @@ class ChoresEngine:
         self.log["last_day"] = yesterday
         self.log["last_boundary"] = self.clock.day_start(today).isoformat()
         self.log["active_from"] = today.isoformat()
+        self.log["late_backfill"] = 1  # nothing before today is owed, so there are no misses to back-fill
         return Outcome(changed={"log"})
 
     def catch_up(self, now: datetime) -> Outcome:
@@ -2521,6 +2523,51 @@ class ChoresEngine:
         while self.clock.day_end(day).astimezone(UTC) <= now.astimezone(UTC):
             out.merge(self.rollover(day))
             day += timedelta(days=1)
+        return out
+
+    def backfill_late(self, now: datetime) -> Outcome:
+        """Upgrade day (missed-and-urgency spec 8): late records for the open misses of the last 14 chore days.
+
+        A log from before late records lists its misses only in the day summaries. Once, every key a
+        summary lists missed (a week's misses are listed on its last day too) whose chore and person
+        are still here, that wasn't carried over, and that no credited check-off of the chore has
+        answered since, gets the record its rollover would have left. A one-time chore, or a Repeats
+        chore's last time, that was finished after such a miss is open again until the record goes.
+        """
+        out = Outcome()
+        if self.log.get("late_backfill"):
+            return out
+        self.log["late_backfill"] = 1
+        out.changed.add("log")
+        today = self.today(now)
+        first = today - timedelta(days=BACKFILL_DAYS)
+        missed: dict[str, date] = {}  # key: the latest day a summary listed it missed
+        for member_id in self.member_ids():
+            for day, summary in sorted(self._summaries(member_id, "day").items()):
+                if first <= day < today and self.policy_on(day) != "carry_over":
+                    for key in summary.get("missed") or []:
+                        missed[key] = day
+        if not missed:
+            return out
+        index = self._index()
+        have = {c["key"] for c in self.log["carried"] if is_late(c)}
+        reopen: set[str] = set()
+        for key, day in missed.items():
+            if key in have or index.overrides.get(key, {}).get("excused"):
+                continue
+            occ = self._past_occurrence(key, index)
+            if occ is None or self.member(occ.member) is None or self.activity(occ.chore) is None:
+                continue
+            record = late_record(occ, day)
+            if self._late_answer(record, index) is not None:
+                continue
+            self._add_late_record(occ, day)
+            reopen.add(occ.chore)
+        for chore in reopen:
+            activity = self.activity(chore)
+            if activity is not None and activity.get("finished_at") and activity.get("schedule") in ("once", "repeats"):
+                activity["finished_at"] = None  # finished by the rollover after its miss; the record holds it open
+                out.changed.add("plan")
         return out
 
     def rollover(self, day: date) -> Outcome:

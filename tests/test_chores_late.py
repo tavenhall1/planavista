@@ -1,6 +1,7 @@
 """Late records: the pure rules (missed-and-urgency spec sections 1 to 3)."""
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 
 import pytest
@@ -10,7 +11,7 @@ from custom_components.planavista.chores.engine import ChoresEngine
 from custom_components.planavista.chores.occurrences import Occurrence
 from custom_components.planavista.chores.periods import Clock
 
-from .chores_sample import TZ, at, keys, once, plan, sample_activities, sample_engine
+from .chores_sample import MEMBERS, TZ, at, keys, once, plan, sample_activities, sample_engine
 
 CLOCK = Clock(TZ)
 TODAY = date(2026, 10, 14)
@@ -644,3 +645,150 @@ def test_a_person_taken_off_the_chore_keeps_a_working_callout() -> None:
     rows = {(i.occ.chore, i.occ.member): i for m in engine.items(at(10, 15, 9)).values() for i in m if i.section == "missed"}
     assert rows[("dishes", "casey")].missed["count"] == 2
     assert rows[("make_your_bed", "dana")].missed["in_a_row"] is False
+
+
+# Upgrade day: the back-fill (spec section 8) ------------------------------------------------------
+
+def _as_before(engine: ChoresEngine) -> None:
+    """The log as 0.14.1 left it: misses in the summaries, no late records, no back-fill marker."""
+    engine.log["carried"] = [c for c in engine.log["carried"] if not late.is_late(c)]
+    engine.log.pop("late_backfill", None)
+
+
+def _late_keys(engine: ChoresEngine, chore: str | None = None) -> list[str]:
+    return [c["key"] for c in engine.log["carried"] if late.is_late(c) and chore in (None, c["chore"])]
+
+
+def test_backfill_takes_open_misses_from_14_days() -> None:
+    bed = plan("bed", "Make your bed", ["dana"], 5 / 60, "day")
+    engine = sample_engine(at(10, 1, 9), activities=[bed])
+    today = at(10, 24, 9)
+    engine.catch_up(today)
+    _as_before(engine)
+    out = engine.backfill_late(today)
+    assert "log" in out.changed and out.events == []
+    # The 14 chore days before today, oldest first; three days back is in, twenty days back is not.
+    assert sorted(c["since"] for c in engine.log["carried"]) == [f"2026-10-{d:02d}" for d in range(10, 24)]
+    three, twenty = "bed|dana|day:2026-10-21|0", "bed|dana|day:2026-10-04|0"
+    assert _record(engine, three) == late.late_record(engine._past_occurrence(three), date(2026, 10, 21))
+    assert _record(engine, twenty) is None
+    assert engine.log["late_backfill"] == 1
+    # Served as the missed flag on today's copy, as rollover-made records are.
+    flag = _item(engine, "dana", "bed|dana|day:2026-10-24|0", today).missed
+    assert (flag["count"], flag["in_a_row"], flag["late"]) == (14, True, False)
+
+
+def test_backfill_skips_answered_misses() -> None:
+    engine = sample_engine(MONDAY)
+    engine.complete(at(10, 12, 8), key="cat_care|casey|day:2026-10-12|0", by="casey", source="tablet", approve=True)
+    engine.catch_up(WEDNESDAY)
+    # Today's bed, waiting for approval, answers both of Dana's bed misses.
+    assert engine.complete(at(10, 14, 9, 30), key=WED_BED, by="dana", source="tablet").result == "pending"
+    _as_before(engine)
+    engine.backfill_late(at(10, 14, 9, 31))
+    assert _late_keys(engine, "make_your_bed") == []
+    assert _record(engine, "feed_the_fish|dana|day:2026-10-12|0") is not None
+    # A check-off on the missed day itself was for that day's copies: Monday evening's cat care stays missed.
+    assert _record(engine, "cat_care|casey|day:2026-10-12|1") is not None
+    assert _record(engine, "cat_care|casey|day:2026-10-12|0") is None
+
+
+def test_backfill_takes_a_weeks_miss_from_its_last_day() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(at(10, 20, 9))
+    _as_before(engine)
+    engine.backfill_late(at(10, 20, 9))
+    yard = "yard_work|casey|week:2026-10-12|0"
+    assert _record(engine, yard) == late.late_record(engine._past_occurrence(yard), date(2026, 10, 18))
+    assert _late_keys(engine).count(yard) == 1
+
+
+def test_backfill_skips_gone_chores_and_people() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    _as_before(engine)
+    engine.delete_activity("make_your_bed", WEDNESDAY)
+    engine.set_members([m for m in MEMBERS if m["id"] != "casey"])
+    engine.backfill_late(WEDNESDAY)
+    assert _late_keys(engine, "make_your_bed") == []
+    assert not any(c["member"] == "casey" for c in engine.log["carried"])
+    assert _record(engine, "feed_the_fish|dana|day:2026-10-12|0") is not None
+
+
+def test_backfill_reopens_a_finished_once_chore() -> None:
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    _as_before(engine)
+    gate = engine.activity("fix_the_gate_latch")
+    gate["finished_at"] = "2026-10-17T03:00:00-05:00"  # 0.14.1's rollover finished it after the miss
+    assert _missed_rows(engine, "alex", at(10, 17, 9)) == []
+    out = engine.backfill_late(at(10, 17, 9))
+    assert {"log", "plan"} <= out.changed
+    assert gate["finished_at"] is None
+    [row] = _missed_rows(engine, "alex", at(10, 17, 9))
+    assert (row.occ.key, row.missed["late"], row.overdue_since) == (GATE, True, date(2026, 10, 16))
+    engine.catch_up(at(10, 18, 9))
+    assert gate["finished_at"] is None  # still owed
+    engine.complete(at(10, 18, 10), key=GATE, by="alex", source="tablet")
+    engine.catch_up(at(10, 19, 9))
+    assert _record(engine, GATE) is None and gate["finished_at"] is not None
+
+
+def test_backfill_runs_once() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    _as_before(engine)
+    engine.backfill_late(WEDNESDAY)
+    assert engine.log["late_backfill"] == 1 and _record(engine, BED) is not None
+    engine.log["carried"] = []
+    out = engine.backfill_late(WEDNESDAY)
+    assert (out.changed, out.events, engine.log["carried"]) == (set(), [], [])
+
+
+def test_backfill_leaves_records_already_made() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)  # 0.15.0's rollovers made these
+    engine.log.pop("late_backfill", None)
+    before = deepcopy(engine.log["carried"])
+    assert _record(engine, BED) is not None
+    engine.backfill_late(WEDNESDAY)
+    assert engine.log["carried"] == before and engine.log["late_backfill"] == 1
+
+
+def test_start_sets_the_marker() -> None:
+    engine = sample_engine(MONDAY)  # chores turned on fresh
+    assert engine.log["late_backfill"] == 1
+    engine.catch_up(WEDNESDAY)
+    engine.log["carried"] = [c for c in engine.log["carried"] if not late.is_late(c)]
+    out = engine.backfill_late(WEDNESDAY)
+    assert (out.changed, engine.log["carried"]) == (set(), [])
+    # Turned on again after a while off: nothing before today is owed, the back-fill included.
+    engine.log.pop("late_backfill")
+    engine.log["last_day"] = "2026-10-01"
+    engine.start(at(10, 20, 9))
+    assert engine.log["late_backfill"] == 1
+
+
+def test_carry_over_households_get_none() -> None:
+    engine = sample_engine(MONDAY, settings={"missed": "carry_over"})
+    engine.catch_up(WEDNESDAY)
+    engine.log.pop("late_backfill", None)
+    before = deepcopy(engine.log["carried"])
+    assert before
+    engine.backfill_late(WEDNESDAY)
+    assert engine.log["carried"] == before and _late_keys(engine) == []
+    # The rule on the due day decides, whatever a summary lists.
+    engine.log.pop("late_backfill")
+    summary = _summary(engine, "dana", "day:2026-10-12")
+    summary["missed"] = [BED]
+    engine.backfill_late(WEDNESDAY)
+    assert _late_keys(engine) == []
+
+
+def test_a_rule_change_keeps_the_misses_made_before_it() -> None:
+    engine = sample_engine(MONDAY, settings={"missed": "make_up"})
+    engine.catch_up(WEDNESDAY)
+    engine.save_settings(WEDNESDAY, {"missed": "carry_over"})
+    _as_before(engine)
+    engine.backfill_late(WEDNESDAY)
+    assert _record(engine, BED) is not None and _record(engine, BED)["missed"] is True
