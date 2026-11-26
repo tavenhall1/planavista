@@ -189,3 +189,29 @@
 - [ ] **Step 2:** `npm run build`; `scripts/dev-ha.sh deploy`.
 - [ ] **Step 3:** Dev HA checks (Chrome DevTools MCP, fresh isolated context, Kitchen account at 1080 by 1920 and a 390 by 844 phone, light and dark, dimming at 30%): seed misses with a scratch script that sets the engine clock back (as earlier milestones' scratchpad scripts did), then confirm each artboard of the mockup appears, Done clears, Undo restores, both parent actions work, header chip counts.
 - [ ] **Step 4:** Commit `chore: 0.15.0, missed at the top and a week that feels its end` and the bundle `build: the bundle`.
+
+
+## Rulings made during the build
+
+Decisions taken while building, each with what it costs if wrong.
+
+- Ruling: missed_flag takes keyword `clock: Clock` too (single-day vs week-end due needs week_end) ; spec 2 unit rule ; cheap if wrong.
+- Ruling: T2 also makes _items_on's existing carried loop skip late records (is_late), so behavior is unchanged until T3 serves them ; keeps the suite green per task ; if wrong, T3 rewrites the same loop anyway.
+- Ruling: frontend fixture test may be red between T3 and T6; T6 must make it green ; branch isn't pushed mid-way ; none.
+- Ruling: T7 builds its panels through an exported `topPanels(items, ctx)` in board-derive.ts, which T8 reuses ; T8 requires it ; none.
+- Ruling: a check-off answers a late record only if its chore day is strictly after `since` ; the missed day's own check-offs were for that day's occurrences (twice-a-day and two-load chores) ; if wrong, a miss could linger after a same-day partial; cheap to flip.
+- Ruling: late-record 90-day retention added in Task 2 (spec 1) ; the brief omitted it ; none.
+- Ruling: four existing tests asserting a once/repeats chore finishes at the rollover after a miss now clear the miss first ; spec 1 says an open late record keeps it unfinished ; if wrong, revisit finished semantics.
+- Task 3: review approved (91252b4..439a126). Ruling: sent back beats missed in words (card mirrors in Task 6) ; mirrors sent back beating overdue ; low. Ruling: `late: True` stamp on a late row's check-off accepted ; keeps it out of rings ; low. Follow-up round asked: refuse more time on late rows, get_chores returns missed, to-do ranks missed first. Final-review notes: missed_flag mixes holder's away with owner's schedule after an override; past day sheet could say Done late (card); _scheduled_on cost per render; status.py local import for short_day.
+- Ruling (T7): panels drawn by classes on a flat keyed list, no wrapper div ; keeps row elements across zones (check-off pop) ; verify visually on dev HA.
+- Ruling (T7): a mixed due-soon panel with any row ending tonight is red "Due soon · N to go / Ends tonight" ; the most urgent row sets the tone ; low.
+- Ruling (T7): "Ring closed for today" stays (misses don't count in the ring, owner-approved call 1), but the Missed panel must sit above it ; hard to ignore ; low.
+- Ruling (T9): the backend missed flag gains keys (open late records keys) so Excuse the misses can send them; spec 6 requires the action; low.
+- Ruling: override (assignee/excused) and skip requests are refused on a standalone late row; the card hides them; excusing goes through excuse_missed keys ; acting on one record misleads ; low.
+- Ruling: start() drops late records from before the new active_from ; nothing before a restart is owed (spec "start") ; low.
+- Ruling: the evening reminder keeps the counted-only rule; only sensors count late rows ; spec non-goal "evening check stays" ; owner may later want reminders for misses.
+- Ruling: "last week/month" only for the previous period, otherwise name it ; words must be true ; low.
+- Ruling: missed flags only on today (not future day views) ; a flag about "yesterday" on tomorrow reads wrong ; low.
+- Ruling: the options sheet gains a primary Done for missed rows and its closer becomes "Close" ; approved mockup and spec 6 ; low.
+- Ruling: not fixing B-m10 (spoken urgency of due-soon rows) and B-m11 (busy state) ; consistent with existing section heads and actions ; low.
+- Fix wave: done (9b72f61..d8a8a27; backend 1384, card 1950). Ruling: a daily Repeats under Make it up (instances due at the week's end) reads as one missed week ; that is when it was missed ; low. Ruling: "last week" = 7 to 13 days before today ; computable from today on both sides ; may read wrong once after a first-day change. Ruling: the options group heading stays "For parents" (existing heading) ; consistency with the sheet ; none.
