@@ -1,4 +1,5 @@
 import type { Member } from '../../core/household';
+import { daysToDeadline } from './urgency-derive';
 import { BadgeContext, StatusBadge, itemBadge, minutesText, ringLabel, shortDay } from '../../core/status-map';
 import type { Activity, Band, Board, BoardMember, ItemView } from './chores-types';
 import { DayEvent, clockTime, nextOnCalendar } from './calendar-ties';
@@ -113,7 +114,12 @@ export function estimateText(item: ItemView, earnsStars: boolean): string {
 function rowFor(item: ItemView, ctx: DeriveContext, board: Board, earnsStars: boolean, extra: Partial<RowModel> = {}): RowModel {
   const activity = ctx.activities.get(item.chore);
   const remaining = extra.group ? extra.group.total - extra.group.done : 1;
-  const badgeCtx: BadgeContext = { today: ctx.today, daysLeft: board.week.days_left, remaining };
+  const badgeCtx: BadgeContext = {
+    today: ctx.today,
+    daysLeft: board.week.days_left,
+    remaining,
+    deadlineDays: daysToDeadline(item, ctx.today, board),
+  };
   let doneAt: string | undefined;
   let doneBy: string | null | undefined;
   if (item.completion && (item.status === 'done' || item.status === 'pending')) {
