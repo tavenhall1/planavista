@@ -19,6 +19,9 @@ describe("a missed chore's options sheet (missed-and-urgency spec 6)", () => {
     expect(body).toMatch(/asParent\(clearing \? `Who's taking \$\{name\} off the board\?`/);
     expect(body).toMatch(/Who's excusing/);
     expect(body).toMatch(/errorCode\(err\) === 'not_missed'/);
+    // Excuse the misses sends exactly the keys the feed's flag names.
+    expect(body).toMatch(/const keys = item\.missed\?\.keys \?\? \[\];/);
+    expect(body).toMatch(/api\.excuseMissedAll\(keys\)/);
   });
 
   it('the sheet draws the red note above the options', () => {

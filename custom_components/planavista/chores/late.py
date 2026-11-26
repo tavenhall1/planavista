@@ -84,7 +84,7 @@ def missed_flag(
     records: list[Mapping[str, Any]], *, late: bool, scheduled: Callable[[date], bool],
     away: Callable[[date], bool], clock: Clock,
 ) -> dict[str, Any]:
-    """`{count, unit, in_a_row, periods, late}` for one chore and member's late records."""
+    """`{count, unit, in_a_row, periods, late, keys}` for one chore and member's late records."""
     starts: dict[date, str] = {}
     for record in records:
         unit, start = _unit_and_start(record, clock)
@@ -104,6 +104,7 @@ def missed_flag(
     return {
         "count": len(days), "unit": unit, "in_a_row": in_a_row,
         "periods": [day.isoformat() for day in days], "late": late,
+        "keys": [record["key"] for record in records],
     }
 
 

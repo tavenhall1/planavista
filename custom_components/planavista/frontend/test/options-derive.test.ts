@@ -202,7 +202,7 @@ describe("a missed chore's options (missed-and-urgency spec 6)", () => {
   });
 
   it('leaves out Excuse the misses when the feed names no records', () => {
-    const options = itemOptions(ctx({ item: { ...YARD, missed: flag({ keys: undefined }) } }));
+    const options = itemOptions(ctx({ item: { ...YARD, missed: flag({ keys: [] }) } }));
     expect(ids(options.parent)).toContain('clear_missed');
     expect(ids(options.parent)).not.toContain('excuse_missed');
   });

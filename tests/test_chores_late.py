@@ -106,6 +106,17 @@ def test_strict_picked_day_counts_by_its_day() -> None:
     assert flag["periods"] == ["2026-10-13", "2026-10-15"]
 
 
+def test_flag_keys_are_the_late_records_keys_oldest_first() -> None:
+    records = [late.late_record(_bed(date(2026, 10, d)), date(2026, 10, d)) for d in (11, 12, 13)]
+    assert _flag(records)["keys"] == [
+        "make_your_bed|dana|day:2026-10-11|0", "make_your_bed|dana|day:2026-10-12|0", "make_your_bed|dana|day:2026-10-13|0",
+    ]
+    # Two records of one week are one miss but two keys: Excuse the misses must name both.
+    both = [late.late_record(_laundry(n), date(2026, 10, 18)) for n in (0, 1)]
+    assert _flag(both)["count"] == 1
+    assert _flag(both)["keys"] == ["laundry|blair|week:2026-10-12|0", "laundry|blair|week:2026-10-12|1"]
+
+
 def test_missed_words() -> None:
     def words(flag: dict) -> str:
         return late.missed_words(flag, TODAY)
@@ -364,6 +375,7 @@ def test_flag_rides_on_todays_copy() -> None:
     bed = _item(engine, "dana", WED_BED, WEDNESDAY)
     assert bed.missed == {
         "count": 2, "unit": "day", "in_a_row": True, "periods": ["2026-10-12", "2026-10-13"], "late": False,
+        "keys": ["make_your_bed|dana|day:2026-10-12|0", "make_your_bed|dana|day:2026-10-13|0"],
     }
     assert (bed.section, bed.counted) == ("today", True)
     assert _missed_rows(engine, "dana", WEDNESDAY) == []
@@ -397,7 +409,7 @@ def test_late_row_when_no_current_copy() -> None:
     engine.catch_up(at(10, 17, 9))
     [row] = _missed_rows(engine, "alex", at(10, 17, 9))
     assert (row.occ.key, row.status, row.counted, row.overdue_since) == (GATE, "open", False, date(2026, 10, 16))
-    assert row.missed == {"count": 1, "unit": "time", "in_a_row": False, "periods": ["2026-10-16"], "late": True}
+    assert row.missed == {"count": 1, "unit": "time", "in_a_row": False, "periods": ["2026-10-16"], "late": True, "keys": [GATE]}
     view = engine.item_view(row, date(2026, 10, 17))
     assert (view["section"], view["counted"], view["missed"]["late"]) == ("missed", False, True)
 
@@ -478,7 +490,7 @@ def test_hand_off_keeps_the_callout_with_the_misser() -> None:
     engine.catch_up(at(10, 19, 9))
     monday = "laundry|blair|week:2026-10-19|0"
     flagged = _item(engine, "blair", monday, at(10, 19, 9))
-    assert flagged.missed == {"count": 1, "unit": "week", "in_a_row": True, "periods": ["2026-10-12"], "late": False}
+    assert flagged.missed == {"count": 1, "unit": "week", "in_a_row": True, "periods": ["2026-10-12"], "late": False, "keys": ["laundry|blair|week:2026-10-12|0", "laundry|blair|week:2026-10-12|1"]}
     engine.override(at(10, 19, 9), key=monday, by="alex", assignee="alex")
     later = at(10, 19, 9, 1)
     [row] = [i for i in _missed_rows(engine, "blair", later) if i.occ.chore == "laundry"]
@@ -573,7 +585,7 @@ def test_a_weekly_check_off_sent_back_after_its_week_leaves_a_late_record() -> N
     assert record is not None and record["missed"] is True and record["since"] == "2026-10-18"
     assert _record(engine, loads[0]) is None
     flagged = _item(engine, "blair", "laundry|blair|week:2026-10-19|0", at(10, 19, 10, 1))
-    assert flagged.missed == {"count": 1, "unit": "week", "in_a_row": True, "periods": ["2026-10-12"], "late": False}
+    assert flagged.missed == {"count": 1, "unit": "week", "in_a_row": True, "periods": ["2026-10-12"], "late": False, "keys": ["laundry|blair|week:2026-10-12|1"]}
 
 
 def test_away_only_on_the_weeks_last_day_still_leaves_the_callout() -> None:
