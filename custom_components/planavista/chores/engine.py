@@ -1712,6 +1712,25 @@ class ChoresEngine:
         holds = bool(touched) and all(s.get("closed") or not s.get("due") for s in touched)
         return Outcome("excused", {"occurrence": key, "streak_holds": holds}, changed={"log"})
 
+    def clear_missed(self, now: datetime, *, chore: str, member: str, by: str) -> Outcome:
+        """Take a chore's missed callout off the board for one holder (missed-and-urgency spec 6).
+
+        Removes the holder's open late records of the chore. What it recorded stays recorded: the
+        summaries still say it was missed, so the days and the streak don't change. A record already
+        answered by a check-off isn't missed any more, so only open ones go.
+        """
+        index = self._index()
+        gone = [
+            c for c in self.log["carried"]
+            if is_late(c) and c["chore"] == chore and self._late_holder(c, index) == member
+            and self._open_carried(c, index)
+        ]
+        if not gone:
+            raise ChoreError("not_missed")
+        ids = {id(c) for c in gone}
+        self.log["carried"] = [c for c in self.log["carried"] if id(c) not in ids]
+        return Outcome("cleared", {"cleared": len(gone)}, changed={"log"})
+
     def _sent_back_late(self, completion: Mapping[str, Any], now: datetime, out: Outcome) -> None:
         """A check-off sent back after its day ended (round 8, r8a A2).
 

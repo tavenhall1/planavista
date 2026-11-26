@@ -367,21 +367,64 @@ async def ws_chores_override(hass: HomeAssistant, connection: websocket_api.Acti
 
 @websocket_api.websocket_command({
     vol.Required("type"): "planavista/chores/excuse_missed",
-    vol.Required("occurrence"): str,
+    vol.Exclusive("occurrence", "which"): str,
+    vol.Exclusive("keys", "which"): vol.All([str], vol.Length(min=1, max=100)),
     vol.Optional("note"): vol.Any(None, str),
     SESSION: str,
 })
 @websocket_api.async_response
 async def ws_chores_excuse_missed(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """A parent excuses a check-off already counted as missed, so its day and the streak hold."""
+    """A parent excuses a check-off already counted as missed, so its day and the streak hold.
+
+    `keys` excuses several at once (the callout's Excuse them all): one save, one answer, and the
+    streak holds only when every one's did.
+    """
     runtime = _runtime(hass, connection, msg)
     if runtime is None or (context := parent_for(hass, connection, msg, needs_file=False)) is None:
         return
-    out = await _apply(connection, msg, runtime, lambda e, now: e.excuse_missed(
-        now, key=msg["occurrence"], by=context[1], note=msg.get("note"),
-    ))
+    if "occurrence" not in msg and "keys" not in msg:
+        send_refusal(connection, msg, "invalid_format", "Name what to excuse.")
+        return
+    which = [msg["occurrence"]] if "occurrence" in msg else list(dict.fromkeys(msg["keys"]))
+
+    def excuse(engine: Any, now: Any) -> Any:
+        outcomes: list[Outcome] = []
+        for key in which:
+            try:
+                outcomes.append(engine.excuse_missed(now, key=key, by=context[1], note=msg.get("note")))
+            except ChoreError:
+                if len(which) == 1:
+                    raise
+                # One already taken care of (excused on another screen) doesn't stop the rest.
+        if not outcomes:
+            raise ChoreError("not_missed")
+        if len(which) == 1:
+            return outcomes[0]
+        holds = any(o.data["streak_holds"] for o in outcomes)
+        return Outcome("excused", {"occurrences": [o.data["occurrence"] for o in outcomes], "streak_holds": holds}, changed={"log"})
+
+    out = await _apply(connection, msg, runtime, excuse)
     if out is not None:
         connection.send_result(msg["id"], {"result": out.result, **out.data})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "planavista/chores/clear_missed",
+    vol.Required("chore"): str,
+    vol.Required("member"): str,
+    SESSION: str,
+})
+@websocket_api.async_response
+async def ws_chores_clear_missed(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """A parent takes a chore's missed callout off the board; the record keeps it as missed."""
+    runtime = _runtime(hass, connection, msg)
+    if runtime is None or (context := parent_for(hass, connection, msg, needs_file=False)) is None:
+        return
+    out = await _apply(connection, msg, runtime, lambda e, now: e.clear_missed(
+        now, chore=msg["chore"], member=msg["member"], by=context[1],
+    ))
+    if out is not None:
+        connection.send_result(msg["id"], {"cleared": out.data["cleared"]})
 
 
 @websocket_api.websocket_command({
@@ -730,6 +773,7 @@ CHORES_COMMANDS = (
     ws_chores_day,
     ws_chores_history,
     ws_chores_excuse_missed,
+    ws_chores_clear_missed,
     ws_chores_complete,
     ws_chores_undo,
     ws_chores_request,

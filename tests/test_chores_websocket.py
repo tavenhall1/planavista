@@ -280,3 +280,58 @@ async def test_a_chore_planned_for_a_later_day_says_when_it_shows(
     assert reply["error"] == {"code": "planned_later", "message": "Yard work is planned for Saturday."}
     gone = await ws_command(casey, {"type": "planavista/chores/complete", "occurrence": "cat_care|casey|day:2026-10-12|1"})
     assert gone["error"]["code"] == "period_closed"
+
+
+def _late(chores: Any, key: str, member: str) -> None:
+    from custom_components.planavista.chores import late
+    from custom_components.planavista.chores.occurrences import Occurrence
+    from datetime import date as _date
+
+    chore, _, period = key.split("|")[0], None, key.split("|")[2]
+    day = _date.fromisoformat(period.split(":")[1])
+    occ = Occurrence(
+        key=key, chore=chore, owner=member, member=member, period=period, n=0, appears=day, planned=None,
+        due=None, band=None, credit_minutes=10.0, stars=1, window="day",
+    )
+    chores.engine.log["carried"].append(late.late_record(occ, day))
+
+
+async def test_clear_missed_needs_a_parent(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    _late(chores, "make_your_bed|dana|day:2026-10-12|0", "dana")
+    _late(chores, "make_your_bed|dana|day:2026-10-11|0", "dana")
+    casey = await ws_client_for(hass, hass_ws_client, accounts["casey"])
+    command = {"type": "planavista/chores/clear_missed", "chore": "make_your_bed", "member": "dana"}
+    refused = await ws_command(casey, command)
+    assert refused["error"]["code"] == "not_allowed"
+    assert len(chores.engine.log["carried"]) == 2
+    alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
+    reply = await ws_command(alex, command)
+    assert reply["result"] == {"cleared": 2}
+    assert chores.engine.log["carried"] == []
+    again = await ws_command(alex, command)
+    assert again["error"] == {"code": "not_missed", "message": "That was already taken care of."}
+
+
+async def test_excuse_missed_takes_several_keys_and_needs_one_way_of_naming(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    keys = ["cat_care|casey|day:2026-10-12|1", "cat_care|casey|day:2026-10-11|1"]
+    for day, key in zip((12, 11), keys):
+        chores.engine.log["summaries"].append({
+            "member": "casey", "period": f"day:2026-10-{day}", "due": 1, "done": 0, "pending": 0,
+            "minutes_due": 15.0, "minutes_done": 0.0, "minutes_pending": 0.0, "missed": [key],
+            "carried": [], "excused": [], "away": False, "closed": False, "chores": {"cat_care": {"due": 1, "done": 0}},
+        })
+    casey = await ws_client_for(hass, hass_ws_client, accounts["casey"])
+    refused = await ws_command(casey, {"type": "planavista/chores/excuse_missed", "keys": keys})
+    assert refused["error"]["code"] == "not_allowed"
+    alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
+    neither = await ws_command(alex, {"type": "planavista/chores/excuse_missed"})
+    assert neither["success"] is False
+    both = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "occurrence": keys[0], "keys": keys})
+    assert both["success"] is False
+    reply = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "keys": keys})
+    assert reply["result"]["result"] == "excused" and reply["result"]["occurrences"] == keys
+    assert all(s["missed"] == [] for s in chores.engine.log["summaries"] if s["member"] == "casey" and s["period"] in ("day:2026-10-12", "day:2026-10-11"))

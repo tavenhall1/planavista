@@ -8,6 +8,7 @@ import pytest
 
 from custom_components.planavista.chores import late
 from custom_components.planavista.chores.engine import ChoresEngine
+from custom_components.planavista.chores.model import ChoreError
 from custom_components.planavista.chores.occurrences import Occurrence
 from custom_components.planavista.chores.periods import Clock
 
@@ -804,3 +805,61 @@ def test_a_rule_change_keeps_the_misses_made_before_it() -> None:
     _as_before(engine)
     engine.backfill_late(WEDNESDAY)
     assert _record(engine, BED) is not None and _record(engine, BED)["missed"] is True
+
+
+# Parent actions: Take it off the board, Excuse the misses (spec section 6) ---------------------
+
+
+def test_clear_missed_keeps_the_record_missed() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    summaries = deepcopy(engine.log["summaries"])
+    assert _item(engine, "dana", WED_BED, WEDNESDAY).missed is not None
+    out = engine.clear_missed(WEDNESDAY, chore="make_your_bed", member="dana", by="blair")
+    assert out.changed == {"log"} and out.data == {"cleared": 2}
+    assert [c for c in engine.log["carried"] if c["chore"] == "make_your_bed"] == []
+    assert _item(engine, "dana", WED_BED, WEDNESDAY).missed is None
+    assert engine.log["summaries"] == summaries  # it stays missed in the record
+
+
+def test_clear_missed_twice_refuses_quietly() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    engine.clear_missed(WEDNESDAY, chore="make_your_bed", member="dana", by="blair")
+    with pytest.raises(ChoreError) as refused:
+        engine.clear_missed(WEDNESDAY, chore="make_your_bed", member="dana", by="blair")
+    assert refused.value.code == "not_missed"
+    with pytest.raises(ChoreError) as other:
+        engine.clear_missed(WEDNESDAY, chore="make_your_bed", member="casey", by="blair")
+    assert other.value.code == "not_missed"
+
+
+def test_clear_missed_leaves_other_holders_and_answered_records() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    other = dict(_record(engine, BED), key="make_your_bed|casey|day:2026-10-12|0", member="casey")
+    engine.log["carried"].append(other)
+    engine.clear_missed(WEDNESDAY, chore="make_your_bed", member="dana", by="blair")
+    assert [c["key"] for c in engine.log["carried"] if c["chore"] == "make_your_bed"] == [other["key"]]
+
+
+def test_excuse_missed_takes_late_keys() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    second = "make_your_bed|dana|day:2026-10-13|0"
+    first = engine.excuse_missed(WEDNESDAY, key=BED, by="blair")
+    assert first.result == "excused"
+    engine.excuse_missed(WEDNESDAY, key=second, by="blair")
+    assert BED in _summary(engine, "dana", "day:2026-10-12")["excused"]
+    assert BED not in _summary(engine, "dana", "day:2026-10-12")["missed"]
+    assert _item(engine, "dana", WED_BED, WEDNESDAY).missed is None  # off the board at once
+
+
+def test_excuse_from_the_day_navigator_clears_the_callout() -> None:
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    assert len(_missed_rows(engine, "alex", at(10, 17, 9))) == 1
+    engine.excuse_missed(at(10, 17, 10), key=GATE, by="blair")
+    assert _missed_rows(engine, "alex", at(10, 17, 10, 1)) == []
+    day = engine.day_view(at(10, 17, 10, 1), date(2026, 10, 16))["members"]["alex"]
+    assert [i["key"] for i in day["items"] if i["status"] == "excused"] == [GATE]
