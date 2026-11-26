@@ -492,6 +492,8 @@ It records the last boundary processed. If Home Assistant was off at 3:00 AM, ev
 
 A pinned Repeats instance follows the pinned weekly rules. Switching the policy takes effect at the next day boundary.
 
+Late records (0.15.0): under Strict days and Make it up, a miss also leaves a late record for that person and chore, which keeps a callout at the top of their column. The miss stays in the day and week summaries; a later credited check-off answers the record (for one copy's stars) and the summaries are not changed. Carry it over is unchanged: its carried items already stay open. See `docs/superpowers/specs/2026-11-25-missed-and-urgency-design.md`.
+
 ### 8.11 Exceptions
 
 - A parent can **excuse** one occurrence (a sick day).

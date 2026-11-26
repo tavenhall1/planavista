@@ -442,6 +442,10 @@ hide_header: false
 - Shared screens dim at night, drawn by PlanaVista (11.12).
 - A ? on every setting (11.13); Shared screens has its own page in Settings.
 
+### 2026-11-25: Added: missed and due-soon panels
+
+- A column's top panels: Missed (`--pv-bad-bg` with a 2 px `--pv-danger` edge) and due soon (`--pv-warn-bg`; on the last day the bad background and danger edge). The header gains an "N missed" chip beside the day's count.
+
 ### 2026-10-15: Added: the screensaver
 
 - A living sky over paper mountains for shared screens, lit by the real sun and weather, with the time and today written over it (11.11).
