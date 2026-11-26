@@ -39,7 +39,7 @@ export interface WeekCell {
 export interface WeekRow {
   member: Member;
   cells: WeekCell[];
-  weekly: { text: string; badge: string | null; badgeTone: 'neutral' | 'act' | 'time'; progress: number } | null;
+  weekly: { text: string; badge: string | null; badgeTone: 'neutral' | 'act' | 'time' | 'warn' | 'bad'; progress: number } | null;
 }
 
 /** "October 12 – 18": the week by its range, as the calendar's Week names it. */
@@ -87,7 +87,7 @@ export function weeklyLine(entries: WeeklyEntry[], daysLeft: number, today: stri
   // A make-up is one whose day has passed; the Week view also looks at days still to come.
   const late = entries.filter(e => e.from && e.from < today).sort((a, b) => (a.from ?? '').localeCompare(b.from ?? ''))[0];
   let badge: string | null = null;
-  let badgeTone: 'neutral' | 'act' | 'time' = 'neutral';
+  let badgeTone: 'neutral' | 'act' | 'time' | 'warn' | 'bad' = 'neutral';
   if (late?.from) {
     badge = `${late.name} from ${SHORT[dayDate(late.from).getDay()]}`;
     badgeTone = 'time';
@@ -96,6 +96,9 @@ export function weeklyLine(entries: WeeklyEntry[], daysLeft: number, today: stri
     badgeTone = 'act';
   } else if (done + pending < total) {
     badge = daysLeft === 1 ? 'Last day' : `${daysLeft} days left`;
+    // The deadline shows: 3 and 2 days warn, the last day is bad (missed-and-urgency).
+    if (daysLeft === 1) badgeTone = 'bad';
+    else if (daysLeft === 2 || daysLeft === 3) badgeTone = 'warn';
   }
   return { text: `${done + pending} of ${total}`, badge, badgeTone, progress: total ? (done + pending) / total : 0 };
 }

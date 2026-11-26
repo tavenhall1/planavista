@@ -54,6 +54,14 @@ describe('weeklyLine', () => {
     expect(weeklyLine([], 6, '2026-10-13')).toBeNull();
     expect(weeklyLine(WEEK.members.blair.weekly, 6, '2026-10-11')?.badge).toBe('6 days left');
   });
+
+  it('feels the deadline: 3 and 2 days warn, the last day is bad', () => {
+    const open = WEEK.members.alex.weekly;
+    expect(weeklyLine(open, 3, '2026-10-13')).toMatchObject({ badge: '3 days left', badgeTone: 'warn' });
+    expect(weeklyLine(open, 2, '2026-10-13')).toMatchObject({ badge: '2 days left', badgeTone: 'warn' });
+    expect(weeklyLine(open, 1, '2026-10-13')).toMatchObject({ badge: 'Last day', badgeTone: 'bad' });
+    expect(weeklyLine(open, 4, '2026-10-13')).toMatchObject({ badge: '4 days left', badgeTone: 'neutral' });
+  });
 });
 
 describe('weekHighlights', () => {

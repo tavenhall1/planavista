@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { columnFor, type DeriveContext } from '../src/modules/chores/board-derive';
-import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, isWeekEntry, nextLine, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
+import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, isWeekEntry, nextLine, panelEntries, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
 import type { DayEvent } from '../src/modules/chores/calendar-ties';
 import { MEMBERS, NOW, TODAY, board, column, item } from './chores-fixtures';
 
@@ -147,8 +147,7 @@ describe('a goal and stickers read one way (milestone 8)', () => {
   });
 });
 
-// Until My day draws the Board's top panels (missed-and-urgency task 8), every row
-// the panels take still shows in My day, once.
+// My day draws the Board's top panels (missed-and-urgency task 8): every row shows once.
 describe('My day keeps the rows the top panels take', () => {
   const items = [
     item('make_bed|casey|day:2026-10-05|0', {
@@ -172,16 +171,26 @@ describe('My day keeps the rows the top panels take', () => {
     expect(col.entries.filter(e => e.kind === 'head').map(e => e.key)).toEqual(['head:missed', 'head:soon', 'head:done']);
   });
 
-  it('lists each once in the Timeline and its week list', () => {
+  it('draws the Missed section first and due-soon next, with the Board heads', () => {
+    const panels = panelEntries(col);
+    expect(panels.map(e => e.key).slice(0, 3)).toEqual(['head:missed', 'make_bed|casey|day:2026-10-05|0', 'head:soon']);
+    expect(panels.filter(e => e.kind === 'head').map(e => e.kind === 'head' && e.text)).toEqual(['Missed · 1', expect.stringMatching(/to go$/)]);
+    expect(panels.some(e => e.kind === 'note')).toBe(false);
+  });
+
+  it('lists each once in the panels, the Timeline, and its week list', () => {
+    const inPanels = panelEntries(col).flatMap(e => (e.kind === 'row' ? [e.row.key] : []));
     const timeline = timelineFor(col, { now: NOW, events: [], timeFormat: '12h', bedtime: null })
       .flatMap(e => (e.kind === 'chore' ? [e.row.key] : []));
     const week = col.entries.flatMap(e => (isWeekEntry(e) && e.kind === 'row' ? [e.row.key] : []));
-    expect(count([...timeline, ...week])).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 1 });
-    expect(count(week)).toEqual({ make_bed: 0, fix_it: 0, laundry: 1, vacuum: 0 });
+    expect(count([...inPanels, ...timeline, ...week])).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 1 });
+    expect(count(inPanels)).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 0 });
+    expect(count(week)).toEqual({ make_bed: 0, fix_it: 0, laundry: 0, vacuum: 0 });
   });
 
   it('lists each once in Pictures, a late check-off waiting for approval among the waiting', () => {
     const p = picturesFor(col, [], NOW, '12h');
+    expect(p.zones.get('make_bed|casey|day:2026-10-05|0')).toBe('missed');
     const keys = [
       ...(p.now ? [p.now.key] : []), ...p.next.flatMap(n => (n.kind === 'chore' ? [n.row.key] : [])),
       ...p.later.map(r => r.key), ...p.waiting.map(r => r.key), ...p.done.map(r => r.key),

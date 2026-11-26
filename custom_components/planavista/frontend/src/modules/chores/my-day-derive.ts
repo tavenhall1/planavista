@@ -60,13 +60,18 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
   return names;
 }
 
-/**
- * Whether a column entry is one of This week's rows. Until My day draws the
- * Board's top panels itself (missed-and-urgency task 8), a due-soon row from This
- * week stays in My day's week list, and a missed row is due now.
- */
+/** Whether a column entry is one of This week's rows (the top panels' rows are not: they have their own section). */
 export function isWeekEntry(entry: ColumnEntry): boolean {
-  return entry.kind === 'row' && (entry.zone === 'week' || (entry.zone === 'soon' && entry.row.item.section === 'week'));
+  return entry.kind === 'row' && entry.zone === 'week';
+}
+
+/**
+ * The Board's top panels as My day draws them: Missed first, due-soon next, the
+ * same heads and rows (the column built them with `topPanels`). The Board's
+ * "Ring closed" note stays on the Board.
+ */
+export function panelEntries(column: ColumnModel): ColumnEntry[] {
+  return column.entries.filter(e => (e.kind === 'head' ? e.tone === 'missed' || e.tone === 'soon' || e.tone === 'last' : e.kind === 'row' && e.panel !== undefined));
 }
 
 /**
@@ -77,7 +82,9 @@ export function isWeekEntry(entry: ColumnEntry): boolean {
 export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry[] {
   const now = ctx.now;
   const current = bandAt(now, ctx.dayStarts);
-  const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: isWeekEntry(e) ? 'week' : e.zone }] : []));
+  // The panels' rows are drawn above the timeline, once; they still count for what fits.
+  const panelRows = column.entries.flatMap(e => (e.kind === 'row' && e.panel !== undefined ? [e.row] : []));
+  const rows = column.entries.flatMap(e => (e.kind === 'row' && e.panel === undefined ? [{ row: e.row, zone: e.zone }] : []));
   const bandOf = (row: RowModel): Band => row.item.band ?? current;
   // A check-off waiting for approval happened already: it sits at its time, like a done one (milestone 8).
   const checkedOff = (row: RowModel) => row.state === 'pending' && !!row.item.completion;
@@ -125,7 +132,7 @@ export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry
             kind: 'free', key: 'free',
             until: next ? clockTime(next.start, ctx.timeFormat) : null,
             span: free !== null ? minutesText(free) : null,
-            fits: fitsIn(free, [...dueNow, ...open, ...week]),
+            fits: fitsIn(free, [...panelRows.filter(r => !checkedOff(r)), ...dueNow, ...open, ...week]),
           },
         });
       }
@@ -190,13 +197,16 @@ export interface PicturesModel {
   waiting: RowModel[];
   done: RowModel[];
   later: RowModel[];
+  /** The panel a row sits in (missed, soon, last), for its tile's outline. */
+  zones: Map<string, string>;
 }
 
 /** Pictures (spec 13.4): one huge Now tile, a Now to Next strip, then waiting and done tiles. */
 export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, format: '12h' | '24h'): PicturesModel {
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
+  const zones = new Map(column.entries.flatMap(e => (e.kind === 'row' && e.panel ? [[e.row.key, e.panel] as [string, string]] : [])));
   const todo = rows.filter(r => r.zone !== 'done' && (r.row.state === 'open' || r.row.state === 'sent_back'));
-  const order = ['missed', 'overdue', 'now', 'past', 'later', 'soon', 'week'];
+  const order = ['missed', 'soon', 'overdue', 'now', 'past', 'later', 'week'];
   todo.sort((a, b) => order.indexOf(a.zone) - order.indexOf(b.zone));
   const [first, ...others] = todo.map(r => r.row);
   const next: PicturesModel['next'] = [];
@@ -210,6 +220,7 @@ export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, 
     // Done today holds a late check-off waiting for approval too (0.15.0); it shows among the waiting.
     done: column.doneToday.filter(r => r.state !== 'pending'),
     later: others.slice(1),
+    zones,
   };
 }
 
