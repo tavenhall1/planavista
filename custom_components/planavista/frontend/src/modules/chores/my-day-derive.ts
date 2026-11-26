@@ -207,7 +207,8 @@ export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, 
     now: first ?? null,
     next,
     waiting: rows.filter(r => r.row.state === 'pending').map(r => r.row),
-    done: column.doneToday,
+    // Done today holds a late check-off waiting for approval too (0.15.0); it shows among the waiting.
+    done: column.doneToday.filter(r => r.state !== 'pending'),
     later: others.slice(1),
   };
 }

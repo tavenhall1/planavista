@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { columnFor, type DeriveContext } from '../src/modules/chores/board-derive';
-import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, nextLine, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
+import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, isWeekEntry, nextLine, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
 import type { DayEvent } from '../src/modules/chores/calendar-ties';
 import { MEMBERS, NOW, TODAY, board, column, item } from './chores-fixtures';
 
@@ -144,5 +144,50 @@ describe('a goal and stickers read one way (milestone 8)', () => {
   it("names the week's stars the same on the board and in My day", () => {
     expect(stickersLabel(5)).toBe('This week: 5 ★');
     expect(stickersLabel(0)).toBe('This week: 0 ★');
+  });
+});
+
+// Until My day draws the Board's top panels (missed-and-urgency task 8), every row
+// the panels take still shows in My day, once.
+describe('My day keeps the rows the top panels take', () => {
+  const items = [
+    item('make_bed|casey|day:2026-10-05|0', {
+      section: 'missed', overdue_since: '2026-10-05', counted: false,
+      missed: { count: 1, unit: 'day', in_a_row: false, periods: ['2026-10-05'], late: true },
+    }),
+    item('fix_it|casey|once|0', { band: null, dated: true, due_day: '2026-10-13', window: 'once', counted: false }),
+    item('laundry|casey|week:2026-10-12|0', { ...WEEK }),
+    item('vacuum|casey|week:2026-10-05|0', {
+      ...WEEK, section: 'missed', status: 'pending', overdue_since: '2026-10-11',
+      completion: { id: 'v', done_by: 'casey', by: 'casey', at: '2026-10-13T09:00:00-05:00', source: 'tablet', state: 'pending', review: null, stars: 1 },
+    }),
+  ];
+  const b = board({ casey: column(items) }, { week: { start: '2026-10-12', end: '2026-10-15', days_left: 2 } });
+  const ctx: DeriveContext = { today: TODAY, now: NOW, events: [], timeFormat: '12h', activities: new Map(), members: MEMBERS };
+  const col = columnFor(casey, column(items), b, ctx);
+  const chores = ['make_bed', 'fix_it', 'laundry', 'vacuum'];
+  const count = (keys: string[]) => Object.fromEntries(chores.map(c => [c, keys.filter(k => k.startsWith(`${c}|`)).length]));
+
+  it('has the panels on the Board', () => {
+    expect(col.entries.filter(e => e.kind === 'head').map(e => e.key)).toEqual(['head:missed', 'head:soon', 'head:done']);
+  });
+
+  it('lists each once in the Timeline and its week list', () => {
+    const timeline = timelineFor(col, { now: NOW, events: [], timeFormat: '12h', bedtime: null })
+      .flatMap(e => (e.kind === 'chore' ? [e.row.key] : []));
+    const week = col.entries.flatMap(e => (isWeekEntry(e) && e.kind === 'row' ? [e.row.key] : []));
+    expect(count([...timeline, ...week])).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 1 });
+    expect(count(week)).toEqual({ make_bed: 0, fix_it: 0, laundry: 1, vacuum: 0 });
+  });
+
+  it('lists each once in Pictures, a late check-off waiting for approval among the waiting', () => {
+    const p = picturesFor(col, [], NOW, '12h');
+    const keys = [
+      ...(p.now ? [p.now.key] : []), ...p.next.flatMap(n => (n.kind === 'chore' ? [n.row.key] : [])),
+      ...p.later.map(r => r.key), ...p.waiting.map(r => r.key), ...p.done.map(r => r.key),
+    ];
+    expect(count(keys)).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 1 });
+    expect(p.now?.key.startsWith('make_bed|')).toBe(true);
+    expect(p.waiting.map(r => r.key)).toEqual(['vacuum|casey|week:2026-10-05|0']);
   });
 });

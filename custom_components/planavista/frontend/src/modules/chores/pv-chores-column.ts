@@ -310,7 +310,8 @@ export class PvChoresColumn extends LitElement {
       ${model.next ? html`<div class="next">${this._next(model.next)}</div>` : nothing}
       <div class="body" ${ref(this._scroll.attach)}>
         ${model.away ? html`<div class="away">🧳 Away${model.away.note ? ` · ${model.away.note}` : ''}. Nothing is due, and the streak keeps.</div>` : nothing}
-        ${model.ring.closed && !model.entries.some(e => e.kind === 'row' && (e.zone === 'now' || e.zone === 'later' || e.zone === 'overdue'))
+        ${model.ring.closed && !model.entries.some(e => e.kind === 'row' && (e.zone === 'now' || e.zone === 'later' || e.zone === 'overdue'
+          || (e.panel !== undefined && e.row.item.section === 'today')))
           ? html`<div class="closed"><strong>Ring closed for today</strong><span>Everything due today is done. Nice work.</span></div>`
           : nothing}
         ${model.pictures ? this._tiles(model) : this._list(model)}
