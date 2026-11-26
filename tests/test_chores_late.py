@@ -512,18 +512,45 @@ def test_board_counts_missed_total() -> None:
     assert engine.board(at(10, 14, 9, 31))["missed_total"] == len(flagged) - 1
 
 
-def test_a_miss_again_after_more_time_refreshes_since() -> None:
+def test_a_miss_again_refreshes_since() -> None:
+    # Unreachable through the engine's own writes (a late row can't be given more time); kept for the record's rule.
     engine = sample_engine()
     engine.catch_up(at(10, 17, 9))
     assert _record(engine, GATE)["since"] == "2026-10-16"
-    engine.override(at(10, 17, 9), key=GATE, by="blair", due=date(2026, 10, 18))
-    copy = _item(engine, "alex", GATE, at(10, 17, 9, 1))
-    assert (copy.section, copy.missed["late"]) == ("today", False)
-    engine.catch_up(at(10, 19, 9))
+    occ = engine._past_occurrence(GATE)
+    engine._add_late_record(occ, date(2026, 10, 18))
     records = [c for c in engine.log["carried"] if c["key"] == GATE]
     assert len(records) == 1 and records[0]["since"] == "2026-10-18"
-    [row] = [i for i in _missed_rows(engine, "alex", at(10, 19, 9)) if i.occ.key == GATE]
-    assert row.missed["periods"] == ["2026-10-18"]
+
+
+@pytest.mark.parametrize("done", [False, True])
+def test_a_late_row_gets_no_more_time(done: bool) -> None:
+    from custom_components.planavista.chores.model import ChoreError
+
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    if done:
+        engine.complete(at(10, 17, 9), key=GATE, by="alex", source="tablet")
+    now = at(10, 17, 9, 5)
+    with pytest.raises(ChoreError) as refused:
+        engine.override(now, key=GATE, by="blair", due=date(2026, 10, 18))
+    assert refused.value.code == "overdue_stays"
+    if not done:
+        with pytest.raises(ChoreError) as refused:
+            engine.request(now, kind="more_time", key=GATE, by="alex", until=date(2026, 10, 18))
+        assert refused.value.code == "overdue_stays"
+    [row] = [i for i in _missed_rows(engine, "alex", now) if i.occ.key == GATE]
+    assert row.section == "missed"
+
+
+def test_the_todo_list_puts_late_rows_first() -> None:
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    listed = engine.todo_items("alex", at(10, 17, 9))
+    late = len(_missed_rows(engine, "alex", at(10, 17, 9)))
+    assert late > 0 and len(listed) > late
+    assert [i.section for i in listed[:late]] == ["missed"] * late
+    assert "missed" not in [i.section for i in listed[late:]]
 
 
 def test_a_weekly_check_off_sent_back_after_its_week_leaves_a_late_record() -> None:

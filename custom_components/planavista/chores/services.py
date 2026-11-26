@@ -180,7 +180,7 @@ async def _get_chores(call: ServiceCall) -> ServiceResponse:
     day: date = call.data.get("date") or engine.today(now)
     items = engine.items(now, day).get(member, [])
     fields = ("key", "chore", "name", "section", "band", "status", "counted", "due", "due_day",
-              "planned", "from", "overdue_since", "credit_minutes", "stars")
+              "planned", "from", "overdue_since", "credit_minutes", "stars", "missed")
     return {
         "member": member,
         "date": day.isoformat(),

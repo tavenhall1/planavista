@@ -1010,6 +1010,8 @@ class ChoresEngine:
         open_items = [i for i in found if i.status in OPEN and self._still_open(i, now)]
 
         def tier(item: Item) -> int:
+            if item.section == "missed":
+                return -1  # at the top, as on the board (missed-and-urgency spec 4)
             if item.section == "today":
                 return 0
             if item.section == "week" and not item.moved_from:
@@ -1580,8 +1582,8 @@ class ChoresEngine:
         item = self.find_item(key, now)
         if item is None or item.status not in OPEN or not self._still_open(item, now):
             raise ChoreError("not_open")
-        if kind == "more_time" and item.section == "overdue":
-            raise ChoreError("overdue_stays")
+        if kind == "more_time" and item.section in ("missed", "overdue"):
+            raise ChoreError("overdue_stays")  # a late row stays as it is too (missed-and-urgency spec 1)
         if kind == "more_time":
             due_day = self.clock.due_day(item.occ.due) if item.occ.due else None
             if until is None or due_day is None or until <= due_day or until > self.today(now) + timedelta(days=MAX_UNTIL_DAYS):
@@ -1622,7 +1624,8 @@ class ChoresEngine:
         today = self.today(now)
         record: dict[str, Any] = {"occurrence": key, "by": by, "at": self._stamp(now)}
         # Overdue, it stays on the board until it's done: no new day or date (round 9: they changed nothing).
-        if item.section == "overdue" and (planned_day is not self._MISSING or due is not self._MISSING):
+        # A late row too: given a date it would come back as a counted copy (missed-and-urgency spec 1).
+        if item.section in ("missed", "overdue") and (planned_day is not self._MISSING or due is not self._MISSING):
             raise ChoreError("overdue_stays")
         if assignee is not self._MISSING and item.status in CREDITED:
             raise ChoreError("not_open")  # done or waiting: handing it on would lose it (round 9)
