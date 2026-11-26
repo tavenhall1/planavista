@@ -60,7 +60,7 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
   return names;
 }
 
-/** Whether a column entry is one of This week's rows (the top panels' rows are not: they have their own section). */
+/** Whether a column entry is one of This week's rows. A top panel's row (it has `panel`, zone missed or soon) is not: panelEntries has it. */
 export function isWeekEntry(entry: ColumnEntry): boolean {
   return entry.kind === 'row' && entry.zone === 'week';
 }
@@ -70,6 +70,15 @@ export function isWeekEntry(entry: ColumnEntry): boolean {
  * same heads and rows (the column built them with `topPanels`). The Board's
  * "Ring closed" note stays on the Board.
  */
+/** The List style's rows below the panels: Today's open rows and This week's, with no row the panels took. */
+export function listFor(column: ColumnModel): { open: RowModel[]; week: RowModel[] } {
+  const rows = column.entries.flatMap(e => (e.kind === 'row' && e.panel === undefined ? [e] : []));
+  return {
+    open: rows.filter(e => !isWeekEntry(e) && e.zone !== 'done').map(e => e.row),
+    week: rows.filter(isWeekEntry).map(e => e.row),
+  };
+}
+
 export function panelEntries(column: ColumnModel): ColumnEntry[] {
   return column.entries.filter(e => (e.kind === 'head' ? e.tone === 'missed' || e.tone === 'soon' || e.tone === 'last' : e.kind === 'row' && e.panel !== undefined));
 }

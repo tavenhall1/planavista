@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { columnFor, type DeriveContext } from '../src/modules/chores/board-derive';
-import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, isWeekEntry, nextLine, panelEntries, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
+import { bedtimeOn, fairShares, fitsIn, goalFor, goalWords, isWeekEntry, nextLine, panelEntries, listFor, picturesFor, stickersLabel, timelineFor } from '../src/modules/chores/my-day-derive';
 import type { DayEvent } from '../src/modules/chores/calendar-ties';
 import { MEMBERS, NOW, TODAY, board, column, item } from './chores-fixtures';
 
@@ -186,6 +186,13 @@ describe('My day keeps the rows the top panels take', () => {
     expect(count([...inPanels, ...timeline, ...week])).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 1 });
     expect(count(inPanels)).toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 0 });
     expect(count(week)).toEqual({ make_bed: 0, fix_it: 0, laundry: 0, vacuum: 0 });
+  });
+
+  it('lists each once in the List style: panels, Today, and This week', () => {
+    const { open, week } = listFor(col);
+    const inPanels = panelEntries(col).flatMap(e => (e.kind === 'row' ? [e.row.key] : []));
+    expect(count([...inPanels, ...open.map(r => r.key), ...week.map(r => r.key), ...col.doneToday.map(r => r.key)]))
+      .toEqual({ make_bed: 1, fix_it: 1, laundry: 1, vacuum: 1 });
   });
 
   it('lists each once in Pictures, a late check-off waiting for approval among the waiting', () => {

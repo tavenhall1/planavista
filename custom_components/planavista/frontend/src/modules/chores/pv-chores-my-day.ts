@@ -26,6 +26,7 @@ import {
   timelineFor,
   isWeekEntry,
   panelEntries,
+  listFor,
 } from './my-day-derive';
 import { pictureOf } from './pv-chore-tile';
 import './pv-chore-item';
@@ -544,8 +545,7 @@ export class PvChoresMyDay extends LitElement {
 
   private _list() {
     const column = this.column;
-    const open = column.entries.flatMap(e => (e.kind === 'row' && !isWeekEntry(e) && e.zone !== 'done' ? [e.row] : []));
-    const week = column.entries.flatMap(e => (e.kind === 'row' && isWeekEntry(e) ? [e.row] : []));
+    const { open, week } = listFor(column);
     const next = nextLine(this.events, column.member.id, new Date(), this.timeFormat);
     return html`
       ${next ? html`<div class="next">📅 ${next}</div>` : nothing}
