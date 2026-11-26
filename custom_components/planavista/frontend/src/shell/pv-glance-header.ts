@@ -222,6 +222,12 @@ export class PvGlanceHeader extends LitElement {
       padding-left: 12px;
     }
 
+    /* "2 missed" (0.15.0): the red of a miss on the card's own color, readable on any header. */
+    .chip span.pill.bad {
+      background: var(--pv-card-bg, #FFFFFF);
+      color: var(--pv-bad-ink, #A12828);
+    }
+
     .chip {
       max-width: 100%;
       min-width: 0;
@@ -362,7 +368,7 @@ export class PvGlanceHeader extends LitElement {
       <div class="chips">
         ${chips.map(chip => html`
           <button type="button" class="chip" @click=${() => this._openChip(chip)}>
-            <span class="pill ${chip.progress === undefined ? 'plain' : ''}">
+            <span class="pill ${chip.progress === undefined ? 'plain' : ''} ${chip.tone ?? ''}">
               ${chip.progress !== undefined ? html`
                 <pv-ring size="18" .progress=${chip.progress} color="var(--pv-accent, #5B5BD6)" ?closed=${chip.progress >= 1}></pv-ring>
               ` : nothing}

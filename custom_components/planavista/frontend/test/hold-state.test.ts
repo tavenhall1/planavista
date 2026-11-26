@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rowChange, tileLine, tileRingFill } from '../src/modules/chores/hold-state';
+import { rowChange, tileLabel, tileLine, tileRingFill } from '../src/modules/chores/hold-state';
 import type { RowModel } from '../src/modules/chores/board-derive';
 import { item } from './chores-fixtures';
 
@@ -22,6 +22,20 @@ describe("a picture tile's line under the name", () => {
     expect(tileLine(row('a|dana|x|0', 'open'), 0, true, 0)).toEqual({ kind: 'hint', text: 'Hold me' });
     expect(tileLine(row('a|dana|x|0', 'open'), 0, false, 0)).toEqual({ kind: 'hint', text: '' });
     expect(tileLine(row('a|dana|x|0', 'done'), 0.5, true, 1)).toEqual({ kind: 'hint', text: '' });
+  });
+});
+
+// Missed and urgency: a missed tile says what it missed, not "Overdue since" (a late row has overdue_since too).
+describe("a missed picture tile's line", () => {
+  const missed = {
+    ...row('tidy_toys|dana|week:2026-10-05|0', 'open'),
+    badge: { words: 'Missed last week', tone: 'bad' as const, glyph: '×' },
+  };
+  missed.item = { ...missed.item, section: 'missed', overdue_since: '2026-10-11', missed: { count: 1, unit: 'week', in_a_row: false, periods: ['2026-10-05'], late: true } };
+
+  it('says the missed words under the name, and to a screen reader', () => {
+    expect(tileLine(missed, 0, false, 1)).toEqual({ kind: 'bad', text: 'Missed last week' });
+    expect(tileLabel(missed)).toBe('tidy_toys, missed last week. Hold to complete');
   });
 });
 

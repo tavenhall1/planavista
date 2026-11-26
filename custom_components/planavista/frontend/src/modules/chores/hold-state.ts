@@ -48,6 +48,8 @@ export function tileLine(row: RowModel, fill: number, large: boolean, stars: num
   // round 10: one never done looked like today's too).
   const day = overdueDay(row);
   if (row.state === 'sent_back') return { kind: 'bad', text: `↩ ${row.badge?.words ?? 'Sent back'}${day ? ` · from ${day}` : ''}` };
+  // A missed chore says what it missed ("Missed yesterday"); a late row has overdue_since too.
+  if (row.item.missed && !done) return { kind: 'bad', text: row.badge?.words ?? 'Missed' };
   if (day && !done) return { kind: 'bad', text: `Overdue since ${day}` };
   return { kind: 'hint', text: large && !done ? 'Hold me' : '' };
 }
@@ -62,6 +64,10 @@ function overdueDay(row: RowModel): string | null {
 export function tileLabel(row: RowModel): string {
   if (row.state === 'done') return `${row.name}, done. Hold to uncheck`;
   if (row.state === 'pending') return `${row.name}, waiting for approval`;
+  if (row.item.missed && row.state === 'open') {
+    const words = row.badge?.words ?? 'Missed';
+    return `${row.name}, ${words[0].toLowerCase()}${words.slice(1)}. Hold to complete`;
+  }
   const day = overdueDay(row);
   const since = day ? `, overdue since ${day}` : '';
   if (row.state === 'sent_back') return `${row.name}, ${row.badge?.words ?? 'sent back'}${since}. Hold to complete`;

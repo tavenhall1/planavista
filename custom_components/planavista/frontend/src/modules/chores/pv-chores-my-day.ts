@@ -24,6 +24,7 @@ import {
   picturesFor,
   stickersLabel,
   timelineFor,
+  isWeekEntry,
 } from './my-day-derive';
 import { pictureOf } from './pv-chore-tile';
 import './pv-chore-item';
@@ -496,7 +497,7 @@ export class PvChoresMyDay extends LitElement {
 
   private _weekRows() {
     if (this.layout === 'landscape') return nothing;
-    const week = this.column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
+    const week = this.column.entries.flatMap(e => (e.kind === 'row' && isWeekEntry(e) ? [e.row] : []));
     if (week.length === 0) return nothing;
     return html`
       <div class="tl-week">
@@ -508,8 +509,8 @@ export class PvChoresMyDay extends LitElement {
 
   private _list() {
     const column = this.column;
-    const open = column.entries.flatMap(e => (e.kind === 'row' && e.zone !== 'week' && e.zone !== 'done' ? [e.row] : []));
-    const week = column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
+    const open = column.entries.flatMap(e => (e.kind === 'row' && !isWeekEntry(e) && e.zone !== 'done' ? [e.row] : []));
+    const week = column.entries.flatMap(e => (e.kind === 'row' && isWeekEntry(e) ? [e.row] : []));
     const next = nextLine(this.events, column.member.id, new Date(), this.timeFormat);
     return html`
       ${next ? html`<div class="next">📅 ${next}</div>` : nothing}
@@ -580,7 +581,7 @@ export class PvChoresMyDay extends LitElement {
 
   private _side() {
     const column = this.column;
-    const week = column.entries.flatMap(e => (e.kind === 'row' && e.zone === 'week' ? [e.row] : []));
+    const week = column.entries.flatMap(e => (e.kind === 'row' && isWeekEntry(e) ? [e.row] : []));
     if (this.layout !== 'landscape') {
       return nothing;
     }

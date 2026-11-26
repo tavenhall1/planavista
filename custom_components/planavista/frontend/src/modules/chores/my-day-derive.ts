@@ -2,7 +2,7 @@ import type { Member } from '../../core/household';
 import { minutesText } from '../../core/status-map';
 import { FairShare, fairnessShares } from './fairness';
 import type { Band, Board, BoardMember, Reward } from './chores-types';
-import type { ColumnModel, RowModel } from './board-derive';
+import type { ColumnEntry, ColumnModel, RowModel } from './board-derive';
 import { BANDS, BAND_NAMES, bandAt, bandState } from './board-derive';
 import { DayEvent, clockTime } from './calendar-ties';
 import { pictureFor } from './picture-words';
@@ -61,6 +61,15 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
 }
 
 /**
+ * Whether a column entry is one of This week's rows. Until My day draws the
+ * Board's top panels itself (missed-and-urgency task 8), a due-soon row from This
+ * week stays in My day's week list, and a missed row is due now.
+ */
+export function isWeekEntry(entry: ColumnEntry): boolean {
+  return entry.kind === 'row' && (entry.zone === 'week' || (entry.zone === 'soon' && entry.row.item.section === 'week'));
+}
+
+/**
  * The Timeline (spec 13.4): calendar events at their real times, chores in
  * their bands in plan order, a line at now with what fits before the next
  * event, and the day ending at bedtime. Presentation only.
@@ -68,15 +77,15 @@ export function fitsIn(minutes: number | null, rows: RowModel[]): string[] {
 export function timelineFor(column: ColumnModel, ctx: DayContext): TimelineEntry[] {
   const now = ctx.now;
   const current = bandAt(now, ctx.dayStarts);
-  const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
+  const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: isWeekEntry(e) ? 'week' : e.zone }] : []));
   const bandOf = (row: RowModel): Band => row.item.band ?? current;
   // A check-off waiting for approval happened already: it sits at its time, like a done one (milestone 8).
   const checkedOff = (row: RowModel) => row.state === 'pending' && !!row.item.completion;
   // Overdue ones and ones left from an earlier band are due now.
   const dueNow = rows
-    .filter(r => (r.zone === 'overdue' || r.zone === 'past') && !checkedOff(r.row))
+    .filter(r => (r.zone === 'missed' || r.zone === 'overdue' || r.zone === 'past') && !checkedOff(r.row))
     .map(r => r.row);
-  const open = rows.filter(r => (r.zone === 'now' || r.zone === 'later') && !checkedOff(r.row)).map(r => r.row);
+  const open = rows.filter(r => (r.zone === 'now' || r.zone === 'later' || r.zone === 'soon') && !checkedOff(r.row)).map(r => r.row);
   const waiting = rows.filter(r => r.zone !== 'week' && r.zone !== 'done' && checkedOff(r.row)).map(r => r.row);
   const done = [...column.doneToday, ...waiting];
   const week = rows.filter(r => r.zone === 'week').map(r => r.row);
@@ -187,7 +196,7 @@ export interface PicturesModel {
 export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, format: '12h' | '24h'): PicturesModel {
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
   const todo = rows.filter(r => r.zone !== 'done' && (r.row.state === 'open' || r.row.state === 'sent_back'));
-  const order = ['overdue', 'now', 'past', 'later', 'week'];
+  const order = ['missed', 'overdue', 'now', 'past', 'later', 'soon', 'week'];
   todo.sort((a, b) => order.indexOf(a.zone) - order.indexOf(b.zone));
   const [first, ...others] = todo.map(r => r.row);
   const next: PicturesModel['next'] = [];

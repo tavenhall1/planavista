@@ -64,6 +64,85 @@ export const choresStyles = css`
 `;
 
 /**
+ * The top panels (missed and urgency, 0.15.0): Missed in red with a red line,
+ * due soon in amber, its last day in red with a red line. A panel is drawn
+ * around a run of the one keyed list (its heading has `start`, its last row
+ * `end`), so a row keeps its element, and its check-off's pop, as it moves
+ * between a panel and its place. The colors are theme tokens, already dimmed
+ * on a dimmed shared screen.
+ */
+export const panelStyles = css`
+  .in-panel {
+    --panel-bg: var(--pv-warn-bg, #FDF1DC);
+    --panel-line: transparent;
+    display: block;
+    margin-inline: -6px;
+    padding-inline: 4px;
+    background: var(--panel-bg);
+    border-inline: 2px solid var(--panel-line);
+  }
+
+  .in-panel.missed,
+  .in-panel.last {
+    --panel-bg: var(--pv-bad-bg, #FBE4E4);
+    --panel-line: var(--pv-danger, #C62828);
+  }
+
+  .in-panel.start {
+    margin-top: 8px;
+    margin-bottom: 0;
+    padding-top: 10px;
+    padding-bottom: 4px;
+    border-top: 2px solid var(--panel-line);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .in-panel.end {
+    margin-bottom: 4px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--panel-line);
+    border-radius: 0 0 16px 16px;
+  }
+
+  /* Over a heading's own margins (the column's styles come later). */
+  .head-row.in-panel {
+    margin-inline: -6px;
+    padding-inline: 10px;
+  }
+
+  .head-row.missed {
+    color: var(--pv-bad-ink, #A12828);
+    font-size: 0.9375rem;
+  }
+
+  .head-row.soon {
+    color: var(--pv-warn-ink, #8A5A00);
+  }
+
+  .head-row.last {
+    color: var(--pv-bad-ink, #A12828);
+  }
+
+  /* "3 days left" in amber, with a dot (missed-and-urgency spec 5). */
+  .head-row .right.warn,
+  .head-row.soon .right {
+    color: var(--pv-warn-ink, #8A5A00);
+  }
+
+  .head-row .right.warn::before,
+  .head-row.soon .right::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: 1px;
+  }
+`;
+
+/**
  * The Week view's and the Board's stepper (0.14.0): the calendar's toolbar
  * grammar, the day or week on the left, then round arrows around This week
  * or Today.

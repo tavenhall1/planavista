@@ -1,5 +1,5 @@
 import type { Member } from '../../core/household';
-import { daysToDeadline } from './urgency-derive';
+import { daysToDeadline, urgencyOf } from './urgency-derive';
 import { BadgeContext, StatusBadge, itemBadge, minutesText, ringLabel, shortDay } from '../../core/status-map';
 import type { Activity, Band, Board, BoardMember, ItemView } from './chores-types';
 import { DayEvent, clockTime, nextOnCalendar } from './calendar-ties';
@@ -27,14 +27,26 @@ export interface RowModel {
   doneBy?: string | null;
   /** Overdue from an earlier day: that day in short ("Wed", "Sep 28"). */
   overdueDay?: string;
+  /** The badge sits under the name and the estimate stays at the end (a missed row, missed-and-urgency mockup). */
+  badgeUnder?: boolean;
 }
 
 export type BandState = 'past' | 'now' | 'later';
 
-/** A list entry of a column, in order: section headings and rows share one list so rows can glide between sections. */
+/** A top panel's look: Missed (red), due soon (amber), or due soon on its last day (red). */
+export type PanelTone = 'missed' | 'soon' | 'last';
+
+/**
+ * A list entry of a column, in order: section headings and rows share one list so rows can glide between sections.
+ * A top panel is a heading with tone `missed`, `soon`, or `last` and the rows after it that carry its `panel`;
+ * the last of them has `end` (the column draws the panel around them, keeping the one keyed list).
+ */
 export type ColumnEntry =
-  | { kind: 'head'; key: string; text: string; right?: string; tone: 'now' | 'later' | 'past' | 'plain' }
-  | { kind: 'row'; key: string; row: RowModel; zone: 'now' | 'later' | 'past' | 'overdue' | 'week' | 'done' }
+  | { kind: 'head'; key: string; text: string; right?: string; rightTone?: 'warn'; tone: 'now' | 'later' | 'past' | 'plain' | PanelTone }
+  | {
+    kind: 'row'; key: string; row: RowModel; zone: 'missed' | 'soon' | 'now' | 'later' | 'past' | 'overdue' | 'week' | 'done';
+    panel?: PanelTone; end?: boolean;
+  }
   | { kind: 'credit'; key: string; text: string };
 
 export interface ColumnModel {
@@ -111,6 +123,15 @@ export function estimateText(item: ItemView, earnsStars: boolean): string {
   return earnsStars && item.stars > 0 ? `${time} · ★ ${item.stars}` : time;
 }
 
+/**
+ * Days left to an item's own deadline (urgency-derive), except a chore planned for
+ * today: it sits in today's band and is done today, as a daily chore is.
+ */
+export function deadlineOf(item: ItemView, today: string, board: Pick<Board, 'week'>): number | null {
+  if (item.section === 'today' && item.window === 'week') return null;
+  return daysToDeadline(item, today, board);
+}
+
 function rowFor(item: ItemView, ctx: DeriveContext, board: Board, earnsStars: boolean, extra: Partial<RowModel> = {}): RowModel {
   const activity = ctx.activities.get(item.chore);
   const remaining = extra.group ? extra.group.total - extra.group.done : 1;
@@ -118,7 +139,7 @@ function rowFor(item: ItemView, ctx: DeriveContext, board: Board, earnsStars: bo
     today: ctx.today,
     daysLeft: board.week.days_left,
     remaining,
-    deadlineDays: daysToDeadline(item, ctx.today, board),
+    deadlineDays: deadlineOf(item, ctx.today, board),
   };
   let doneAt: string | undefined;
   let doneBy: string | null | undefined;
@@ -154,9 +175,71 @@ function isFloating(item: ItemView): boolean {
  * one-time chore's sessions ("Clean out the garage · 1 of 2").
  */
 export function groupKey(item: ItemView): string | null {
-  if (item.section === 'overdue') return null;
+  if (item.section === 'overdue' || item.section === 'missed') return null;
   if (isFloating(item) || (item.window === 'once' && item.period === 'once')) return `${item.section}|${item.chore}|${item.period}`;
   return null;
+}
+
+/** Open check-offs a row stands for: a floating chore's still open this week, else one. */
+function openCount(row: RowModel): number {
+  if (row.group) return row.group.total - row.group.done;
+  return OPEN.has(row.state) ? 1 : 0;
+}
+
+/** A row that sits in the Missed panel: a late row, or a copy flagged with what it missed. */
+function isMissedRow(row: RowModel): boolean {
+  return !!row.item.missed || row.item.section === 'missed';
+}
+
+/**
+ * The top of a column (missed-and-urgency spec 4, 5): Missed first, every row
+ * flagged with a miss and every late row, oldest miss first; then the due-soon
+ * panel, the open rows with 2 days or fewer left to their own deadline, the
+ * most urgent first. The due-soon heading says "This week" when it holds only
+ * the week's chores, else "Due soon", with the open check-offs to go ("2 to go")
+ * and the smallest days left; red on a last day. Rows in the panel show their
+ * estimate, since the heading says the days. Returns the entries in order and
+ * the keys of the rows it took, so the rest can go where they were (the Board
+ * and My day).
+ */
+export function topPanels(rows: RowModel[], ctx: { today: string; week: Board['week'] }): { entries: ColumnEntry[]; used: Set<string> } {
+  const entries: ColumnEntry[] = [];
+  const used = new Set<string>();
+  const first = (row: RowModel) => row.item.missed?.periods[0] ?? row.item.overdue_since ?? row.item.due_day ?? '';
+  const missed = rows.filter(isMissedRow).sort((a, b) => first(a).localeCompare(first(b)));
+  if (missed.length) {
+    entries.push({ kind: 'head', key: 'head:missed', text: `Missed · ${missed.length}`, tone: 'missed' });
+    missed.forEach((row, i) => {
+      entries.push({ kind: 'row', key: row.key, row: { ...row, badgeUnder: true }, zone: 'missed', panel: 'missed', end: i === missed.length - 1 });
+      used.add(row.key);
+    });
+  }
+  const soon = rows
+    .filter(row => !isMissedRow(row) && openCount(row) > 0)
+    .map(row => ({ row, days: deadlineOf(row.item, ctx.today, { week: ctx.week }) }))
+    .filter((r): r is { row: RowModel; days: number } => {
+      const urgency = urgencyOf(r.days);
+      return urgency === 'soon' || urgency === 'last';
+    })
+    .sort((a, b) => a.days - b.days);
+  if (soon.length) {
+    const days = soon[0].days;
+    const tone: PanelTone = days <= 1 ? 'last' : 'soon';
+    const toGo = soon.reduce((sum, r) => sum + openCount(r.row), 0);
+    const name = soon.every(r => r.days <= 1) ? 'Last day' : soon.every(r => r.row.item.window === 'week') ? 'This week' : 'Due soon';
+    entries.push({
+      kind: 'head', key: 'head:soon', text: `${name} · ${toGo} to go`, right: tone === 'last' ? 'Ends tonight' : `${days} days left`, tone,
+    });
+    soon.forEach(({ row, days: own }, i) => {
+      // The heading says the days left: no pace or "3 days left" badge (Sent back, waiting, and a due date still
+      // say so); a row that ends later than the heading says when.
+      const badge = itemBadge(row.item, { today: ctx.today, daysLeft: ctx.week.days_left, remaining: 0, deadlineDays: null })
+        ?? (own > days ? { words: `${own} days left`, tone: 'time' as const, glyph: '•' } : null);
+      entries.push({ kind: 'row', key: row.key, row: { ...row, badge }, zone: 'soon', panel: tone, end: i === soon.length - 1 });
+      used.add(row.key);
+    });
+  }
+  return { entries, used };
 }
 
 /** One person's column (spec 13.1): bands with Now highlighted, This week, Done today (every check-off today), and past bands as credit. */
@@ -172,11 +255,18 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
   const week: RowModel[] = [];
   const groups = new Map<string, ItemView[]>();
   const earlier: RowModel[] = [];
+  const late: RowModel[] = [];
 
   for (const item of items) {
     const group = groupKey(item);
     if (group) {
       groups.set(group, [...(groups.get(group) ?? []), item]);
+      continue;
+    }
+    if (item.section === 'missed') {
+      // A late row: open at the top; checked off today (done late, or waiting for approval) in Done today.
+      if (OPEN.has(item.status)) late.push(rowFor(item, ctx, board, earnsStars));
+      else if ((item.status === 'done' || item.status === 'pending') && doneToday(item, board)) done.push(rowFor(item, ctx, board, earnsStars));
       continue;
     }
     if (item.section === 'overdue') {
@@ -220,8 +310,11 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
       } else done.push(rowFor(item, ctx, board, earnsStars));
     }
     // A sent-back session first, so its note shows (round 10: an open session hid it).
-    const next = live.find(i => i.status === 'sent_back') ?? live.find(i => OPEN.has(i.status)) ?? live.find(i => i.status === 'pending');
-    if (!next) continue;
+    const found = live.find(i => i.status === 'sent_back') ?? live.find(i => OPEN.has(i.status)) ?? live.find(i => i.status === 'pending');
+    if (!found) continue;
+    // The backend flags one open check-off (the earliest); the row stands for them all, so it carries the flag.
+    const flagged = live.find(i => i.missed);
+    const next = flagged && !found.missed ? { ...found, missed: flagged.missed } : found;
     const group = { done: credited, total };
     const time = minutesText(live.reduce((sum, i) => sum + i.credit_minutes, 0));
     const row = rowFor(next, ctx, board, earnsStars, { group });
@@ -229,6 +322,12 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     if (today) bandRows[bandOf(next, current)].push(row);
     else week.push(row);
   }
+
+  // Missed, then due soon, at the top; what they take leaves its band or This week.
+  const top = topPanels([...late, ...BANDS.flatMap(b => bandRows[b]), ...week], { today: ctx.today, week: board.week });
+  entries.push(...top.entries);
+  for (const band of BANDS) bandRows[band] = bandRows[band].filter(r => !top.used.has(r.key));
+  const weekLeft = week.filter(r => !top.used.has(r.key));
 
   if (overdue.length) {
     entries.push({ kind: 'head', key: 'head:overdue', text: 'Overdue', tone: 'plain' });
@@ -261,10 +360,13 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     }
     for (const row of rows) entries.push({ kind: 'row', key: row.key, row, zone: state });
   }
-  if (week.length) {
+  if (weekLeft.length) {
     const left = board.week.days_left;
-    entries.push({ kind: 'head', key: 'head:week', text: 'This week', right: left === 1 ? 'Last day' : `${left} days left`, tone: 'plain' });
-    for (const row of week) entries.push({ kind: 'row', key: row.key, row, zone: 'week' });
+    entries.push({
+      kind: 'head', key: 'head:week', text: 'This week', right: left === 1 ? 'Last day' : `${left} days left`,
+      ...(urgencyOf(left) === 'amber' ? { rightTone: 'warn' as const } : {}), tone: 'plain',
+    });
+    for (const row of weekLeft) entries.push({ kind: 'row', key: row.key, row, zone: 'week' });
   }
   // Every check-off today, a finished part of the day's too, so a mistaken one can be unchecked with the same hold (milestone 8).
   const allDone = [...earlier, ...done].sort((a, b) => (a.item.completion?.at ?? '').localeCompare(b.item.completion?.at ?? ''));

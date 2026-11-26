@@ -35,6 +35,8 @@ export interface GlanceChip {
   primary?: boolean;
   /** Where a tap leads. */
   open?: OpenTarget;
+  /** 'bad' draws it in the red of a miss ("2 missed"). */
+  tone?: 'bad';
 }
 
 /** A button a module adds to the bar or the parent-mode strip, such as "⏳ 2 to approve". */
