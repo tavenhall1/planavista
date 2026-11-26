@@ -125,7 +125,9 @@ describe('columnFor (spec 13.1)', () => {
       completion: { id: 'l', done_by: 'alex', by: 'alex', at: '2026-10-13T15:40:00-05:00', source: 'tablet', state: 'done', review: null, stars: 2 },
     });
     const col = columnFor(blair, column([laundry]), board({ blair: column([laundry]) }), ctx());
-    const [head, row] = col.entries;
+    // Her ring closed, so the column says so first.
+    const [note, head, row] = col.entries;
+    expect(note).toMatchObject({ kind: 'note', text: 'Ring closed for today' });
     expect(head).toMatchObject({ kind: 'head', text: 'Done today' });
     expect(row).toMatchObject({ zone: 'done', row: { doneAt: '3:40', doneBy: 'Alex', label: '2 loads' } });
   });
@@ -135,7 +137,8 @@ describe('columnFor (spec 13.1)', () => {
       section: 'week', window: 'week', planned: '2026-10-12', from: '2026-10-12', status: 'done',
       completion: { id: 'l', done_by: 'blair', by: 'blair', at: '2026-10-12T10:00:00-05:00', source: 'tablet', state: 'done', review: null, stars: 2 },
     });
-    expect(columnFor(blair, column([monday]), board({ blair: column([monday]) }), ctx()).entries).toEqual([]);
+    const entries = columnFor(blair, column([monday]), board({ blair: column([monday]) }), ctx()).entries;
+    expect(entries.filter(e => e.kind !== 'note')).toEqual([]);
   });
 
   it('puts overdue items first and says a past band still has work', () => {
@@ -320,6 +323,65 @@ describe('the top of a column: Missed, then due soon (missed-and-urgency spec 4,
     expect(entries.map(e => e.key)).toEqual(['head:soon', 'laundry|casey|week:2026-10-12|0']);
     expect([...used]).toEqual(['laundry|casey|week:2026-10-12|0']);
     expect(topPanels(rows, { today: TODAY, week: weekOf(6) })).toEqual({ entries: [], used: new Set() });
+  });
+});
+
+describe('"Ring closed for today" comes after the top panels (missed-and-urgency, review round 1)', () => {
+  const fish = item('feed_the_fish|casey|day:2026-10-13|0', {
+    band: 'morning', status: 'done',
+    completion: { id: 'f', done_by: 'casey', by: 'casey', at: '2026-10-13T08:00:00-05:00', source: 'tablet', state: 'done', review: null, stars: 1 },
+  });
+  const late = item('clean_the_bathroom|casey|week:2026-10-05|0', {
+    ...WEEK, section: 'missed', overdue_since: '2026-10-11',
+    missed: { count: 1, unit: 'week', in_a_row: false, periods: ['2026-10-05'], late: true },
+  });
+  const laundry = item('laundry|casey|week:2026-10-12|0', { ...WEEK });
+  function col(items: ReturnType<typeof item>[], left: number, who = casey) {
+    const b = board({ [who.id]: column(items) }, { week: { start: '2026-10-12', end: `2026-10-${13 + left}`, days_left: left } });
+    return columnFor(who, column(items), b, ctx());
+  }
+
+  it('says it after Missed and due soon, since misses don\'t count in the ring', () => {
+    const c = col([fish, late, laundry], 2);
+    expect(c.ring.closed).toBe(true);
+    expect(keysOf(c.entries)).toEqual([
+      'head:Missed · 1', 'missed:clean_the_bathroom',
+      'head:This week · 1 to go', 'soon:laundry',
+      'note:Ring closed for today',
+      'head:Done today', 'done:feed_the_fish',
+      'credit:Morning · 1 done',
+    ]);
+    expect(c.entries.find(e => e.kind === 'note')).toEqual({
+      kind: 'note', key: 'note:closed', text: 'Ring closed for today', detail: 'Everything due today is done. Nice work.',
+    });
+  });
+
+  it('says it first when nothing is at the top, and not while the ring is open', () => {
+    expect(keysOf(col([fish, laundry], 6).entries).slice(0, 2)).toEqual(['note:Ring closed for today', 'head:This week']);
+    expect(keysOf(col([late, item('cat_care|casey|day:2026-10-13|1', { band: 'evening' })], 6).entries)).not.toContain('note:Ring closed for today');
+  });
+
+  it("doesn't say it while one of today's chores is still open, in a band or a panel", () => {
+    const fixIt = (due: string) => item('fix_it|casey|once|0', { band: null, dated: true, due_day: due, window: 'once', counted: false });
+    expect(keysOf(col([fish, fixIt('2026-10-17')], 6).entries)).toEqual(['head:Now · afternoon', 'now:fix_it', 'head:Done today', 'done:feed_the_fish', 'credit:Morning · 1 done']);
+    expect(keysOf(col([fish, fixIt('2026-10-13')], 6).entries)).toEqual([
+      'head:Last day · 1 to go', 'soon:fix_it', 'head:Done today', 'done:feed_the_fish', 'credit:Morning · 1 done',
+    ]);
+  });
+
+  it("goes in the same place among a young child's tiles", () => {
+    const tidy = (fields = {}) => item('tidy_toys|dana|day:2026-10-13|0', {
+      band: 'morning', status: 'done',
+      completion: { id: 't', done_by: 'dana', by: 'dana', at: '2026-10-13T08:00:00-05:00', source: 'tablet', state: 'done', review: null, stars: 1 },
+      ...fields,
+    });
+    const missedFish = item('feed_the_fish|dana|day:2026-10-12|0', {
+      section: 'missed', overdue_since: '2026-10-12', counted: false,
+      missed: { count: 1, unit: 'day', in_a_row: false, periods: ['2026-10-12'], late: true },
+    });
+    const c = col([tidy(), missedFish], 6, dana);
+    expect(c.pictures).toBe(true);
+    expect(keysOf(c.entries)).toEqual(['head:Missed · 1', 'missed:feed_the_fish', 'note:Ring closed for today', 'head:Done today', 'done:tidy_toys', 'credit:Morning · 1 done']);
   });
 });
 

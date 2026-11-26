@@ -191,6 +191,10 @@ export class PvChoresColumn extends LitElement {
         color: var(--pv-text-muted, #8E949C);
       }
 
+      .tiles .closed {
+        grid-column: 1 / -1;
+      }
+
       .closed {
         margin: 6px 4px 4px;
         padding: 12px 14px;
@@ -310,10 +314,6 @@ export class PvChoresColumn extends LitElement {
       ${model.next ? html`<div class="next">${this._next(model.next)}</div>` : nothing}
       <div class="body" ${ref(this._scroll.attach)}>
         ${model.away ? html`<div class="away">🧳 Away${model.away.note ? ` · ${model.away.note}` : ''}. Nothing is due, and the streak keeps.</div>` : nothing}
-        ${model.ring.closed && !model.entries.some(e => e.kind === 'row' && (e.zone === 'now' || e.zone === 'later' || e.zone === 'overdue'
-          || (e.panel !== undefined && e.row.item.section === 'today')))
-          ? html`<div class="closed"><strong>Ring closed for today</strong><span>Everything due today is done. Nice work.</span></div>`
-          : nothing}
         ${model.pictures ? this._tiles(model) : this._list(model)}
         ${model.empty && !model.away ? html`<div class="quiet">Nothing on the board today.</div>` : nothing}
         <div class="layer"></div>
@@ -352,6 +352,7 @@ export class PvChoresColumn extends LitElement {
       `;
     }
     if (entry.kind === 'credit') return html`<div class="credit" data-key=${entry.key}>${entry.text}</div>`;
+    if (entry.kind === 'note') return this._note(entry);
     // One keyed list: a panel row is drawn inside its panel by its classes, so it keeps its element as it moves.
     return html`
       <pv-chore-item data-key=${entry.key} class=${entry.panel ? `in-panel ${entry.panel}${entry.end ? ' end' : ''}` : ''}
@@ -360,11 +361,23 @@ export class PvChoresColumn extends LitElement {
     `;
   }
 
+  /** "Ring closed for today", where the column puts it (after the top panels). */
+  private _note(entry: Extract<ColumnEntry, { kind: 'note' }>) {
+    return html`<div class="closed" data-key=${entry.key}><strong>${entry.text}</strong><span>${entry.detail}</span></div>`;
+  }
+
   private _tiles(model: ColumnModel) {
     // Missed tiles come first (the entries' order), outlined as their panel is.
     const tiles: Array<{ row: RowModel; now: boolean; stars: number; zone: string }> = [];
+    // The note sits after the tiles of the top panels, across the grid.
+    let note: Extract<ColumnEntry, { kind: 'note' }> | null = null;
+    let noteAt = 0;
     let first = true;
     for (const entry of model.entries) {
+      if (entry.kind === 'note') {
+        note = entry;
+        noteAt = tiles.length;
+      }
       if (entry.kind !== 'row' || entry.zone === 'done') continue;
       tiles.push({
         row: entry.row, now: first && entry.row.state !== 'pending', stars: model.member.stars ? entry.row.item.stars : 0, zone: entry.panel ?? '',
@@ -379,10 +392,14 @@ export class PvChoresColumn extends LitElement {
     return html`
       <div class="tiles">
         ${this._present(model, 'tile')}
-        ${repeat(tiles, t => t.row.key, t => html`
-          <pv-chore-tile data-key=${t.row.key} .row=${t.row} color=${this.color} ?now=${t.now} zone=${t.zone} ?locked=${this.locked}
-            .stars=${t.stars}></pv-chore-tile>
-        `)}
+        ${repeat(
+          note ? [...tiles.slice(0, noteAt), note, ...tiles.slice(noteAt)] : tiles,
+          t => ('kind' in t ? t.key : t.row.key),
+          t => ('kind' in t ? this._note(t) : html`
+            <pv-chore-tile data-key=${t.row.key} .row=${t.row} color=${this.color} ?now=${t.now} zone=${t.zone} ?locked=${this.locked}
+              .stars=${t.stars}></pv-chore-tile>
+          `),
+        )}
       </div>
       ${model.member.stars && !model.empty ? html`
         <div class="stickers">

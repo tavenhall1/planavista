@@ -47,7 +47,9 @@ export type ColumnEntry =
     kind: 'row'; key: string; row: RowModel; zone: 'missed' | 'soon' | 'now' | 'later' | 'past' | 'overdue' | 'week' | 'done';
     panel?: PanelTone; end?: boolean;
   }
-  | { kind: 'credit'; key: string; text: string };
+  | { kind: 'credit'; key: string; text: string }
+  /** "Ring closed for today": after the top panels, since misses don't count in the ring (missed-and-urgency). */
+  | { kind: 'note'; key: string; text: string; detail: string };
 
 export interface ColumnModel {
   member: Member;
@@ -379,6 +381,15 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
   const { due, done: doneCount, pending } = entry.today;
   const finished = doneCount + pending;
   const closed = due > 0 && finished >= due;
+  // Nothing of today's still open, in a band or a top panel (a dated chore due tonight isn't counted in the ring).
+  const todayOpen = entries.some(e => e.kind === 'row' && (
+    e.zone === 'now' || e.zone === 'later' || e.zone === 'overdue' || (e.panel !== undefined && e.row.item.section === 'today')
+  ));
+  if (closed && !todayOpen) {
+    entries.splice(top.entries.length, 0, {
+      kind: 'note', key: 'note:closed', text: 'Ring closed for today', detail: 'Everything due today is done. Nice work.',
+    });
+  }
   const parts: ColumnModel['parts'] = [{ kind: 'count', text: due > 0 ? `${Math.min(finished, due)} of ${due} today` : 'Nothing due today' }];
   if (earnsStars) parts.push({ kind: 'stars', text: `★ ${entry.stars}` });
   if (entry.streak >= 2) parts.push({ kind: 'streak', text: `🔥 ${entry.streak} days` });
