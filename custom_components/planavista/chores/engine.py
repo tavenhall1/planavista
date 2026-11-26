@@ -2555,7 +2555,7 @@ class ChoresEngine:
         for key, day in missed.items():
             if key in have or index.overrides.get(key, {}).get("excused"):
                 continue
-            occ = self._past_occurrence(key, index)
+            occ = self._past_occurrence(key, index) or self._handed_off_occurrence(key, index)
             if occ is None or self.member(occ.member) is None or self.activity(occ.chore) is None:
                 continue
             record = late_record(occ, day)
@@ -2569,6 +2569,22 @@ class ChoresEngine:
                 activity["finished_at"] = None  # finished by the rollover after its miss; the record holds it open
                 out.changed.add("plan")
         return out
+
+    def _handed_off_occurrence(self, key: str, index: _Index) -> Occurrence | None:
+        """An occurrence of someone since taken off its chore, worked out as if they still had it.
+
+        The back-fill's misses stay with who missed them (spec 1, Hand-offs), as rollover-made records do.
+        """
+        parsed = parse_key(key)
+        activity = self.activity(parsed[0]) if parsed else None
+        if parsed is None or activity is None or parsed[1] in activity.get("assignees", []):
+            return None
+        gen = self.generator()
+        probe = {**activity, "assignees": [*activity.get("assignees", []), parsed[1]], "finished_at": None}
+        occ = gen.from_key(probe, key)
+        if occ is None:
+            return None
+        return with_overrides(occ, index.overrides.get(key, {}), set(self.member_ids()), gen.clock)
 
     def rollover(self, day: date) -> Outcome:
         """End chore day `day`: auto-approve, apply the missed policy, write summaries, prune."""

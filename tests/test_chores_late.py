@@ -715,6 +715,18 @@ def test_backfill_skips_gone_chores_and_people() -> None:
     assert _record(engine, "feed_the_fish|dana|day:2026-10-12|0") is not None
 
 
+def test_backfill_keeps_a_miss_with_who_missed_it_after_a_hand_off() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    _as_before(engine)
+    engine.activity("make_your_bed")["assignees"] = ["casey"]
+    engine.backfill_late(WEDNESDAY)
+    record = _record(engine, BED)
+    assert record is not None and record["member"] == "dana"
+    [row] = [i for i in _missed_rows(engine, "dana", WEDNESDAY) if i.occ.chore == "make_your_bed"]
+    assert (row.missed["count"], row.missed["late"]) == (2, True)
+
+
 def test_backfill_reopens_a_finished_once_chore() -> None:
     engine = sample_engine()
     engine.catch_up(at(10, 17, 9))
