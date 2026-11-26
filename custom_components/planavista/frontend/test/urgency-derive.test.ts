@@ -33,6 +33,20 @@ describe('daysToDeadline and urgencyOf', () => {
   });
 });
 
+describe('a deadline moved by a parent', () => {
+  // Final review B-I1: a weekly chore given more time is due by its new day, not the week's end.
+  it('counts a weekly row to its own due day when it has one', () => {
+    const given = item({ window: 'week', due_day: '2026-10-21' });
+    expect(daysToDeadline(given, '2026-10-18', board)).toBe(4);
+    expect(urgencyOf(daysToDeadline(given, '2026-10-18', board))).toBe('calm');
+    expect(daysToDeadline(item({ window: 'week', due_day: '2026-10-18' }), '2026-10-17', board)).toBe(2);
+  });
+
+  it('leaves daily rows without a deadline of their own, due day or not', () => {
+    expect(daysToDeadline(item({ window: 'day', due_day: '2026-10-14' }), '2026-10-14', board)).toBeNull();
+  });
+});
+
 describe('the amber badge', () => {
   it('shows 3 days left whatever the pace, and leaves 4 to the pace rule', () => {
     const view = { status: 'open', section: 'week', window: 'week' };

@@ -37,6 +37,15 @@ describe("a missed picture tile's line", () => {
     expect(tileLine(missed, 0, false, 1)).toEqual({ kind: 'bad', text: 'Missed last week' });
     expect(tileLabel(missed)).toBe('tidy_toys, missed last week. Hold to complete');
   });
+
+  it('reads a sent-back missed tile with its missed words, not "overdue since" (final review B-m4)', () => {
+    const sentBack: RowModel = {
+      ...missed, state: 'sent_back', missedWords: 'Missed last week',
+      badge: { words: 'Sent back: socks', tone: 'bad', glyph: '↩' },
+      item: { ...missed.item, status: 'sent_back' },
+    };
+    expect(tileLabel(sentBack)).toBe('tidy_toys, Sent back: socks, missed last week. Hold to complete');
+  });
 });
 
 const FISH = 'feed_the_fish|dana|day:2026-10-13|0';

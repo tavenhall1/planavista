@@ -27,6 +27,7 @@ import {
   isWeekEntry,
   panelEntries,
   listFor,
+  listHeads,
 } from './my-day-derive';
 import { pictureOf } from './pv-chore-tile';
 import './pv-chore-item';
@@ -546,12 +547,13 @@ export class PvChoresMyDay extends LitElement {
   private _list() {
     const column = this.column;
     const { open, week } = listFor(column);
+    const heads = listHeads(column);
     const next = nextLine(this.events, column.member.id, new Date(), this.timeFormat);
     return html`
       ${next ? html`<div class="next">📅 ${next}</div>` : nothing}
       ${this._panels()}
-      <div class="section-head"><span>Today</span></div>
-      ${open.length || column.doneToday.length || panelEntries(column).length ? nothing : html`<p class="meta">Nothing due today.</p>`}
+      ${heads.today ? html`<div class="section-head"><span>Today</span></div>` : nothing}
+      ${heads.nothing ? html`<p class="meta">Nothing due today.</p>` : nothing}
       ${repeat(open, r => r.key, r => this._row(r))}
       ${repeat(column.doneToday, r => r.key, r => this._row(r, 'done'))}
       ${week.length && this.layout !== 'landscape' ? html`

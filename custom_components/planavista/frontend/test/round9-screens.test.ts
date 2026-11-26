@@ -120,6 +120,8 @@ describe('round 9: screens', () => {
   it('says the streak holds only when the excused day closes', () => {
     const module = src('modules/chores/pv-chores-module.ts');
     expect(module).toMatch(/const result = await api\.excuseMissed\(occurrence\);/);
-    expect(module).toMatch(/result\.streak_holds && who \? ` \$\{who\}'s streak holds\.` : ''/);
+    // The words are options-derive's excusedText (final review B-m7: Excuse the misses says the same).
+    expect(module).toMatch(/text: excusedText\(name, who, result\.streak_holds\)/);
+    expect(src('modules/chores/options-derive.ts')).toMatch(/holds && who \? ` \$\{who\}'s streak holds\.` : ''/);
   });
 });

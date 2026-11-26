@@ -12,7 +12,7 @@ export function keepOrder<T extends { key: string }>(items: readonly T[], before
     .map(entry => entry.item);
 }
 import { weekRangeLabel } from '../../utils/date-utils';
-import { dayDate, minutesText } from '../../core/status-map';
+import { dayDate, daysBetween, minutesText } from '../../core/status-map';
 import { FairShare, fairnessShares } from './fairness';
 import type { PastItem, WeekDay, WeekView, WeeklyEntry } from './chores-types';
 import { dayWords, addDays } from './options-derive';
@@ -94,13 +94,23 @@ export function weeklyLine(entries: WeeklyEntry[], daysLeft: number, today: stri
   } else if (pending) {
     badge = `⏳ ${pending} waiting`;
     badgeTone = 'act';
-  } else if (done + pending < total) {
+  } else if (done + pending < total && daysLeft > 0) {
     badge = daysLeft === 1 ? 'Last day' : `${daysLeft} days left`;
     // The deadline shows: 3 and 2 days warn, the last day is bad (missed-and-urgency).
     if (daysLeft === 1) badgeTone = 'bad';
     else if (daysLeft === 2 || daysLeft === 3) badgeTone = 'warn';
   }
   return { text: `${done + pending} of ${total}`, badge, badgeTone, progress: total ? (done + pending) / total : 0 };
+}
+
+/**
+ * Days left of the week shown, today included (final review B-m5: other weeks took today's): this week's
+ * from today, a later week's in full, an earlier week's none.
+ */
+export function weekDaysLeft(view: Pick<WeekView, 'week' | 'today'>): number {
+  const { start, end } = view.week;
+  if (view.today >= end) return 0;
+  return daysBetween(view.today < start ? start : view.today, end);
 }
 
 export function weekRows(view: WeekView, members: Member[], daysLeft: number): WeekRow[] {

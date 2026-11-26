@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { weekCell, weekDays, weekHighlights, weekRows, weekShares, weekTitle, weeklyLine } from '../src/modules/chores/week-derive';
+import { weekCell, weekDays, weekDaysLeft, weekHighlights, weekRows, weekShares, weekTitle, weeklyLine } from '../src/modules/chores/week-derive';
 import type { WeekDay, WeekView } from '../src/modules/chores/chores-types';
 import { MEMBERS } from './chores-fixtures';
 
@@ -43,6 +43,22 @@ describe('weekCell (spec 13.5)', () => {
     expect(weekCell(day('2026-10-08', 'past', { due: 0, done: 0, closed: false, excused: 1 }))).toMatchObject({ label: 'Excused', tone: 'muted' });
     expect(weekCell(day('2026-10-08', 'past', { due: 0, done: 0, closed: false }))).toMatchObject({ label: 'Nothing due' });
     expect(weekCell(day('2026-10-14', 'future', { due: 0, done: 0, closed: false }))).toMatchObject({ label: 'Nothing due', empty: true });
+  });
+});
+
+describe('the days left of the week shown (final review B-m5)', () => {
+  const shown = (start: string, end: string, today = '2026-10-15') => ({ week: { start, end }, today, members: {} }) as WeekView;
+
+  it("counts this week's from today, a later week's in full, and an earlier week's as over", () => {
+    expect(weekDaysLeft(shown('2026-10-12', '2026-10-19'))).toBe(4);
+    expect(weekDaysLeft(shown('2026-10-19', '2026-10-26'))).toBe(7);
+    expect(weekDaysLeft(shown('2026-10-05', '2026-10-12'))).toBe(0);
+  });
+
+  it("says nothing about days left once the week shown is over", () => {
+    const open = [{ chore: 'yard', name: 'Yard work', total: 1, done: 0, pending: 0, from: null }];
+    expect(weeklyLine(open, 0, '2026-10-15')).toEqual({ text: '0 of 1', badge: null, badgeTone: 'neutral', progress: 0 });
+    expect(weeklyLine(open, 7, '2026-10-15')).toMatchObject({ badge: '7 days left', badgeTone: 'neutral' });
   });
 });
 

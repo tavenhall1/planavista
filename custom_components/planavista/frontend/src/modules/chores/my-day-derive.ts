@@ -75,6 +75,16 @@ export function listFor(column: ColumnModel): { open: RowModel[]; week: RowModel
 }
 
 /**
+ * The List style's heads under the panels (final review B-m6): Today over its rows (or over "Nothing due
+ * today" when there's nothing at all), never an empty Today under panels that hold everything.
+ */
+export function listHeads(column: ColumnModel): { today: boolean; nothing: boolean } {
+  const rows = listFor(column).open.length + column.doneToday.length;
+  const panels = panelEntries(column).length;
+  return { today: rows > 0 || panels === 0, nothing: rows === 0 && panels === 0 };
+}
+
+/**
  * The Board's top panels as My day draws them: Missed first, due-soon next, the
  * same heads and rows (the column built them with `topPanels`). The Board's
  * "Ring closed" note stays on the Board.
@@ -206,14 +216,14 @@ export interface PicturesModel {
   waiting: RowModel[];
   done: RowModel[];
   later: RowModel[];
-  /** The panel a row sits in (missed, soon, last), for its tile's outline. */
+  /** The panel look of a row's tile (missed, soon, last): its own in a mixed panel (final review B-m3). */
   zones: Map<string, string>;
 }
 
 /** Pictures (spec 13.4): one huge Now tile, a Now to Next strip, then waiting and done tiles. */
 export function picturesFor(column: ColumnModel, events: DayEvent[], now: Date, format: '12h' | '24h'): PicturesModel {
   const rows = column.entries.flatMap(e => (e.kind === 'row' ? [{ row: e.row, zone: e.zone }] : []));
-  const zones = new Map(column.entries.flatMap(e => (e.kind === 'row' && e.panel ? [[e.row.key, e.panel] as [string, string]] : [])));
+  const zones = new Map(column.entries.flatMap(e => (e.kind === 'row' && e.panel ? [[e.row.key, e.tile ?? e.panel] as [string, string]] : [])));
   const todo = rows.filter(r => r.zone !== 'done' && (r.row.state === 'open' || r.row.state === 'sent_back'));
   const order = ['missed', 'soon', 'overdue', 'now', 'past', 'later', 'week'];
   todo.sort((a, b) => order.indexOf(a.zone) - order.indexOf(b.zone));

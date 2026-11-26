@@ -19,6 +19,13 @@ import { MEMBERS, NOW, TODAY, activity, board, column, item } from './chores-fix
 
 const [alex, blair, casey, dana] = MEMBERS;
 const WEEK = { section: 'week' as const, window: 'week' as const, planned: null, due_day: '2026-10-18', counted: false };
+/**
+ * A week cut to end `left` days on (today included), as these tests draw one: this week's rows are due on its
+ * last day, as the engine sends them (final review B-I1: a week row counts to its own due day).
+ */
+function inWeek<T extends { window?: string | null; due_day?: string | null; section?: string }>(items: T[], left: number): T[] {
+  return items.map(i => (i.window === 'week' && i.due_day === WEEK.due_day && i.section !== 'missed' ? { ...i, due_day: `2026-10-${12 + left}` } : i));
+}
 
 function ctx(fields: Partial<DeriveContext> = {}): DeriveContext {
   return {
@@ -186,8 +193,9 @@ describe('the top of a column: Missed, then due soon (missed-and-urgency spec 4,
   const laundry = (n: number, fields = {}) => item(`laundry|casey|week:2026-10-12|${n}`, { ...WEEK, credit_minutes: 30, ...fields });
 
   function col(items: ReturnType<typeof item>[], left = 6, who = casey) {
-    const b = board({ [who.id]: column(items) }, { week: weekOf(left) });
-    return columnFor(who, column(items), b, ctx());
+    const fitted = inWeek(items, left);
+    const b = board({ [who.id]: column(fitted) }, { week: weekOf(left) });
+    return columnFor(who, column(fitted), b, ctx());
   }
   const headOf = (c: ReturnType<typeof columnFor>, key: string) => c.entries.find(e => e.key === key);
   const rowOf = (c: ReturnType<typeof columnFor>, chore: string) =>
@@ -248,7 +256,9 @@ describe('the top of a column: Missed, then due soon (missed-and-urgency spec 4,
     expect(keysOf(c.entries)).toEqual(['head:Due soon · 4 to go', 'soon:fix_it', 'soon:wash_the_car', 'soon:laundry']);
     // The most urgent sets the look; what ends later says when.
     expect(headOf(c, 'head:soon')).toMatchObject({ right: 'Ends tonight', tone: 'last' });
-    expect(rowOf(c, 'fix_it')).toMatchObject({ panel: 'last', row: { badge: { words: 'Due today', tone: 'time' } } });
+    expect(rowOf(c, 'fix_it')).toMatchObject({ panel: 'last', tile: 'last', row: { badge: { words: 'Due today', tone: 'time' } } });
+    // Each tile takes its own look in a mixed panel (final review B-m3).
+    expect(rowOf(c, 'wash_the_car')).toMatchObject({ panel: 'last', tile: 'soon' });
     expect(rowOf(c, 'wash_the_car')?.row.badge).toEqual({ words: '2 days left', tone: 'time', glyph: '•' });
     expect(rowOf(c, 'laundry')?.row.badge).toEqual({ words: '2 days left', tone: 'time', glyph: '•' });
   });
@@ -271,6 +281,19 @@ describe('the top of a column: Missed, then due soon (missed-and-urgency spec 4,
   it('puts a flagged week copy in Missed only, never counted again in due soon', () => {
     const c = col([laundry(0, { missed: lastWeek }), item('vacuum|casey|week:2026-10-12|0', { ...WEEK })], 2);
     expect(keysOf(c.entries)).toEqual(['head:Missed · 1', 'missed:laundry', 'head:This week · 1 to go', 'soon:vacuum']);
+  });
+
+  it('calls the panel Due soon while a This week section stays below it (final review B-m1)', () => {
+    const waiting = item('vacuum|casey|week:2026-10-12|0', { ...WEEK, status: 'pending', completion: done('2026-10-13T09:00:00-05:00') });
+    const c = col([laundry(0), waiting], 2);
+    expect(keysOf(c.entries)).toEqual(['head:Due soon · 1 to go', 'soon:laundry', 'head:This week', 'week:vacuum']);
+    // Alone, it keeps the week's name.
+    expect(keysOf(col([laundry(0)], 2).entries)).toEqual(['head:This week · 1 to go', 'soon:laundry']);
+  });
+
+  it("takes a group's flag only from an open check-off (final review B-I4)", () => {
+    const c = col([laundry(0, { status: 'done', completion: done('2026-10-13T09:00:00-05:00'), missed: lastWeek }), laundry(1)], 6);
+    expect(keysOf(c.entries)).toEqual(['head:This week', 'week:laundry', 'head:Done today', 'done:laundry']);
   });
 
   it('keeps a chore planned for today in its band, as a daily chore is', () => {
@@ -317,12 +340,12 @@ describe('the top of a column: Missed, then due soon (missed-and-urgency spec 4,
   });
 
   it("is one rule My day can reuse: the panels' entries and the rows they took", () => {
-    const rows = columnFor(casey, column([laundry(0)]), board({ casey: column([laundry(0)]) }), ctx())
+    const rowsFor = (left: number) => columnFor(casey, column(inWeek([laundry(0)], left)), board({ casey: column(inWeek([laundry(0)], left)) }), ctx())
       .entries.flatMap(e => (e.kind === 'row' ? [e.row] : []));
-    const { entries, used } = topPanels(rows, { today: TODAY, week: weekOf(1) });
+    const { entries, used } = topPanels(rowsFor(1), { today: TODAY, week: weekOf(1) });
     expect(entries.map(e => e.key)).toEqual(['head:soon', 'laundry|casey|week:2026-10-12|0']);
     expect([...used]).toEqual(['laundry|casey|week:2026-10-12|0']);
-    expect(topPanels(rows, { today: TODAY, week: weekOf(6) })).toEqual({ entries: [], used: new Set() });
+    expect(topPanels(rowsFor(6), { today: TODAY, week: weekOf(6) })).toEqual({ entries: [], used: new Set() });
   });
 });
 
@@ -337,8 +360,9 @@ describe('"Ring closed for today" comes after the top panels (missed-and-urgency
   });
   const laundry = item('laundry|casey|week:2026-10-12|0', { ...WEEK });
   function col(items: ReturnType<typeof item>[], left: number, who = casey) {
-    const b = board({ [who.id]: column(items) }, { week: { start: '2026-10-12', end: `2026-10-${13 + left}`, days_left: left } });
-    return columnFor(who, column(items), b, ctx());
+    const fitted = inWeek(items, left);
+    const b = board({ [who.id]: column(fitted) }, { week: { start: '2026-10-12', end: `2026-10-${13 + left}`, days_left: left } });
+    return columnFor(who, column(fitted), b, ctx());
   }
 
   it('says it after Missed and due soon, since misses don\'t count in the ring', () => {

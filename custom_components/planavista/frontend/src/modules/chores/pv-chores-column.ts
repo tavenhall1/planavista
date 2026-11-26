@@ -380,7 +380,8 @@ export class PvChoresColumn extends LitElement {
       }
       if (entry.kind !== 'row' || entry.zone === 'done') continue;
       tiles.push({
-        row: entry.row, now: first && entry.row.state !== 'pending', stars: model.member.stars ? entry.row.item.stars : 0, zone: entry.panel ?? '',
+        row: entry.row, now: first && entry.row.state !== 'pending', stars: model.member.stars ? entry.row.item.stars : 0,
+        zone: entry.tile ?? entry.panel ?? '',
       });
       if (entry.row.state !== 'pending') first = false;
     }

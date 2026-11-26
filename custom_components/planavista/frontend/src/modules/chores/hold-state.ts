@@ -70,6 +70,8 @@ export function tileLabel(row: RowModel): string {
   }
   const day = overdueDay(row);
   const since = day ? `, overdue since ${day}` : '';
-  if (row.state === 'sent_back') return `${row.name}, ${row.badge?.words ?? 'sent back'}${since}. Hold to complete`;
+  // A sent-back missed tile: what it missed, not "overdue since" (a late row has overdue_since too; final review B-m4).
+  const missed = row.item.missed && row.missedWords ? `, ${row.missedWords[0].toLowerCase()}${row.missedWords.slice(1)}` : null;
+  if (row.state === 'sent_back') return `${row.name}, ${row.badge?.words ?? 'sent back'}${missed ?? since}. Hold to complete`;
   return since ? `${row.name}${since}. Hold to complete` : `Hold to complete ${row.name}`;
 }

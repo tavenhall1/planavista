@@ -1,6 +1,6 @@
 import type { Member } from '../../core/household';
 import { daysToDeadline, urgencyOf } from './urgency-derive';
-import { BadgeContext, StatusBadge, itemBadge, minutesText, ringLabel, shortDay } from '../../core/status-map';
+import { BadgeContext, StatusBadge, itemBadge, minutesText, missedWords, ringLabel, shortDay } from '../../core/status-map';
 import type { Activity, Band, Board, BoardMember, ItemView } from './chores-types';
 import { DayEvent, clockTime, nextOnCalendar } from './calendar-ties';
 
@@ -27,6 +27,8 @@ export interface RowModel {
   doneBy?: string | null;
   /** Overdue from an earlier day: that day in short ("Wed", "Sep 28"). */
   overdueDay?: string;
+  /** What it missed ("Missed last week"), for a tile read aloud when its badge says something else (final review B-m4). */
+  missedWords?: string;
   /** The badge sits under the name and the estimate stays at the end (a missed row, missed-and-urgency mockup). */
   badgeUnder?: boolean;
 }
@@ -46,6 +48,8 @@ export type ColumnEntry =
   | {
     kind: 'row'; key: string; row: RowModel; zone: 'missed' | 'soon' | 'now' | 'later' | 'past' | 'overdue' | 'week' | 'done';
     panel?: PanelTone; end?: boolean;
+    /** A picture tile's own look in its panel: a mixed due-soon panel's tile due later is amber (final review B-m3). */
+    tile?: PanelTone;
   }
   | { kind: 'credit'; key: string; text: string }
   /** "Ring closed for today": after the top panels, since misses don't count in the ring (missed-and-urgency). */
@@ -163,6 +167,7 @@ function rowFor(item: ItemView, ctx: DeriveContext, board: Board, earnsStars: bo
     doneAt,
     doneBy,
     ...(item.overdue_since ? { overdueDay: shortDay(item.overdue_since, ctx.today) } : {}),
+    ...(item.missed ? { missedWords: missedWords(item.missed, ctx.today) } : {}),
     ...extra,
   };
 }
@@ -237,7 +242,9 @@ export function topPanels(rows: RowModel[], ctx: { today: string; week: Board['w
       // say so); a row that ends later than the heading says when.
       const badge = itemBadge(row.item, { today: ctx.today, daysLeft: ctx.week.days_left, remaining: 0, deadlineDays: null })
         ?? (own > days ? { words: `${own} days left`, tone: 'time' as const, glyph: '•' } : null);
-      entries.push({ kind: 'row', key: row.key, row: { ...row, badge }, zone: 'soon', panel: tone, end: i === soon.length - 1 });
+      entries.push({
+        kind: 'row', key: row.key, row: { ...row, badge }, zone: 'soon', panel: tone, tile: own <= 1 ? 'last' : 'soon', end: i === soon.length - 1,
+      });
       used.add(row.key);
     });
   }
@@ -314,8 +321,9 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
     // A sent-back session first, so its note shows (round 10: an open session hid it).
     const found = live.find(i => i.status === 'sent_back') ?? live.find(i => OPEN.has(i.status)) ?? live.find(i => i.status === 'pending');
     if (!found) continue;
-    // The backend flags one open check-off (the earliest); the row stands for them all, so it carries the flag.
-    const flagged = live.find(i => i.missed);
+    // The backend flags one open check-off (the earliest); the row stands for them all, so it carries the flag,
+    // but only while that check-off is open: a queued one checked off answered the miss (final review B-I4).
+    const flagged = live.find(i => i.missed && OPEN.has(i.status));
     const next = flagged && !found.missed ? { ...found, missed: flagged.missed } : found;
     const group = { done: credited, total };
     const time = minutesText(live.reduce((sum, i) => sum + i.credit_minutes, 0));
@@ -327,9 +335,13 @@ export function columnFor(member: Member, entry: BoardMember, board: Board, ctx:
 
   // Missed, then due soon, at the top; what they take leaves its band or This week.
   const top = topPanels([...late, ...BANDS.flatMap(b => bandRows[b]), ...week], { today: ctx.today, week: board.week });
-  entries.push(...top.entries);
   for (const band of BANDS) bandRows[band] = bandRows[band].filter(r => !top.used.has(r.key));
   const weekLeft = week.filter(r => !top.used.has(r.key));
+  // Two "This week" heads, the panel's and the section's below it: the panel says Due soon (final review B-m1).
+  entries.push(...top.entries.map(e => (
+    weekLeft.length && e.kind === 'head' && e.key === 'head:soon' && e.text.startsWith('This week ')
+      ? { ...e, text: `Due soon${e.text.slice('This week'.length)}` } : e
+  )));
 
   if (overdue.length) {
     entries.push({ kind: 'head', key: 'head:overdue', text: 'Overdue', tone: 'plain' });

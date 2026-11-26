@@ -89,6 +89,22 @@ export function withQueued(board: Board, entries: readonly QueuedCheckoff[]): Bo
     touched.add(entry.member);
   }
   if (touched.size === 0) return board;
+  // A check-off of any copy answers the chore's misses (missed-and-urgency spec 1), so its flag goes at once:
+  // judged by what the queue does in the end, so a check-off undone before it lands leaves the feed's flag.
+  let cleared = 0;
+  for (const id of touched) {
+    const before = new Map(board.members[id].items.map(item => [item.key, item]));
+    const answered = new Set(members[id].items
+      .filter(item => CREDITED.has(item.status) && OPEN.has(before.get(item.key)?.status ?? ''))
+      .map(item => item.chore));
+    if (answered.size === 0) continue;
+    const items = members[id].items.map(item => {
+      if (!item.missed || !answered.has(item.chore)) return item;
+      cleared += 1;
+      return { ...item, missed: null };
+    });
+    members[id] = { ...members[id], items };
+  }
   const household = { due: 0, done: 0, pending: 0 };
   for (const [id, member] of Object.entries(members)) {
     const today = touched.has(id) ? statsOf(member.items) : member.today;
@@ -97,5 +113,8 @@ export function withQueued(board: Board, entries: readonly QueuedCheckoff[]): Bo
     household.done += today.done;
     household.pending += today.pending;
   }
-  return { ...board, members, household };
+  return {
+    ...board, members, household,
+    ...(board.missed_total !== undefined ? { missed_total: Math.max(0, board.missed_total - cleared) } : {}),
+  };
 }

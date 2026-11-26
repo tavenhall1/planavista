@@ -28,4 +28,14 @@ describe("a missed chore's options sheet (missed-and-urgency spec 6)", () => {
     const sheet = src('modules/chores/pv-chore-options.ts');
     expect(sheet).toMatch(/model\.missed \? html`<div class="missed-note"/);
   });
+
+  it("final review B-I3: the sheet's Done checks it off as a hold does, and the closer says Close beside it", () => {
+    const sheet = src('modules/chores/pv-chore-options.ts');
+    expect(sheet).toMatch(/model\.done \? html`[\s\S]*?this\._choose\('done'\)/);
+    expect(sheet).toMatch(/\$\{model\.closeLabel\}<\/button>/);
+    const module = src('modules/chores/pv-chores-module.ts');
+    const body = module.slice(module.indexOf("case 'done':"), module.indexOf("case 'undo':"));
+    expect(body).toMatch(/asMember\(owner\.id, `Who's checking off \$\{name\}\?`\)/);
+    expect(body).toMatch(/this\._checkOff\(row, owner\.id, fresh\)/);
+  });
 });
