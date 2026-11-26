@@ -398,9 +398,10 @@ def test_once_chore_cleared_by_an_excuse_finishes() -> None:
     engine = sample_engine()
     engine.catch_up(at(10, 17, 9))
     engine.excuse_missed(at(10, 17, 10), key=gate, by="blair")
+    # At once (final review A-M6), no longer at the next boundary.
+    assert engine.activity("fix_the_gate_latch")["finished_at"] == at(10, 17, 10).isoformat()
     engine.catch_up(at(10, 18, 9))
     assert _record(engine, gate) is None
-    assert engine.activity("fix_the_gate_latch")["finished_at"] == "2026-10-18T03:00:00-05:00"
 
 
 def test_a_morning_check_off_does_not_answer_the_evening_miss() -> None:
@@ -542,6 +543,51 @@ def test_a_late_row_is_checked_off_by_its_own_key_and_undone() -> None:
     assert engine.activity("fix_the_gate_latch")["finished_at"] is not None
 
 
+def test_late_records_serve_only_on_today_and_where_they_show() -> None:
+    # Final review A-M1 and A-M5: the rollover, a week's tally, and other days don't work the callouts out.
+    from dataclasses import replace as _replace
+
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    engine.complete(at(10, 17, 10), key=GATE, by="alex", source="tablet")  # a Done late row today
+    now, saturday = at(10, 17, 10, 1), date(2026, 10, 17)
+    index = engine._index()
+    served = engine._items_on(saturday, index)
+    plain = engine._items_on(saturday, index, serve_late=False)
+    assert any(i.missed for found in served.values() for i in found)
+    assert any(i.section == "missed" and i.status == "done" for i in served["alex"])
+    unflagged = {m: [_replace(i, missed=None) for i in found if i.section != "missed"] for m, found in served.items()}
+    assert {m: v for m, v in unflagged.items() if v} == {m: v for m, v in plain.items() if v}
+    calls = []
+    real = engine._serve_late
+    engine._serve_late = lambda *args: calls.append(args[0]) or real(*args)
+    engine.week_view(now)
+    engine._week_items(engine.clock.week_start(saturday), engine._index())
+    tomorrow = engine.day_view(now, date(2026, 10, 18))
+    assert calls == []
+    assert not any(i["missed"] for m in tomorrow["members"].values() for i in m["items"])
+    assert all(not i.missed and i.section != "missed" for found in engine.items(now, date(2026, 10, 18)).values() for i in found)
+    engine.board(now)
+    assert set(calls) == {saturday}
+    calls.clear()
+    engine.catch_up(at(10, 18, 9))
+    assert calls == []
+
+
+def test_a_late_rows_check_off_sent_back_is_not_missed_again() -> None:
+    # Final review A-M3: it was missed once, on its deadline; sending its late check-off back says so.
+    sweep = once("sweep_the_porch", "Sweep the porch", ["dana"], by="2026-10-16", estimate_minutes=20)
+    engine = sample_engine(activities=[sweep], settings={"auto_approve": "never"})
+    engine.catch_up(at(10, 17, 9))
+    [row] = _missed_rows(engine, "dana", at(10, 17, 9))
+    assert engine.complete(at(10, 17, 10), key=row.occ.key, by="dana", source="tablet").result == "pending"
+    [request] = engine.open_requests(at(10, 17, 10, 1))
+    assert request["missed_if_sent_back"] is False
+    engine.catch_up(at(10, 18, 9))
+    [request] = engine.open_requests(at(10, 18, 9))
+    assert request["missed_if_sent_back"] is False
+
+
 def test_late_rows_are_not_counted() -> None:
     engine = sample_engine(MONDAY)
     engine.catch_up(WEDNESDAY)
@@ -604,10 +650,40 @@ def test_hand_off_keeps_the_callout_with_the_misser() -> None:
     assert [i for i in _missed_rows(engine, "alex", later) if i.occ.chore == "laundry"] == []
 
 
+@pytest.mark.parametrize("change", [{"assignee": "blair"}, {"excused": True}])
+def test_a_late_row_is_not_handed_on_or_excused_as_one_record(change: dict) -> None:
+    # Final review A-I1: a late row stands for every record of the miss; its key is only the oldest's.
+    bed = plan("bed", "Make your bed", ["dana"], 5 / 60, "day", days=["mon", "tue", "wed"])
+    engine = sample_engine(MONDAY, activities=[bed])
+    engine.catch_up(at(10, 15, 9))
+    now = at(10, 15, 9)
+    [row] = _missed_rows(engine, "dana", now)
+    assert row.missed["count"] == 3
+    overrides = list(engine.log["overrides"])
+    with pytest.raises(ChoreError) as refused:
+        engine.override(now, key=row.occ.key, by="alex", **change)
+    assert refused.value.code == "missed_stays"
+    with pytest.raises(ChoreError) as skip:
+        engine.request(now, kind="skip", key=row.occ.key, by="dana")
+    assert skip.value.code == "missed_stays"
+    assert engine.log["overrides"] == overrides and engine.log["requests"] == []
+    [still] = _missed_rows(engine, "dana", at(10, 15, 9, 1))
+    assert still.missed["count"] == 3
+
+
+def test_a_flagged_copy_is_still_handed_on_and_excused() -> None:
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    assert _item(engine, "dana", WED_BED, WEDNESDAY).missed is not None
+    engine.override(WEDNESDAY, key=WED_BED, by="alex", excused=True)
+    assert _item(engine, "dana", WED_BED, at(10, 14, 9, 1)).status == "excused"
+
+
 def test_an_assignee_override_on_the_late_key_moves_it() -> None:
     engine = sample_engine()
     engine.catch_up(at(10, 17, 9))
-    engine.override(at(10, 17, 9), key=GATE, by="alex", assignee="blair")
+    # Stored before the late row refused hand-offs (final review A-I1): it still decides whose it is.
+    engine.log["overrides"].append({"occurrence": GATE, "assignee": "blair", "by": "alex", "at": at(10, 17, 9).isoformat()})
     later = at(10, 17, 9, 1)
     assert _missed_rows(engine, "alex", later) == []
     [row] = _missed_rows(engine, "blair", later)
@@ -896,6 +972,21 @@ def test_start_sets_the_marker() -> None:
     assert engine.log["late_backfill"] == 1
 
 
+def test_turned_on_again_drops_the_misses_from_before_the_pause() -> None:
+    # Final review A-I2: nothing before today is owed once chores start again, and that includes old misses.
+    engine = sample_engine(MONDAY)
+    engine.catch_up(WEDNESDAY)
+    assert _late_keys(engine)
+    # A carried record (not late) is left as it was.
+    carried = {k: v for k, v in engine.log["carried"][0].items() if k != "missed"} | {"chore": "gone", "key": "gone|dana|day:2026-10-12|0"}
+    engine.log["carried"].append(carried)
+    engine.log["last_day"] = "2026-10-13"  # off since Wednesday
+    engine.start(at(10, 20, 9))
+    assert _late_keys(engine) == [] and engine.log["carried"] == [carried]
+    assert _missed_rows(engine, "dana", at(10, 20, 9)) == []
+    assert all(i.missed is None for i in engine.items(at(10, 20, 9))["dana"])
+
+
 def test_carry_over_households_get_none() -> None:
     engine = sample_engine(MONDAY, settings={"missed": "carry_over"})
     engine.catch_up(WEDNESDAY)
@@ -977,3 +1068,73 @@ def test_excuse_from_the_day_navigator_clears_the_callout() -> None:
     assert _missed_rows(engine, "alex", at(10, 17, 10, 1)) == []
     day = engine.day_view(at(10, 17, 10, 1), date(2026, 10, 16))["members"]["alex"]
     assert [i["key"] for i in day["items"] if i["status"] == "excused"] == [GATE]
+
+
+def _bed_and_fish() -> ChoresEngine:
+    """Dana's bed and fish, both missed on Monday and on Tuesday."""
+    chores = [a for a in sample_activities() if a["id"] in ("make_your_bed", "feed_the_fish")]
+    engine = sample_engine(MONDAY, activities=chores)
+    engine.catch_up(WEDNESDAY)
+    return engine
+
+
+def test_excuse_the_misses_judges_the_streak_once_all_are_excused() -> None:
+    # Final review A-M4: two misses on one day hold the streak only together; each alone said False.
+    engine = _bed_and_fish()
+    fish = "feed_the_fish|dana|day:2026-10-12|0"
+    out = engine.excuse_missed_all(WEDNESDAY, keys=[BED, fish], by="blair")
+    assert out.result == "excused" and out.data == {"occurrences": [BED, fish], "streak_holds": True}
+    monday = _summary(engine, "dana", "day:2026-10-12")
+    assert monday["closed"] or not monday["due"]
+
+
+def test_excuse_the_misses_says_no_streak_while_a_day_still_has_one() -> None:
+    engine = _bed_and_fish()
+    keys = [BED, "feed_the_fish|dana|day:2026-10-12|0", "make_your_bed|dana|day:2026-10-13|0"]
+    out = engine.excuse_missed_all(WEDNESDAY, keys=keys, by="blair")
+    assert out.data["streak_holds"] is False  # Tuesday's fish is still missed
+
+
+def test_excuse_the_misses_passes_over_one_already_taken_care_of() -> None:
+    engine = _bed_and_fish()
+    second = "make_your_bed|dana|day:2026-10-13|0"
+    engine.excuse_missed(WEDNESDAY, key=BED, by="alex")
+    out = engine.excuse_missed_all(WEDNESDAY, keys=[BED, second], by="blair")
+    assert out.data["occurrences"] == [second]
+    with pytest.raises(ChoreError) as refused:
+        engine.excuse_missed_all(WEDNESDAY, keys=[BED, second], by="blair")
+    assert refused.value.code == "not_missed"
+
+
+@pytest.mark.parametrize("how", ["clear", "excuse", "excuse_all"])
+def test_a_once_chore_finishes_when_its_miss_is_cleared_or_excused(how: str) -> None:
+    # Final review A-M6: at once, not at the next boundary.
+    engine = sample_engine()
+    engine.catch_up(at(10, 17, 9))
+    assert engine.activity("fix_the_gate_latch")["finished_at"] is None
+    now = at(10, 17, 10)
+    if how == "clear":
+        out = engine.clear_missed(now, chore="fix_the_gate_latch", member="alex", by="blair")
+    elif how == "excuse":
+        out = engine.excuse_missed(now, key=GATE, by="blair")
+    else:
+        out = engine.excuse_missed_all(now, keys=[GATE], by="blair")
+    assert "plan" in out.changed
+    assert engine.activity("fix_the_gate_latch")["finished_at"] == now.isoformat()
+
+
+def test_a_repeating_chore_reopened_by_the_backfill_finishes_when_cleared() -> None:
+    # The back-fill reopens a Repeats chore 0.14.1 finished after its last time was missed (spec 8).
+    engine = sample_engine()
+    engine.catch_up(at(11, 30, 9))
+    for record in [c for c in engine.log["carried"] if c["chore"] == "rake_the_leaves"]:
+        engine.log["carried"].remove(record)  # as 0.14.1 left it: no late records
+    engine.catch_up(at(12, 1, 9))
+    assert engine.activity("rake_the_leaves")["finished_at"] is not None
+    engine.log.pop("late_backfill")
+    out = engine.backfill_late(at(12, 1, 9))
+    assert "plan" in out.changed and engine.activity("rake_the_leaves")["finished_at"] is None
+    assert _late_keys(engine, "rake_the_leaves")
+    engine.clear_missed(at(12, 1, 10), chore="rake_the_leaves", member="casey", by="alex")
+    assert engine.activity("rake_the_leaves")["finished_at"] == at(12, 1, 10).isoformat()
+

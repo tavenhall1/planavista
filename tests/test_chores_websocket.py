@@ -335,3 +335,25 @@ async def test_excuse_missed_takes_several_keys_and_needs_one_way_of_naming(
     reply = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "keys": keys})
     assert reply["result"]["result"] == "excused" and reply["result"]["occurrences"] == keys
     assert all(s["missed"] == [] for s in chores.engine.log["summaries"] if s["member"] == "casey" and s["period"] in ("day:2026-10-12", "day:2026-10-11"))
+
+
+async def test_excuse_missed_with_keys_passes_over_one_taken_care_of_and_judges_the_streak_once(
+    hass: HomeAssistant, chores: Any, accounts: dict[str, MockUser], hass_ws_client: Any
+) -> None:
+    """Final review A-M4: one key already taken care of doesn't stop the rest; the streak is judged after all."""
+    monday = ["cat_care|casey|day:2026-10-12|0", "cat_care|casey|day:2026-10-12|1"]
+    sunday = ["cat_care|casey|day:2026-10-11|0", "cat_care|casey|day:2026-10-11|1"]
+    for day, missed in (("2026-10-12", monday), ("2026-10-11", sunday)):
+        chores.engine.log["summaries"].append({
+            "member": "casey", "period": f"day:{day}", "due": 2, "done": 0, "pending": 0,
+            "minutes_due": 30.0, "minutes_done": 0.0, "minutes_pending": 0.0, "missed": list(missed),
+            "carried": [], "excused": [], "away": False, "closed": False, "chores": {"cat_care": {"due": 2, "done": 0}},
+            "keys": {key: ["open", 15.0, True] for key in missed},
+        })
+    gone = "cat_care|casey|day:2026-10-10|1"  # never missed, or taken care of on another screen
+    alex = await ws_client_for(hass, hass_ws_client, accounts["alex"])
+    reply = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "keys": [gone, *monday, sunday[1]]})
+    # Monday closes once both are excused, but Sunday still has a miss: the streak doesn't hold.
+    assert reply["result"] == {"result": "excused", "occurrences": [*monday, sunday[1]], "streak_holds": False}
+    last = await ws_command(alex, {"type": "planavista/chores/excuse_missed", "keys": [*monday, *sunday]})
+    assert last["result"] == {"result": "excused", "occurrences": [sunday[0]], "streak_holds": True}

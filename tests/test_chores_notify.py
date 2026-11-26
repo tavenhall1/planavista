@@ -190,6 +190,31 @@ async def test_the_evening_reminder_goes_to_people_with_chores_left(
     assert [c for c in alex if c.data.get("title") == "Chores"] == []  # nothing left for Alex today
 
 
+async def test_a_missed_chore_does_not_make_an_evening_reminder(
+    hass: HomeAssistant, chores: Any, freezer: Any
+) -> None:
+    """Final review A-I3: the evening check stays as it was (missed-and-urgency non-goal): today's ring only."""
+    from datetime import date
+
+    from custom_components.planavista.chores import late
+    from custom_components.planavista.chores.occurrences import Occurrence
+
+    alex = _service(hass, "mobile_app_alex_phone")
+    await _phones(hass, chores, {"alex": ["notify.mobile_app_alex_phone"]}, alex={"reminders": True})
+    # A late row of a chore since handed to Dana stays Alex's (spec 1, Hand-offs), with no copy of today's to ride on.
+    key = "make_your_bed|alex|day:2026-10-12|0"
+    occ = Occurrence(key=key, chore="make_your_bed", owner="alex", member="alex", period="day:2026-10-12", n=0,
+                     appears=date(2026, 10, 12), planned=None, due=None, band=None, credit_minutes=5.0, stars=0, window="day")
+    chores.engine.log["carried"].append(late.late_record(occ, date(2026, 10, 12)))
+    await chores.async_run(lambda e, now: e.complete(now, chore="kitchen_cleanup", member="alex", by="alex", source="tablet"))
+    assert "missed" in [i["section"] for i in chores.member_view("alex")["items"] if i["status"] == "open"]
+    seven = datetime.fromisoformat("2026-10-13T19:00:00-05:00")
+    freezer.move_to(seven)
+    async_fire_time_changed(hass, seven)
+    await hass.async_block_till_done()
+    assert [c for c in alex if c.data.get("title") == "Chores"] == []
+
+
 async def test_no_evening_check_means_no_reminders(hass: HomeAssistant, chores: Any, freezer: Any) -> None:
     casey = _service(hass, "mobile_app_caseys_phone")
     await chores.async_run(lambda e, now: e.save_settings(now, {"evening_check": None}))

@@ -376,8 +376,9 @@ async def ws_chores_override(hass: HomeAssistant, connection: websocket_api.Acti
 async def ws_chores_excuse_missed(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """A parent excuses a check-off already counted as missed, so its day and the streak hold.
 
-    `keys` excuses several at once (the callout's Excuse them all): one save, one answer, and the
-    streak holds only when every one's did.
+    `keys` excuses several at once (the callout's Excuse the misses): one save, one answer. A key
+    another screen already took care of is passed over, and the streak holds only when every day
+    any of them was counted on now closes (`ChoresEngine.excuse_missed_all`).
     """
     runtime = _runtime(hass, connection, msg)
     if runtime is None or (context := parent_for(hass, connection, msg, needs_file=False)) is None:
@@ -385,23 +386,11 @@ async def ws_chores_excuse_missed(hass: HomeAssistant, connection: websocket_api
     if "occurrence" not in msg and "keys" not in msg:
         send_refusal(connection, msg, "invalid_format", "Name what to excuse.")
         return
-    which = [msg["occurrence"]] if "occurrence" in msg else list(dict.fromkeys(msg["keys"]))
 
     def excuse(engine: Any, now: Any) -> Any:
-        outcomes: list[Outcome] = []
-        for key in which:
-            try:
-                outcomes.append(engine.excuse_missed(now, key=key, by=context[1], note=msg.get("note")))
-            except ChoreError:
-                if len(which) == 1:
-                    raise
-                # One already taken care of (excused on another screen) doesn't stop the rest.
-        if not outcomes:
-            raise ChoreError("not_missed")
-        if len(which) == 1:
-            return outcomes[0]
-        holds = any(o.data["streak_holds"] for o in outcomes)
-        return Outcome("excused", {"occurrences": [o.data["occurrence"] for o in outcomes], "streak_holds": holds}, changed={"log"})
+        if "occurrence" in msg:
+            return engine.excuse_missed(now, key=msg["occurrence"], by=context[1], note=msg.get("note"))
+        return engine.excuse_missed_all(now, keys=msg["keys"], by=context[1], note=msg.get("note"))
 
     out = await _apply(connection, msg, runtime, excuse)
     if out is not None:

@@ -236,10 +236,10 @@ async def test_a_check_off_works_out_the_day_only_a_few_times(hass: HomeAssistan
     runs = 0
     items_on = ChoresEngine._items_on
 
-    def counted(self: ChoresEngine, day: Any, index: Any) -> Any:
+    def counted(self: ChoresEngine, day: Any, index: Any, **kwargs: Any) -> Any:
         nonlocal runs
         runs += 1
-        return items_on(self, day, index)
+        return items_on(self, day, index, **kwargs)
 
     with patch.object(ChoresEngine, "_items_on", counted):
         await hass.services.async_call(DOMAIN, "complete_chore", {"member": "casey", "chore": "yard_work"},

@@ -58,3 +58,9 @@ def left_today(view: dict[str, Any]) -> list[dict[str, Any]]:
         i for i in view["items"]
         if (i["counted"] or i.get("section") == "missed") and i["status"] in OPEN
     ]
+
+
+def left_in_ring(view: dict[str, Any]) -> list[dict[str, Any]]:
+    """Items in today's ring not done or waiting: what the evening check reminds about (it stays as it was:
+    a missed chore's late row isn't counted there, missed-and-urgency non-goals; final review A-I3)."""
+    return [i for i in view["items"] if i["counted"] and i["status"] in OPEN]

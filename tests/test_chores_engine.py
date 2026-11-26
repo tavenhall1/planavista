@@ -1171,10 +1171,10 @@ def test_a_busy_household_stays_quick() -> None:  # Review Focus 1
     runs = 0
     items_on = ChoresEngine._items_on
 
-    def counted(self: ChoresEngine, day: date, index: object) -> object:
+    def counted(self: ChoresEngine, day: date, index: object, **kwargs: object) -> object:
         nonlocal runs
         runs += 1
-        return items_on(self, day, index)
+        return items_on(self, day, index, **kwargs)
 
     started = wall.perf_counter()
     with patch.object(ChoresEngine, "_items_on", counted):
