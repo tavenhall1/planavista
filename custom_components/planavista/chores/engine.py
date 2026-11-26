@@ -593,7 +593,7 @@ class ChoresEngine:
                 found, late=not carriers, clock=clock,
                 scheduled=lambda d, a=activity, o=owner: self._scheduled_on(a, o, d),
                 away=lambda d, p=person: away_on(p, d) is not None,
-                period_scheduled=lambda d, a=activity, o=owner: self._scheduled_in(a, o, d),
+                period_scheduled=lambda d, e, a=activity, o=owner: self._scheduled_in(a, o, d, e),
             )
             if carriers:
                 carrier = min(carriers, key=lambda i: (i.occ.due or datetime.max.replace(tzinfo=UTC), i.occ.n))
@@ -626,13 +626,22 @@ class ChoresEngine:
                     return True
         return False
 
-    def _scheduled_in(self, activity: Mapping[str, Any] | None, owner: str, start: date) -> bool:
-        """Whether anything of the chore was owed by `owner` in the week or month starting `start` (final review A-I4d)."""
+    def _scheduled_in(self, activity: Mapping[str, Any] | None, owner: str, start: date, end: date) -> bool:
+        """Whether anything of the chore was owed by `owner` from `start` to before `end` (final review A-I4d).
+
+        Asked on the period's last day: a day's Repeats shows only from its own day, and from
+        there `periods_on` reaches back over the whole week (re-review).
+        """
         if activity is None:
             return True
         gen = self.generator()
         activity = {**activity, "finished_at": None}
-        return any(gen.period_occurrences(activity, owner, kind, first) for kind, first in gen.periods_on(activity, start))
+        last = end - timedelta(days=1)
+        return any(
+            first is not None and start <= first < end and gen.period_occurrences(activity, owner, kind, first)
+            or first is None and gen.period_occurrences(activity, owner, kind, first)
+            for kind, first in gen.periods_on(activity, last)
+        )
 
     def _order(self) -> dict[str, int]:
         return {a["id"]: index for index, a in enumerate(self.plan["activities"])}

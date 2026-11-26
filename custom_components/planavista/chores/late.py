@@ -75,8 +75,12 @@ def _unit_and_start(record: Mapping[str, Any], clock: Clock) -> tuple[str, date]
         return "day", start
     if window == "day":
         day = due_day or start or since or date.min
-        if kind == "rep" and due_day is not None and due_day == clock.week_end(due_day) - timedelta(days=1):
+        if (
+            kind == "rep" and due_day is not None and start is not None and start < due_day
+            and due_day == clock.week_end(due_day) - timedelta(days=1)
+        ):
             # A day's Repeats under Make it up is due as its week ends: a missed week (final review A-I4b).
+            # One due on its own day (Strict, or the week's last day) is a missed day.
             return "week", clock.week_start(due_day)
         return "day", day
     if window == "week":
@@ -92,22 +96,22 @@ def _unit_and_start(record: Mapping[str, Any], clock: Clock) -> tuple[str, date]
 
 
 def _owed_in(
-    start: date, end: date, period_scheduled: Callable[[date], bool], away: Callable[[date], bool]
+    start: date, end: date, period_scheduled: Callable[[date, date], bool], away: Callable[[date], bool]
 ) -> bool:
     """Whether a week or month between two misses was owed: scheduled, and the person not away all of it."""
-    if not period_scheduled(start):
+    if not period_scheduled(start, end):
         return False
     return not all(away(start + timedelta(days=i)) for i in range((end - start).days))
 
 
 def missed_flag(
     records: list[Mapping[str, Any]], *, late: bool, scheduled: Callable[[date], bool],
-    away: Callable[[date], bool], clock: Clock, period_scheduled: Callable[[date], bool] | None = None,
+    away: Callable[[date], bool], clock: Clock, period_scheduled: Callable[[date, date], bool] | None = None,
 ) -> dict[str, Any]:
     """`{count, unit, in_a_row, periods, late, keys}` for one chore and member's late records.
 
-    `scheduled(day)` says whether the chore was planned on a day, `period_scheduled(start)` whether
-    anything of it was owed in the week or month starting then: a day, week, or month the chore
+    `scheduled(day)` says whether the chore was planned on a day, `period_scheduled(start, end)` whether
+    anything of it was owed in the week or month from `start` to before `end`: a day, week, or month the chore
     wasn't owed, or the person was away all of, doesn't break a run.
     """
     starts: dict[date, str] = {}
@@ -125,7 +129,7 @@ def missed_flag(
         )
     elif unit in ("week", "month"):
         step = clock.week_end if unit == "week" else Clock.month_end
-        owed = period_scheduled or (lambda start: True)
+        owed = period_scheduled or (lambda start, end: True)
         in_a_row = True
         for a, b in zip(days, days[1:]):
             between = step(a)

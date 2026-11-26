@@ -12,7 +12,7 @@ from custom_components.planavista.chores.model import ChoreError
 from custom_components.planavista.chores.occurrences import Occurrence
 from custom_components.planavista.chores.periods import Clock
 
-from .chores_sample import MEMBERS, TZ, at, keys, once, plan, sample_activities, sample_engine
+from .chores_sample import MEMBERS, TZ, at, keys, once, plan, repeats, sample_activities, sample_engine
 
 CLOCK = Clock(TZ)
 TODAY = date(2026, 10, 14)
@@ -180,6 +180,10 @@ def test_a_day_repeats_due_at_the_weeks_end_is_a_missed_week() -> None:
     # Strict, due at the end of its own day (not the week's last): a missed day.
     strict = late.late_record(_rep("rake", date(2026, 10, 10), "day", CLOCK.day_end(date(2026, 10, 10))), date(2026, 10, 10))
     assert (_flag([strict])["unit"], _flag([strict])["periods"]) == ("day", ["2026-10-10"])
+    # Strict, a Sunday's: due at the end of its own day, which is also the week's last: still a missed day.
+    sunday = late.late_record(_rep("rake", date(2026, 10, 11), "day", CLOCK.day_end(date(2026, 10, 11))), date(2026, 10, 11))
+    assert (_flag([sunday])["unit"], _flag([sunday])["periods"]) == ("day", ["2026-10-11"])
+    assert late.missed_words(_flag([sunday]), date(2026, 10, 12)) == "Missed yesterday"
 
 
 def test_an_older_single_week_or_month_is_named() -> None:
@@ -207,12 +211,25 @@ def test_an_away_or_unscheduled_week_does_not_break_a_weekly_run() -> None:
         })
 
     assert flag()["in_a_row"] is False  # the week between was done or excused
-    assert flag(period_scheduled=lambda start: start != between)["in_a_row"] is True
+    assert flag(period_scheduled=lambda start, end: start != between)["in_a_row"] is True
     away_all = flag(away=lambda d: between <= d < between + timedelta(days=7))
     assert away_all["in_a_row"] is True
     assert late.missed_words(away_all, date(2026, 10, 20)) == "Missed 2 weeks in a row"
     # Away for part of it: the week was still owed.
     assert flag(away=lambda d: d == between)["in_a_row"] is False
+
+
+def test_a_day_repeats_week_is_owed_whatever_day_it_falls_on() -> None:
+    # Re-review: a Saturday's Repeats was owed in its week, so a week done or excused between two misses breaks the run.
+    rake = repeats("rake", "Rake", ["casey"], "FREQ=WEEKLY;BYDAY=SA", "2026-09-01", "day", 30)
+    engine = sample_engine(MONDAY, activities=[*sample_activities(), rake])
+    activity = engine.activity("rake")
+    assert engine._scheduled_in(activity, "casey", date(2026, 10, 5), date(2026, 10, 12)) is True
+    biweekly = repeats("rake2", "Rake", ["casey"], "FREQ=WEEKLY;INTERVAL=2;BYDAY=SA", "2026-10-03", "day", 30)
+    engine = sample_engine(MONDAY, activities=[*sample_activities(), biweekly])
+    activity = engine.activity("rake2")
+    assert engine._scheduled_in(activity, "casey", date(2026, 10, 5), date(2026, 10, 12)) is False
+    assert engine._scheduled_in(activity, "casey", date(2026, 9, 28), date(2026, 10, 5)) is True
 
 
 def test_monthly_misses_count_months() -> None:
@@ -228,7 +245,7 @@ def test_monthly_misses_count_months() -> None:
     assert _flag(gap)["in_a_row"] is False
     unscheduled = late.missed_flag(
         gap, late=True, clock=CLOCK, scheduled=lambda d: True, away=lambda d: False,
-        period_scheduled=lambda start: start != date(2026, 8, 1),
+        period_scheduled=lambda start, end: start != date(2026, 8, 1),
     )
     assert unscheduled["in_a_row"] is True
 
